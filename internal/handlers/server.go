@@ -10,9 +10,6 @@ import (
 	"github.com/gofiber/template/html/v2"
 )
 
-var bgEngine = html.New("./static", ".html")      // Used when a render function is called from props (defaultProps.render)
-var defaultEngine = html.New("./static", ".html") // Used by the server
-
 func NewServer(port int) func() error {
 	portString := strconv.Itoa(port)
 	if port == 0 {
@@ -21,7 +18,7 @@ func NewServer(port int) func() error {
 
 	return func() error {
 		server := fiber.New(fiber.Config{
-			Views:             defaultEngine,
+			Views:             html.New("./static", ".html"),
 			ViewsLayout:       "layouts/main",
 			PassLocalsToViews: true,
 		})
