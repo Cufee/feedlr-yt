@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.5"></script>
+    <script src="https://unpkg.com/idiomorph/dist/idiomorph-ext.min.js"></script>
     <!-- Tailwind and DaisyUI -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.7.6/dist/full.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,11 +14,14 @@
         tailwind.config = {}
     </script>
 
-    <title>App Name</title>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/app.webmanifest">
 </head>
 
-<body class="m-auto max-w-7xl">
-    {{ embed }}
+<body class="mx-auto max-w-7xl p-2 flex flex-col gap-2 min-h-screen" hx-ext="head-support">
+    <div id="content">
+        {{ embed }}
+    </div>
 </body>
 
 </html>

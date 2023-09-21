@@ -1,0 +1,6 @@
+{
+    "name": "Fiddler",
+    "start_url": "/app",
+    "display": "standalone",
+    "id": "com.fiddler.app"
+}

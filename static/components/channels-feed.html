@@ -1,0 +1,28 @@
+{{ define "components/channels-feed" }}
+<div class="flex flex-col gap-2" id="components-channels-feed">
+    {{ with . }}
+    {{ range . }}
+    <div id="{{ .ID }}">
+        <div class="divider mx-2"></div>
+        <div class="flex flex-col gap-2">
+            <div class="flex flex-row gap-2 justify-between">
+                <div class="flex flex-row gap-1 items-center">
+                    {{template "components/favorite-channel-button" .}}
+                    <span class="text-3xl mx-2 font-bold">{{ .Title }}</span>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-square btn-ghost hover:btn-error" title="Unsubscribe"
+                        hx-delete="/api/channels/{{ .ID }}" hx-target="#{{ .ID }}" hx-swap="delete">
+                        {{template "icons/cross"}}
+                    </button>
+                </div>
+            </div>
+            <div>
+                {{template "components/video-feed" .Videos}}
+            </div>
+        </div>
+    </div>
+    {{ end }}
+    {{ end }}
+</div>
+{{ end }}

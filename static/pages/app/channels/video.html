@@ -1,0 +1,17 @@
+{{ define "app/channels/video" }}
+
+<head>
+    <title>Feedlr - {{ or .Title `Video` }}</title>
+</head>
+
+{{ template "components/app-navbar" .AppNavbarProps }}
+<div id="app-channels-video">
+    <a href="/app#{{ .ChannelID }}" hx-boost="true" hx-target="#content" hx-swap="innerHTML">
+        <button class="btn">
+            Back
+        </button>
+    </a>
+    Video Player
+</div>
+
+{{ end }}
