@@ -10,6 +10,9 @@ import (
 	"github.com/gofiber/template/html/v2"
 )
 
+var bgEngine = html.New("./static", ".html")      // Used when a render function is called from props (defaultProps.render)
+var defaultEngine = html.New("./static", ".html") // Used by the server
+
 func NewServer(port int) func() error {
 	portString := strconv.Itoa(port)
 	if port == 0 {
@@ -17,10 +20,10 @@ func NewServer(port int) func() error {
 	}
 
 	return func() error {
-		engine := html.New("./static", ".html")
 		server := fiber.New(fiber.Config{
-			Views:       engine,
-			ViewsLayout: "layouts/main",
+			Views:             defaultEngine,
+			ViewsLayout:       "layouts/main",
+			PassLocalsToViews: true,
 		})
 
 		server.Static("/static", "./static/served", fiber.Static{
@@ -28,6 +31,7 @@ func NewServer(port int) func() error {
 		})
 
 		server.Get("/", ui.LandingHandler)
+		server.Get("/about", ui.AboutHandler)
 		server.Get("/error", ui.ErrorHandler)
 
 		api := server.Group("/api")
@@ -45,6 +49,7 @@ func NewServer(port int) func() error {
 
 		// This last handler is a catch-all for any routes that don't exist
 		server.Use(func(c *fiber.Ctx) error {
+
 			return c.Redirect("/error?message=Page Not Found&from=" + c.Path())
 		})
 

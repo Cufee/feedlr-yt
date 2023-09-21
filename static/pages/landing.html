@@ -5,7 +5,9 @@
 </head>
 
 <div class="flex flex-col gap-4 m-auto justify-center h-full" id="landing">
-    <span class="text-5xl uppercase text-center">App Name</span>
+    <div class="flex justify-center">
+        {{ template "components/logo" }}
+    </div>
     <div class="max-w-4xl text-center">
         <span class="text-xl">
             Lorem ipsum dolor sit amet, consectetur adipisicing elit. Animi illo
@@ -14,10 +16,15 @@
             accusamus obcaecati itaque corporis voluptatibus tempora perferendis!
         </span>
     </div>
-    <div class="flex justify-center">
-        <a href="/app">
+    <div class="flex flex-col justify-center items-center gap-2">
+        <a href="/app" hx-boost="true" hx-target="#content" hx-swap="innerHTML">
             <button class="btn btn-primary">
                 Start Watching
+            </button>
+        </a>
+        <a href="https://github.com/byvko-dev">
+            <button class="btn btn-dark">
+                GitHub
             </button>
         </a>
     </div>
