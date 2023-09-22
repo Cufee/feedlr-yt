@@ -1,13 +1,13 @@
 {{ define "components/video-feed" }}
-<div class="w-full flex flex-row gap-1 overflow-scroll carousel carousel-center p-4 space-x-4 bg-neutral rounded-box"
+<div class="flex flex-row w-full gap-1 p-4 space-x-4 overflow-scroll carousel carousel-center bg-neutral rounded-box"
     id="components-video-feed">
     {{ with . }}
     {{ range . }}
-    <div class="carousel-item flex flex-col overflow-hidden rounded-xl relative overscroll-contain">
+    <div class="relative flex flex-col overflow-hidden carousel-item rounded-xl overscroll-contain">
         <div>
             <a href="/app/channels/{{ .ChannelID }}/{{ .ID }}" hx-boost="true" hx-target="#content" hx-swap="innerHTML">
                 <button>
-                    <img class="w-full h-60 object-cover rounded-xl" src="{{ .Thumbnail }}" alt="{{ .Title }}">
+                    <img class="object-cover w-full h-60 rounded-xl" src="{{ .Thumbnail }}" alt="{{ .Title }}">
                 </button>
             </a>
         </div>

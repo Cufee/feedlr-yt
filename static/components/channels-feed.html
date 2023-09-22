@@ -3,12 +3,12 @@
     {{ with . }}
     {{ range . }}
     <div id="{{ .ID }}">
-        <div class="divider mx-2"></div>
+        <div class="mx-2 divider"></div>
         <div class="flex flex-col gap-2">
-            <div class="flex flex-row gap-2 justify-between">
-                <div class="flex flex-row gap-1 items-center">
+            <div class="flex flex-row justify-between gap-2">
+                <div class="flex flex-row items-center gap-1">
                     {{template "components/favorite-channel-button" .}}
-                    <span class="text-3xl mx-2 font-bold">{{ .Title }}</span>
+                    <span class="mx-2 text-3xl font-bold">{{ .Title }}</span>
                 </div>
                 <div>
                     <button class="btn btn-sm btn-square btn-ghost hover:btn-error" title="Unsubscribe"
