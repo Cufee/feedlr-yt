@@ -1,6 +1,7 @@
 package types
 
-type AppNavbarProps struct {
+type NavbarProps struct {
 	CurrentURL string
 	BackURL    string
+	Hide       bool
 }

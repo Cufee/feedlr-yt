@@ -1,22 +1,27 @@
-{{ define "components/app-navbar" }}
-<div class="flex flex-row gap-2 justify-between items-center" id="components-app-navbar" hx-boost="true"
+{{ define "components/navbar" }}
+{{ if .Hide }}
+{{ else }}
+<div class="flex flex-row gap-2 justify-between items-center" id="components-navbar" hx-boost="true"
     hx-target="#content" hx-swap="innerHTML">
     <div class="flex flex-row gap-2">
         <a href="/app">
             {{ template "components/logo" }}
         </a>
     </div>
+    {{ if and .AddFromQuery .CurrentURL }}
     <div>
         <a href="/app/channels/manage{{(call .AddFromQuery `/app/channels/manage` .CurrentURL)}}">
-            <button class="btn btn-neutral no-animation">
+            <button class="btn btn-neutral">
                 Subscriptions
             </button>
         </a>
         <a href="/app/settings{{(call .AddFromQuery `/app/settings` .CurrentURL)}}">
-            <button class="btn btn-neutral no-animation">
+            <button class="btn btn-neutral">
                 Settings
             </button>
         </a>
     </div>
+    {{ end }}
 </div>
+{{ end }}
 {{ end }}

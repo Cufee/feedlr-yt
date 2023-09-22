@@ -16,7 +16,7 @@ func FavoriteChannelHandler(c *fiber.Ctx) error {
 	return c.Render("components/favorite-channel-button", fiber.Map{
 		"ID":        id,
 		"Favorited": newValue,
-	}, "layouts/reset")
+	}, c.Locals("layout").(string))
 }
 
 func DeleteChannelHandler(c *fiber.Ctx) error {

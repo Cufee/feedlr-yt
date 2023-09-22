@@ -5,9 +5,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func withAppNavbarProps(c *fiber.Ctx, other ...fiber.Map) fiber.Map {
+func withNavbarProps(c *fiber.Ctx, other ...fiber.Map) fiber.Map {
 	props := fiber.Map{
-		"AppNavbarProps": fiber.Map{
+		"NavbarProps": fiber.Map{
 			"BackURL":    c.Query("from"),
 			"CurrentURL": c.Path(),
 			"AddFromQuery": func(to, from string) string {
@@ -33,17 +33,17 @@ func AppHandler(c *fiber.Ctx) error {
 		return c.Redirect("/error?message=Something went wrong")
 	}
 
-	return c.Render("app/index", withAppNavbarProps(c, fiber.Map{
+	return c.Render("app/index", withNavbarProps(c, fiber.Map{
 		"Channels": channels,
-	}), htmxSkipLayout(c))
+	}), withLayout(c))
 }
 
 func AppSettingsHandler(c *fiber.Ctx) error {
-	return c.Render("app/settings", withAppNavbarProps(c), htmxSkipLayout(c))
+	return c.Render("app/settings", withNavbarProps(c), withLayout(c))
 }
 
 func ManageChannelsAddHandler(c *fiber.Ctx) error {
-	return c.Render("app/channels/manage", withAppNavbarProps(c), htmxSkipLayout(c))
+	return c.Render("app/channels/manage", withNavbarProps(c), withLayout(c))
 }
 
 func AppChannelVideoHandler(c *fiber.Ctx) error {
@@ -52,8 +52,8 @@ func AppChannelVideoHandler(c *fiber.Ctx) error {
 
 	_, _ = channel, video
 
-	return c.Render("app/channels/video", withAppNavbarProps(c, fiber.Map{
+	return c.Render("app/channels/video", withNavbarProps(c, fiber.Map{
 		"Title":     "Some Title",
 		"ChannelID": "CH555555",
-	}), htmxSkipLayout(c))
+	}), withLayout(c))
 }

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+{{ template "head" }}
+
+<body class="mx-auto max-w-7xl p-2 flex flex-col justify-between min-h-screen gap-4" hx-ext="morph">
+    <div>
+        {{ template "components/navbar" .NavbarProps }}
+        <div id="content" class="flex-grow flex flex-col">
+            {{ embed }}
+        </div>
+    </div>
+
+    {{ template "footer" }}
+</body>
+
+</html>

@@ -10,6 +10,8 @@ import (
 	"github.com/gofiber/template/html/v2"
 )
 
+var rootDir = "./static"
+
 func NewServer(port int) func() error {
 	portString := strconv.Itoa(port)
 	if port == 0 {
@@ -18,13 +20,18 @@ func NewServer(port int) func() error {
 
 	return func() error {
 		server := fiber.New(fiber.Config{
-			Views:             html.New("./static", ".html"),
+			Views:             html.New(rootDir, ".html"),
 			ViewsLayout:       "layouts/main",
 			PassLocalsToViews: true,
 		})
 
 		server.Static("/static", "./static/served", fiber.Static{
 			Compress: true,
+		})
+
+		server.Use(func(c *fiber.Ctx) error {
+			addRouteLayout(c)
+			return c.Next()
 		})
 
 		server.Get("/", ui.LandingHandler)
@@ -46,8 +53,7 @@ func NewServer(port int) func() error {
 
 		// This last handler is a catch-all for any routes that don't exist
 		server.Use(func(c *fiber.Ctx) error {
-
-			return c.Redirect("/error?message=Page Not Found&from=" + c.Path())
+			return c.Redirect("/error?code=404&from=" + c.Path())
 		})
 
 		return server.Listen(":" + portString)
