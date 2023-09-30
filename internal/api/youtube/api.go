@@ -1,5 +1,7 @@
 package youtube
 
+import "errors"
+
 func (c *YouTubeClient) SearchChannels(query string, limit int) ([]Channel, error) {
 	if limit < 1 {
 		limit = 3
@@ -20,6 +22,24 @@ func (c *YouTubeClient) SearchChannels(query string, limit int) ([]Channel, erro
 	}
 
 	return channels, nil
+}
+
+func (c *YouTubeClient) GetChannel(channelID string) (*Channel, error) {
+	res, err := c.service.Channels.List([]string{"id", "snippet"}).Id(channelID).Do()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res.Items) <= 0 {
+		return nil, errors.New("channel not found")
+	}
+
+	var channel Channel
+	channel.ID = res.Items[0].Id
+	channel.Title = res.Items[0].Snippet.Title
+	channel.Thumbnail = res.Items[0].Snippet.Thumbnails.Default.Url
+
+	return &channel, nil
 }
 
 func (c *YouTubeClient) GetChannelVideos(channelID string, limit int) ([]Video, error) {

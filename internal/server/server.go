@@ -1,18 +1,19 @@
-package handlers
+package server
 
 import (
 	"os"
 	"strconv"
 
-	apiHandlers "github.com/byvko-dev/youtube-app/internal/handlers/api"
-	"github.com/byvko-dev/youtube-app/internal/handlers/ui"
+	apiHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/api"
+	"github.com/byvko-dev/youtube-app/internal/server/handlers/ui"
+	"github.com/byvko-dev/youtube-app/internal/server/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
 )
 
 var rootDir = "./static"
 
-func NewServer(port int) func() error {
+func New(port int) func() error {
 	portString := strconv.Itoa(port)
 	if port == 0 {
 		portString = os.Getenv("PORT")
@@ -38,14 +39,14 @@ func NewServer(port int) func() error {
 		server.Get("/about", ui.AboutHandler)
 		server.Get("/error", ui.ErrorHandler)
 
-		api := server.Group("/api")
+		api := server.Group("/api").Use(middleware.AuthMiddleware)
 		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
 		api.Post("/channels/:id/favorite", apiHandlers.FavoriteChannelHandler)
 		api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
 		api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 
 		// All routes used by HTMX should have a POST handler
-		app := server.Group("/app")
+		app := server.Group("/app").Use(middleware.AuthMiddleware)
 		app.Get("/", ui.AppHandler).Post("/", ui.AppHandler)
 		app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)
 

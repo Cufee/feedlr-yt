@@ -6,11 +6,19 @@ import (
 	"github.com/byvko-dev/youtube-app/prisma/db"
 )
 
-var Client *db.PrismaClient
+type Client struct {
+	p *db.PrismaClient
+}
+
+var C *Client
 
 func init() {
-	Client = db.NewClient()
-	if err := Client.Prisma.Connect(); err != nil {
+	client := db.NewClient()
+	if err := client.Prisma.Connect(); err != nil {
 		log.Fatalf("unable to connect to database: %v", err)
+	}
+
+	C = &Client{
+		p: client,
 	}
 }

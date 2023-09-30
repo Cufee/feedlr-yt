@@ -5,8 +5,13 @@ go 1.20
 require (
 	github.com/gofiber/fiber/v2 v2.49.2
 	github.com/gofiber/template/html/v2 v2.0.5
+	github.com/iancoleman/strcase v0.0.0-20190422225806-e506e3ef7365
 	github.com/joho/godotenv v1.5.1
+	github.com/shopspring/decimal v1.3.1
+	github.com/steebchen/prisma-client-go v0.25.0
+	github.com/takuoki/gocase v1.0.0
 	golang.org/x/net v0.15.0
+	golang.org/x/text v0.13.0
 )
 
 require (
@@ -17,13 +22,9 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
-	github.com/iancoleman/strcase v0.0.0-20190422225806-e506e3ef7365 // indirect
-	github.com/steebchen/prisma-client-go v0.25.0 // indirect
-	github.com/takuoki/gocase v1.0.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/oauth2 v0.12.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230920204549-e6e6cdab5c13 // indirect
 	google.golang.org/grpc v1.58.2 // indirect
@@ -32,7 +33,6 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gofiber/template v1.8.2 // indirect
 	github.com/gofiber/utils v1.1.0 // indirect
 	github.com/google/uuid v1.3.1 // indirect

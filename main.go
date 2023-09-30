@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/byvko-dev/youtube-app/internal/handlers"
+	"github.com/byvko-dev/youtube-app/internal/server"
 )
 
 func main() {
-	start := handlers.NewServer(3000)
+	start := server.New(3000)
 	start()
 }

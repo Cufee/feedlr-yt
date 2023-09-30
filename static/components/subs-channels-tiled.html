@@ -1,0 +1,11 @@
+{{ define "components/subs-channels-tiled" }}
+
+{{ with . }}
+{{ range . }}
+<div class="relative flex-grow p-4 overflow-hidden group basis-1/3 rounded-xl bg-base-300" id="channel-tile-{{.ID}}">
+  {{ template "components/channel-tile" . }}
+</div>
+{{ end }}
+{{ end }}
+
+{{ end }}

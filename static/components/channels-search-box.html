@@ -1,0 +1,13 @@
+{{ define "components/channels-search-box" }}
+<div id="search" class="flex flex-col gap-4">
+  <span class="self-center text-xl font-bold">Search New Channels</span>
+  <input type="search" placeholder="Channel Name" name="search" hx-disabled-elt="this"
+    class="self-center w-full max-w-xs input input-bordered font-control" hx-get="/api/channels/search" _="on htmx:validation:validate
+          if my.value.length < 3
+              call me.setCustomValidity('Please enter the value foo')
+          else
+              call me.setCustomValidity('')" hx-validate="true" hx-trigger="keyup changed delay:500ms"
+    hx-target="#search-results" hx-swap="innerHTML" />
+  <div id="search-results" class="flex flex-row flex-wrap gap-2"></div>
+</div>
+{{ end }}
