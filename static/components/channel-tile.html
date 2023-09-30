@@ -1,0 +1,11 @@
+{{ define "components/channel-tile" }}
+<div class="relative flex flex-row items-center h-24 gap-2">
+  <img class="object-cover h-full rounded-lg" src="{{ .Thumbnail }}" alt="{{ .Title }}" />
+  <div class="flex flex-col justify-center p-2">
+    <span class="text-2xl font-bold truncate">{{ .Title }}</span>
+    <span class="whitespace-normal text-ellipsis">
+      {{ or .Description `We don't know much about them, but we're sure they are great.` }}
+    </span>
+  </div>
+</div>
+{{ end }}

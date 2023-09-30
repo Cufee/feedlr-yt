@@ -12,7 +12,7 @@
                 </div>
                 <div>
                     <button class="btn btn-sm btn-square btn-ghost hover:btn-error" title="Unsubscribe"
-                        hx-delete="/api/channels/{{ .ID }}" hx-target="#{{ .ID }}" hx-swap="delete">
+                        hx-post="/api/channels/{{ .ID }}" hx-target="#{{ .ID }}" hx-swap="delete">
                         {{template "icons/cross"}}
                     </button>
                 </div>

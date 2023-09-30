@@ -1,0 +1,11 @@
+version: 3
+
+dotenv: ['.env']
+
+vars:
+  PRISMA_CLIENT: 'go run github.com/steebchen/prisma-client-go db push'
+
+tasks:
+  db-push:
+    cmds:
+      - "{{.PRISMA_CLIENT}} db push"

@@ -39,8 +39,10 @@ func NewServer(port int) func() error {
 		server.Get("/error", ui.ErrorHandler)
 
 		api := server.Group("/api")
-		api.Delete("/channels/:id", apiHandlers.DeleteChannelHandler)
+		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
 		api.Post("/channels/:id/favorite", apiHandlers.FavoriteChannelHandler)
+		api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
+		api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app")
