@@ -11,7 +11,7 @@ import (
 
 func SearchChannelsHandler(c *fiber.Ctx) error {
 	query := c.Query("search")
-	channels, err := youtube.Client.SearchChannels(query, 4)
+	channels, err := youtube.C.SearchChannels(query, 4)
 	if err != nil {
 		log.Print(err)
 		return err

@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"log"
+
 	"github.com/byvko-dev/youtube-app/internal/logic"
 	"github.com/gofiber/fiber/v2"
 )
@@ -32,6 +34,7 @@ func AppHandler(c *fiber.Ctx) error {
 
 	channels, err := logic.GetUserSubscriptionsProps(userId)
 	if err != nil {
+		log.Printf("GetUserSubscriptionsProps: %v", err)
 		return c.Redirect("/error?message=Something went wrong")
 	}
 
@@ -52,6 +55,7 @@ func ManageChannelsAddHandler(c *fiber.Ctx) error {
 
 	subscriptions, err := logic.GetUserSubscriptionsProps(userId)
 	if err != nil {
+		log.Printf("GetUserSubscriptionsProps: %v", err)
 		return c.Redirect("/error?message=Something went wrong")
 	}
 

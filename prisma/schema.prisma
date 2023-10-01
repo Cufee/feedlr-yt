@@ -13,7 +13,21 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  settings      AppSettings?
   subscriptions UserSubscription[]
+}
+
+model AppSettings {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  selectedInvidiousHost String?
+
+  @@index([userId], name: "userId")
 }
 
 model Channel {
@@ -21,12 +35,29 @@ model Channel {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  url         String
   title       String
-  thumbnail   String
-  description String
+  thumbnail   String?
+  description String  @db.Text
 
-  videos        ChanelVideo[]
+  videos        ChannelVideo[]
   subscriptions UserSubscription[]
+}
+
+model ChannelVideo {
+  id        String   @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  url         String
+  title       String
+  thumbnail   String?
+  description String  @db.Text
+
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId String
+
+  @@index([channelId], name: "channelId")
 }
 
 model UserSubscription {
@@ -34,26 +65,13 @@ model UserSubscription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  isFavorite Boolean @default(false)
+
   user      User    @relation(fields: [userId], references: [id])
   userId    String
   channel   Channel @relation(fields: [channelId], references: [id])
   channelId String
 
   @@index([userId], name: "userId")
-  @@index([channelId], name: "channelId")
-}
-
-model ChanelVideo {
-  id        String   @id
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  title       String
-  thumbnail   String
-  description String
-
-  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  channelId String
-
   @@index([channelId], name: "channelId")
 }

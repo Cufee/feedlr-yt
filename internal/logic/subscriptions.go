@@ -20,7 +20,7 @@ func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
 	props.ID = sub.ChannelID
 	props.Title = sub.Channel().Title
 	props.Description = sub.Channel().Description
-	props.Thumbnail = sub.Channel().Thumbnail
+	props.Thumbnail, _ = sub.Channel().Thumbnail()
 	props.Favorite = false
 
 	return &props, nil

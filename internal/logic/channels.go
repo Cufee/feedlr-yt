@@ -1,36 +1,14 @@
 package logic
 
 import (
-	"errors"
-
-	"github.com/byvko-dev/youtube-app/internal/api/youtube"
+	"github.com/byvko-dev/youtube-app/internal/api/youtube/client"
 	"github.com/byvko-dev/youtube-app/internal/database"
 	"github.com/byvko-dev/youtube-app/internal/types"
-	"github.com/byvko-dev/youtube-app/prisma/db"
 )
 
-func CacheChannel(channelId string) (*db.ChannelModel, error) {
-	exists, err := database.C.GetChannel(channelId)
-	if err == nil {
-		return exists, nil
-	}
-	if !errors.Is(err, db.ErrNotFound) {
-		return nil, err
-	}
-
-	channel, err := youtube.Client.GetChannel(channelId)
-	if err != nil {
-		return nil, err
-	}
-
-	cached, err := database.C.NewChannel(channel.ID, channel.Title, channel.Thumbnail, channel.Description)
-	if err != nil {
-		return nil, err
-	}
-
-	return cached, nil
-}
-
+/*
+Returns a list of channel props for all user subscriptions
+*/
 func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 	subscriptions, err := database.C.AllUserSubscriptions(userId)
 	if err != nil {
@@ -39,55 +17,67 @@ func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 
 	var props []types.ChannelProps
 	for _, sub := range subscriptions {
-		props = append(props, types.ChannelProps{
-			ID:          sub.ChannelID,
-			Title:       sub.Channel().Title,
-			Description: sub.Channel().Description,
-			Thumbnail:   sub.Channel().Thumbnail,
-			Favorite:    false,
-		})
+		c := types.ChannelProps{
+			Channel: client.Channel{
+				ID:          sub.ChannelID,
+				URL:         sub.Channel().URL,
+				Title:       sub.Channel().Title,
+				Description: sub.Channel().Description,
+			},
+			Favorite: sub.IsFavorite,
+		}
+		c.Thumbnail, _ = sub.Channel().Thumbnail()
+		props = append(props, c)
 	}
 
 	return props, nil
 }
 
-func GetChannelVideos(channels ...types.ChannelProps) ([]types.VideoProps, error) {
+/*
+Returns a list of video props for provided channels
+*/
+func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
+	videos, err := database.C.GetVideosByChannelID(channelIds...)
+	if err != nil {
+		return nil, err
+	}
+
 	var props []types.VideoProps
-	for _, c := range channels {
-		channel, err := database.C.GetChannel(c.ID)
-		if err != nil {
-			return nil, err
+	for _, vid := range videos {
+		v := types.VideoProps{
+			Video: client.Video{
+				ID:          vid.ID,
+				URL:         vid.URL,
+				Title:       vid.Title,
+				Description: vid.Description,
+			},
+			ChannelID: vid.ChannelID,
 		}
-
-		for _, v := range channel.Videos() {
-			video := types.VideoProps{
-				ID:          v.ID,
-				Title:       v.Title,
-				ChannelID:   v.ChannelID,
-				Thumbnail:   v.Thumbnail,
-				Description: v.Description,
-			}
-			video.URL = video.BuildURL()
-			props = append(props, video)
-		}
+		v.Thumbnail, _ = vid.Thumbnail()
+		props = append(props, v)
 	}
 
 	return props, nil
 }
 
+/*
+Returns a list of channel props with videos for all user subscriptions
+*/
 func GetUserSubscriptionsProps(userId string) ([]*types.ChannelWithVideosProps, error) {
 	// Get channels and convert them to WithVideo props
 	channels, err := GetUserSubscribedChannels(userId)
 	if err != nil {
 		return nil, err
 	}
+	var channelIds []string
 	subs := make(map[string]*types.ChannelWithVideosProps)
 	for _, c := range channels {
 		subs[c.ID] = c.WithVideos()
+		channelIds = append(channelIds, c.ID)
 	}
 
 	// Get videos for each channel and add them to the props
-	videos, err := GetChannelVideos(channels...)
+	videos, err := GetChannelVideos(channelIds...)
 	if err != nil {
 		return nil, err
 	}

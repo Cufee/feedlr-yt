@@ -1,6 +1,6 @@
 package types
 
-import "fmt"
+import yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
 
 type NavbarProps struct {
 	CurrentURL string
@@ -9,11 +9,8 @@ type NavbarProps struct {
 }
 
 type ChannelProps struct {
-	ID          string
-	Title       string
-	Thumbnail   string
-	Description string
-	Favorite    bool
+	yt.Channel
+	Favorite bool
 }
 
 func (c *ChannelProps) WithVideos(videos ...VideoProps) *ChannelWithVideosProps {
@@ -29,14 +26,13 @@ type ChannelWithVideosProps struct {
 }
 
 type VideoProps struct {
-	ID          string
-	ChannelID   string
-	URL         string
-	Title       string
-	Thumbnail   string
-	Description string
+	yt.Video
+	ChannelID string
 }
 
-func (v *VideoProps) BuildURL() string {
-	return fmt.Sprintf("https://a/embed/%s?autoplay=false", v.ID)
+func VideoToProps(video yt.Video, channelId string) VideoProps {
+	return VideoProps{
+		Video:     video,
+		ChannelID: channelId,
+	}
 }

@@ -1,8 +1,12 @@
-package youtube
+package google
 
-import "errors"
+import (
+	"errors"
 
-func (c *YouTubeClient) SearchChannels(query string, limit int) ([]Channel, error) {
+	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
+)
+
+func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {
 	if limit < 1 {
 		limit = 3
 	}
@@ -11,20 +15,21 @@ func (c *YouTubeClient) SearchChannels(query string, limit int) ([]Channel, erro
 		return nil, err
 	}
 
-	var channels []Channel
+	var channels []yt.Channel
 	for _, item := range res.Items {
-		channels = append(channels, Channel{
+		channels = append(channels, yt.Channel{
 			ID:          item.Id.ChannelId,
 			Title:       item.Snippet.Title,
-			Thumbnail:   item.Snippet.Thumbnails.Default.Url,
 			Description: item.Snippet.Description,
+			Thumbnail:   item.Snippet.Thumbnails.Default.Url,
+			URL:         c.buildChannelURL(item.Id.ChannelId),
 		})
 	}
 
 	return channels, nil
 }
 
-func (c *YouTubeClient) GetChannel(channelID string) (*Channel, error) {
+func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 	res, err := c.service.Channels.List([]string{"id", "snippet"}).Id(channelID).Do()
 	if err != nil {
 		return nil, err
@@ -34,7 +39,7 @@ func (c *YouTubeClient) GetChannel(channelID string) (*Channel, error) {
 		return nil, errors.New("channel not found")
 	}
 
-	var channel Channel
+	var channel yt.Channel
 	channel.ID = res.Items[0].Id
 	channel.Title = res.Items[0].Snippet.Title
 	channel.Thumbnail = res.Items[0].Snippet.Thumbnails.Default.Url
@@ -42,7 +47,7 @@ func (c *YouTubeClient) GetChannel(channelID string) (*Channel, error) {
 	return &channel, nil
 }
 
-func (c *YouTubeClient) GetChannelVideos(channelID string, limit int) ([]Video, error) {
+func (c *client) GetChannelVideos(channelID string, limit int) ([]yt.Video, error) {
 	if limit < 1 {
 		limit = 3
 	}
@@ -51,13 +56,14 @@ func (c *YouTubeClient) GetChannelVideos(channelID string, limit int) ([]Video, 
 		return nil, err
 	}
 
-	var videos []Video
+	var videos []yt.Video
 	for _, item := range res.Items {
-		videos = append(videos, Video{
+		videos = append(videos, yt.Video{
 			ID:          item.Id.VideoId,
 			Title:       item.Snippet.Title,
-			Thumbnail:   item.Snippet.Thumbnails.Default.Url,
 			Description: item.Snippet.Description,
+			Thumbnail:   item.Snippet.Thumbnails.Default.Url,
+			URL:         c.buildVideoEmbedURL(item.Id.VideoId),
 		})
 	}
 
