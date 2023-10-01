@@ -6,6 +6,10 @@ vars:
   PRISMA_CLIENT: 'go run github.com/steebchen/prisma-client-go db push'
 
 tasks:
+  dev:
+    cmds:
+      - "{{.PRISMA_CLIENT}} generate"
+      - air
   db-push:
     cmds:
       - "{{.PRISMA_CLIENT}} db push"
