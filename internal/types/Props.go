@@ -13,15 +13,15 @@ type ChannelProps struct {
 	Favorite bool
 }
 
-func (c *ChannelProps) WithVideos(videos ...VideoProps) *ChannelWithVideosProps {
-	return &ChannelWithVideosProps{
-		ChannelProps: c,
+func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
+	return ChannelWithVideosProps{
+		ChannelProps: *c,
 		Videos:       videos,
 	}
 }
 
 type ChannelWithVideosProps struct {
-	*ChannelProps
+	ChannelProps
 	Videos []VideoProps
 }
 

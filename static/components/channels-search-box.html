@@ -1,6 +1,6 @@
 {{ define "components/channels-search-box" }}
 <div id="search" class="flex flex-col gap-4">
-  <span class="self-center text-xl font-bold">Search New Channels</span>
+  <span class="self-center text-xl font-bold">Search Channels</span>
   <input type="search" placeholder="Channel Name" name="search" hx-disabled-elt="this"
     class="self-center w-full max-w-xs input input-bordered font-control" hx-get="/api/channels/search" _="on htmx:validation:validate
           if my.value.length < 3

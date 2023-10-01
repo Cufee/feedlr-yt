@@ -2,6 +2,7 @@ package invidious
 
 import (
 	"fmt"
+	"sort"
 
 	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
 )
@@ -31,7 +32,7 @@ func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {
 			Description: item.Description,
 		}
 		if len(item.AuthorThumbnails) > 0 {
-			c.Thumbnail = item.AuthorThumbnails[0].URL
+			c.Thumbnail = item.AuthorThumbnails[len(item.AuthorThumbnails)-1].URL
 		}
 		channels = append(channels, c)
 		if i >= limit-1 {
@@ -44,7 +45,7 @@ func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {
 
 func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 	var res channel
-	err := c.request("/api/v1/channels/"+channelID, res, nil)
+	err := c.request("/api/v1/channels/"+channelID, &res, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +57,7 @@ func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 		Description: res.Description,
 	}
 	if len(res.AuthorThumbnails) > 0 {
-		channel.Thumbnail = res.AuthorThumbnails[0].URL
+		channel.Thumbnail = res.AuthorThumbnails[len(res.AuthorThumbnails)-1].URL
 	}
 
 	return &channel, nil
@@ -90,6 +91,11 @@ func (c *client) GetChannelVideos(channelID string, limit int) ([]yt.Video, erro
 			break
 		}
 	}
+
+	// Reverse slice to get videos in descending order
+	sort.Slice(videos, func(i, j int) bool {
+		return true
+	})
 
 	return videos, nil
 }

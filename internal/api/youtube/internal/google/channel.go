@@ -2,6 +2,7 @@ package google
 
 import (
 	"errors"
+	"sort"
 
 	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
 )
@@ -69,6 +70,11 @@ func (c *client) GetChannelVideos(channelID string, limit int) ([]yt.Video, erro
 			break
 		}
 	}
+
+	// Reverse slice to get videos in descending order
+	sort.Slice(videos, func(i, j int) bool {
+		return true
+	})
 
 	return videos, nil
 }

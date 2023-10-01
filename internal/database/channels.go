@@ -6,36 +6,47 @@ import (
 	"github.com/byvko-dev/youtube-app/prisma/db"
 )
 
-func (c *Client) GetAllChannels() ([]db.ChannelModel, error) {
-	channels, err := c.p.Channel.FindMany().With(db.Channel.Videos.Fetch()).Exec(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-	return channels, nil
+type ChannelGetOptions struct {
+	WithVideos bool
 }
 
-func (c *Client) GetChannel(channelId string) (*db.ChannelModel, error) {
-	channel, err := c.p.Channel.FindUnique(db.Channel.ID.Equals(channelId)).With(db.Channel.Videos.Fetch()).Exec(context.TODO())
-	if err != nil {
-		return nil, err
+func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]db.ChannelModel, error) {
+	var options ChannelGetOptions
+	if len(opts) > 0 {
+		options = opts[0]
 	}
-	return channel, nil
+
+	query := c.p.Channel.FindMany()
+	if options.WithVideos {
+		query = query.With(db.Channel.Videos.Fetch())
+	}
+	return query.Exec(context.TODO())
 }
 
-func (c *Client) GetChannelsByID(channelIds ...string) ([]db.ChannelModel, error) {
-	channels, err := c.p.Channel.FindMany(db.Channel.ID.In(channelIds)).With(db.Channel.Videos.Fetch()).Exec(context.TODO())
-	if err != nil {
-		return nil, err
+func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*db.ChannelModel, error) {
+	var options ChannelGetOptions
+	if len(opts) > 0 {
+		options = opts[0]
 	}
-	return channels, nil
+
+	query := c.p.Channel.FindUnique(db.Channel.ID.Equals(channelId))
+	if options.WithVideos {
+		query = query.With(db.Channel.Videos.Fetch())
+	}
+	return query.Exec(context.TODO())
 }
 
-func (c *Client) GetVideosByChannelID(channelIds ...string) ([]db.ChannelVideoModel, error) {
-	videos, err := c.p.ChannelVideo.FindMany(db.ChannelVideo.ChannelID.In(channelIds)).OrderBy(db.ChannelVideo.CreatedAt.Order(db.SortOrderDesc)).Exec(context.TODO())
-	if err != nil {
-		return nil, err
+func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions) ([]db.ChannelModel, error) {
+	var options ChannelGetOptions
+	if len(opts) > 0 {
+		options = opts[0]
 	}
-	return videos, nil
+
+	query := c.p.Channel.FindMany(db.Channel.ID.In(channelIds))
+	if options.WithVideos {
+		query = query.With(db.Channel.Videos.Fetch())
+	}
+	return query.Exec(context.TODO())
 }
 
 type ChannelCreateModel struct {
@@ -48,25 +59,4 @@ type ChannelCreateModel struct {
 
 func (c *Client) NewChannel(ch ChannelCreateModel) (*db.ChannelModel, error) {
 	return c.p.Channel.CreateOne(db.Channel.ID.Set(ch.ID), db.Channel.URL.Set(ch.URL), db.Channel.Title.Set(ch.Title), db.Channel.Description.Set(ch.Description), db.Channel.Thumbnail.Set(ch.Thumbnail)).Exec(context.TODO())
-}
-
-type ChannelVideoCreateModel struct {
-	ID          string
-	URL         string
-	Title       string
-	Description string
-	Thumbnail   string
-}
-
-func (c *Client) NewChannelVideo(channel string, videos ...ChannelVideoCreateModel) ([]db.ChannelVideoModel, error) {
-	cl := db.ChannelVideo.Channel.Link(db.Channel.ID.Equals(channel))
-	var created []db.ChannelVideoModel
-	for _, vid := range videos {
-		v, err := c.p.ChannelVideo.CreateOne(db.ChannelVideo.ID.Set(vid.ID), db.ChannelVideo.URL.Set(vid.URL), db.ChannelVideo.Title.Set(vid.Title), db.ChannelVideo.Description.Set(vid.Description), cl, db.ChannelVideo.Thumbnail.Set(vid.Thumbnail)).Exec(context.TODO())
-		if err != nil {
-			return nil, err
-		}
-		created = append(created, *v)
-	}
-	return created, nil
 }

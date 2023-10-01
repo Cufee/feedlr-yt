@@ -64,15 +64,15 @@ func ManageChannelsAddHandler(c *fiber.Ctx) error {
 	}), withLayout(c))
 }
 
-func AppChannelVideoHandler(c *fiber.Ctx) error {
-	userId, _ := c.Locals("userId").(string)
-	channel := c.Params("channel")
-	video := c.Params("video")
+func AppWatchVideoHandler(c *fiber.Ctx) error {
+	video := c.Params("id")
+	props, err := logic.GetVideoByID(video)
+	if err != nil {
+		log.Printf("GetVideoByID: %v", err)
+		return c.Redirect("/error?message=Something went wrong")
+	}
 
-	_, _, _ = channel, video, userId
-
-	return c.Render("app/channels/video", withNavbarProps(c, fiber.Map{
-		"Title":     "Some Title",
-		"ChannelID": "CH555555",
+	return c.Render("app/watch", withNavbarProps(c, fiber.Map{
+		"Video": props,
 	}), withLayout(c))
 }

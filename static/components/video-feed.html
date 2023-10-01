@@ -7,15 +7,16 @@
     {{ range .Videos }}
     <div class="relative flex flex-col overflow-hidden carousel-item rounded-xl overscroll-contain">
         <div>
-            <a href="/app/channels/{{ .ChannelID }}/{{ .ID }}" hx-boost="true" hx-target="#content" hx-swap="innerHTML">
+            <a href="/app/watch/{{ .ID }}" hx-boost="true" hx-target="#content" hx-swap="innerHTML">
                 <button>
                     <img class="object-cover w-full aspect-video h-60 rounded-xl" src="{{ .Thumbnail }}"
                         alt="{{ .Title }}">
                 </button>
             </a>
         </div>
-        <div class="absolute bottom-0 w-full flex justify-center p-2 bg-gradient-to-t from-black to-90% to-transparent">
-            <span class="text-2xl truncate">{{ .Title }}</span>
+        <div
+            class="absolute bottom-0 flex justify-center w-full p-2 bg-gradient-to-t from-base-100 via-base-100 to-transparent">
+            <span class="px-2 text-2xl text-white truncate">{{ .Title }}</span>
         </div>
     </div>
     {{ end }}

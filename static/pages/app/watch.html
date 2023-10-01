@@ -1,0 +1,26 @@
+{{ define "app/watch" }}
+
+<head>
+    <title>{{ or .Video.Title `Feedlr - Video` }}</title>
+</head>
+
+<div id="app-channels-video" class="flex flex-col gap-4 p-4">
+    <div class="overflow-hidden aspect-video rounded-xl">
+        <iframe src="{{ .Video.URL}} " frameborder="0" class="w-full h-full"></iframe>
+    </div>
+
+    <div class="flex flex-row justify-between gap-2">
+        <a href="/app#{{ .Video.ChannelID }}" hx-boost="true" hx-target="#content" hx-swap="innerHTML">
+            <button class="btn">
+                Back to Subscriptions
+            </button>
+        </a>
+        <div class="flex flex-row gap-2">
+            <button class="p-1 btn btn-primary btn-sm btn-square">
+                {{ template "icons/expand-out" }}
+            </button>
+        </div>
+    </div>
+</div>
+
+{{ end }}

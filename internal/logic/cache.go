@@ -20,7 +20,7 @@ func CacheChannelVideos(channelIds ...string) error {
 			return err
 		}
 
-		existingVideos, err := database.C.GetVideosByChannelID(c)
+		existingVideos, err := database.C.GetVideosByChannelID(0, c)
 		if err != nil && !errors.Is(err, db.ErrNotFound) {
 			return err
 		}
@@ -78,6 +78,8 @@ func CacheChannel(channelId string) (*db.ChannelModel, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	go CacheChannelVideos(channelId)
 
 	return cached, nil
 }

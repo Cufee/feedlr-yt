@@ -8,6 +8,7 @@ import (
 	"github.com/byvko-dev/youtube-app/internal/server/handlers/ui"
 	"github.com/byvko-dev/youtube-app/internal/server/middleware"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/template/html/v2"
 )
 
@@ -25,6 +26,7 @@ func New(port int) func() error {
 			ViewsLayout:       "layouts/main",
 			PassLocalsToViews: true,
 		})
+		server.Use(logger.New())
 
 		server.Static("/static", "./static/served", fiber.Static{
 			Compress: true,
@@ -49,10 +51,10 @@ func New(port int) func() error {
 		app := server.Group("/app").Use(middleware.AuthMiddleware)
 		app.Get("/", ui.AppHandler).Post("/", ui.AppHandler)
 		app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)
+		app.Get("/watch/:id", ui.AppWatchVideoHandler).Post("/watch/:id", ui.AppWatchVideoHandler)
 
 		channels := app.Group("/channels")
 		channels.Get("/manage", ui.ManageChannelsAddHandler).Post("/manage", ui.ManageChannelsAddHandler)
-		channels.Get("/:channel/:video", ui.AppChannelVideoHandler).Post("/:channel/:video", ui.AppChannelVideoHandler)
 
 		// This last handler is a catch-all for any routes that don't exist
 		server.Use(func(c *fiber.Ctx) error {

@@ -12,12 +12,43 @@ func (c *Client) NewSubscription(userId, channelId string) (*db.UserSubscription
 	return c.p.UserSubscription.CreateOne(ul, cl).With(db.UserSubscription.Channel.Fetch(), db.UserSubscription.User.Fetch()).Exec(context.TODO())
 }
 
-func (c *Client) AllUserSubscriptions(userId string) ([]db.UserSubscriptionModel, error) {
-	return c.p.UserSubscription.FindMany(db.UserSubscription.UserID.Equals(userId)).With(db.UserSubscription.Channel.Fetch(), db.UserSubscription.User.Fetch()).Exec(context.TODO())
+type SubscriptionGetOptions struct {
+	WithChannel bool
+	WithUser    bool
 }
 
-func (c *Client) FindSubscription(userId, channelId string) (*db.UserSubscriptionModel, error) {
-	return c.p.UserSubscription.FindFirst(db.UserSubscription.ChannelID.Equals(channelId), db.UserSubscription.UserID.Equals(userId)).With(db.UserSubscription.Channel.Fetch(), db.UserSubscription.User.Fetch()).Exec(context.TODO())
+func (c *Client) AllUserSubscriptions(userId string, opts ...SubscriptionGetOptions) ([]db.UserSubscriptionModel, error) {
+	var options SubscriptionGetOptions
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
+	query := c.p.UserSubscription.FindMany(db.UserSubscription.UserID.Equals(userId))
+	if options.WithChannel {
+		query = query.With(db.UserSubscription.Channel.Fetch())
+	}
+	if options.WithUser {
+		query = query.With(db.UserSubscription.User.Fetch())
+	}
+
+	return query.Exec(context.TODO())
+}
+
+func (c *Client) FindSubscription(userId, channelId string, opts ...SubscriptionGetOptions) (*db.UserSubscriptionModel, error) {
+	var options SubscriptionGetOptions
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
+	query := c.p.UserSubscription.FindFirst(db.UserSubscription.ChannelID.Equals(channelId), db.UserSubscription.UserID.Equals(userId))
+	if options.WithChannel {
+		query = query.With(db.UserSubscription.Channel.Fetch())
+	}
+	if options.WithUser {
+		query = query.With(db.UserSubscription.User.Fetch())
+	}
+
+	return query.Exec(context.TODO())
 }
 
 func (c *Client) DeleteSubscription(userId, channelId string) error {

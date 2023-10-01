@@ -15,11 +15,16 @@ func CacheAllChannelsWithVideos() error {
 	}
 
 	var wg sync.WaitGroup
+	var limiter = make(chan int, 3)
 	var errChan = make(chan error, len(channels))
 	for _, c := range channels {
 		wg.Add(1)
 		go func(c db.ChannelModel) {
 			defer wg.Done()
+
+			limiter <- 1
+			defer func() { <-limiter }()
+
 			err := logic.CacheChannelVideos(c.ID)
 			if err != nil {
 				errChan <- err
