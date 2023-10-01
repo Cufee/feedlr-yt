@@ -19,7 +19,6 @@ func CacheChannelVideos(channelIds ...string) error {
 		if err != nil {
 			return err
 		}
-		log.Printf("Got %d videos for channel %s", len(newVideos), c)
 
 		existingVideos, err := database.C.GetVideosByChannelID(c)
 		if err != nil && !errors.Is(err, db.ErrNotFound) {
@@ -43,13 +42,11 @@ func CacheChannelVideos(channelIds ...string) error {
 				Thumbnail:   video.Thumbnail,
 			})
 		}
-		log.Printf("Saving %d videos for channel %s", len(models), c)
-		res, err := database.C.NewChannelVideo(c, models...)
+		_, err = database.C.NewChannelVideo(c, models...)
 		if err != nil {
 			log.Printf("Error saving videos for channel %s: %v", c, err)
 			return err
 		}
-		log.Printf("Saved %d videos for channel %s", len(res), c)
 	}
 	return nil
 }

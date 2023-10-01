@@ -9,7 +9,8 @@
         <div>
             <a href="/app/channels/{{ .ChannelID }}/{{ .ID }}" hx-boost="true" hx-target="#content" hx-swap="innerHTML">
                 <button>
-                    <img class="object-cover w-full h-60 rounded-xl" src="{{ .Thumbnail }}" alt="{{ .Title }}">
+                    <img class="object-cover w-full aspect-video h-60 rounded-xl" src="{{ .Thumbnail }}"
+                        alt="{{ .Title }}">
                 </button>
             </a>
         </div>

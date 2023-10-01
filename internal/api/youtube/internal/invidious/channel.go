@@ -83,9 +83,8 @@ func (c *client) GetChannelVideos(channelID string, limit int) ([]yt.Video, erro
 			Title:       item.Title,
 			Description: item.Description,
 		}
-		if len(item.VideoThumbnails) > 0 {
-			v.Thumbnail = item.VideoThumbnails[0].URL
-		}
+		v.Thumbnail = c.buildVideoThumbnailURL(item.VideoID)
+
 		videos = append(videos, v)
 		if i >= limit-1 {
 			break

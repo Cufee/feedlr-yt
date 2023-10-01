@@ -15,6 +15,10 @@ type client struct {
 	httpClient *http.Client
 }
 
+func (c *client) buildVideoThumbnailURL(videoID string) string {
+	return fmt.Sprintf("https://i.ytimg.com/vi/%v/hqdefault.jpg", videoID)
+}
+
 func (c *client) buildVideoEmbedURL(videoID string) string {
 	return fmt.Sprintf("https://www.youtube.com/embed/%v", videoID)
 }

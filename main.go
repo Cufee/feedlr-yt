@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	background.CacheAllChannelsWithVideos()
+	go background.StartCronTasks()
 
 	start := server.New(3000)
 	start()
