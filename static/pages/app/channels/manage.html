@@ -9,15 +9,9 @@
 
     <div id="subscriptions" class="flex flex-col gap-4">
         <span class="self-center text-xl font-bold">Your Subscriptions</span>
-        {{ if .Subscriptions }}
-        <div class="flex flex-row flex-wrap gap-2">
+        <div class="flex flex-row flex-wrap gap-2" id="subscriptions-list">
             {{template "components/subs-channels-tiled" .Subscriptions }}
         </div>
-        {{ else }}
-        <div>
-            <span class="self-center text-xl font-bold">You have no subscriptions</span>
-        </div>
-        {{ end }}
     </div>
 </div>
 

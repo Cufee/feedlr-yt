@@ -1,0 +1,29 @@
+{{ define "components/full-screen-player" }}
+<div class="fixed top-0 left-0 z-50 w-screen h-full min-h-screen" id="player">
+    <div class="relative flex items-center justify-start w-full h-full p-2 lg:p-8">
+        <div class="absolute top-0 left-0 flex items-center justify-center w-full h-full bg-black cursor-pointer hover:bg-opacity-50 bg-opacity-80"
+            hx-post="/api/noop" hx-swap="delete" hx-target="#player">
+        </div>
+        <div class="relative flex w-full h-full overflow-hidden bg-base-300 rounded-xl" id="player-inner p-2">
+            <div class="absolute flex items-center justify-center w-full h-full bg-base-300 rounded-xl"
+                id="player-loading">
+                <span class="w-12 h-12 loading loading-spinner"></span>
+            </div>
+            <iframe src="{{ .URL }}?autoplay=1" frameborder="0" class="invisible w-full h-full" id="player-iframe"
+                allowfullscreen></iframe>
+            <button class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-square" hx-post="/api/noop"
+                hx-swap="delete" hx-target="#player">
+                {{template "icons/cross"}}
+            </button>
+        </div>
+    </div>
+    <script>
+        // This prevents the iframe becoming a flashbang when it loads
+        var frame = document.getElementById("player-iframe")
+        frame.onload = function () {
+            document.getElementById("player-iframe").classList.remove("invisible")
+            document.getElementById("player-loading").remove()
+        }
+    </script>
+</div>
+{{ end }}

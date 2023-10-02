@@ -42,6 +42,8 @@ func New(port int) func() error {
 		server.Get("/error", ui.ErrorHandler)
 
 		api := server.Group("/api").Use(middleware.AuthMiddleware)
+		api.All("/noop", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
+
 		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
 		api.Post("/channels/:id/favorite", apiHandlers.FavoriteChannelHandler)
 		api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
@@ -51,7 +53,7 @@ func New(port int) func() error {
 		app := server.Group("/app").Use(middleware.AuthMiddleware)
 		app.Get("/", ui.AppHandler).Post("/", ui.AppHandler)
 		app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)
-		app.Get("/watch/:id", ui.AppWatchVideoHandler).Post("/watch/:id", ui.AppWatchVideoHandler)
+		api.Get("/watch/:id", apiHandlers.OpenVideoPlayerHandler)
 
 		channels := app.Group("/channels")
 		channels.Get("/manage", ui.ManageChannelsAddHandler).Post("/manage", ui.ManageChannelsAddHandler)

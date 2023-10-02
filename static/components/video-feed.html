@@ -5,19 +5,15 @@
     {{ if .Videos }}
     {{ with . }}
     {{ range .Videos }}
-    <div class="relative flex flex-col overflow-hidden carousel-item rounded-xl overscroll-contain">
-        <div>
-            <a href="/app/watch/{{ .ID }}" hx-boost="true" hx-target="#content" hx-swap="innerHTML">
-                <button>
-                    <img class="object-cover w-full aspect-video h-60 rounded-xl" src="{{ .Thumbnail }}"
-                        alt="{{ .Title }}">
-                </button>
-            </a>
-        </div>
-        <div
-            class="absolute bottom-0 flex justify-center w-full p-2 bg-gradient-to-t from-base-100 via-base-100 to-transparent">
-            <span class="px-2 text-2xl text-white truncate">{{ .Title }}</span>
-        </div>
+    <div class="overflow-hidden carousel-item rounded-xl overscroll-contain">
+        <button hx-get="/api/watch/{{ .ID }}" hx-target="#content" hx-swap="beforebegin" class="relative">
+            <img class="object-cover mb-8 aspect-video h-52 md:h-60" src="{{ .Thumbnail }}" alt="{{ .Title }}">
+            <div class="absolute bottom-0 flex justify-center w-full h-8 px-3 text-xl font-bold bg-base-300">
+                <span class="truncate">
+                    {{ .Title }}
+                </span>
+            </div>
+        </button>
     </div>
     {{ end }}
     {{ end }}
