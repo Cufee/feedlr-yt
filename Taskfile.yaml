@@ -12,7 +12,7 @@ tasks:
       - air
   build:
     cmds:
-      - RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o out .
+      - CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o out .
 
   db:prefetch:
     cmds:
