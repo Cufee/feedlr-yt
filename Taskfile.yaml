@@ -8,8 +8,11 @@ vars:
 tasks:
   dev:
     cmds:
-      - "{{.PRISMA_CLIENT}} generate"
+      - task: db:generate
       - air
-  db-push:
+  db:generate:
+    cmds:
+      - "{{.PRISMA_CLIENT}} generate"
+  db:push:
     cmds:
       - "{{.PRISMA_CLIENT}} db push"
