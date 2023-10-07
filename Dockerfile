@@ -19,11 +19,14 @@ RUN go run github.com/steebchen/prisma-client-go generate
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o app .
 
 # use the scratch image for the smallest possible image size
-FROM scratch
+FROM golang:1.20-buster
 
 # copy over SSL certificates, so that we can make HTTPS requests
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 COPY --from=builder /workspace/app /app
+
+# generate the Prisma Client Go client
+RUN go run github.com/steebchen/prisma-client-go prefetch
 
 ENTRYPOINT ["/app"]
