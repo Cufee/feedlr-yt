@@ -8,6 +8,6 @@ import (
 func main() {
 	background.StartCronTasks()
 
-	start := server.New(3000)
+	start := server.New()
 	start()
 }

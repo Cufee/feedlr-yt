@@ -16,11 +16,12 @@ import (
 
 var rootDir = "./static"
 
-func New(port int) func() error {
-	portString := strconv.Itoa(port)
-	if port == 0 {
-		portString = os.Getenv("PORT")
+func New(port ...int) func() error {
+	var portString string
+	if len(port) > 0 {
+		portString = strconv.Itoa(port[0])
 	}
+	portString = os.Getenv("PORT")
 
 	return func() error {
 		store := session.New(session.Config{

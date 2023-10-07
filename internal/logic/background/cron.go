@@ -9,7 +9,7 @@ import (
 
 func StartCronTasks() *gocron.Scheduler {
 	s := gocron.NewScheduler(time.UTC)
-	_, err := s.Every(10).Minutes().WaitForSchedule().Do(func() {
+	_, err := s.Every(6).Hours().WaitForSchedule().Do(func() {
 		log.Print("Caching all channels with videos")
 		err := CacheAllChannelsWithVideos()
 		if err != nil {
