@@ -1,3 +1,5 @@
-[phases.build]
+[phases.setup]
 nixPkgs = ['...', 'go-task']
-cmds = ['task db:generate', 'go build -o out']
+
+[phases.build]
+cmds = ['task db:generate', '...']
