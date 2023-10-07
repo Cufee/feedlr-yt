@@ -10,6 +10,10 @@ import (
 Returns a list of video props for provided channels
 */
 func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
+	if len(channelIds) == 0 {
+		return nil, nil
+	}
+
 	videos, err := database.C.GetVideosByChannelID(0, channelIds...)
 	if err != nil {
 		return nil, err

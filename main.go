@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	go background.StartCronTasks()
+	background.StartCronTasks()
 
 	start := server.New(3000)
 	start()

@@ -3,11 +3,10 @@
 {{ template "head" }}
 
 <body class="flex flex-col justify-between min-h-screen gap-4 p-2 mx-auto max-w-7xl" hx-ext="morph">
-    <div>
-        {{ template "components/navbar" .NavbarProps }}
-        <div id="content" class="flex flex-col flex-grow">
-            {{ embed }}
-        </div>
+    {{ template "components/navbar" .NavbarProps }}
+
+    <div id="content" class="flex flex-col flex-grow">
+        {{ embed }}
     </div>
 
     {{ template "footer" }}

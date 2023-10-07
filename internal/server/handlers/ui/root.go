@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/session"
 )
 
 func LandingHandler(c *fiber.Ctx) error {
@@ -12,6 +13,26 @@ func LandingHandler(c *fiber.Ctx) error {
 			"Hide": true,
 		},
 	}, withLayout(c))
+}
+
+func NewLoginHandler(store *session.Store) func(c *fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
+		session, err := store.Get(c)
+		if err != nil {
+			return c.Redirect("/error?message=Something went wrong")
+		}
+
+		if session.Get("userId") != nil {
+			return c.Redirect("/app")
+		}
+
+		session.Destroy()
+		return c.Render("login", nil, withLayout(c))
+	}
+}
+
+func LoginRedirectHandler(c *fiber.Ctx) error {
+	return c.Render("login/redirect", nil, withLayout(c))
 }
 
 func AboutHandler(c *fiber.Ctx) error {

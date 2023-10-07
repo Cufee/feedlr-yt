@@ -7,10 +7,9 @@ import (
 	"github.com/go-co-op/gocron"
 )
 
-func StartCronTasks() {
+func StartCronTasks() *gocron.Scheduler {
 	s := gocron.NewScheduler(time.UTC)
-	// _, err := s.Every(30).Minute().Do(func() {
-	_, err := s.Every(30).Minute().WaitForSchedule().Do(func() {
+	_, err := s.Every(10).Minutes().WaitForSchedule().Do(func() {
 		log.Print("Caching all channels with videos")
 		err := CacheAllChannelsWithVideos()
 		if err != nil {
@@ -22,5 +21,6 @@ func StartCronTasks() {
 		panic(err)
 	}
 
-	s.StartBlocking()
+	s.StartAsync()
+	return s
 }

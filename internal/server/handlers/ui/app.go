@@ -37,6 +37,9 @@ func AppHandler(c *fiber.Ctx) error {
 		log.Printf("GetUserSubscriptionsProps: %v", err)
 		return c.Redirect("/error?message=Something went wrong")
 	}
+	if len(channels) == 0 {
+		return c.Redirect("/app/onboarding")
+	}
 
 	return c.Render("app/index", withNavbarProps(c, fiber.Map{
 		"Channels": channels,
@@ -75,4 +78,8 @@ func AppWatchVideoHandler(c *fiber.Ctx) error {
 	return c.Render("app/watch", withNavbarProps(c, fiber.Map{
 		"Video": props,
 	}), withLayout(c))
+}
+
+func OnboardingHandler(c *fiber.Ctx) error {
+	return c.Render("app/onboarding", withNavbarProps(c), withLayout(c))
 }

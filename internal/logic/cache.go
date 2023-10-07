@@ -29,12 +29,12 @@ func CacheChannelVideos(channelIds ...string) error {
 			existingIDs = append(existingIDs, v.ID)
 		}
 
-		var models []database.ChannelVideoCreateModel
+		var models []database.VideoCreateModel
 		for _, video := range newVideos {
 			if slice.Contains(existingIDs, video.ID) {
 				continue
 			}
-			models = append(models, database.ChannelVideoCreateModel{
+			models = append(models, database.VideoCreateModel{
 				ID:          video.ID,
 				URL:         video.URL,
 				Title:       video.Title,
@@ -42,7 +42,7 @@ func CacheChannelVideos(channelIds ...string) error {
 				Thumbnail:   video.Thumbnail,
 			})
 		}
-		_, err = database.C.NewChannelVideo(c, models...)
+		_, err = database.C.NewVideo(c, models...)
 		if err != nil {
 			log.Printf("Error saving videos for channel %s: %v", c, err)
 			return err
