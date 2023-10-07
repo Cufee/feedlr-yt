@@ -3,13 +3,20 @@ version: 3
 dotenv: ['.env']
 
 vars:
-  PRISMA_CLIENT: 'go run github.com/steebchen/prisma-client-go db push'
+  PRISMA_CLIENT: 'go run github.com/steebchen/prisma-client-go'
 
 tasks:
   dev:
     cmds:
       - task: db:generate
       - air
+  build:
+    cmds:
+      - RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o out .
+
+  db:prefetch:
+    cmds:
+      - "{{.PRISMA_CLIENT}} prefetch"
   db:generate:
     cmds:
       - "{{.PRISMA_CLIENT}} generate"
