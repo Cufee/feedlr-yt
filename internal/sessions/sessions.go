@@ -83,9 +83,15 @@ func (s *Session) Valid() bool {
 		return false
 	}
 	if _, ok := s.data.UserID(); s.data.ExpiresAt.After(time.Now()) && ok {
+		go s.Update(Options{LastUsed: time.Now()})
 		return true
 	}
 	return false
+}
+
+/* Sets the session expiration time to 7 days from now */
+func (s *Session) Refresh() error {
+	return s.Update(Options{ExpiresAt: time.Now().Add(time.Hour * 24 * 7)})
 }
 
 /* Finds a valid session by ID and returns the user ID associated with it */

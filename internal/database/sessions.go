@@ -12,6 +12,7 @@ import (
 type SessionOptions struct {
 	ID        string
 	UserID    string
+	LastUsed  time.Time
 	ExpiresAt time.Time
 	Meta      map[string]interface{}
 
@@ -140,6 +141,9 @@ func (c *Client) UpdateManySessions(updates map[string]SessionOptions) error {
 
 func optionsToUpdate(opts SessionOptions) ([]db.SessionSetParam, error) {
 	var updateOpts []db.SessionSetParam
+	if opts.LastUsed != (time.Time{}) {
+		updateOpts = append(updateOpts, db.Session.LastUsed.Set(opts.LastUsed))
+	}
 	if opts.ExpiresAt != (time.Time{}) {
 		updateOpts = append(updateOpts, db.Session.ExpiresAt.Set(opts.ExpiresAt))
 	}

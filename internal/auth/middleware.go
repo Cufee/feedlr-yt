@@ -23,6 +23,7 @@ func Middleware(c *fiber.Ctx) error {
 
 	if uid, valid := session.UserID(); valid {
 		c.Locals("userId", uid)
+		go session.Refresh()
 		return c.Next()
 	}
 
