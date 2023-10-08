@@ -9,6 +9,11 @@
         <span class="self-center text-xl font-bold">Search Channels</span>
         {{ template "components/channels-search-box" }}
     </div>
+
+    <div id="subscriptions" class="flex flex-col gap-4">
+        <span class="self-center text-xl font-bold">Your Subscriptions</span>
+        <div class="flex flex-row flex-wrap gap-2" id="subscriptions-list"></div>
+    </div>
 </div>
 
 {{ end }}
