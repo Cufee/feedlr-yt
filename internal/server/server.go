@@ -7,10 +7,8 @@ import (
 	"github.com/byvko-dev/youtube-app/internal/auth"
 	apiHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/api"
 	"github.com/byvko-dev/youtube-app/internal/server/handlers/ui"
-	"github.com/byvko-dev/youtube-app/internal/sessions"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/template/html/v2"
 )
 
@@ -24,10 +22,6 @@ func New(port ...int) func() error {
 	portString = os.Getenv("PORT")
 
 	return func() error {
-		store := session.New(session.Config{
-			Storage: sessions.Storage,
-		})
-
 		server := fiber.New(fiber.Config{
 			Views:             html.New(rootDir, ".html"),
 			ViewsLayout:       "layouts/main",
@@ -48,12 +42,13 @@ func New(port ...int) func() error {
 		server.Get("/about", ui.AboutHandler)
 		server.Get("/error", ui.ErrorHandler)
 
-		server.Get("/login", ui.NewLoginHandler(store))
+		server.Get("/login", ui.LoginHandler)
 		server.Get("/login/redirect", ui.LoginRedirectHandler)
-		server.Get("/login/verify", auth.NewLoginVerifyHandler(store))
-		server.Post("/login/start", auth.NewLoginStartHandler(store))
+		server.Get("/login/verify", auth.LoginVerifyHandler)
+		// server.Post("/login/verify", auth.LoginVerifyHandler) TODO: This should accept a code as fallback
+		server.Post("/login/start", auth.LoginStartHandler)
 
-		api := server.Group("/api").Use(auth.NewMiddleware(store))
+		api := server.Group("/api").Use(auth.Middleware)
 		api.All("/noop", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 
 		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
@@ -62,7 +57,7 @@ func New(port ...int) func() error {
 		api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 
 		// All routes used by HTMX should have a POST handler
-		app := server.Group("/app").Use(auth.NewMiddleware(store))
+		app := server.Group("/app").Use(auth.Middleware)
 		app.Get("/onboarding", ui.OnboardingHandler)
 		app.Get("/", ui.AppHandler).Post("/", ui.AppHandler)
 		app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)

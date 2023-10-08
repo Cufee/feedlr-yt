@@ -103,3 +103,25 @@ model UserSubscription {
   @@index([channelId], name: "channelId")
   @@map("user_subscriptions")
 }
+
+model Session {
+  id        String   @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastUsed  DateTime @default(now())
+
+  expiresAt DateTime
+  userId    String?
+  meta      Json?
+
+  authId         String?
+  accessToken    String?   @db.Text
+  refreshToken   String?   @db.Text
+  tokenExpiresAt DateTime?
+
+  @@index([userId], name: "userId")
+  @@index([authId], name: "authId")
+  @@index([expiresAt], name: "expiresAt")
+  @@index([tokenExpiresAt], name: "tokenExpiresAt")
+  @@map("sessions")
+}

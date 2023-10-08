@@ -2,27 +2,29 @@ package auth
 
 import (
 	"log"
+	"time"
 
+	"github.com/byvko-dev/youtube-app/internal/sessions"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
 	_ "github.com/joho/godotenv/autoload"
 )
 
-func NewMiddleware(store *session.Store) func(c *fiber.Ctx) error {
-	return func(c *fiber.Ctx) error {
-		session, err := store.Get(c)
-		if err != nil {
-			log.Printf("session.Get: %v\n", err)
-			return c.Redirect("/login")
-		}
+func Middleware(c *fiber.Ctx) error {
+	s := time.Now()
+	defer func() {
+		log.Printf("Auth middleware took %v\n", time.Since(s))
+	}()
 
-		userID, ok := session.Get("userId").(string)
-		if !ok {
-			log.Println("session.Get userId: !ok")
-			return c.Redirect("/login")
-		}
+	session, err := sessions.FromID(c.Cookies("session_id"))
+	if err != nil {
+		log.Printf("sessions.FromID: %v\n", err)
+		return c.Redirect("/login")
+	}
 
-		c.Locals("userId", userID)
+	if uid, valid := session.UserID(); valid {
+		c.Locals("userId", uid)
 		return c.Next()
 	}
+
+	return c.Redirect("/login")
 }
