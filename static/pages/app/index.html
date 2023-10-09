@@ -8,10 +8,15 @@
     {{template "components/channels-feed" .Favorites }}
     {{template "components/channels-feed" .WithNewVideos }}
 
-    {{ if and (or .Favorites .WithNewVideos) .WithoutNewVideos }}
-    <div class="relative flex flex-col items-center justify-start min-h-screen gap-1">
-        <span class="text-xl font-bold md:text-2xl">You are caught up, there are no new videos!</span>
+    {{ if .WithoutNewVideos }}
+    <div class="relative flex flex-col items-center justify-start min-h-screen gap-1 text-center">
+        {{ if or .Favorites .WithNewVideos }}
+        <span class="text-2xl font-bold md:text-3xl">All caught up!</span>
         <span class="sticky top-0 text-lg">Keep scrolling to see the rest of your subscriptions</span>
+        {{ else }}
+        <span class="text-2xl font-bold md:text-3xl">There are no new videos just yet!</span>
+        <span class="sticky top-0 text-lg">Keep scrolling to see your subscriptions</span>
+        {{ end }}
     </div>
     {{ end }}
 
