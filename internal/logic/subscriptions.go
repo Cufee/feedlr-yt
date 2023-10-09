@@ -32,18 +32,17 @@ func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
 /*
 Returns a list of channel props with videos for all user subscriptions
 */
-func GetUserSubscriptionsProps(userId string) ([]types.ChannelWithVideosProps, error) {
+func GetUserSubscriptionsProps(userId string) (*types.UserSubscriptionsFeedProps, error) {
 	// Get channels and convert them to WithVideo props
 	channels, err := GetUserSubscribedChannels(userId)
 	if err != nil {
 		return nil, err
 	}
-	var channelIds []string
-	subs := make(map[string]types.ChannelWithVideosProps)
-	for _, c := range channels {
-		subs[c.ID] = c.WithVideos()
-		channelIds = append(channelIds, c.ID)
-	}
+
+	// Sort channels by title alphabetically
+	sort.Slice(channels, func(i, j int) bool {
+		return strings.Compare(channels[i].Channel.Title, channels[j].Channel.Title) < 0
+	})
 
 	progress, err := GetCompleteUserProgress(userId)
 	if err != nil {
@@ -51,51 +50,53 @@ func GetUserSubscriptionsProps(userId string) ([]types.ChannelWithVideosProps, e
 	}
 
 	// Get videos for each channel and add them to the props
+	var channelIds []string
+	for _, c := range channels {
+		channelIds = append(channelIds, c.ID)
+	}
 	videos, err := GetChannelVideos(channelIds...)
 	if err != nil {
 		return nil, err
 	}
+
+	// Map videos to channel IDs
+	channelVideos := make(map[string][]types.VideoProps)
 	for _, v := range videos {
-		ch := subs[v.ChannelID]
+		videos := channelVideos[v.ChannelID]
 		// Limit videos to 3
-		if len(ch.Videos) >= 3 {
+		if len(videos) >= 3 {
 			continue
 		}
 		v.Progress = progress[v.ID]
-		ch.Videos = append(subs[v.ChannelID].Videos, v)
-		subs[v.ChannelID] = ch
+		videos = append(videos, v)
+		channelVideos[v.ChannelID] = videos
 	}
 
-	var props []types.ChannelWithVideosProps
-	for _, sub := range subs {
-		sub.CaughtUp = true
-		for _, v := range sub.Videos {
+	// Sort channels for subscription feed props
+	var subscriptions types.UserSubscriptionsFeedProps
+	for _, channel := range channels {
+		videos := channelVideos[channel.ID]
+		props := channel.WithVideos(videos...)
+
+		props.CaughtUp = true
+		for _, v := range props.Videos {
+			props.CaughtUp = false
 			if v.Progress < 1 {
-				sub.CaughtUp = false
 				break
 			}
 		}
 
-		props = append(props, sub)
+		if props.Favorite {
+			subscriptions.Favorites = append(subscriptions.Favorites, props)
+		} else if !props.CaughtUp {
+			subscriptions.WithNewVideos = append(subscriptions.WithNewVideos, props)
+		} else {
+			subscriptions.WithoutNewVideos = append(subscriptions.WithoutNewVideos, props)
+		}
+		subscriptions.All = append(subscriptions.All, props)
 	}
 
-	sort.Slice(props, func(i, j int) bool {
-		if props[i].CaughtUp {
-			return false
-		}
-		if props[j].CaughtUp {
-			return true
-		}
-		if props[i].Favorite {
-			return true
-		}
-		if props[j].Favorite {
-			return false
-		}
-		return strings.Compare(props[i].Channel.Title, props[j].Channel.Title) < 0
-	})
-
-	return props, nil
+	return &subscriptions, nil
 }
 
 func ToggleSubscriptionIsFavorite(userId, channelId string) (bool, error) {

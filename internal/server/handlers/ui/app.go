@@ -32,18 +32,22 @@ func withNavbarProps(c *fiber.Ctx, other ...fiber.Map) fiber.Map {
 func AppHandler(c *fiber.Ctx) error {
 	userId, _ := c.Locals("userId").(string)
 
-	channels, err := logic.GetUserSubscriptionsProps(userId)
+	subscriptions, err := logic.GetUserSubscriptionsProps(userId)
 	if err != nil {
 		log.Printf("GetUserSubscriptionsProps: %v", err)
 		return c.Redirect("/error?message=Something went wrong")
 	}
-	if len(channels) == 0 {
+	if len(subscriptions.All) == 0 {
 		return c.Redirect("/app/onboarding")
 	}
 
-	return c.Render("app/index", withNavbarProps(c, fiber.Map{
-		"Channels": channels,
-	}), withLayout(c))
+	props, err := subscriptions.ToMap()
+	if err != nil {
+		log.Printf("UserSubscriptionsFeedProps.ToMap: %v", err)
+		return c.Redirect("/error?message=Something went wrong")
+	}
+
+	return c.Render("app/index", withNavbarProps(c, props), withLayout(c))
 }
 
 func AppSettingsHandler(c *fiber.Ctx) error {

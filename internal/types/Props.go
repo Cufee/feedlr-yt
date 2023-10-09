@@ -1,6 +1,8 @@
 package types
 
-import yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
+import (
+	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
+)
 
 type NavbarProps struct {
 	CurrentURL string
@@ -18,6 +20,22 @@ func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
 		ChannelProps: *c,
 		Videos:       videos,
 	}
+}
+
+type UserSubscriptionsFeedProps struct {
+	Favorites        []ChannelWithVideosProps
+	WithNewVideos    []ChannelWithVideosProps
+	WithoutNewVideos []ChannelWithVideosProps
+	All              []ChannelWithVideosProps
+}
+
+func (u *UserSubscriptionsFeedProps) ToMap() (map[string]any, error) {
+	m := make(map[string]any)
+	m["All"] = u.All
+	m["Favorites"] = u.Favorites
+	m["WithNewVideos"] = u.WithNewVideos
+	m["WithoutNewVideos"] = u.WithoutNewVideos
+	return m, nil
 }
 
 type ChannelWithVideosProps struct {
