@@ -61,7 +61,7 @@ func GetUserSubscriptionsProps(userId string) ([]types.ChannelWithVideosProps, e
 		if len(ch.Videos) >= 3 {
 			continue
 		}
-		v.Progress, _ = progress[v.ID]
+		v.Progress = progress[v.ID]
 		ch.Videos = append(subs[v.ChannelID].Videos, v)
 		subs[v.ChannelID] = ch
 	}
