@@ -83,11 +83,8 @@ func GetUserSubscriptionsProps(userId string) ([]types.ChannelWithVideosProps, e
 		if props[i].CaughtUp {
 			return false
 		}
-		if props[i].Favorite && !props[j].Favorite {
+		if props[j].CaughtUp {
 			return true
-		}
-		if !props[i].Favorite && props[j].Favorite {
-			return strings.Compare(props[i].Channel.Title, props[j].Channel.Title) < 0
 		}
 		return strings.Compare(props[i].Channel.Title, props[j].Channel.Title) < 0
 	})
