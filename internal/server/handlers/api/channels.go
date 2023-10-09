@@ -51,15 +51,16 @@ func UnsubscribeHandler(c *fiber.Ctx) error {
 
 func FavoriteChannelHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
-	currentValue := false
+	userId, _ := c.Locals("userId").(string)
 
-	newValue := true
-	if currentValue {
-		newValue = false
+	updated, err := logic.ToggleSubscriptionIsFavorite(userId, id)
+	if err != nil {
+		log.Print(err)
+		return err
 	}
 
 	return c.Render("components/favorite-channel-button", fiber.Map{
 		"ID":       id,
-		"Favorite": newValue,
+		"Favorite": updated,
 	}, c.Locals("layout").(string))
 }

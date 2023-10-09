@@ -10,6 +10,7 @@
                         class="object-cover w-6 h-6 md:w-8 md:h-8 rounded-xl">
                     <span class="mx-2 text-xl font-bold md:text-2xl">{{ $chan.Title }}</span>
                 </div>
+                {{template "components/favorite-channel-button" $chan}}
             </div>
             <div>
                 {{template "components/video-feed" $chan}}

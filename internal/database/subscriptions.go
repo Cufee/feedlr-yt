@@ -51,6 +51,23 @@ func (c *Client) FindSubscription(userId, channelId string, opts ...Subscription
 	return query.Exec(context.TODO())
 }
 
+func (c *Client) GetSubscription(id string, opts ...SubscriptionGetOptions) (*db.UserSubscriptionModel, error) {
+	var options SubscriptionGetOptions
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
+	query := c.p.UserSubscription.FindUnique(db.UserSubscription.ID.Equals(id))
+	if options.WithChannel {
+		query = query.With(db.UserSubscription.Channel.Fetch())
+	}
+	if options.WithUser {
+		query = query.With(db.UserSubscription.User.Fetch())
+	}
+
+	return query.Exec(context.TODO())
+}
+
 func (c *Client) DeleteSubscription(userId, channelId string) error {
 	sub, err := c.FindSubscription(userId, channelId)
 	if err != nil {
@@ -58,4 +75,12 @@ func (c *Client) DeleteSubscription(userId, channelId string) error {
 	}
 	_, err = c.p.UserSubscription.FindUnique(db.UserSubscription.ID.Equals(sub.ID)).Delete().Exec(context.TODO())
 	return err
+}
+
+func (c *Client) ToggleSubscriptionIsFavorite(id string) (*db.UserSubscriptionModel, error) {
+	sub, err := c.GetSubscription(id)
+	if err != nil {
+		return nil, err
+	}
+	return c.p.UserSubscription.FindUnique(db.UserSubscription.ID.Equals(id)).Update(db.UserSubscription.IsFavorite.Set(!sub.IsFavorite)).Exec(context.TODO())
 }

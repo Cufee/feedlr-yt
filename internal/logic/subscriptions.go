@@ -86,8 +86,27 @@ func GetUserSubscriptionsProps(userId string) ([]types.ChannelWithVideosProps, e
 		if props[j].CaughtUp {
 			return true
 		}
+		if props[i].Favorite {
+			return true
+		}
+		if props[j].Favorite {
+			return false
+		}
 		return strings.Compare(props[i].Channel.Title, props[j].Channel.Title) < 0
 	})
 
 	return props, nil
+}
+
+func ToggleSubscriptionIsFavorite(userId, channelId string) (bool, error) {
+	sub, err := database.C.FindSubscription(userId, channelId)
+	if err != nil {
+		return false, err
+	}
+
+	update, err := database.C.ToggleSubscriptionIsFavorite(sub.ID)
+	if err != nil {
+		return false, err
+	}
+	return update.IsFavorite, nil
 }
