@@ -9,13 +9,17 @@
     <span class="w-12 h-12 loading loading-spinner"></span>
   </div>
   <div id="player"></div>
-  <a class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-square" href="/app#{{ .ChannelID }}">
+  <a class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-square" href="/app#{{ .ChannelID }}"
+    id="close-button">
     {{template "icons/cross"}}
   </a>
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
+  document.getElementById("close-button")?.addEventListener("click", saveProgress)
+  setInterval(saveProgress, 10000)
+
   var player;
   var frame = document.getElementById("player")
   function onYouTubeIframeAPIReady() {
@@ -24,6 +28,7 @@
       width: '100%',
       videoId: '{{ .ID }}',
       playerVars: {
+        'start': parseInt('{{ .Progress }}') ?? 0,
         'rel': 0,
         'playsinline': 1,
         'enablejsapi': 1,
@@ -41,8 +46,15 @@
   }
   function onPlayerStateChange(event) {
     if (event.data == YT.PlayerState.ENDED || event.data == YT.PlayerState.PAUSED) {
-      // TODO: Save progress
+      saveProgress()
     }
+  }
+  function saveProgress() {
+    fetch("/api/videos/{{ .ID }}/progress?progress=" + (Math.floor(player.getCurrentTime())), {
+      method: 'POST',
+      credentials: 'include'
+    })
+    return true
   }
 </script>
 

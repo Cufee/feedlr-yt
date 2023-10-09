@@ -51,6 +51,8 @@ func New(port ...int) func() error {
 		api := server.Group("/api").Use(auth.Middleware)
 		api.All("/noop", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 
+		api.Post("/videos/:id/progress", apiHandlers.SaveVideoProgressHandler)
+
 		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
 		api.Post("/channels/:id/favorite", apiHandlers.FavoriteChannelHandler)
 		api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)

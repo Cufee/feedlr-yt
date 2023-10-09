@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 
 	"github.com/byvko-dev/youtube-app/prisma/db"
 )
@@ -58,4 +59,40 @@ func (c *Client) NewVideo(channel string, videos ...VideoCreateModel) ([]db.Vide
 		created = append(created, *v)
 	}
 	return created, nil
+}
+
+func (c *Client) GetUserVideoView(user, video string) (*db.VideoViewModel, error) {
+	view, err := c.p.VideoView.FindFirst(db.VideoView.UserID.Equals(user), db.VideoView.VideoID.Equals(video)).Exec(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return view, nil
+}
+
+func (c *Client) GetAllUserViews(user string) ([]db.VideoViewModel, error) {
+	views, err := c.p.VideoView.FindMany(db.VideoView.UserID.Equals(user)).Exec(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return views, nil
+}
+
+func (c *Client) UpsertView(user, video string, progress int) (*db.VideoViewModel, error) {
+	view, err := c.p.VideoView.FindFirst(db.VideoView.UserID.Equals(user), db.VideoView.VideoID.Equals(video)).Exec(context.Background())
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			view, err = c.p.VideoView.CreateOne(db.VideoView.User.Link(db.User.ID.Equals(user)), db.VideoView.Video.Link(db.Video.ID.Equals(video)), db.VideoView.Progress.Set(progress)).Exec(context.Background())
+			if err != nil {
+				return nil, err
+			}
+			return view, nil
+		}
+		return nil, err
+	}
+
+	view, err = c.p.VideoView.FindUnique(db.VideoView.ID.Equals(view.ID)).Update(db.VideoView.Progress.Set(progress)).Exec(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return view, nil
 }

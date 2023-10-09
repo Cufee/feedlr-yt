@@ -28,6 +28,7 @@ type ChannelWithVideosProps struct {
 type VideoProps struct {
 	yt.Video
 	ChannelID string
+	Progress  int
 }
 
 func VideoToProps(video yt.Video, channelId string) VideoProps {
