@@ -24,12 +24,12 @@ type SessionOptions struct {
 
 /* NewSession creates a new session */
 func (c *Client) NewSession(opts SessionOptions) (*db.SessionModel, error) {
-	metaBytes, err := json.Marshal(opts.Meta)
+	o, err := optionsToUpdate(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	session, err := c.p.Session.CreateOne(db.Session.ID.Set(opts.ID), db.Session.ExpiresAt.Set(opts.ExpiresAt), db.Session.UserID.Set(opts.UserID), db.Session.AuthID.Set(opts.AuthID), db.Session.AccessToken.Set(opts.AccessToken), db.Session.RefreshToken.Set(opts.RefreshToken), db.Session.TokenExpiresAt.Set(opts.TokenExpiresAt), db.Session.Meta.Set(metaBytes)).Exec(context.Background())
+	session, err := c.p.Session.CreateOne(db.Session.ID.Set(opts.ID), db.Session.ExpiresAt.Set(opts.ExpiresAt), o...).Exec(context.Background())
 	if err != nil {
 		return nil, err
 	}

@@ -58,10 +58,10 @@ func New(port ...int) func() error {
 
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(auth.Middleware)
-		app.Get("/onboarding", ui.OnboardingHandler)
 		app.Get("/", ui.AppHandler).Post("/", ui.AppHandler)
+		app.Get("/onboarding", ui.OnboardingHandler)
+		app.Get("/watch/:id", ui.AppWatchVideoHandler)
 		app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)
-		api.Get("/watch/:id", apiHandlers.OpenVideoPlayerHandler)
 
 		channels := app.Group("/channels")
 		channels.Get("/manage", ui.ManageChannelsAddHandler).Post("/manage", ui.ManageChannelsAddHandler)

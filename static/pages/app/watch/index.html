@@ -1,0 +1,47 @@
+{{ define "app/watch" }}
+
+<head>
+  <title>Feedlr - {{ .Title }}</title>
+</head>
+
+<div class="relative flex items-center justify-start w-screen h-screen">
+  <div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading">
+    <span class="w-12 h-12 loading loading-spinner"></span>
+  </div>
+  <div id="player"></div>
+  <a class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-square" href="/app#{{ .ChannelID }}">
+    {{template "icons/cross"}}
+  </a>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+  var player;
+  var frame = document.getElementById("player")
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player(frame, {
+      height: '100%',
+      width: '100%',
+      videoId: '{{ .ID }}',
+      playerVars: {
+        'rel': 0,
+        'playsinline': 1,
+        'enablejsapi': 1,
+        'iv_load_policy': 3
+      },
+      events: {
+        'onReady': onPlayerReady,
+        'onStateChange': onPlayerStateChange
+      }
+    });
+  }
+  function onPlayerReady(event) {
+    event.target.playVideo();
+    document.getElementById("player-loading").classList.add("hidden")
+  }
+  function onPlayerStateChange(event) {
+    // 
+  }
+</script>
+
+{{ end }}

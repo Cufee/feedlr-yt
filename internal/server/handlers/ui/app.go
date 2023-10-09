@@ -75,9 +75,7 @@ func AppWatchVideoHandler(c *fiber.Ctx) error {
 		return c.Redirect("/error?message=Something went wrong")
 	}
 
-	return c.Render("app/watch", withNavbarProps(c, fiber.Map{
-		"Video": props,
-	}), withLayout(c))
+	return c.Render("app/watch", props, withLayout(c, "layouts/with-head"))
 }
 
 func OnboardingHandler(c *fiber.Ctx) error {
