@@ -86,12 +86,12 @@ func GetUserSubscriptionsProps(userId string) (*types.UserSubscriptionsFeedProps
 			}
 		}
 
-		if props.Favorite {
-			subscriptions.Favorites = append(subscriptions.Favorites, props)
-		} else if !props.CaughtUp {
-			subscriptions.WithNewVideos = append(subscriptions.WithNewVideos, props)
-		} else {
+		if props.CaughtUp {
 			subscriptions.WithoutNewVideos = append(subscriptions.WithoutNewVideos, props)
+		} else if props.Favorite {
+			subscriptions.Favorites = append(subscriptions.Favorites, props)
+		} else {
+			subscriptions.WithNewVideos = append(subscriptions.WithNewVideos, props)
 		}
 		subscriptions.All = append(subscriptions.All, props)
 	}
