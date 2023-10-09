@@ -40,7 +40,9 @@
     document.getElementById("player-loading").classList.add("hidden")
   }
   function onPlayerStateChange(event) {
-    // 
+    if (event.data == YT.PlayerState.ENDED || event.data == YT.PlayerState.PAUSED) {
+      // TODO: Save progress
+    }
   }
 </script>
 

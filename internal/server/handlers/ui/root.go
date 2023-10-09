@@ -8,6 +8,16 @@ import (
 )
 
 func LandingHandler(c *fiber.Ctx) error {
+	sessionId := c.Cookies("session_id")
+	if sessionId != "" {
+		session, _ := sessions.FromID(sessionId)
+		if session.Valid() {
+			return c.Redirect("/app")
+		}
+		session.Delete()
+		c.ClearCookie("session_id")
+	}
+
 	return c.Render("landing", fiber.Map{
 		"NavbarProps": fiber.Map{
 			"Hide": true,
