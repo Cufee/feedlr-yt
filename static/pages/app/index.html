@@ -7,10 +7,14 @@
 <div id="app-index" class="flex flex-col gap-4">
     {{template "components/channels-feed" .Favorites }}
     {{template "components/channels-feed" .WithNewVideos }}
+
+    {{ if and (or .Favorites .WithNewVideos) .WithoutNewVideos }}
     <div class="relative flex flex-col items-center justify-start min-h-screen gap-1">
         <span class="text-xl font-bold md:text-2xl">You are caught up, there are no new videos!</span>
         <span class="sticky top-0 text-lg">Keep scrolling to see the rest of your subscriptions</span>
     </div>
+    {{ end }}
+
     {{template "components/channels-feed" .WithoutNewVideos }}
 </div>
 
