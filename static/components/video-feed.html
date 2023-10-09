@@ -1,11 +1,11 @@
 {{ define "components/video-feed" }}
 
-<div class="flex flex-row w-full gap-1 p-4 space-x-4 overflow-scroll shadow-inner carousel carousel-center bg-neutral rounded-box"
+<div class="flex flex-row w-full gap-1 p-0 space-x-4 overflow-scroll shadow-inner carousel carousel-center rounded-box"
     id="components-video-feed">
     {{ if .Videos }}
     {{ with . }}
     {{ range .Videos }}
-    <div class="overflow-hidden shadow-md carousel-item rounded-xl overscroll-contain grayscale hover:grayscale-0">
+    <div class="overflow-hidden shadow-md carousel-item rounded-xl overscroll-contain group">
         <a href="/app/watch/{{ .ID }}" class="relative">
             {{ if gt .Progress 0 }}
             <div
@@ -13,12 +13,8 @@
                 Watched
             </div>
             {{ end }}
-            <img class="object-cover mb-8 aspect-video h-44 md:h-60" src="{{ .Thumbnail }}" alt="{{ .Title }}">
-            <div class="absolute bottom-0 z-10 flex justify-center w-full h-8 px-3 text-xl font-bold bg-base-200">
-                <span class="truncate">
-                    {{ .Title }}
-                </span>
-            </div>
+            <img class="object-cover transition-all duration-500 cursor-pointer aspect-video h-44 md:h-60 group-hover:scale-110"
+                src="{{ .Thumbnail }}" alt="{{ .Title }}">
         </a>
     </div>
     {{ end }}
