@@ -1,7 +1,7 @@
 datasource db {
-  url          = env("DATABASE_URL")
-  provider     = "mysql"
-  relationMode = "prisma"
+  url      = env("DATABASE_URL")
+  provider = "mongodb"
+  // relationMode = "prisma"
 }
 
 generator db {
@@ -9,7 +9,7 @@ generator db {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   authId    String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -18,12 +18,12 @@ model User {
   settings      UserSettings?
   subscriptions UserSubscription[]
 
-  @@index([authId], name: "authId")
+  // @@index([authId], name: "authId")
   @@map("users")
 }
 
 model UserSettings {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -32,19 +32,19 @@ model UserSettings {
 
   selectedInvidiousHost String?
 
-  @@index([userId], name: "userId")
+  // @@index([userId], name: "userId")
   @@map("user_settings")
 }
 
 model Channel {
-  id        String   @id
+  id        String   @id @map("_id")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   url         String
   title       String
   thumbnail   String?
-  description String  @db.Text
+  description String  @db.String
 
   videos        Video[]
   subscriptions UserSubscription[]
@@ -53,14 +53,14 @@ model Channel {
 }
 
 model Video {
-  id        String   @id
+  id        String   @id @map("_id")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   url         String
   title       String
   thumbnail   String?
-  description String  @db.Text
+  description String  @db.String
 
   views     VideoView[]
   channel   Channel     @relation(fields: [channelId], references: [id], onDelete: Cascade)
@@ -71,7 +71,7 @@ model Video {
 }
 
 model VideoView {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -88,7 +88,7 @@ model VideoView {
 }
 
 model UserSubscription {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -105,7 +105,7 @@ model UserSubscription {
 }
 
 model Session {
-  id        String   @id
+  id        String   @id @map("_id")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   lastUsed  DateTime @default(now())
@@ -115,8 +115,8 @@ model Session {
   meta      Json?
 
   authId         String?
-  accessToken    String?   @db.Text
-  refreshToken   String?   @db.Text
+  accessToken    String?   @db.String
+  refreshToken   String?   @db.String
   tokenExpiresAt DateTime?
 
   @@index([userId], name: "userId")
