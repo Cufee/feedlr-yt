@@ -22,7 +22,8 @@ func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
 
 type ChannelWithVideosProps struct {
 	ChannelProps
-	Videos []VideoProps
+	Videos   []VideoProps
+	CaughtUp bool
 }
 
 type VideoProps struct {

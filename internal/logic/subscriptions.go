@@ -68,10 +68,27 @@ func GetUserSubscriptionsProps(userId string) ([]types.ChannelWithVideosProps, e
 
 	var props []types.ChannelWithVideosProps
 	for _, sub := range subs {
+		sub.CaughtUp = true
+		for _, v := range sub.Videos {
+			if v.Progress < 1 {
+				sub.CaughtUp = false
+				break
+			}
+		}
+
 		props = append(props, sub)
 	}
 
 	sort.Slice(props, func(i, j int) bool {
+		if props[i].CaughtUp {
+			return false
+		}
+		if props[i].Favorite && !props[j].Favorite {
+			return true
+		}
+		if !props[i].Favorite && props[j].Favorite {
+			return strings.Compare(props[i].Channel.Title, props[j].Channel.Title) < 0
+		}
 		return strings.Compare(props[i].Channel.Title, props[j].Channel.Title) < 0
 	})
 
