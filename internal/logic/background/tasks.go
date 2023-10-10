@@ -9,7 +9,7 @@ import (
 )
 
 func CacheAllChannelsWithVideos() error {
-	channels, err := database.C.GetAllChannels()
+	channels, err := database.C.GetAllChannelsWithSubscriptions()
 	if err != nil {
 		return err
 	}

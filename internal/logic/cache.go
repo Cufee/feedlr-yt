@@ -79,7 +79,5 @@ func CacheChannel(channelId string) (*db.ChannelModel, error) {
 		return nil, err
 	}
 
-	go CacheChannelVideos(channelId)
-
 	return cached, nil
 }

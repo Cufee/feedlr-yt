@@ -3,7 +3,6 @@ package api
 import (
 	"log"
 
-	"github.com/byvko-dev/youtube-app/internal/api/youtube"
 	"github.com/byvko-dev/youtube-app/internal/database"
 	"github.com/byvko-dev/youtube-app/internal/logic"
 	"github.com/gofiber/fiber/v2"
@@ -11,7 +10,7 @@ import (
 
 func SearchChannelsHandler(c *fiber.Ctx) error {
 	query := c.Query("search")
-	channels, err := youtube.C.SearchChannels(query, 4)
+	channels, err := logic.SearchChannels(query, 4)
 	if err != nil {
 		log.Print(err)
 		return err

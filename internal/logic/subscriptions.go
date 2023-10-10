@@ -13,6 +13,7 @@ func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
 	if err != nil {
 		return nil, err
 	}
+	go CacheChannelVideos(channelId)
 
 	sub, err := database.C.NewSubscription(userId, channelId)
 	if err != nil {

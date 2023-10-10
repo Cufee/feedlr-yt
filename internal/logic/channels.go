@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"github.com/byvko-dev/youtube-app/internal/api/youtube"
 	"github.com/byvko-dev/youtube-app/internal/api/youtube/client"
 	"github.com/byvko-dev/youtube-app/internal/database"
 	"github.com/byvko-dev/youtube-app/internal/types"
@@ -32,4 +33,18 @@ func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 	}
 
 	return props, nil
+}
+
+func SearchChannels(query string, limit int) ([]client.Channel, error) {
+	channels, err := youtube.C.SearchChannels(query, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache all channels to make subsequent requests faster
+	for _, c := range channels {
+		go CacheChannel(c.ID)
+	}
+
+	return channels, nil
 }

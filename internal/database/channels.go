@@ -23,6 +23,20 @@ func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]db.ChannelModel, e
 	return query.Exec(context.TODO())
 }
 
+func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]db.ChannelModel, error) {
+	var options ChannelGetOptions
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
+	query := c.p.Channel.FindMany(db.Channel.Subscriptions.Some(db.UserSubscription.UserID.GtIfPresent(nil)))
+	if options.WithVideos {
+		query = query.With(db.Channel.Videos.Fetch())
+	}
+
+	return query.Exec(context.TODO())
+}
+
 func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*db.ChannelModel, error) {
 	var options ChannelGetOptions
 	if len(opts) > 0 {
