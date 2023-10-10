@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,11 +21,7 @@ var limiterMiddleware = limiter.New(limiter.Config{
 			}
 			c.Cookie(&cookie)
 		}
-		if c.Get("X-Forwarded-For") != "" {
-			return c.Get("X-Forwarded-For")
-		}
-		log.Print("No X-Forwarded-For header found")
-		return trace
+		return c.Get("X-Forwarded-For", trace)
 	},
 	LimitReached: func(c *fiber.Ctx) error {
 		return c.Render("429", nil, "layouts/with-head")
