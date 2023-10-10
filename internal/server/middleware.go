@@ -22,11 +22,10 @@ var limiterMiddleware = limiter.New(limiter.Config{
 			}
 			c.Cookie(&cookie)
 		}
-
-		if c.IP() != "" {
-			return c.IP()
+		if c.Get("X-Forwarded-For") != "" {
+			return c.Get("X-Forwarded-For")
 		}
-		log.Println("request had no IP, using trace_id for rate limit")
+		log.Print("No X-Forwarded-For header found")
 		return trace
 	},
 	LimitReached: func(c *fiber.Ctx) error {
