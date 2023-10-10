@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
+	"github.com/ssoroka/slice"
 )
 
 func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {
@@ -24,7 +25,14 @@ func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {
 	}
 
 	var channels []yt.Channel
+	var channelIds []string
 	for i, item := range response {
+		// Sometimes the API returns garbage - duplicate items or incomplete items
+		if slice.Contains(channelIds, item.AuthorID) || len(item.AuthorThumbnails) == 0 {
+			continue
+		}
+		channelIds = append(channelIds, item.AuthorID)
+
 		c := yt.Channel{
 			ID:          item.AuthorID,
 			URL:         c.buildChannelURL(item.AuthorID),
