@@ -9,8 +9,17 @@ import (
 )
 
 func SearchChannelsHandler(c *fiber.Ctx) error {
+	userId, _ := c.Locals("userId").(string)
 	query := c.Query("search")
-	channels, err := logic.SearchChannels(query, 4)
+
+	if len(query) < 5 || len(query) > 32 {
+		if len(query) == 0 {
+			return c.SendString(``)
+		}
+		return c.SendString(`<div class="m-auto">Channel name must be between 5 and 32 characters long</div>`)
+	}
+
+	channels, err := logic.SearchChannels(userId, query, 4)
 	if err != nil {
 		log.Print(err)
 		return err

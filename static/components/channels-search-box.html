@@ -1,12 +1,15 @@
 {{ define "components/channels-search-box" }}
-<div id="search" class="flex flex-col gap-4">
-  <input type="search" placeholder="Channel Name" name="search" hx-disabled-elt="this"
-    class="self-center w-full max-w-xs input input-bordered font-control" hx-get="/api/channels/search" _="on htmx:validation:validate
-          if my.value.length < 3
-              call me.setCustomValidity('Please enter the value foo')
-          else
-              call me.setCustomValidity('')" hx-validate="true" hx-trigger="keyup changed delay:500ms"
-    hx-target="#search-results" hx-swap="innerHTML" />
+<div id="search" class="flex flex-col gap-4 htmx-request">
+  <form class="flex items-center justify-center gap-2 group" id="search-box">
+    <div class="invisible w-6 h-6"></div>
+
+    <input type="search" placeholder="Channel Name" name="search" hx-disabled-elt="this" minlength="5" maxlength="32"
+      class="self-center w-full max-w-xs input input-bordered font-control" hx-indicator="#search-box"
+      hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML" hx-target-4*="#search-error"
+      hx-trigger="change, keyup delay:200ms changed" />
+
+    <span class="htmx-indicator invisible group-[.htmx-request]:visible w-6 h-6 loading loading-spinner"></span>
+  </form>
   <div id="search-results" class="flex flex-row flex-wrap gap-2"></div>
 </div>
 {{ end }}

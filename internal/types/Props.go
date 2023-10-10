@@ -15,6 +15,11 @@ type ChannelProps struct {
 	Favorite bool
 }
 
+type ChannelSearchResultProps struct {
+	yt.Channel
+	Subscribed bool
+}
+
 func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
 	return ChannelWithVideosProps{
 		ChannelProps: *c,

@@ -1,10 +1,13 @@
 package logic
 
 import (
+	"sync"
+
 	"github.com/byvko-dev/youtube-app/internal/api/youtube"
 	"github.com/byvko-dev/youtube-app/internal/api/youtube/client"
 	"github.com/byvko-dev/youtube-app/internal/database"
 	"github.com/byvko-dev/youtube-app/internal/types"
+	"github.com/ssoroka/slice"
 )
 
 /*
@@ -35,16 +38,48 @@ func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 	return props, nil
 }
 
-func SearchChannels(query string, limit int) ([]client.Channel, error) {
-	channels, err := youtube.C.SearchChannels(query, limit)
-	if err != nil {
-		return nil, err
+func SearchChannels(userId, query string, limit int) ([]types.ChannelSearchResultProps, error) {
+	// The search is typically a lot slower than the subscriptions query, so we run them in parallel
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	var channels []client.Channel
+	var channelsErr error
+	go func(query string, limit int) {
+		defer wg.Done()
+		channels, channelsErr = youtube.C.SearchChannels(query, limit)
+	}(query, limit)
+
+	wg.Add(1)
+	var subscriptions []string
+	var subscriptionsErr error
+	go func(userId string) {
+		defer wg.Done()
+
+		subs, err := database.C.AllUserSubscriptions(userId, database.SubscriptionGetOptions{WithChannel: true})
+		subscriptionsErr = err
+		for _, sub := range subs {
+			subscriptions = append(subscriptions, sub.ChannelID)
+		}
+	}(userId)
+
+	wg.Wait()
+	if channelsErr != nil {
+		return nil, channelsErr
+	}
+	if subscriptionsErr != nil {
+		return nil, subscriptionsErr
 	}
 
-	// Cache all channels to make subsequent requests faster
+	var props []types.ChannelSearchResultProps
 	for _, c := range channels {
+		props = append(props, types.ChannelSearchResultProps{
+			Channel:    c,
+			Subscribed: slice.Contains(subscriptions, c.ID),
+		})
+		// Cache all channels to make subsequent requests faster
 		go CacheChannel(c.ID)
 	}
 
-	return channels, nil
+	return props, nil
 }
