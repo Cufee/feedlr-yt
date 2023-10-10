@@ -28,6 +28,7 @@ func New(port ...int) func() error {
 			PassLocalsToViews: true,
 		})
 		server.Use(logger.New())
+		server.Use(limiterMiddleware)
 
 		server.Static("/static", "./static/served", fiber.Static{
 			Compress: true,
