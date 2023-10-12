@@ -13,6 +13,9 @@ tasks:
   build:
     cmds:
       - CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o out .
+  test:
+    cmds:
+      - go test ./... -v          
 
   db:prefetch:
     cmds:
