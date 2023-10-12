@@ -74,7 +74,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int) ([]yt.Video, er
 			ID:          item.Snippet.ResourceId.VideoId,
 			Title:       item.Snippet.Title,
 			Description: item.Snippet.Description,
-			Thumbnail:   item.Snippet.Thumbnails.Default.Url,
+			Thumbnail:   item.Snippet.Thumbnails.High.Url,
 			URL:         c.buildVideoEmbedURL(item.Snippet.ResourceId.VideoId),
 		})
 		if len(videos) >= limit {
