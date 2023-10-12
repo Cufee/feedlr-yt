@@ -49,26 +49,14 @@ func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 }
 
 func (c *client) GetChannelVideos(channelID string, limit int) ([]yt.Video, error) {
-	if limit < 1 {
-		limit = 3
-	}
-	res, err := c.service.Search.List([]string{"id", "snippet"}).ChannelId(channelID).Type("video").Order("date").Do()
+	uploadsId, err := c.GetChannelUploadPlaylistID(channelID)
 	if err != nil {
 		return nil, err
 	}
 
-	var videos []yt.Video
-	for i, item := range res.Items {
-		videos = append(videos, yt.Video{
-			ID:          item.Id.VideoId,
-			Title:       item.Snippet.Title,
-			Description: item.Snippet.Description,
-			Thumbnail:   item.Snippet.Thumbnails.High.Url,
-			URL:         c.buildVideoEmbedURL(item.Id.VideoId),
-		})
-		if i >= limit-1 {
-			break
-		}
+	videos, err := c.GetPlaylistVideos(uploadsId, limit)
+	if err != nil {
+		return nil, err
 	}
 
 	// Reverse slice to get videos in descending order
