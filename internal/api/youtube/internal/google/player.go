@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gofiber/fiber/v2/log"
 	"golang.org/x/exp/maps"
 )
 
@@ -106,7 +107,10 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 	}
 
 	if len(details.StreamingData.Formats) == 0 {
-		return nil, errors.New("no formats")
+		log.Warnf("no formats found for video %s", videoId)
+		return &VideoDetails{
+			IsShort: false,
+		}, nil
 	}
 
 	return &VideoDetails{
