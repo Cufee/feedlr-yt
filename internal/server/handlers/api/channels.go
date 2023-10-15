@@ -38,7 +38,7 @@ func SubscribeHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Render("components/subs-channel-tile", props, c.Locals("layout").(string))
+	return c.Render("components/subs-channels-tile", props, c.Locals("layout").(string))
 }
 
 func UnsubscribeHandler(c *fiber.Ctx) error {

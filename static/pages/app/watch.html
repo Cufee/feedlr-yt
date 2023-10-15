@@ -2,6 +2,11 @@
 
 <head>
   <title>Feedlr - {{ .Title }}</title>
+
+  <meta property="og:title" content="{{ .Title }}">
+  <meta property="og:type" content="video.episode" />
+  <meta property="og:description" content="{{ .Description }}">
+  <meta property="og:image" content="{{ .Thumbnail }}">
 </head>
 
 <div class="relative flex items-center justify-start w-full h-full">
@@ -30,6 +35,7 @@
       playerVars: {
         'start': parseInt('{{ .Progress }}') ?? 0,
         'rel': 0,
+        'autoplay': 1,
         'playsinline': 1,
         'enablejsapi': 1,
         'iv_load_policy': 3
