@@ -9,7 +9,7 @@
     {{template "components/channels-feed" .WithNewVideos }}
 
     {{ if .WithoutNewVideos }}
-    <div class="relative flex flex-col items-center justify-start text-center h-fullgap-1">
+    <div class="relative flex flex-col items-center justify-start min-h-screen gap-1 text-center">
         {{ if or .Favorites .WithNewVideos }}
         <span class="text-2xl font-bold md:text-3xl">All caught up!</span>
         <span class="sticky top-0 text-lg">Keep scrolling to see the rest of your subscriptions</span>
