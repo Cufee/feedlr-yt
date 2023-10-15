@@ -3,10 +3,10 @@
   <form class="flex items-center justify-center gap-2 group" id="search-box" _="on clear send clear to #search-results">
     <div class="invisible w-6 h-6"></div>
 
-    <input type="search" placeholder="Channel Name" name="search" hx-disabled-elt="this" minlength="5" maxlength="32"
+    <input type="search" placeholder="Channel Name" name="search" minlength="5" maxlength="32"
       class="self-center w-full max-w-xs input input-bordered font-control" hx-indicator="#search-box"
       hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML"
-      hx-trigger="keyup delay:200ms, search" hx-sync="this:replace" id="search-input" _="on clear set my value to ''">
+      hx-trigger="keyup delay:750ms, search" hx-sync="this:replace" id="search-input" _="on clear set my value to ''">
 
     <span class="htmx-indicator invisible group-[.htmx-request]:visible w-6 h-6 loading loading-spinner"></span>
   </form>
