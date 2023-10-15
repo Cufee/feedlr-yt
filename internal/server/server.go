@@ -8,6 +8,7 @@ import (
 	apiHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/api"
 	"github.com/byvko-dev/youtube-app/internal/server/handlers/ui"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/template/html/v2"
 )
@@ -27,8 +28,10 @@ func New(port ...int) func() error {
 			ViewsLayout:       "layouts/main",
 			PassLocalsToViews: true,
 		})
+		server.Use(compress.New(compress.Config{
+			Level: compress.LevelBestCompression,
+		}))
 		server.Use(logger.New())
-		server.Use(limiterMiddleware)
 
 		server.Static("/static", "./static/served", fiber.Static{
 			Compress: true,
@@ -49,7 +52,7 @@ func New(port ...int) func() error {
 		// server.Post("/login/verify", auth.LoginVerifyHandler) TODO: This should accept a code as fallback
 		server.Post("/login/start", auth.LoginStartHandler)
 
-		api := server.Group("/api").Use(auth.Middleware)
+		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
 		api.All("/noop", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 
 		api.Post("/videos/:id/progress", apiHandlers.SaveVideoProgressHandler)
@@ -60,7 +63,7 @@ func New(port ...int) func() error {
 		api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 
 		// All routes used by HTMX should have a POST handler
-		app := server.Group("/app").Use(auth.Middleware)
+		app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)
 		app.Get("/", ui.AppHandler).Post("/", ui.AppHandler)
 		app.Get("/onboarding", ui.OnboardingHandler)
 		app.Get("/watch/:id", ui.AppWatchVideoHandler)
