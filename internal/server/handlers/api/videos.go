@@ -18,5 +18,16 @@ func SaveVideoProgressHandler(c *fiber.Ctx) error {
 		log.Printf("CountVideoView: %v\n", err)
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
-	return c.SendStatus(fiber.StatusOK)
+
+	if c.Get("HX-Request") == "" {
+		return c.SendStatus(fiber.StatusOK)
+	}
+
+	props, err := logic.GetVideoWithProgress(user, video)
+	if err != nil {
+		log.Printf("GetVideoWithProgress: %v\n", err)
+		return c.SendStatus(fiber.StatusInternalServerError)
+	}
+
+	return c.Render("components/video-tile", props, c.Locals("layout").(string))
 }
