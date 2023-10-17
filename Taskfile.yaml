@@ -16,6 +16,9 @@ tasks:
   test:
     cmds:
       - go test ./... -v          
+  upgrade:
+    cmds:
+      - go get -u ./...
 
   db:prefetch:
     cmds:

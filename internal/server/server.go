@@ -8,7 +8,6 @@ import (
 	apiHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/api"
 	"github.com/byvko-dev/youtube-app/internal/server/handlers/ui"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/template/html/v2"
 )
@@ -28,9 +27,6 @@ func New(port ...int) func() error {
 			ViewsLayout:       "layouts/main",
 			PassLocalsToViews: true,
 		})
-		server.Use(compress.New(compress.Config{
-			Level: compress.LevelBestCompression,
-		}))
 		server.Use(logger.New())
 
 		server.Static("/static", "./static/served", fiber.Static{
