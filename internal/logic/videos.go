@@ -86,7 +86,9 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 		if err != nil && !errors.Is(err, db.ErrNotFound) {
 			return types.VideoPlayerProps{}, err
 		}
-		playerProps.Video.Progress = progress.Progress
+		if progress != nil {
+			playerProps.Video.Progress = progress.Progress
+		}
 	}
 
 	if options.WithSegments {

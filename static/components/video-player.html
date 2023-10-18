@@ -35,7 +35,7 @@
     document.getElementById("player-loading").classList.add("hidden")
   }
   function onPlayerStateChange(event) {
-    if (event.data == YT.PlayerState.ENDED || event.data == YT.PlayerState.PAUSED) {
+    if (reportProgress && (event.data == YT.PlayerState.ENDED || event.data == YT.PlayerState.PAUSED)) {
       saveProgress()
     }
   }
