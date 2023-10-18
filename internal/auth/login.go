@@ -57,10 +57,7 @@ func LoginStartHandler(c *fiber.Ctx) error {
 }
 
 func LoginVerifyHandler(c *fiber.Ctx) error {
-	sessionId := c.Cookies("session_id")
-	if sessionId == "" {
-		return c.SendStatus(fiber.StatusBadRequest)
-	}
+	currentSessionId := c.Cookies("session_id")
 
 	var tokenExpiration int64
 	var accessToken string = c.Query("access_token")
@@ -75,14 +72,14 @@ func LoginVerifyHandler(c *fiber.Ctx) error {
 	if accessToken != "" && tokenExpiration > 0 {
 		info, err := client.UserInfo(context.Background(), accessToken)
 		if err != nil {
-			sessions.DeleteSession(sessionId)
+			sessions.DeleteSession(currentSessionId)
 			log.Printf("UserInfo: %v\n", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
 		user, err := database.C.EnsureUserExists(info.Sub)
 		if err != nil {
-			sessions.DeleteSession(sessionId)
+			sessions.DeleteSession(currentSessionId)
 			log.Printf("EnsureUserExists: %v\n", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}

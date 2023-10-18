@@ -75,7 +75,7 @@ func AppWatchVideoHandler(c *fiber.Ctx) error {
 	video := c.Params("id")
 	user, _ := c.Locals("userId").(string)
 
-	props, err := logic.GetVideoWithProgress(user, video)
+	props, err := logic.GetVideoWithOptions(user, video, logic.GetVideoOptions{WithProgress: true, WithSegments: true})
 	if err != nil {
 		log.Printf("GetVideoByID: %v", err)
 		return c.Redirect("/error?message=Something went wrong")

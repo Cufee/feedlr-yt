@@ -1,5 +1,7 @@
 # Air
 tmp
 
+.vscode
+
 prisma/db
 .env
