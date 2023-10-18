@@ -61,45 +61,46 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 	return v, nil
 }
 
-type GetVideoOptions struct {
+type GetPlayerOptions struct {
 	WithProgress bool
 	WithSegments bool
 }
 
-func GetVideoWithOptions(userId, videoId string, opts ...GetVideoOptions) (types.VideoProps, error) {
-	var options GetVideoOptions
+func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (types.VideoPlayerProps, error) {
+	var options GetPlayerOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
 	video, err := GetVideoByID(videoId)
 	if err != nil {
-		return types.VideoProps{}, err
+		return types.VideoPlayerProps{}, err
+	}
+
+	playerProps := types.VideoPlayerProps{
+		Video: video,
 	}
 
 	if options.WithProgress {
 		progress, err := database.C.GetUserVideoView(userId, videoId)
-		if err != nil {
-			if errors.Is(err, db.ErrNotFound) {
-				return video, nil
-			}
-			return types.VideoProps{}, err
+		if err != nil && !errors.Is(err, db.ErrNotFound) {
+			return types.VideoPlayerProps{}, err
 		}
-		video.Progress = progress.Progress
+		playerProps.Video.Progress = progress.Progress
 	}
 
 	if options.WithSegments {
 		segments, err := sponsorblock.C.GetVideoSegments(videoId)
 		if err != nil {
-			return types.VideoProps{}, err
+			return types.VideoPlayerProps{}, err
 		}
-		err = video.AddSegments(segments...)
+		err = playerProps.AddSegments(segments...)
 		if err != nil {
-			return types.VideoProps{}, err
+			return types.VideoPlayerProps{}, err
 		}
 	}
 
-	return video, nil
+	return playerProps, nil
 }
 
 func UpdateViewProgress(userId, videoId string, progress int) error {

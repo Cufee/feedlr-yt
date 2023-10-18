@@ -38,15 +38,18 @@ func New(port ...int) func() error {
 			return c.Next()
 		})
 
+		// Root/Error and etc
 		server.Get("/", ui.LandingHandler)
-		server.Get("/about", ui.AboutHandler)
 		server.Get("/error", ui.ErrorHandler)
-
+		// Auth/Login
 		server.Get("/login", ui.LoginHandler)
 		server.Get("/login/redirect", ui.LoginRedirectHandler)
 		server.Get("/login/verify", auth.LoginVerifyHandler)
 		// server.Post("/login/verify", auth.LoginVerifyHandler) TODO: This should accept a code as fallback
 		server.Post("/login/start", auth.LoginStartHandler)
+
+		// Routes with unique auth handlers
+		server.Get("/video/:id", ui.VideoHandler)
 
 		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
 		api.All("/noop", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
@@ -62,7 +65,6 @@ func New(port ...int) func() error {
 		app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)
 		app.Get("/", ui.AppHandler).Post("/", ui.AppHandler)
 		app.Get("/onboarding", ui.OnboardingHandler)
-		app.Get("/watch/:id", ui.AppWatchVideoHandler)
 		app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)
 
 		channels := app.Group("/channels")

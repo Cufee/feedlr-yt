@@ -1,4 +1,4 @@
-{{ define "app/watch" }}
+{{ define "share/video" }}
 
 <head>
   <title>Feedlr - {{ .Video.Title }}</title>
@@ -14,10 +14,20 @@
     <span class="w-12 h-12 loading loading-spinner"></span>
   </div>
   {{ template "components/video-player" . }}
-  <a class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-primary btn-square" href="/app"
-    id="close-button">
-    {{template "icons/cross"}}
+  <a class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-primary" href="/login" id="close-button">
+    Login
   </a>
 </div>
+
+<!-- <script>
+  var frame = document.getElementById("player")
+  frame.addEventListener("onStateChange", onPlayerStateChange);
+
+  function onPlayerStateChange(event) {
+    if (event.data == YT.PlayerState.ENDED || event.data == YT.PlayerState.PAUSED) {
+      saveProgress()
+    }
+  }
+</script> -->
 
 {{ end }}

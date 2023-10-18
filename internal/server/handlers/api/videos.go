@@ -23,11 +23,11 @@ func SaveVideoProgressHandler(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
 	}
 
-	props, err := logic.GetVideoWithOptions(user, video, logic.GetVideoOptions{WithProgress: true})
+	props, err := logic.GetPlayerPropsWithOpts(user, video, logic.GetPlayerOptions{WithProgress: true})
 	if err != nil {
 		log.Printf("GetVideoWithProgress: %v\n", err)
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	return c.Render("components/video-tile", props, c.Locals("layout").(string))
+	return c.Render("components/video-tile", props.Video, c.Locals("layout").(string))
 }
