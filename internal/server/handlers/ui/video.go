@@ -26,6 +26,7 @@ func VideoHandler(c *fiber.Ctx) error {
 			log.Printf("GetVideoByID: %v", err)
 			return c.Redirect("/error?message=Something went wrong")
 		}
+		props.ReportProgress = true
 
 		return c.Render("app/watch", props, withLayout(c, "layouts/with-head"))
 	}
