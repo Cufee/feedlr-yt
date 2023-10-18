@@ -6,8 +6,10 @@
 <script>
   // Setup YouTube iframe player
   var reportProgress = '{{ .ReportProgress }}' === "true"
-  document.getElementById("close-button")?.addEventListener("click", saveProgress)
-  if (reportProgress) setInterval(saveProgress, 10000)
+  if (reportProgress) {
+    document.getElementById("close-button")?.addEventListener("click", saveProgress)
+    setInterval(saveProgress, 10000)
+  }
 
   var player;
   var frame = document.getElementById("player")
