@@ -55,34 +55,40 @@ type ChannelWithVideosProps struct {
 
 type VideoProps struct {
 	yt.Video
-	ChannelID    string
-	Progress     int
-	segments     []VideoSegmentProps
-	SegmentsJSON string // JSON encoded []Segment
+	ChannelID string
+	Progress  int
 }
 
-type VideoSegmentProps struct {
+type SegmentProps struct {
 	Start int `json:"start"`
 	End   int `json:"end"`
 }
 
-func (v *VideoProps) AddSegments(segments ...sponsorblock.Segment) error {
+type VideoPlayerProps struct {
+	Video          VideoProps `json:"video"`
+	ReportProgress bool       `json:"reportProgress"`
+
+	SkipSegments     []SegmentProps `json:"skipSegments"`
+	SkipSegmentsJSON string         `json:"skipSegmentsJSON"`
+}
+
+func (v *VideoPlayerProps) AddSegments(segments ...sponsorblock.Segment) error {
 	for _, segment := range segments {
 		if len(segment.Segment) != 2 {
-			log.Printf("segment %v for video %v has invalid length", segment, v.ID)
+			log.Printf("segment %v for video %v has invalid length", segment, v.Video.ID)
 			continue
 		}
-		v.segments = append(v.segments, VideoSegmentProps{
+		v.SkipSegments = append(v.SkipSegments, SegmentProps{
 			Start: int(segment.Segment[0]),
 			End:   int(segment.Segment[1]),
 		})
 	}
 
-	encoded, err := json.Marshal(v.segments)
+	encoded, err := json.Marshal(v.SkipSegments)
 	if err != nil {
 		return err
 	}
-	v.SegmentsJSON = string(encoded)
+	v.SkipSegmentsJSON = string(encoded)
 	return nil
 }
 

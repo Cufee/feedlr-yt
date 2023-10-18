@@ -42,10 +42,6 @@ func LoginRedirectHandler(c *fiber.Ctx) error {
 	return c.Render("login/redirect", nil, withLayout(c))
 }
 
-func AboutHandler(c *fiber.Ctx) error {
-	return c.Render("about", nil, withLayout(c))
-}
-
 func ErrorHandler(c *fiber.Ctx) error {
 	message := c.Params("message", c.Query("message", "Something went wrong"))
 	code := c.Params("code", c.Query("code", ""))

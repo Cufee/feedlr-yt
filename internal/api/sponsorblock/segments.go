@@ -32,6 +32,9 @@ func (c *client) GetVideoSegments(videoId string) ([]Segment, error) {
 	if res == nil || res.StatusCode == http.StatusNotFound {
 		return segments, nil
 	}
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("sponsorblock: unexpected status code %d", res.StatusCode)
+	}
 
 	err = json.NewDecoder(res.Body).Decode(&segments)
 	if err != nil {
