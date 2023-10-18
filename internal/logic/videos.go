@@ -3,6 +3,7 @@ package logic
 import (
 	"errors"
 
+	"github.com/byvko-dev/youtube-app/internal/api/sponsorblock"
 	"github.com/byvko-dev/youtube-app/internal/api/youtube/client"
 	"github.com/byvko-dev/youtube-app/internal/database"
 	"github.com/byvko-dev/youtube-app/internal/types"
@@ -60,21 +61,44 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 	return v, nil
 }
 
-func GetVideoWithProgress(userId, videoId string) (types.VideoProps, error) {
+type GetVideoOptions struct {
+	WithProgress bool
+	WithSegments bool
+}
+
+func GetVideoWithOptions(userId, videoId string, opts ...GetVideoOptions) (types.VideoProps, error) {
+	var options GetVideoOptions
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
 	video, err := GetVideoByID(videoId)
 	if err != nil {
 		return types.VideoProps{}, err
 	}
 
-	progress, err := database.C.GetUserVideoView(userId, videoId)
-	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			return video, nil
+	if options.WithProgress {
+		progress, err := database.C.GetUserVideoView(userId, videoId)
+		if err != nil {
+			if errors.Is(err, db.ErrNotFound) {
+				return video, nil
+			}
+			return types.VideoProps{}, err
 		}
-		return types.VideoProps{}, err
+		video.Progress = progress.Progress
 	}
 
-	video.Progress = progress.Progress
+	if options.WithSegments {
+		segments, err := sponsorblock.C.GetVideoSegments(videoId)
+		if err != nil {
+			return types.VideoProps{}, err
+		}
+		err = video.AddSegments(segments...)
+		if err != nil {
+			return types.VideoProps{}, err
+		}
+	}
+
 	return video, nil
 }
 

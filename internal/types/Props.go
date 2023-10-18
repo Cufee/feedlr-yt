@@ -1,7 +1,11 @@
 package types
 
 import (
+	"log"
+
+	"github.com/byvko-dev/youtube-app/internal/api/sponsorblock"
 	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
+	"github.com/goccy/go-json"
 )
 
 type NavbarProps struct {
@@ -51,8 +55,35 @@ type ChannelWithVideosProps struct {
 
 type VideoProps struct {
 	yt.Video
-	ChannelID string
-	Progress  int
+	ChannelID    string
+	Progress     int
+	segments     []VideoSegmentProps
+	SegmentsJSON string // JSON encoded []Segment
+}
+
+type VideoSegmentProps struct {
+	Start int `json:"start"`
+	End   int `json:"end"`
+}
+
+func (v *VideoProps) AddSegments(segments ...sponsorblock.Segment) error {
+	for _, segment := range segments {
+		if len(segment.Segment) != 2 {
+			log.Printf("segment %v for video %v has invalid length", segment, v.ID)
+			continue
+		}
+		v.segments = append(v.segments, VideoSegmentProps{
+			Start: int(segment.Segment[0]),
+			End:   int(segment.Segment[1]),
+		})
+	}
+
+	encoded, err := json.Marshal(v.segments)
+	if err != nil {
+		return err
+	}
+	v.SegmentsJSON = string(encoded)
+	return nil
 }
 
 func VideoToProps(video yt.Video, channelId string) VideoProps {

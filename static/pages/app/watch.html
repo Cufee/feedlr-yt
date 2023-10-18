@@ -22,6 +22,7 @@
 
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
+  // Setup YouTube iframe player
   document.getElementById("close-button")?.addEventListener("click", saveProgress)
   setInterval(saveProgress, 10000)
 
@@ -55,12 +56,40 @@
       saveProgress()
     }
   }
+
+  var lastProgress = 0
   function saveProgress() {
-    fetch("/api/videos/{{ .ID }}/progress?progress=" + (Math.floor(player.getCurrentTime())), {
+    var currentTime = Math.floor(player.getCurrentTime())
+    if (lastProgress === currentTime) return true
+    lastProgress = currentTime
+
+    fetch("/api/videos/{{ .ID }}/progress?progress=" + currentTime, {
       method: 'POST',
       credentials: 'include'
     })
     return true
+  }
+
+  // Setup SponsorBlock
+  var segmentsStr = '{{ .SegmentsJSON }}'
+  var segments = []
+  try {
+    segments = JSON.parse(segmentsStr)
+  } catch (error) {
+    console.info("no sponsorblock segments found")
+  }
+
+  if (segments.length > 0) {
+    setInterval(() => {
+      if (player && player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING) {
+        var currentTime = player.getCurrentTime()
+        var segment = segments.find(segment => segment.start <= currentTime && segment.end >= currentTime)
+        if (segment) {
+          console.info("skipping segment")
+          player.seekTo(segment.end, true)
+        }
+      }
+    }, 1000)
   }
 </script>
 
