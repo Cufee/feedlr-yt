@@ -1,0 +1,18 @@
+package layouts
+
+import (
+  "github.com/byvko-dev/youtube-app/internal/templates/layouts/partials"
+)
+
+templ Main() {
+	<html lang="en" class="h-full">
+		@partials.Head()
+		<body class="flex flex-col justify-between h-full p-2 mx-auto max-w-7xl" hx-ext="morph">
+			<div id="content" class="flex flex-col flex-grow">
+				{ children... }
+			</div>
+			@partials.Footer()
+		</body>
+	</html>
+}
+
