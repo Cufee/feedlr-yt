@@ -16,6 +16,7 @@ require (
 	github.com/shopspring/decimal v1.3.1
 	github.com/steebchen/prisma-client-go v0.25.0
 	github.com/takuoki/gocase v1.1.1
+	github.com/tdewolff/minify/v2 v2.12.9
 	golang.org/x/text v0.13.0
 )
 
@@ -42,6 +43,7 @@ require (
 	github.com/redis/go-redis/v9 v9.2.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
+	github.com/tdewolff/parse/v2 v2.6.8 // indirect
 	github.com/tinylib/msgp v1.1.8 // indirect
 	go.devnw.com/structs v1.0.0 // indirect
 	go.opencensus.io v0.24.0 // indirect

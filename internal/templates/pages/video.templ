@@ -28,8 +28,8 @@ templ Video(props types.VideoPlayerProps) {
 templ videoPlayer(player types.VideoPlayerProps) {
 	<div id="player"></div>
 	<script id="" src="https://www.youtube.com/iframe_api"></script>
-	@shared.EmbedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
-	@shared.EmbedScript(youtubePlayerInit(player.Video.ID, player.Video.Progress, player.ReportProgress), player.Video.ID, player.Video.Progress, player.ReportProgress)
+	@shared.EmbedMinifiedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
+	@shared.EmbedMinifiedScript(youtubePlayerInit(player.Video.ID, player.Video.Progress, player.ReportProgress), player.Video.ID, player.Video.Progress, player.ReportProgress)
 }
 
 templ buttonLogin() {
