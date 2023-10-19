@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/byvko-dev/youtube-app/internal/logic"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -29,5 +30,5 @@ func SaveVideoProgressHandler(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	return c.Render("components/video-tile", props.Video, c.Locals("layout").(string))
+	return c.Render("layouts/blank", subscriptions.VideoTile(props.Video))
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/byvko-dev/youtube-app/internal/auth"
 	root "github.com/byvko-dev/youtube-app/internal/server/handlers"
+	apiHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/api"
 	appHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/app"
 	"github.com/byvko-dev/youtube-app/internal/server/handlers/video"
 	"github.com/byvko-dev/youtube-app/internal/templates"
@@ -37,20 +38,18 @@ func New(port ...int) func() error {
 		// Root/Error and etc
 		server.Get("/", root.LandingHandler)
 		server.Get("/error", root.ErrorHandler)
-		// // Auth/Login
+		// Auth/Login
 		// server.Get("/login", ui.LoginHandler)
 		// server.Get("/login/redirect", ui.LoginRedirectHandler)
 		// server.Get("/login/verify", auth.LoginVerifyHandler)
-		// // server.Post("/login/verify", auth.LoginVerifyHandler) TODO: This should accept a code as fallback
+		// server.Post("/login/verify", auth.LoginVerifyHandler) TODO: This should accept a code as fallback
 		// server.Post("/login/start", auth.LoginStartHandler)
 
 		// Routes with unique auth handlers
 		server.Get("/video/:id", video.VideoHandler)
 
-		// api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
-		// api.All("/noop", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
-
-		// api.Post("/videos/:id/progress", apiHandlers.SaveVideoProgressHandler)
+		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
+		api.Post("/videos/:id/progress", apiHandlers.SaveVideoProgressHandler)
 
 		// api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
 		// api.Post("/channels/:id/favorite", apiHandlers.FavoriteChannelHandler)
