@@ -54,7 +54,7 @@ func generateLayoutsTree() {
 		}
 	}
 	generatedFile += ")\n\n"
-	generatedFile += "var layouts = make(map[string]func (...templ.Component) templ.Component)\n\n"
+	generatedFile += "var layouts = make(map[string]func(...templ.Component) templ.Component)\n\n"
 	generatedFile += "func init() {\n"
 	for absPath, _ := range fns {
 		shortPath := strings.ReplaceAll(absPath, basePath+"/", "")

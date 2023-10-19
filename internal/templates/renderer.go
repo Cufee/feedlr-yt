@@ -2,21 +2,40 @@ package templates
 
 import (
 	"context"
+	"io"
 
 	"github.com/a-h/templ"
-	"github.com/gofiber/fiber/v2"
 )
 
 //go:generate templ generate
 
-func Render(c *fiber.Ctx, component templ.Component) error {
-	templBuffer := templ.GetBuffer()
-	defer templ.ReleaseBuffer(templBuffer)
-	ctx := templ.InitializeContext(context.Background())
-	err := component.Render(ctx, templBuffer)
-	if err != nil {
+type renderer struct {
+	layouts map[string]func(...templ.Component) templ.Component
+}
+
+var FiberEngine *renderer = &renderer{}
+
+func (r *renderer) Load() error {
+	r.layouts = layouts
+	return nil
+}
+
+func (r *renderer) Render(w io.Writer, layoutName string, component interface{}, _ ...string) error {
+	child, ok := component.(templ.Component)
+	if !ok {
+		_, err := w.Write([]byte("invalid component type, expected templ.Component"))
 		return err
 	}
-	c.Set("Content-Type", "text/html; charset=utf-8")
-	return c.Send(templBuffer.Bytes())
+
+	if len(layouts) == 0 {
+		return child.Render(context.Background(), w)
+	}
+
+	layout, ok := r.layouts[layoutName]
+	if !ok {
+		_, err := w.Write([]byte("invalid layout name"))
+		return err
+	}
+
+	return layout(child).Render(context.Background(), w)
 }

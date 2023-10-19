@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/byvko-dev/youtube-app/internal/templates"
 	"github.com/byvko-dev/youtube-app/internal/templates/pages/app"
 	"github.com/gofiber/fiber/v2"
 )
@@ -24,5 +23,5 @@ func AppHandler(c *fiber.Ctx) error {
 	// 	return c.Redirect("/error?message=Something went wrong")
 	// }
 
-	return templates.Render(c, app.AppHome())
+	return c.Render("layouts/main", app.AppHome())
 }

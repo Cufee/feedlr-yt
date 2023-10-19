@@ -1,13 +1,16 @@
 package pages
 
 import (
-  "github.com/byvko-dev/youtube-app/internal/templates/layouts"
   "github.com/byvko-dev/youtube-app/internal/templates/components/shared"
 )
 
 templ Error(message string) {
-	@layouts.Main() {
+    <head>
+        <title>Feedlr - Error</title>
+    </head>
+
     <div id="error" class="flex flex-col items-center self-center justify-center gap-4 m-auto">
+
         <a href="/app">
             @shared.Logo("128")
         </a>
@@ -35,6 +38,5 @@ templ Error(message string) {
             </a>
         </div>
     </div>
-	}
 }
 

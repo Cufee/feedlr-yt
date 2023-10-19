@@ -1,7 +1,6 @@
 package root
 
 import (
-	"github.com/byvko-dev/youtube-app/internal/templates"
 	"github.com/byvko-dev/youtube-app/internal/templates/pages"
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,5 +16,5 @@ func LandingHandler(c *fiber.Ctx) error {
 	// 	c.ClearCookie("session_id")
 	// }
 
-	return templates.Render(c, pages.Landing())
+	return c.Render("layouts/main", pages.Landing())
 }

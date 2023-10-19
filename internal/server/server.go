@@ -7,6 +7,7 @@ import (
 	"github.com/byvko-dev/youtube-app/internal/auth"
 	root "github.com/byvko-dev/youtube-app/internal/server/handlers"
 	appHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/app"
+	"github.com/byvko-dev/youtube-app/internal/templates"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
@@ -22,7 +23,10 @@ func New(port ...int) func() error {
 	}
 
 	return func() error {
-		server := fiber.New(fiber.Config{})
+		server := fiber.New(fiber.Config{
+			Views:             templates.FiberEngine,
+			PassLocalsToViews: true,
+		})
 		server.Use(logger.New())
 
 		server.Static("/static", "./static/served", fiber.Static{

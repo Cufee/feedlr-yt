@@ -3,7 +3,6 @@ package root
 import (
 	"fmt"
 
-	"github.com/byvko-dev/youtube-app/internal/templates"
 	"github.com/byvko-dev/youtube-app/internal/templates/pages"
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,5 +16,5 @@ func ErrorHandler(c *fiber.Ctx) error {
 		message = fmt.Sprintf("Page \"%s\" does not exist or was moved.", from)
 	}
 
-	return templates.Render(c, pages.Error(message))
+	return c.Render("layouts/main", pages.Error(message))
 }
