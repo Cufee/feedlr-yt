@@ -1,7 +1,7 @@
-package templates
+package main
 
 import "testing"
 
 func TestGenerateComponentsTree(t *testing.T) {
-	generateComponentsTree()
+	generateLayoutsTree()
 }

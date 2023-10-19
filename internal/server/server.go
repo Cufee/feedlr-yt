@@ -7,9 +7,9 @@ import (
 	"github.com/byvko-dev/youtube-app/internal/auth"
 	apiHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/api"
 	"github.com/byvko-dev/youtube-app/internal/server/handlers/ui"
+	"github.com/byvko-dev/youtube-app/internal/templates"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/gofiber/template/html/v2"
 )
 
 var rootDir = "./static"
@@ -23,7 +23,7 @@ func New(port ...int) func() error {
 
 	return func() error {
 		server := fiber.New(fiber.Config{
-			Views:             html.New(rootDir, ".html"),
+			Views:             templates.FiberEngine,
 			ViewsLayout:       "layouts/main",
 			PassLocalsToViews: true,
 		})

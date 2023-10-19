@@ -12,7 +12,7 @@ tasks:
       - air
   generate:
     cmds:
-      - templ generate
+      - go generate ./internal/...
   build:
     deps: [db:generate, test, generate]
     cmds:

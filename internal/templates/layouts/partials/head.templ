@@ -1,19 +1,18 @@
 package partials
 
-templ Head() {
+templ Head(content templ.Component) {
 	<head>
-    <meta charset="UTF-8" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/static/favicon.png" />
-    <script src="/static/js/htmx.min.js"></script>
-    <script src="/static/js/_hyperscript.min.js"></script>
-    <link href="/static/css/animate.min.css" rel="stylesheet" />
-    <link href="/static/css/daisyui.css" rel="stylesheet" type="text/css" />
-    <script src="/static/js/tailwind.js"></script>
-    <link rel="manifest" href="/static/app.webmanifest" />
-
-    { children... }
-  </head>
+		<meta charset="UTF-8"/>
+		<meta name="color-scheme" content="dark"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link rel="icon" type="image/png" href="/static/favicon.png"/>
+		<script src="/static/js/htmx.min.js"></script>
+		<script src="/static/js/_hyperscript.min.js"></script>
+		<link href="/static/css/animate.min.css" rel="stylesheet"/>
+		<link href="/static/css/daisyui.css" rel="stylesheet" type="text/css"/>
+		<script src="/static/js/tailwind.js"></script>
+		<link rel="manifest" href="/static/app.webmanifest"/>
+		{! content }
+	</head>
 }
 

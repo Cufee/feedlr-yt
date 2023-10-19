@@ -3,16 +3,16 @@ tmp_dir = "tmp"
 
 [build]
 bin = "./tmp/main"
-cmd = "templ generate && go build -o ./tmp/main ."
+cmd = "task generate && go build -o ./tmp/main ."
 delay = 1000
 exclude_dir = ["assets", "tmp", "vendor"]
 exclude_file = []
-exclude_regex = [".*_templ.go"]
+exclude_regex = [".*_templ.go", "*_gen.go"]
 exclude_unchanged = false
 follow_symlink = false
 full_bin = ""
 include_dir = []
-include_ext = ["go", "tpl", "tmpl", "templ", "html"]
+include_ext = ["go", "tpl", "tmpl", "templ", "html", "prisma"]
 kill_delay = "0s"
 log = "build-errors.log"
 send_interrupt = false
