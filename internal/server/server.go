@@ -4,7 +4,9 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/byvko-dev/youtube-app/internal/auth"
 	root "github.com/byvko-dev/youtube-app/internal/server/handlers"
+	appHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/app"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
@@ -51,8 +53,8 @@ func New(port ...int) func() error {
 		// api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 
 		// // All routes used by HTMX should have a POST handler
-		// app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)
-		// app.Get("/", ui.AppHandler).Post("/", ui.AppHandler)
+		app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)
+		app.Get("/", appHandlers.AppHandler).Post("/", appHandlers.AppHandler)
 		// app.Get("/onboarding", ui.OnboardingHandler)
 		// app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)
 

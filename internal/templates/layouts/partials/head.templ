@@ -1,6 +1,6 @@
 package partials
 
-templ Head() {
+templ Head(content ...templ.Component) {
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="color-scheme" content="dark"/>
@@ -12,6 +12,9 @@ templ Head() {
 		<link href="/static/css/daisyui.css" rel="stylesheet" type="text/css"/>
 		<script src="/static/js/tailwind.js"></script>
 		<link rel="manifest" href="/static/app.webmanifest"/>
+		for _, c := range content {
+			@c
+		}
 		{ children... }
 	</head>
 }

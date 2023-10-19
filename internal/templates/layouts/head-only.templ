@@ -4,10 +4,13 @@ import (
   "github.com/byvko-dev/youtube-app/internal/templates/layouts/partials"
 )
 
-templ HeadOnly() {
+templ HeadOnly(content ...templ.Component) {
 	<html lang="en" class="h-full">
 		@partials.Head()
 		<body class="h-full">
+			for _, c := range content {
+				@c
+			}
 			{ children... }
 		</body>
 	</html>
