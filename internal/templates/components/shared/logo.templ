@@ -1,7 +1,8 @@
 package shared
 
+import "fmt"
+
 templ Logo(size string) {
-  <div class="flex flex-row items-center select-none cursor-inherit">
-    <img draggable="false" src="/static/icon-{size}.png" alt="Feedlr" class="w-16 h-16" />
-  </div>
+	<div class="flex flex-row items-center select-none cursor-inherit"><img draggable="false" src={ fmt.Sprintf("/static/icon-%s.png", size) } alt="Feedlr"/></div>
 }
+

@@ -4,11 +4,11 @@ import (
   "github.com/byvko-dev/youtube-app/internal/templates/layouts/partials"
 )
 
-templ HeadOnly(content templ.Component) {
+templ HeadOnly() {
 	<html lang="en" class="h-full">
-		@partials.Head(nil)
+		@partials.Head()
 		<body class="h-full">
-			{! content }
+			{ children... }
 		</body>
 	</html>
 }
