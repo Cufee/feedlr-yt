@@ -7,6 +7,7 @@ import (
 	"github.com/byvko-dev/youtube-app/internal/auth"
 	root "github.com/byvko-dev/youtube-app/internal/server/handlers"
 	appHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/app"
+	"github.com/byvko-dev/youtube-app/internal/server/handlers/video"
 	"github.com/byvko-dev/youtube-app/internal/templates"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -43,8 +44,8 @@ func New(port ...int) func() error {
 		// // server.Post("/login/verify", auth.LoginVerifyHandler) TODO: This should accept a code as fallback
 		// server.Post("/login/start", auth.LoginStartHandler)
 
-		// // Routes with unique auth handlers
-		// server.Get("/video/:id", ui.VideoHandler)
+		// Routes with unique auth handlers
+		server.Get("/video/:id", video.VideoHandler)
 
 		// api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
 		// api.All("/noop", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })

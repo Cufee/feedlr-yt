@@ -1,4 +1,4 @@
-package main
+package gen
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 )
 
@@ -17,25 +18,31 @@ type Import struct {
 	name string
 }
 
-func main() {
-	generateLayoutsTree()
-}
-
 func generateLayoutsTree() {
-	basePath, err := filepath.Abs("../")
+	fmt.Println("Started generating layouts_gen.go...")
+
+	// Get tha path to a directory where this file is located.
+	_, filename, _, ok := runtime.Caller(1)
+	if !ok {
+		panic("No caller information")
+	}
+	// Get the path to the package and base path to the layouts directory.
+	packagePath := strings.ReplaceAll(reflect.TypeOf(Import{}).PkgPath(), "/gen", "")
+	basePath, err := filepath.Abs(filepath.Join(filepath.Dir(filename), "../"))
 	if err != nil {
 		panic(err)
 	}
 
+	// Parse all functions from the layouts directory.
 	fns, err := parseDirectoryFunctions(basePath, "layouts")
 	if err != nil {
 		panic(err)
 	}
 
+	// Generate a slice of import statements.
 	imports := []Import{
 		{path: "github.com/a-h/templ"},
 	}
-	packagePath := strings.ReplaceAll(reflect.TypeOf(Import{}).PkgPath(), "/gen", "")
 	for absPath := range fns {
 		shortPath := strings.ReplaceAll(absPath, basePath+"/", "")
 		importPath := path.Join(packagePath, shortPath)
@@ -43,6 +50,7 @@ func generateLayoutsTree() {
 		imports = append(imports, Import{path: importPath, name: importName})
 	}
 
+	// Generate the contents of layouts_gen.go.
 	var generatedFile string
 	generatedFile += "package templates\n\n"
 	generatedFile += "import (\n"
@@ -56,7 +64,7 @@ func generateLayoutsTree() {
 	generatedFile += ")\n\n"
 	generatedFile += "var layouts = make(map[string]func(...templ.Component) templ.Component)\n\n"
 	generatedFile += "func init() {\n"
-	for absPath, _ := range fns {
+	for absPath := range fns {
 		shortPath := strings.ReplaceAll(absPath, basePath+"/", "")
 		for _, fn := range fns[absPath] {
 			mapKey := filepath.Join(shortPath, fn.Name.Name)
@@ -68,6 +76,7 @@ func generateLayoutsTree() {
 	}
 	generatedFile += "}\n"
 
+	// Write the contents to layouts_gen.go.
 	generatedFilePath := filepath.Join(basePath, "layouts_gen.go")
 	f, err := os.OpenFile(generatedFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
@@ -80,7 +89,7 @@ func generateLayoutsTree() {
 		panic(err)
 	}
 
-	fmt.Println("Generated layouts_gen.go")
+	fmt.Println("Done generating layouts_gen.go")
 }
 
 func parseDirectoryFunctions(base, name string) (map[string][]ast.FuncDecl, error) {

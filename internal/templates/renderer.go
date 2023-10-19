@@ -9,6 +9,9 @@ import (
 
 //go:generate templ generate
 
+// This should be done properly, but for now it's ok.
+//go:generate go test -v "github.com/byvko-dev/youtube-app/internal/templates/gen"
+
 type renderer struct {
 	layouts map[string]func(...templ.Component) templ.Component
 }
@@ -21,21 +24,23 @@ func (r *renderer) Load() error {
 }
 
 func (r *renderer) Render(w io.Writer, layoutName string, component interface{}, _ ...string) error {
-	child, ok := component.(templ.Component)
-	if !ok {
-		_, err := w.Write([]byte("invalid component type, expected templ.Component"))
+	layout := layouts["layouts/blank"]
+	selectedLayout, ok := r.layouts[layoutName]
+	if ok {
+		layout = selectedLayout
+	}
+
+	// Component can be a single component or a slice of components.
+	var children []templ.Component
+	switch component := component.(type) {
+	case templ.Component:
+		children = []templ.Component{component}
+	case []templ.Component:
+		children = component
+	default:
+		_, err := w.Write([]byte("invalid component type, expected templ.Component/[]templ.Component"))
 		return err
 	}
 
-	if len(layouts) == 0 {
-		return child.Render(context.Background(), w)
-	}
-
-	layout, ok := r.layouts[layoutName]
-	if !ok {
-		_, err := w.Write([]byte("invalid layout name"))
-		return err
-	}
-
-	return layout(child).Render(context.Background(), w)
+	return layout(children...).Render(context.Background(), w)
 }
