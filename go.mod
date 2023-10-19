@@ -3,12 +3,13 @@ module github.com/byvko-dev/youtube-app
 go 1.20
 
 require (
+	github.com/PuerkitoBio/goquery v1.8.1
+	github.com/a-h/templ v0.2.408
 	github.com/auth0/go-auth0 v1.1.0
 	github.com/go-co-op/gocron v1.35.2
 	github.com/goccy/go-json v0.10.2
 	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/gofiber/storage/redis/v3 v3.0.0
-	github.com/gofiber/template/html/v2 v2.0.5
 	github.com/iancoleman/strcase v0.3.0
 	github.com/joho/godotenv v1.5.1
 	github.com/segmentio/ksuid v1.0.4
@@ -22,7 +23,7 @@ require (
 	cloud.google.com/go/compute v1.23.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/PuerkitoBio/rehttp v1.3.0 // indirect
-	github.com/a-h/templ v0.2.408 // indirect
+	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -56,8 +57,6 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.0.6 // indirect
-	github.com/gofiber/template v1.8.2 // indirect
-	github.com/gofiber/utils v1.1.0 // indirect
 	github.com/google/uuid v1.3.1
 	github.com/klauspost/compress v1.17.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

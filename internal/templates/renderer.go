@@ -2,9 +2,13 @@ package templates
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"strings"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/a-h/templ"
+	"golang.org/x/exp/slices"
 )
 
 //go:generate templ generate
@@ -42,5 +46,49 @@ func (r *renderer) Render(w io.Writer, layoutName string, component interface{},
 		return err
 	}
 
-	return layout(children...).Render(context.Background(), w)
+	// Render the layout with the children to a buffer.
+	buf := templ.GetBuffer()
+	defer templ.ReleaseBuffer(buf)
+	err := layout(children...).Render(templ.InitializeContext(context.Background()), buf)
+	if err != nil {
+		return err
+	}
+
+	// Merge head tags.
+	html, err := mergeHeadTags(buf.String())
+	if err != nil {
+		fmt.Println(err)
+		_, err = w.Write(buf.Bytes())
+		return err
+	}
+
+	_, err = w.Write([]byte(html))
+	return err
+}
+
+func mergeHeadTags(content string) (string, error) {
+	headTags := []string{"meta", "link", "title", "style"}
+	uniqueTags := []string{"title"}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(content))
+	if err != nil {
+		return "", err
+	}
+
+	var headTagNodes []*goquery.Selection
+	for _, tag := range headTags {
+		doc.Find("body").Find(tag).Each(func(i int, s *goquery.Selection) {
+			headTagNodes = append(headTagNodes, s.Remove())
+		})
+	}
+
+	for _, node := range headTagNodes {
+		name := node.Get(0).Data
+		if slices.Contains(uniqueTags, name) {
+			doc.Find("head").Find(name).Remove()
+		}
+		doc.Find("head").AppendSelection(node)
+	}
+
+	return doc.Html()
 }
