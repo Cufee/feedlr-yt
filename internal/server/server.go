@@ -31,15 +31,15 @@ func New(port ...int) func() error {
 		})
 		server.Use(logger.New())
 
-		server.Static("/static", "./static/served", fiber.Static{
+		server.Static("/assets", "./assets", fiber.Static{
 			Compress: true,
 		})
 
 		// Root/Error and etc
-		server.Get("/", root.LandingHandler)
-		server.Get("/error", root.ErrorHandler)
+		server.Get("/", root.GerOrPosLanding).Post("/", root.GerOrPosLanding)
+		server.Get("/error", root.GetOrPostError).Post("/error", root.GetOrPostError)
 		// Auth/Login
-		// server.Get("/login", ui.LoginHandler)
+		server.Get("/login", root.GetOrPostLogin).Post("/login", root.GetOrPostLogin)
 		// server.Get("/login/redirect", ui.LoginRedirectHandler)
 		// server.Get("/login/verify", auth.LoginVerifyHandler)
 		// server.Post("/login/verify", auth.LoginVerifyHandler) TODO: This should accept a code as fallback
@@ -49,21 +49,19 @@ func New(port ...int) func() error {
 		server.Get("/video/:id", video.VideoHandler)
 
 		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
-		api.Post("/videos/:id/progress", apiHandlers.SaveVideoProgressHandler)
+		api.Post("/videos/:id/progress", apiHandlers.PostSaveVideoProgress)
 
 		// api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
-		// api.Post("/channels/:id/favorite", apiHandlers.FavoriteChannelHandler)
+		api.Post("/channels/:id/favorite", apiHandlers.PostFavoriteChannel)
 		// api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
 		// api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 
-		// // All routes used by HTMX should have a POST handler
+		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)
-		app.Get("/", appHandlers.AppHandler).Post("/", appHandlers.AppHandler)
+		app.Get("/", appHandlers.GetOrPostApp).Post("/", appHandlers.GetOrPostApp)
 		// app.Get("/onboarding", ui.OnboardingHandler)
 		// app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)
-
-		// channels := app.Group("/channels")
-		// channels.Get("/manage", ui.ManageChannelsAddHandler).Post("/manage", ui.ManageChannelsAddHandler)
+		// app.Get("/subscriptions", ui.ManageChannelsAddHandler).Post("/manage", ui.ManageChannelsAddHandler)
 
 		// This last handler is a catch-all for any routes that don't exist
 		server.Use(func(c *fiber.Ctx) error {

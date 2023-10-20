@@ -49,7 +49,7 @@ templ ChannelTile(channel types.ChannelWithVideosProps) {
 
 
 templ ChannelFavoriteButton(id string, favorite bool) {
-	<button class="btn btn-sm btn-ghost btn-square" hx-post={ fmt.Sprintf("/api/channels/%s/favorite", id) } id="favorite-channel-button">
+	<button class="btn btn-sm btn-ghost btn-square" hx-post={ fmt.Sprintf("/api/channels/%s/favorite", id) } hx-target="this" hx-swap="outerHTML" id={ fmt.Sprintf("favorite-channel-button-%s", id) }>
 		if favorite {
 			<span class="text-yellow-500 hover:text-neutral-content">@icons.Bookmark()</span>
 		} else {

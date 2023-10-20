@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func ErrorHandler(c *fiber.Ctx) error {
+func GetOrPostError(c *fiber.Ctx) error {
 	message := c.Params("message", c.Query("message", "Something went wrong"))
 	code := c.Params("code", c.Query("code", ""))
 	from := c.Query("from")
@@ -15,6 +15,10 @@ func ErrorHandler(c *fiber.Ctx) error {
 	if code == "404" {
 		message = fmt.Sprintf("Page \"%s\" does not exist or was moved.", from)
 	}
+	layout := "layouts/app"
+	if c.Method() == "POST" || c.Get("HX-Request") != "" {
+		layout = "layouts/blank"
+	}
 
-	return c.Render("layouts/main", pages.Error(message))
+	return c.Render(layout, pages.Error(message))
 }

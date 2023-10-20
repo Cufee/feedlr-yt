@@ -91,20 +91,18 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 }
 
 script sponsorBlockInit(segments []types.SegmentProps) {
-	document.addEventListener("DOMContentLoaded", () => {
-		console.log("sponsorBlockInit", segments)
-		if (segments.length > 0) {
-			setInterval(() => {
-				if (window.feedlr_player && window.feedlr_player.getPlayerState && window.feedlr_player.getPlayerState() === YT.PlayerState.PLAYING) {
-					var currentTime = window.feedlr_player.getCurrentTime()
-					var segment = segments.find(segment => segment.start <= currentTime && segment.end >= currentTime)
-					if (segment) {
-						console.info("skipping segment")
-						window.feedlr_player.seekTo(segment.end, true)
-					}
+	console.log("sponsorBlockInit", segments)
+	if (segments.length > 0) {
+		setInterval(() => {
+			if (window.feedlr_player && window.feedlr_player.getPlayerState && window.feedlr_player.getPlayerState() === YT.PlayerState.PLAYING) {
+				var currentTime = window.feedlr_player.getCurrentTime()
+				var segment = segments.find(segment => segment.start <= currentTime && segment.end >= currentTime)
+				if (segment) {
+					console.info("skipping segment")
+					window.feedlr_player.seekTo(segment.end, true)
 				}
-			}, 1000)
-		}
-	})
+			}
+		}, 1000)
+	}
 }
 

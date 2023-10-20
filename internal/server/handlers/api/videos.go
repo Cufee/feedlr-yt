@@ -9,7 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func SaveVideoProgressHandler(c *fiber.Ctx) error {
+func PostSaveVideoProgress(c *fiber.Ctx) error {
 	video := c.Params("id")
 	user, _ := c.Locals("userId").(string)
 	progress, _ := strconv.Atoi(c.Query("progress"))

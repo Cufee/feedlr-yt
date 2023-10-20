@@ -1,0 +1,19 @@
+package partials
+
+import "github.com/byvko-dev/youtube-app/internal/templates/components/shared"
+
+templ Navbar(...templ.Component) {
+	<div class="flex flex-row items-center justify-between gap-2" id="components-navbar" hx-boost="true" hx-push-url="true"
+		hx-target="#main" hx-swap="innerHTML">
+		<div class="flex flex-row gap-2">
+			<button hx-post="/app">
+					@shared.Logo("64")
+			</button>
+		</div>
+		<div>
+			<button class="btn btn-neutral" hx-post="/app/subscriptions">
+				Subscriptions
+			</button>
+		</div>
+	</div>
+}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/byvko-dev/youtube-app/internal/database"
 	"github.com/byvko-dev/youtube-app/internal/logic"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -57,7 +58,7 @@ func UnsubscribeHandler(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func FavoriteChannelHandler(c *fiber.Ctx) error {
+func PostFavoriteChannel(c *fiber.Ctx) error {
 	id := c.Params("id")
 	userId, _ := c.Locals("userId").(string)
 
@@ -67,8 +68,5 @@ func FavoriteChannelHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Render("components/favorite-channel-button", fiber.Map{
-		"ID":       id,
-		"Favorite": updated,
-	}, c.Locals("layout").(string))
+	return c.Render("layouts/blank", subscriptions.ChannelFavoriteButton(id, updated))
 }

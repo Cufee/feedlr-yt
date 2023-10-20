@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func AppHandler(c *fiber.Ctx) error {
+func GetOrPostApp(c *fiber.Ctx) error {
 	userId, _ := c.Locals("userId").(string)
 
 	subscriptions, err := logic.GetUserSubscriptionsProps(userId)
@@ -20,5 +20,10 @@ func AppHandler(c *fiber.Ctx) error {
 		return c.Redirect("/app/onboarding")
 	}
 
-	return c.Render("layouts/main", app.AppHome(*subscriptions))
+	layout := "layouts/app"
+	if c.Method() == "POST" {
+		layout = "layouts/blank"
+	}
+
+	return c.Render(layout, app.AppHome(*subscriptions))
 }
