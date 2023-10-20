@@ -1,19 +1,26 @@
 package partials
 
 import "github.com/byvko-dev/youtube-app/internal/templates/components/shared"
+import "github.com/byvko-dev/youtube-app/internal/templates/components/icons"
 
 templ Navbar(...templ.Component) {
-	<div class="flex flex-row items-center justify-between gap-2" id="components-navbar" hx-boost="true" hx-push-url="true"
-		hx-target="#main" hx-swap="innerHTML">
-		<div class="flex flex-row gap-2">
-			<button hx-post="/app">
-					@shared.Logo("64")
-			</button>
-		</div>
-		<div>
-			<button class="btn btn-neutral" hx-post="/app/subscriptions">
-				Subscriptions
-			</button>
+	<div id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator"
+		hx-target="#main" hx-swap="innerHTML" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
+		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 group">
+			<div class="flex flex-row gap-2">
+				<button hx-post="/app" class="relative group-[.htmx-request]:opacity-25">
+						<div class="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2 group-[.htmx-request]:visible invisible"><span class="loading loading-spinner loading-lg"></span></div>
+						@shared.Logo("64")
+				</button>
+			</div>
+			<div class="flex flex-row items-center gap-2">
+				<button class="btn btn-neutral nav-btn" hx-post="/app/subscriptions" title="Manage Subscriptions">
+					Subscriptions
+				</button>
+				<button class="btn btn-neutral nav-btn" hx-post="/app/settings" title="App Settings">
+					@icons.Settings()
+				</button>
+			</div>
 		</div>
 	</div>
 }
