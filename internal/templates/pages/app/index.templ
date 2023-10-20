@@ -2,15 +2,15 @@ package app
 
 import (
 	"github.com/byvko-dev/youtube-app/internal/types"
-	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/feed"
 )
 
 templ AppHome(props types.UserSubscriptionsFeedProps) {
 	<head><title>Feedlr - Subscriptions</title></head>
 
 	<div id="app-index" class="flex flex-col gap-4">
-		@subscriptions.ChannelsFeed(props.Favorites)
-		@subscriptions.ChannelsFeed(props.WithNewVideos)
+		@feed.ChannelsFeed(props.Favorites)
+		@feed.ChannelsFeed(props.WithNewVideos)
 
 		if len(props.WithoutNewVideos) > 0 {
 			<div class="relative flex flex-col items-center justify-start min-h-screen gap-1 text-center">
@@ -24,6 +24,6 @@ templ AppHome(props types.UserSubscriptionsFeedProps) {
 			</div>
 		}
 
-		@subscriptions.ChannelsFeed(props.WithoutNewVideos)
+		@feed.ChannelsFeed(props.WithoutNewVideos)
 	</div>
 }

@@ -1,0 +1,16 @@
+package app
+
+import	"github.com/byvko-dev/youtube-app/internal/types"
+import 	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
+
+templ Subscriptions(channels []types.ChannelProps) {
+	<head><title>Feedlr - Subscriptions</title></head>
+	
+  <div id="subscriptions" class="flex flex-col gap-4">
+    <span class="self-center text-xl font-bold">Your Subscriptions</span>
+    <div class="flex flex-row flex-wrap gap-2" id="subscriptions-list">
+      @subscriptions.SubscribedChannels(channels)
+    </div>
+  </div>
+}
+

@@ -5,7 +5,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func GetOrPostAppSettings(c *fiber.Ctx) error {
+func GetOrPostAppOnboarding(c *fiber.Ctx) error {
 	userId, _ := c.Locals("userId").(string)
 	_ = userId
 
@@ -14,5 +14,5 @@ func GetOrPostAppSettings(c *fiber.Ctx) error {
 		layout = "layouts/blank"
 	}
 
-	return c.Render(layout, app.Settings())
+	return c.Render(layout, app.Onboarding())
 }

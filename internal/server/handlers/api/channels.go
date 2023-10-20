@@ -5,7 +5,7 @@ import (
 
 	"github.com/byvko-dev/youtube-app/internal/database"
 	"github.com/byvko-dev/youtube-app/internal/logic"
-	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/feed"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -68,5 +68,5 @@ func PostFavoriteChannel(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Render("layouts/blank", subscriptions.ChannelFavoriteButton(id, updated))
+	return c.Render("layouts/blank", feed.ChannelFavoriteButton(id, updated))
 }

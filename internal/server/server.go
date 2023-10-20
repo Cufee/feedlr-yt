@@ -51,17 +51,17 @@ func New(port ...int) func() error {
 		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
 		api.Post("/videos/:id/progress", apiHandlers.PostSaveVideoProgress)
 
-		// api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
+		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
 		api.Post("/channels/:id/favorite", apiHandlers.PostFavoriteChannel)
-		// api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
-		// api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
+		api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
+		api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)
 		app.Get("/", appHandlers.GetOrPostApp).Post("/", appHandlers.GetOrPostApp)
-		// app.Get("/onboarding", ui.OnboardingHandler)
-		// app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)
-		// app.Get("/subscriptions", ui.ManageChannelsAddHandler).Post("/manage", ui.ManageChannelsAddHandler)
+		app.Get("/settings", appHandlers.GetOrPostAppSettings).Post("/settings", appHandlers.GetOrPostAppSettings)
+		app.Get("/onboarding", appHandlers.GetOrPostAppOnboarding).Post("/onboarding", appHandlers.GetOrPostAppOnboarding)
+		app.Get("/subscriptions", appHandlers.GetOrPostAppSubscriptions).Post("/subscriptions", appHandlers.GetOrPostAppSubscriptions)
 
 		// This last handler is a catch-all for any routes that don't exist
 		server.Use(func(c *fiber.Ctx) error {

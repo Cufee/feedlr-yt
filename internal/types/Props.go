@@ -8,6 +8,10 @@ import (
 	"github.com/goccy/go-json"
 )
 
+type Channel struct {
+	yt.Channel
+}
+
 type NavbarProps struct {
 	CurrentURL string
 	BackURL    string
@@ -15,12 +19,12 @@ type NavbarProps struct {
 }
 
 type ChannelProps struct {
-	yt.Channel
+	Channel
 	Favorite bool
 }
 
 type ChannelSearchResultProps struct {
-	yt.Channel
+	Channel
 	Subscribed bool
 }
 

@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/byvko-dev/youtube-app/internal/logic"
-	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/feed"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -30,5 +30,5 @@ func PostSaveVideoProgress(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	return c.Render("layouts/blank", subscriptions.VideoTile(props.Video))
+	return c.Render("layouts/blank", feed.VideoTile(props.Video))
 }
