@@ -19,6 +19,7 @@ type Video struct {
 	ID          string
 	URL         string
 	Title       string
+	Duration    int
 	Thumbnail   string
 	Description string
 }

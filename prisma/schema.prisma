@@ -30,9 +30,9 @@ model UserSettings {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String @unique
 
-  selectedInvidiousHost String?
+  sponsorBlockEnabled    Boolean  @default(true)
+  sponsorBlockCategories String[] @default([])
 
-  // @@index([userId], name: "userId")
   @@map("user_settings")
 }
 
@@ -59,6 +59,7 @@ model Video {
 
   url         String
   title       String
+  duration    Int     @default(0)
   thumbnail   String?
   description String  @db.String
 

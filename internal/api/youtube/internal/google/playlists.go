@@ -3,6 +3,7 @@ package google
 import (
 	"errors"
 	"sort"
+	"strconv"
 	"sync"
 
 	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
@@ -70,9 +71,11 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int) ([]yt.Video, er
 
 	var videos []yt.Video
 	for _, item := range validVideosSlice {
+		duration, _ := strconv.Atoi(item.ContentDetails.EndAt) // This could be incorrect as this indicated when a video should _stop playing_, not the duration, in some cases
 		videos = append(videos, yt.Video{
 			ID:          item.Snippet.ResourceId.VideoId,
 			Title:       item.Snippet.Title,
+			Duration:    duration,
 			Description: item.Snippet.Description,
 			Thumbnail:   item.Snippet.Thumbnails.High.Url,
 			URL:         c.buildVideoEmbedURL(item.Snippet.ResourceId.VideoId),

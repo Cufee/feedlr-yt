@@ -38,6 +38,7 @@ func CacheChannelVideos(channelIds ...string) error {
 				ID:          video.ID,
 				URL:         video.URL,
 				Title:       video.Title,
+				Duration:    video.Duration,
 				Description: video.Description,
 				Thumbnail:   video.Thumbnail,
 			})
