@@ -57,7 +57,7 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 	let player;
 	var frame = document.getElementById("player")
 	const waitForYT = setInterval(() => {
-		if (YT.loaded === 1) {
+		if (YT?.loaded === 1) {
 			clearInterval(waitForYT);
 			player = new YT.Player(frame, {
 				height: '100%',
