@@ -4,7 +4,7 @@ import "github.com/byvko-dev/youtube-app/internal/types"
 import "github.com/byvko-dev/youtube-app/internal/templates/components/feed"
 
 templ AppHome(props types.UserSubscriptionsFeedProps) {
-	<head><title>Feedlr - Subscriptions</title></head>
+	<head><title>Feedlr</title></head>
 
 	<div id="app-index" class="flex flex-col gap-4">
 		@feed.ChannelsFeed(props.Favorites)

@@ -8,7 +8,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/a-h/templ"
-	"golang.org/x/exp/slices"
 )
 
 //go:generate templ generate
@@ -68,7 +67,6 @@ func (r *renderer) Render(w io.Writer, layoutName string, component interface{},
 
 func mergeHeadTags(content string) (string, error) {
 	headTags := []string{"meta", "link", "title", "style"}
-	uniqueTags := []string{"title"}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(content))
 	if err != nil {
@@ -82,13 +80,27 @@ func mergeHeadTags(content string) (string, error) {
 		})
 	}
 
-	for _, node := range headTagNodes {
-		name := node.Get(0).Data
-		if slices.Contains(uniqueTags, name) {
-			doc.Find("head").Find(name).Remove()
+	for _, bodyNode := range headTagNodes {
+		name := bodyNode.Get(0).Data
+		head := doc.Find("head")
+		if head.Length() == 0 {
+			doc.Add("head").AppendSelection(bodyNode)
+			continue
 		}
-		doc.Find("head").AppendSelection(node)
+
+		currentHeadTags := head.Find(name)
+		currentHeadTags.Each(func(i int, s *goquery.Selection) {
+			if shouldMergeTags(s, bodyNode) {
+				s.Remove()
+				return
+			}
+		})
+		doc.Find("head").AppendSelection(bodyNode)
 	}
 
 	return doc.Html()
+}
+
+func shouldMergeTags(head, body *goquery.Selection) bool {
+	return body.Get(0).Data == "title" || (body.Get(0).Data == "meta" && (head.AttrOr("property", "#h") == body.AttrOr("property", "#b") || head.AttrOr("name", "#h") == body.AttrOr("name", "#b")))
 }

@@ -2,6 +2,7 @@
 tmp
 
 .vscode
+**/.DS_Store
 
 prisma/db
 .env
