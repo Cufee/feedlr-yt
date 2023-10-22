@@ -10,9 +10,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # prefetch the binaries
-COPY ./prisma/download.go ./prisma/download.go
-ENV PRISMA_CLI_QUERY_ENGINE_BINARY=/workspace/prisma/bin/engine
-RUN mv `go run prisma/download.go` $PRISMA_CLI_QUERY_ENGINE_BINARY
 RUN go run github.com/steebchen/prisma-client-go prefetch
 
 # install templ
