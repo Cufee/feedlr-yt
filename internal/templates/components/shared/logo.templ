@@ -1,0 +1,8 @@
+package shared
+
+import "fmt"
+
+templ Logo(size string) {
+	<div class="flex flex-row items-center pointer-events-none select-none cursor-inherit"><img draggable="false" src={ fmt.Sprintf("/assets/icon-%s.png", size) } alt="Feedlr"/></div>
+}
+

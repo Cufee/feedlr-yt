@@ -43,7 +43,8 @@ func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 	var channel yt.Channel
 	channel.ID = res.Items[0].Id
 	channel.Title = res.Items[0].Snippet.Title
-	channel.Thumbnail = res.Items[0].Snippet.Thumbnails.High.Url
+	channel.Thumbnail = res.Items[0].Snippet.Thumbnails.Medium.Url
+	channel.Description = res.Items[0].Snippet.Description
 
 	return &channel, nil
 }

@@ -5,10 +5,11 @@ import (
 	"strconv"
 
 	"github.com/byvko-dev/youtube-app/internal/logic"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/feed"
 	"github.com/gofiber/fiber/v2"
 )
 
-func SaveVideoProgressHandler(c *fiber.Ctx) error {
+func PostSaveVideoProgress(c *fiber.Ctx) error {
 	video := c.Params("id")
 	user, _ := c.Locals("userId").(string)
 	progress, _ := strconv.Atoi(c.Query("progress"))
@@ -29,5 +30,5 @@ func SaveVideoProgressHandler(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	return c.Render("components/video-tile", props.Video, c.Locals("layout").(string))
+	return c.Render("layouts/blank", feed.VideoTile(props.Video))
 }

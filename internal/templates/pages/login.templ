@@ -1,0 +1,34 @@
+package pages
+
+templ Login() {
+	<head>
+		<title>Feedlr - Login</title>
+	</head>
+
+	<div id="login" class="flex flex-col items-center self-center justify-center gap-4 m-auto">
+		<div>
+			<span class="text-2xl font-bold text-center">Feedlr uses magic links for login - No passwords required!</span>
+		</div>
+		<form class="join" hx-post="/login/start">
+			<input placeholder="Enter your email" name="email" type="email"
+				class="w-full max-w-xs input input-bordered join-item" />
+			<button class="btn btn-primary join-item">Log In</button>
+		</form>
+	</div>
+}
+
+
+templ LoginRedirect() {
+	<head>
+		<title>Feedlr - Login</title>
+	</head>
+
+	<script>
+		if (window.location.hash.length > 1) {
+			window.location.href = `/login/verify?${window.location.hash.slice(1)}`;
+		} else {
+			window.location.href = `/login`;
+		}
+	</script>
+}
+

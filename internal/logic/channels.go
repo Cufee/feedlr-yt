@@ -23,11 +23,12 @@ func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 	for _, sub := range subscriptions {
 		channel := sub.Channel()
 		c := types.ChannelProps{
-			Channel: client.Channel{
+			Channel: types.Channel{Channel: client.Channel{
 				ID:          sub.ChannelID,
 				URL:         channel.URL,
 				Title:       channel.Title,
 				Description: channel.Description,
+			},
 			},
 			Favorite: sub.IsFavorite,
 		}
@@ -74,7 +75,7 @@ func SearchChannels(userId, query string, limit int) ([]types.ChannelSearchResul
 	var props []types.ChannelSearchResultProps
 	for _, c := range channels {
 		props = append(props, types.ChannelSearchResultProps{
-			Channel:    c,
+			Channel:    types.Channel{Channel: c},
 			Subscribed: slice.Contains(subscriptions, c.ID),
 		})
 		// Cache all channels to make subsequent requests faster

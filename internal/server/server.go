@@ -5,70 +5,63 @@ import (
 	"strconv"
 
 	"github.com/byvko-dev/youtube-app/internal/auth"
+	root "github.com/byvko-dev/youtube-app/internal/server/handlers"
 	apiHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/api"
-	"github.com/byvko-dev/youtube-app/internal/server/handlers/ui"
+	appHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/app"
+	"github.com/byvko-dev/youtube-app/internal/server/handlers/video"
+	"github.com/byvko-dev/youtube-app/internal/templates"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/gofiber/template/html/v2"
-)
 
-var rootDir = "./static"
+	_ "github.com/joho/godotenv/autoload"
+)
 
 func New(port ...int) func() error {
 	var portString string
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
+	} else {
+		portString = os.Getenv("PORT")
 	}
-	portString = os.Getenv("PORT")
 
 	return func() error {
 		server := fiber.New(fiber.Config{
-			Views:             html.New(rootDir, ".html"),
-			ViewsLayout:       "layouts/main",
+			Views:             templates.FiberEngine,
 			PassLocalsToViews: true,
 		})
 		server.Use(logger.New())
 
-		server.Static("/static", "./static/served", fiber.Static{
+		server.Static("/assets", "./assets", fiber.Static{
 			Compress: true,
 		})
 
-		server.Use(func(c *fiber.Ctx) error {
-			addRouteLayout(c)
-			return c.Next()
-		})
-
 		// Root/Error and etc
-		server.Get("/", ui.LandingHandler)
-		server.Get("/error", ui.ErrorHandler)
+		server.Get("/", root.GerOrPosLanding).Post("/", root.GerOrPosLanding)
+		server.All("/429", root.RateLimitedHandler)
+		server.Get("/error", root.GetOrPostError).Post("/error", root.GetOrPostError)
 		// Auth/Login
-		server.Get("/login", ui.LoginHandler)
-		server.Get("/login/redirect", ui.LoginRedirectHandler)
-		server.Get("/login/verify", auth.LoginVerifyHandler)
-		// server.Post("/login/verify", auth.LoginVerifyHandler) TODO: This should accept a code as fallback
+		server.Get("/login", root.GetLogin)
+		server.Get("/login/redirect", root.GetLoginRedirect)
+		server.Get("/login/verify", auth.LoginVerifyHandler) // TODO: This should accept a code as fallback
 		server.Post("/login/start", auth.LoginStartHandler)
 
 		// Routes with unique auth handlers
-		server.Get("/video/:id", ui.VideoHandler)
+		server.Get("/video/:id", video.VideoHandler)
 
 		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
-		api.All("/noop", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
-
-		api.Post("/videos/:id/progress", apiHandlers.SaveVideoProgressHandler)
+		api.Post("/videos/:id/progress", apiHandlers.PostSaveVideoProgress)
 
 		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
-		api.Post("/channels/:id/favorite", apiHandlers.FavoriteChannelHandler)
+		api.Post("/channels/:id/favorite", apiHandlers.PostFavoriteChannel)
 		api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
 		api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)
-		app.Get("/", ui.AppHandler).Post("/", ui.AppHandler)
-		app.Get("/onboarding", ui.OnboardingHandler)
-		app.Get("/settings", ui.AppSettingsHandler).Post("/settings", ui.AppSettingsHandler)
-
-		channels := app.Group("/channels")
-		channels.Get("/manage", ui.ManageChannelsAddHandler).Post("/manage", ui.ManageChannelsAddHandler)
+		app.Get("/", appHandlers.GetOrPostApp).Post("/", appHandlers.GetOrPostApp)
+		app.Get("/settings", appHandlers.GetOrPostAppSettings).Post("/settings", appHandlers.GetOrPostAppSettings)
+		app.Get("/onboarding", appHandlers.GetOrPostAppOnboarding).Post("/onboarding", appHandlers.GetOrPostAppOnboarding)
+		app.Get("/subscriptions", appHandlers.GetOrPostAppSubscriptions).Post("/subscriptions", appHandlers.GetOrPostAppSubscriptions)
 
 		// This last handler is a catch-all for any routes that don't exist
 		server.Use(func(c *fiber.Ctx) error {

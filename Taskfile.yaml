@@ -7,10 +7,14 @@ vars:
 
 tasks:
   dev:
+    deps: [db:generate, generate]
     cmds:
-      - task: db:generate
       - air
+  generate:
+    cmds:
+      - go generate ./internal/...
   build:
+    deps: [db:generate, test, generate]
     cmds:
       - CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o out .
   test:
