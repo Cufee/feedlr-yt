@@ -22,4 +22,4 @@ COPY . ./
 # generate the Prisma Client Go client
 RUN task build
 
-CMD ["/app"]
+CMD ["./app"]
