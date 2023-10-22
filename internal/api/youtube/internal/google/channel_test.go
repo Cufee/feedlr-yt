@@ -3,14 +3,13 @@ package google
 import (
 	"encoding/json"
 	"log"
-	"os"
 	"testing"
 
-	_ "github.com/joho/godotenv/autoload"
+	"github.com/byvko-dev/youtube-app/internal/utils"
 )
 
 func TestGetChannelVideos(t *testing.T) {
-	client := NewClient(os.Getenv("YOUTUBE_API_KEY"))
+	client := NewClient(utils.MustGetEnv("YOUTUBE_API_KEY"))
 	videos, err := client.GetChannelVideos("UCBJycsmduvYEL83R_U4JriQ", 3)
 	if err != nil {
 		t.Error(err)
