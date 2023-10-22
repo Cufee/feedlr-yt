@@ -10,10 +10,9 @@ Feedlr is using the following approach to achieve this:
 
 ## Current State
 I have finished the basic MVP and 90% of the functionality. There are a lot of UI elements missing and lorem needs to be replaced on the landing page.  
-The next step from here would be a complete rewrite of all pages with [templ](https://github.com/a-h/templ) and organizing the backend logic to de-spaghettify it.
 
 ### Stack
-- Go templates with [HTMX](htmx.org/), [Tailwind](https://tailwindcss.com/), [DaisyUI](https://daisyui.com/) and [Hyperscript](https://hyperscript.org/)
+- Go [templ](https://templ.guide/) with [HTMX](https://htmx.org/), [Tailwind](https://tailwindcss.com/), [DaisyUI](https://daisyui.com/) and [Hyperscript](https://hyperscript.org/)
 - Go Fiber
 - Prisma
 - MongoDB
