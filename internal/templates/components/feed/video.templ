@@ -13,7 +13,6 @@ templ VideoFeed(videos []types.VideoProps) {
 	</div>
 }
 
-
 templ VideoTile(video types.VideoProps) {
 	<div class="relative overflow-hidden shadow-md carousel-item rounded-xl overscroll-contain" id={ fmt.Sprintf("video-tile-%s", video.ID) }>
 		if video.Progress < 1 {
@@ -25,7 +24,7 @@ templ VideoTile(video types.VideoProps) {
 				@icons.Refresh()
 			</button>
 		}
-		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } class="relative group">
+		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative group">
 			<div class="absolute z-20 top-2 left-2 htmx-indicator" id={ fmt.Sprintf("video-tile-%s-indicator", video.ID) }>
 				<span class="loading loading-spinner loading-lg md:loading-sm"></span>
 			</div>
@@ -33,9 +32,14 @@ templ VideoTile(video types.VideoProps) {
 				<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-6xl">Watched</div>
 			}
 			<img class="object-cover transition-all duration-500 cursor-pointer aspect-video h-44 md:h-60 group-hover:scale-110" src={ video.Thumbnail } alt={ video.Title }/>
-			<div class="absolute bottom-0 left-0 w-full p-1 font-bold text-center text-white truncate bg-black md:hidden group-hover:inline-block animate__faster bg-opacity-60 animate__animated animate__slideInUp">
-				{ video.Title }
+			<div class="absolute bottom-0 left-0 z-10 flex flex-col w-full gap-1 bg-black md:hidden group-hover:inline-block animate__faster bg-opacity-60 animate__animated animate__slideInUp">
+				<div class="px-2 py-1 font-bold text-center text-white truncate">
+					{ video.Title }
+				</div>
 			</div>
+			if video.Progress > 0 && video.Duration > 0 {
+				<progress class="absolute bottom-0 left-0 z-10 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(video.Duration) }></progress>
+			}
 		</a>
 	</div>
 }

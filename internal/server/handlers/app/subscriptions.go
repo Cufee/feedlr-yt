@@ -18,7 +18,7 @@ func GetOrPostAppSubscriptions(c *fiber.Ctx) error {
 	}
 
 	layout := "layouts/app"
-	if c.Method() == "POST" {
+	if c.Method() == "POST" || c.Get("HX-Request") != "" {
 		layout = "layouts/blank"
 	}
 

@@ -15,7 +15,7 @@ func GetOrPostError(c *fiber.Ctx) error {
 	if code == "404" {
 		message = fmt.Sprintf("Page \"%s\" does not exist or was moved.", from)
 	}
-	layout := "layouts/app"
+	layout := "layouts/main"
 	if c.Method() == "POST" || c.Get("HX-Request") != "" {
 		layout = "layouts/blank"
 	}

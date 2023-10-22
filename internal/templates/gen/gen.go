@@ -67,6 +67,10 @@ func generateLayoutsTree() {
 	for absPath := range fns {
 		shortPath := strings.ReplaceAll(absPath, basePath+"/", "")
 		for _, fn := range fns[absPath] {
+			if !fn.Name.IsExported() {
+				// Skip local functions
+				continue
+			}
 			mapKey := filepath.Join(shortPath, fn.Name.Name)
 			mapKeyLower := strings.ToLower(mapKey)
 			fnName := strings.ReplaceAll(shortPath, "/", "_") + "." + fn.Name.Name

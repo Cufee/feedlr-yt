@@ -24,7 +24,7 @@ var limiterMiddleware = limiter.New(limiter.Config{
 		return c.Get("X-Forwarded-For", trace)
 	},
 	LimitReached: func(c *fiber.Ctx) error {
-		return c.Render("429", nil, "layouts/with-head")
+		return c.Redirect("/429")
 	},
 	Storage: newRedisStore(),
 })

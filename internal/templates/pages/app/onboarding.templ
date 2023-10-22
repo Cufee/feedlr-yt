@@ -1,7 +1,21 @@
 package app
 
+import 	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
+
 templ Onboarding() {
-	<head><title>Welcome to Feedlr!</title></head>
-	Onboarding Page
+	<head><title>Feedlr</title></head>
+	
+  <div class="flex flex-col gap-8">
+    <div id="search" class="flex flex-col gap-4">
+      <span class="self-center text-xl font-bold">Search Channels</span>
+      @subscriptions.SearchChannels()
+    </div>
+
+    <div id="subscriptions" class="flex flex-col gap-4">
+      <span class="self-center text-xl font-bold">Your Subscriptions</span>
+      <div class="flex flex-row flex-wrap gap-2" id="subscriptions-list">
+      </div>
+    </div>
+  </div>
 }
 

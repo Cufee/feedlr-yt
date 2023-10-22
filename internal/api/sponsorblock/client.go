@@ -3,6 +3,8 @@ package sponsorblock
 import (
 	"log"
 	"os"
+
+	_ "github.com/joho/godotenv/autoload"
 )
 
 type client struct {

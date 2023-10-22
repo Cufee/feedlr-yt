@@ -6,21 +6,79 @@ import "github.com/byvko-dev/youtube-app/internal/templates/components/icons"
 templ Navbar(...templ.Component) {
 	<div id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator"
 		hx-target="#main" hx-swap="innerHTML" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
-		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 group">
+		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 py-2 group">
+			<div class="absolute top-0 left-0 w-full">
+				<progress id="nav-progress" class="invisible h-1 rounded-none opacity-75 progress progress-info" value="0" max="100"></progress>
+			</div>
 			<div class="flex flex-row gap-2">
-				<button hx-post="/app" class="relative group-[.htmx-request]:opacity-25">
-						<div class="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2 group-[.htmx-request]:visible invisible"><span class="loading loading-spinner loading-lg"></span></div>
+				<a href="/app" class="relative">
 						@shared.Logo("64")
-				</button>
+				</a>
 			</div>
 			<div class="flex flex-row items-center gap-2">
-				<button class="btn btn-neutral nav-btn" hx-post="/app/subscriptions" title="Manage Subscriptions">
+				<a class="btn btn-neutral nav-btn" href="/app/subscriptions" title="Manage Subscriptions">
 					Subscriptions
-				</button>
-				<button class="btn btn-neutral nav-btn" hx-post="/app/settings" title="App Settings">
+				</a>
+				<a class="btn btn-neutral btn-square nav-btn" href="/app/settings" title="App Settings">
 					@icons.Settings()
-				</button>
+				</a>
 			</div>
 		</div>
 	</div>
+	@shared.EmbedMinifiedScript(animateNavProgress())
+}
+
+templ SimpleNavbar(...templ.Component) {
+	<div id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator"
+		hx-target="#main" hx-swap="innerHTML" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
+		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 py-2 group">
+			<div class="absolute top-0 left-0 w-full">
+				<progress id="nav-progress" class="invisible h-1 rounded-none opacity-75 progress progress-info" value="0" max="100"></progress>
+			</div>
+			<a href="/app" class="relative">
+					@shared.Logo("64")
+			</a>
+		</div>
+	</div>
+	@shared.EmbedMinifiedScript(animateNavProgress())
+}
+
+script animateNavProgress() {
+	const navbar = document.getElementById('components-navbar');
+	const progressBar = document.getElementById('nav-progress');
+	const progressBaseStep = 5;
+
+	const progressRandomStep = () => {
+		return Math.floor(progressBaseStep * Math.random());
+	}
+	const progressSlowStep = () => {
+		return Math.floor(Math.random() * 2);
+	}
+	
+	navbar.addEventListener('htmx:afterRequest', () => {
+		setTimeout(() => {
+			progressBar.classList.add('invisible');
+		}, 250);
+		progressBar.value = 100;
+		if (stopAnimation) {
+			clearInterval(stopAnimation);
+			stopAnimation = null;
+		}
+	});
+
+	let stopAnimation;
+	navbar.addEventListener('htmx:beforeSend', () => {
+		progressBar.classList.remove('invisible');
+		
+		progressBar.value = progressRandomStep()
+		stopAnimation = setInterval(() => {
+			if (progressBar.value <= 65) {
+				progressBar.value += progressRandomStep()
+			} else if (progressBar.value <= 85) {
+				progressBar.value += progressSlowStep()
+			} else if (progressBar.value <= 95){
+				progressBar.value += 1
+			}
+		}, 50);
+	});
 }

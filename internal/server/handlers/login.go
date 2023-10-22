@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func GetOrPostLogin(c *fiber.Ctx) error {
+func GetLogin(c *fiber.Ctx) error {
 	sessionId := c.Cookies("session_id")
 	if sessionId != "" {
 		session, _ := sessions.FromID(sessionId)
@@ -17,14 +17,14 @@ func GetOrPostLogin(c *fiber.Ctx) error {
 		c.ClearCookie("session_id")
 	}
 
-	layout := "layouts/app"
-	if c.Method() == "POST" || c.Get("HX-Request") != "" {
+	layout := "layouts/main"
+	if c.Get("HX-Request") != "" {
 		layout = "layouts/blank"
 	}
 
 	return c.Render(layout, pages.Login())
 }
 
-// func LoginRedirectHandler(c *fiber.Ctx) error {
-// 	return c.Render("login/redirect", nil, withLayout(c))
-// }
+func GetLoginRedirect(c *fiber.Ctx) error {
+	return c.Render("layouts/main", pages.LoginRedirect())
+}

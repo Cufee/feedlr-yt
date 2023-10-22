@@ -65,7 +65,7 @@ func LoginVerifyHandler(c *fiber.Ctx) error {
 	expiration, err := strconv.Atoi(c.Query("expires_in"))
 	if err != nil {
 		log.Printf("strconv.Atoi: %v\n", err)
-		return c.SendStatus(fiber.StatusBadRequest)
+		return c.Redirect("/error?message=Something went wrong while logging in&context=invalid token expiration")
 	}
 	tokenExpiration = int64(expiration)
 
@@ -74,14 +74,14 @@ func LoginVerifyHandler(c *fiber.Ctx) error {
 		if err != nil {
 			sessions.DeleteSession(currentSessionId)
 			log.Printf("UserInfo: %v\n", err)
-			return c.SendStatus(fiber.StatusInternalServerError)
+			return c.Redirect("/error?message=Something went wrong while logging in&context=invalid auth token")
 		}
 
 		user, err := database.C.EnsureUserExists(info.Sub)
 		if err != nil {
 			sessions.DeleteSession(currentSessionId)
 			log.Printf("EnsureUserExists: %v\n", err)
-			return c.SendStatus(fiber.StatusInternalServerError)
+			return c.Redirect("/error?message=Something went wrong while logging in&context=invalid auth token")
 		}
 
 		session, err := sessions.New()
@@ -89,7 +89,7 @@ func LoginVerifyHandler(c *fiber.Ctx) error {
 			session.Delete()
 			c.ClearCookie("session_id")
 			log.Printf("sessions.FromID: %v\n", err)
-			return c.SendStatus(fiber.StatusInternalServerError)
+			return c.Redirect("/error?message=Something went wrong while logging in&context=creating session")
 		}
 
 		err = session.Update(sessions.Options{UserID: user.ID, AuthID: info.Sub, AccessToken: accessToken})
@@ -97,7 +97,7 @@ func LoginVerifyHandler(c *fiber.Ctx) error {
 			session.Delete()
 			c.ClearCookie("session_id")
 			log.Printf("session.Update: %v\n", err)
-			return c.SendStatus(fiber.StatusInternalServerError)
+			return c.Redirect("/error?message=Something went wrong while logging in&context=updating session")
 		}
 
 		cookie, err := session.Cookie()
@@ -105,12 +105,12 @@ func LoginVerifyHandler(c *fiber.Ctx) error {
 			session.Delete()
 			c.ClearCookie("session_id")
 			log.Printf("session.Cookie: %v\n", err)
-			return c.SendStatus(fiber.StatusInternalServerError)
+			return c.Redirect("/error?message=Something went wrong while logging in&context=missing session cookie")
 		}
 
 		c.Cookie(cookie)
 		return c.Redirect("/app")
 	}
 
-	return c.SendStatus(fiber.StatusBadRequest)
+	return c.Redirect("/error?message=Something went wrong while logging in&context=missing auth token")
 }
