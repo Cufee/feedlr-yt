@@ -7,7 +7,7 @@ import (
 templ HeadOnly(content ...templ.Component) {
 	<html lang="en" class="h-full">
 		@partials.Head()
-		<body class="h-full" hx-ext="head-support">
+		<body class="h-full">
 			<div id="main" class="w-full h-full">
 				for _, c := range content {
 					@c
