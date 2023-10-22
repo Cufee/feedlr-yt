@@ -6,7 +6,7 @@ import "github.com/byvko-dev/youtube-app/internal/templates/components/icons"
 templ Navbar(...templ.Component) {
 	<div id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator"
 		hx-target="#main" hx-swap="innerHTML" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
-		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 py-2 group">
+		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 pt-2 md:pt-2 group">
 			<div class="absolute top-0 left-0 w-full">
 				<progress id="nav-progress" class="invisible h-1 rounded-none opacity-75 progress progress-info" value="0" max="100"></progress>
 			</div>
