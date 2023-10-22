@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -12,7 +13,8 @@ import (
 )
 
 type VideoDetails struct {
-	IsShort bool `json:"isShort"`
+	IsShort  bool `json:"isShort"`
+	Duration int  `json:"duration"`
 }
 
 type PlayerResponse struct {
@@ -107,19 +109,24 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 	}
 
 	if len(details.StreamingData.Formats) > 0 {
+		duration, _ := strconv.Atoi(details.StreamingData.Formats[0].ApproxDurationMs)
 		return &VideoDetails{
-			IsShort: details.StreamingData.Formats[0].Width < details.StreamingData.Formats[0].Height,
+			IsShort:  details.StreamingData.Formats[0].Width < details.StreamingData.Formats[0].Height,
+			Duration: duration / 1000,
 		}, nil
 	}
 
 	if len(details.StreamingData.AdaptiveFormats) > 0 {
+		duration, _ := strconv.Atoi(details.StreamingData.AdaptiveFormats[0].ApproxDurationMs)
 		return &VideoDetails{
-			IsShort: details.StreamingData.AdaptiveFormats[0].Width < details.StreamingData.AdaptiveFormats[0].Height,
+			IsShort:  details.StreamingData.AdaptiveFormats[0].Width < details.StreamingData.AdaptiveFormats[0].Height,
+			Duration: duration / 1000,
 		}, nil
 	}
 
 	log.Warnf("no formats found for video %s", videoId)
 	return &VideoDetails{
-		IsShort: false,
+		IsShort:  false,
+		Duration: 0,
 	}, nil
 }

@@ -3,12 +3,16 @@ package google
 import (
 	"errors"
 	"sort"
-	"strconv"
 	"sync"
 
 	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
 	"google.golang.org/api/youtube/v3"
 )
+
+type PlayListItemWithDuration struct {
+	*youtube.PlaylistItem
+	Duration int
+}
 
 func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
 	playlists, err := c.service.Channels.List([]string{"id", "contentDetails"}).Id(channelId).Fields("items(contentDetails/relatedPlaylists/uploads)").Do()
@@ -35,7 +39,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int) ([]yt.Video, er
 
 	var wg sync.WaitGroup
 	var errChan = make(chan error, len(res.Items))
-	var validVideos = make(chan *youtube.PlaylistItem, len(res.Items))
+	var validVideos = make(chan PlayListItemWithDuration, len(res.Items))
 
 	for _, item := range res.Items {
 		wg.Add(1)
@@ -49,7 +53,10 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int) ([]yt.Video, er
 			if details.IsShort {
 				return
 			}
-			validVideos <- item
+			validVideos <- PlayListItemWithDuration{
+				PlaylistItem: item,
+				Duration:     details.Duration,
+			}
 		}(item)
 	}
 	wg.Wait()
@@ -60,7 +67,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int) ([]yt.Video, er
 		return nil, <-errChan
 	}
 
-	var validVideosSlice []*youtube.PlaylistItem
+	var validVideosSlice []PlayListItemWithDuration
 	for item := range validVideos {
 		validVideosSlice = append(validVideosSlice, item)
 	}
@@ -71,14 +78,10 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int) ([]yt.Video, er
 
 	var videos []yt.Video
 	for _, item := range validVideosSlice {
-		var duration int
-		if item.ContentDetails != nil {
-			duration, _ = strconv.Atoi(item.ContentDetails.EndAt) // This could be incorrect as this indicated when a video should _stop playing_, not the duration, in some cases
-		}
 		videos = append(videos, yt.Video{
 			ID:          item.Snippet.ResourceId.VideoId,
 			Title:       item.Snippet.Title,
-			Duration:    duration,
+			Duration:    item.Duration,
 			Description: item.Snippet.Description,
 			Thumbnail:   item.Snippet.Thumbnails.High.Url,
 			URL:         c.buildVideoEmbedURL(item.Snippet.ResourceId.VideoId),
