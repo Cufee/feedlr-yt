@@ -9,6 +9,9 @@ RUN go mod download
 # prefetch the binaries, so that they will be cached and not downloaded on each change
 RUN go run github.com/steebchen/prisma-client-go prefetch
 
+# install templ
+RUN go install github.com/a-h/templ/cmd/templ@latest
+
 COPY . ./
 
 # generate the Prisma Client Go client

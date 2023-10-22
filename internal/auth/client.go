@@ -2,30 +2,63 @@ package auth
 
 import (
 	"context"
-	"log"
-	"os"
+	"errors"
 
-	"github.com/auth0/go-auth0/authentication"
+	"github.com/byvko-dev/youtube-app/internal/utils"
+	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 )
 
-var (
-	domain       = os.Getenv("AUTH0_DOMAIN")
-	clientID     = os.Getenv("AUTH0_CLIENT_ID")
-	clientSecret = os.Getenv("AUTH0_CLIENT_SECRET")
-
-	client *authentication.Authentication
-)
+var defaultAuthenticator *Authenticator
 
 func init() {
-	// Initialize a new client using a domain, client ID and client secret.
-	authAPI, err := authentication.New(
+	var err error
+	defaultAuthenticator, err = New()
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Authenticator is used to authenticate our users.
+type Authenticator struct {
+	*oidc.Provider
+	oauth2.Config
+}
+
+// New instantiates the *Authenticator.
+func New() (*Authenticator, error) {
+	provider, err := oidc.NewProvider(
 		context.Background(),
-		domain,
-		authentication.WithClientID(clientID),
-		authentication.WithClientSecret(clientSecret),
+		"https://"+utils.MustGetEnv("AUTH0_DOMAIN")+"/",
 	)
 	if err != nil {
-		log.Fatalf("failed to initialize the auth0 authentication API client: %+v", err)
+		return nil, err
 	}
-	client = authAPI
+
+	conf := oauth2.Config{
+		ClientID:     utils.MustGetEnv("AUTH0_CLIENT_ID"),
+		ClientSecret: utils.MustGetEnv("AUTH0_CLIENT_SECRET"),
+		RedirectURL:  utils.MustGetEnv("AUTH0_CALLBACK_URL"),
+		Endpoint:     provider.Endpoint(),
+		Scopes:       []string{oidc.ScopeOpenID, "profile"},
+	}
+
+	return &Authenticator{
+		Provider: provider,
+		Config:   conf,
+	}, nil
+}
+
+// VerifyIDToken verifies that an *oauth2.Token is a valid *oidc.IDToken.
+func (a *Authenticator) VerifyIDToken(ctx context.Context, token *oauth2.Token) (*oidc.IDToken, error) {
+	rawIDToken, ok := token.Extra("id_token").(string)
+	if !ok {
+		return nil, errors.New("no id_token field in oauth2 token")
+	}
+
+	oidcConfig := &oidc.Config{
+		ClientID: a.ClientID,
+	}
+
+	return a.Verifier(oidcConfig).Verify(ctx, rawIDToken)
 }

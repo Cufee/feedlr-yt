@@ -18,7 +18,6 @@ model User {
   settings      UserSettings?
   subscriptions UserSubscription[]
 
-  // @@index([authId], name: "authId")
   @@map("users")
 }
 
@@ -30,9 +29,9 @@ model UserSettings {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String @unique
 
-  selectedInvidiousHost String?
+  sponsorBlockEnabled    Boolean  @default(true)
+  sponsorBlockCategories String[] @default([])
 
-  // @@index([userId], name: "userId")
   @@map("user_settings")
 }
 
@@ -59,6 +58,7 @@ model Video {
 
   url         String
   title       String
+  duration    Int     @default(0)
   thumbnail   String?
   description String  @db.String
 
@@ -84,6 +84,7 @@ model VideoView {
 
   @@index([userId], name: "userId")
   @@index([videoId], name: "videoId")
+  @@index([userId, videoId], name: "userId_videoId")
   @@map("video_views")
 }
 
@@ -101,6 +102,7 @@ model UserSubscription {
 
   @@index([userId], name: "userId")
   @@index([channelId], name: "channelId")
+  @@index([userId, channelId], name: "userId_channelId")
   @@map("user_subscriptions")
 }
 
@@ -124,4 +126,17 @@ model Session {
   @@index([expiresAt], name: "expiresAt")
   @@index([tokenExpiresAt], name: "tokenExpiresAt")
   @@map("sessions")
+}
+
+model AuthNonce {
+  id        String   @id @default(cuid()) @map("_id")
+  createdAt DateTime @default(now())
+
+  expiresAt DateTime
+  value     String
+
+  @@unique([expiresAt, value], name: "expiresAt_value")
+  @@index([expiresAt], name: "expiresAt")
+  @@index([value], name: "value")
+  @@map("auth_nonces")
 }

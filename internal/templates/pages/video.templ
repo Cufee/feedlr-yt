@@ -1,0 +1,114 @@
+package pages
+
+import (
+	"github.com/byvko-dev/youtube-app/internal/types"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/shared"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/icons"
+)
+
+templ Video(props types.VideoPlayerProps) {
+	<head>
+		<title>Feedlr - { props.Video.Title }</title>
+		<meta property="og:title" content={ props.Video.Title }/>
+		<meta property="og:type" content="video.episode"/>
+		<meta property="og:description" content={ props.Video.Description }/>
+		<meta property="og:image" content={ props.Video.Thumbnail }/>
+		<meta name="twitter:card" content="summary"/>
+		<meta name="twitter:title" content={ props.Video.Title }/>
+		<meta name="twitter:description" content={ props.Video.Description }/>
+		<meta name="twitter:image" content={ props.Video.Thumbnail }/>
+		<meta name="twitter:image:alt" content={ props.Video.Title }/>
+	</head>
+
+	<div class="relative flex items-center justify-start w-full h-full">
+		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
+		@videoPlayer(props)
+		if (props.ReportProgress) {
+			@buttonBack()
+		} else {
+			@buttonLogin()
+		}
+	</div>
+}
+
+templ videoPlayer(player types.VideoPlayerProps) {
+	<div id="player"></div>
+	<script id="" src="https://www.youtube.com/iframe_api"></script>
+	@shared.EmbedMinifiedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
+	@shared.EmbedMinifiedScript(youtubePlayerInit(player.Video.ID, player.Video.Progress, player.ReportProgress), player.Video.ID, player.Video.Progress, player.ReportProgress)
+}
+
+templ buttonLogin() {
+	<a class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-primary" href="/login" id="close-button">Login</a>
+}
+
+templ buttonBack() {
+	<a class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-primary btn-square" href="/app" id="close-button">@icons.Cross()</a>
+}
+
+script youtubePlayerInit(video string, progress int, withProgress bool) {
+	console.log("youtubePlayerInit", video, progress, withProgress)
+
+	if (withProgress) {
+		document.getElementById("close-button")?.addEventListener("click", saveProgress)
+		setInterval(saveProgress, 10000)
+	}
+	
+	let player;
+	var frame = document.getElementById("player")
+	const waitForYT = setInterval(() => {
+		if (YT?.loaded === 1) {
+			clearInterval(waitForYT);
+			player = new YT.Player(frame, {
+				height: '100%',
+				width: '100%',
+				videoId: video,
+				playerVars: {
+					'start': progress,
+					'rel': 0,
+					'autoplay': 1,
+					'playsinline': 1,
+					'enablejsapi': 1,
+					'iv_load_policy': 3
+				},
+				events: {
+					'onReady': onPlayerReady,
+					'onStateChange': onPlayerStateChange
+				}
+			})
+			window.feedlr_player = player
+		}
+	}, 100)
+
+	function onPlayerReady(event) { document.getElementById("player-loading").classList.add("hidden") }
+	function onPlayerStateChange(event) { withProgress && saveProgress() }
+	let lastProgress = 0
+	function saveProgress() {
+		const currentTime = Math.floor(window.feedlr_player.getCurrentTime())
+		if (lastProgress === currentTime) return true
+		lastProgress = currentTime
+
+		fetch(`/api/videos/${video}/progress?progress=` + currentTime, {
+			method: 'POST',
+			credentials: 'include'
+		})
+		return true
+	}
+}
+
+script sponsorBlockInit(segments []types.SegmentProps) {
+	console.log("sponsorBlockInit", segments)
+	if (segments && segments.length > 0) {
+		setInterval(() => {
+			if (window.feedlr_player && window.feedlr_player.getPlayerState && window.feedlr_player.getPlayerState() === YT.PlayerState.PLAYING) {
+				var currentTime = window.feedlr_player.getCurrentTime()
+				var segment = segments.find(segment => segment.start <= currentTime && segment.end >= currentTime)
+				if (segment) {
+					console.info("skipping segment")
+					window.feedlr_player.seekTo(segment.end, true)
+				}
+			}
+		}, 1000)
+	}
+}
+

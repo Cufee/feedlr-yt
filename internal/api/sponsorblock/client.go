@@ -2,7 +2,8 @@ package sponsorblock
 
 import (
 	"log"
-	"os"
+
+	"github.com/byvko-dev/youtube-app/internal/utils"
 )
 
 type client struct {
@@ -13,7 +14,7 @@ var DefaultClient *client
 var C *client
 
 func init() {
-	apiUrl := os.Getenv("SPONSORBLOCK_API_URL")
+	apiUrl := utils.MustGetEnv("SPONSORBLOCK_API_URL")
 	if apiUrl == "" {
 		log.Fatal("SPONSORBLOCK_API_URL is empty")
 	}

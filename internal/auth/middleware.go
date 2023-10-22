@@ -5,7 +5,6 @@ import (
 
 	"github.com/byvko-dev/youtube-app/internal/sessions"
 	"github.com/gofiber/fiber/v2"
-	_ "github.com/joho/godotenv/autoload"
 )
 
 func Middleware(c *fiber.Ctx) error {

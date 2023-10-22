@@ -43,6 +43,7 @@ type VideoCreateModel struct {
 	ID          string
 	URL         string
 	Title       string
+	Duration    int
 	Description string
 	Thumbnail   string
 }
@@ -52,7 +53,7 @@ func (c *Client) NewVideo(channel string, videos ...VideoCreateModel) ([]db.Vide
 	var created []db.VideoModel
 
 	for _, vid := range videos {
-		v, err := c.p.Video.CreateOne(db.Video.ID.Set(vid.ID), db.Video.URL.Set(vid.URL), db.Video.Title.Set(vid.Title), db.Video.Description.Set(vid.Description), cl, db.Video.Thumbnail.Set(vid.Thumbnail)).Exec(context.TODO())
+		v, err := c.p.Video.CreateOne(db.Video.ID.Set(vid.ID), db.Video.URL.Set(vid.URL), db.Video.Title.Set(vid.Title), db.Video.Description.Set(vid.Description), cl, db.Video.Thumbnail.Set(vid.Thumbnail), db.Video.Duration.Set(vid.Duration)).Exec(context.TODO())
 		if err != nil {
 			return nil, err
 		}

@@ -1,10 +1,13 @@
 package api
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/byvko-dev/youtube-app/internal/database"
 	"github.com/byvko-dev/youtube-app/internal/logic"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/feed"
+	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -16,7 +19,7 @@ func SearchChannelsHandler(c *fiber.Ctx) error {
 		if len(query) == 0 {
 			return c.SendString(``)
 		}
-		return c.SendString(`<div class="m-auto">Channel name must be between 5 and 32 characters long</div>`)
+		return c.SendString(`<div class="m-auto text-2xl">Channel name must be between 5 and 32 characters long</div>`)
 	}
 
 	channels, err := logic.SearchChannels(userId, query, 4)
@@ -24,8 +27,11 @@ func SearchChannelsHandler(c *fiber.Ctx) error {
 		log.Print(err)
 		return err
 	}
+	if len(channels) == 0 {
+		return c.SendString(fmt.Sprintf(`<div class="m-auto text-2xl">Didn't find any channels named <span class="font-bold">%s</span></div>`, query))
+	}
 
-	return c.Render("components/search-channels-tiled", channels, c.Locals("layout").(string))
+	return c.Render("layouts/blank", subscriptions.SearchResultChannels(channels))
 }
 
 func SubscribeHandler(c *fiber.Ctx) error {
@@ -38,7 +44,7 @@ func SubscribeHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Render("components/subs-channels-tile", props, c.Locals("layout").(string))
+	return c.Render("layouts/blank", subscriptions.SubscribedChannelTile(*props))
 }
 
 func UnsubscribeHandler(c *fiber.Ctx) error {
@@ -57,7 +63,7 @@ func UnsubscribeHandler(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func FavoriteChannelHandler(c *fiber.Ctx) error {
+func PostFavoriteChannel(c *fiber.Ctx) error {
 	id := c.Params("id")
 	userId, _ := c.Locals("userId").(string)
 
@@ -67,8 +73,5 @@ func FavoriteChannelHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Render("components/favorite-channel-button", fiber.Map{
-		"ID":       id,
-		"Favorite": updated,
-	}, c.Locals("layout").(string))
+	return c.Render("layouts/blank", feed.ChannelFavoriteButton(id, updated))
 }

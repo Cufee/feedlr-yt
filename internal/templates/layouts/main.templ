@@ -1,0 +1,23 @@
+package layouts
+
+import (
+  "github.com/byvko-dev/youtube-app/internal/templates/layouts/partials"
+)
+
+templ Main(content ...templ.Component) {
+	<html lang="en" class="h-full">
+		@partials.Head()
+		<body class="h-full">
+			<div id="main" class="flex flex-col flex-grow w-full h-full p-2 mx-auto max-w-7xl md:p-0">
+				for _, c := range content {
+					@c
+				}
+				{ children... }
+			</div>
+			<div class="w-full p-2 mx-auto max-w-7xl md:p-0">
+				@partials.Footer()
+			</div>
+		</body>
+	</html>
+}
+

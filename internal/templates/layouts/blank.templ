@@ -1,0 +1,10 @@
+package layouts
+
+/* This layout is required for how components are rendered */
+templ Blank(content ...templ.Component) {
+	for _, c := range content {
+		@c
+	}
+	{ children... }
+}
+

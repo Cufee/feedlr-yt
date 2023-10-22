@@ -8,6 +8,10 @@ import (
 	"github.com/goccy/go-json"
 )
 
+type Channel struct {
+	yt.Channel
+}
+
 type NavbarProps struct {
 	CurrentURL string
 	BackURL    string
@@ -15,12 +19,12 @@ type NavbarProps struct {
 }
 
 type ChannelProps struct {
-	yt.Channel
+	Channel
 	Favorite bool
 }
 
 type ChannelSearchResultProps struct {
-	yt.Channel
+	Channel
 	Subscribed bool
 }
 
@@ -36,15 +40,6 @@ type UserSubscriptionsFeedProps struct {
 	WithNewVideos    []ChannelWithVideosProps
 	WithoutNewVideos []ChannelWithVideosProps
 	All              []ChannelWithVideosProps
-}
-
-func (u *UserSubscriptionsFeedProps) ToMap() (map[string]any, error) {
-	m := make(map[string]any)
-	m["All"] = u.All
-	m["Favorites"] = u.Favorites
-	m["WithNewVideos"] = u.WithNewVideos
-	m["WithoutNewVideos"] = u.WithoutNewVideos
-	return m, nil
 }
 
 type ChannelWithVideosProps struct {
