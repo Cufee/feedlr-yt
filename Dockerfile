@@ -2,8 +2,6 @@ FROM golang:1.20 as build
 
 WORKDIR /workspace
 
-ENV PRISMA_QUERY_ENGINE_BINARY=/workspace/prisma-bin
-
 # install node
 RUN apt update && apt install nodejs npm -y
 
@@ -11,7 +9,10 @@ RUN apt update && apt install nodejs npm -y
 COPY go.mod go.sum ./
 RUN go mod download
 
-# prefetch the binaries, so that they will be cached and not downloaded on each change
+# prefetch the binaries
+COPY ./prisma/download.go ./prisma/download.go
+ENV PRISMA_CLI_QUERY_ENGINE_BINARY=/workspace/prisma/bin/engine
+RUN mv `go run prisma/download.go` $PRISMA_CLI_QUERY_ENGINE_BINARY
 RUN go run github.com/steebchen/prisma-client-go prefetch
 
 # install templ
@@ -26,10 +27,10 @@ RUN task build
 
 FROM scratch as bin
 
-ENV PRISMA_QUERY_ENGINE_BINARY=/prisma-bin
+ENV PRISMA_CLI_QUERY_ENGINE_BINARY=/prisma/bin/engine
 
 COPY --from=build /workspace/app /app
 COPY --from=build /workspace/assets /assets
-COPY --from=build /workspace/prisma-bin /prisma-bin
+COPY --from=build /workspace/prisma/bin /prisma/bin
 
 CMD ["/app"]
