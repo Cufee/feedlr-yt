@@ -12,6 +12,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # prefetch the binaries, so that they will be cached and not downloaded on each change
+RUN mkdir -p $PRISMA_QUERY_ENGINE_BINARY
 RUN go run github.com/steebchen/prisma-client-go prefetch
 
 # install templ
