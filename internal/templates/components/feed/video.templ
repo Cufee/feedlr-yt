@@ -16,7 +16,7 @@ templ VideoFeed(videos []types.VideoProps) {
 templ VideoTile(video types.VideoProps) {
 	<div class="relative overflow-hidden shadow-md carousel-item rounded-xl overscroll-contain" id={ fmt.Sprintf("video-tile-%s", video.ID) }>
 		if video.Progress < 1 {
-			<button class="absolute z-10 btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm top-2 right-2" title="Mark as watched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=1", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-tile-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-tile-%s-indicator", video.ID) }>
+			<button class="absolute z-10 btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm top-2 right-2" title="Mark as watched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v", video.ID, video.Duration+1) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-tile-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-tile-%s-indicator", video.ID) }>
 			  @icons.Check()
 			</button>
 		} else {

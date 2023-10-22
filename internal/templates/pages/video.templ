@@ -98,7 +98,7 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 
 script sponsorBlockInit(segments []types.SegmentProps) {
 	console.log("sponsorBlockInit", segments)
-	if (segments.length > 0) {
+	if (segments && segments.length > 0) {
 		setInterval(() => {
 			if (window.feedlr_player && window.feedlr_player.getPlayerState && window.feedlr_player.getPlayerState() === YT.PlayerState.PLAYING) {
 				var currentTime = window.feedlr_player.getCurrentTime()
