@@ -17,7 +17,7 @@ func GerOrPosLanding(c *fiber.Ctx) error {
 		c.ClearCookie("session_id")
 	}
 
-	layout := "layouts/app"
+	layout := "layouts/main"
 	if c.Method() == "POST" || c.Get("HX-Request") != "" {
 		layout = "layouts/blank"
 	}
