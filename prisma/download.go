@@ -13,10 +13,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = binaries.FetchEngine(filepath.Join(cwd, "prisma", "bin"), "query-engine", "linux-static-x64")
+	err = binaries.FetchEngine(filepath.Join(cwd, "prisma", "bin"), "query-engine", "debian-openssl-3.0.x")
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Print(binaries.GetEnginePath(filepath.Join(cwd, "prisma", "bin"), "query-engine", "linux-static-x64"))
+	fmt.Print(binaries.GetEnginePath(filepath.Join(cwd, "prisma", "bin"), "query-engine", "debian-openssl-3.0.x"))
 }

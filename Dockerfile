@@ -25,12 +25,4 @@ COPY . ./
 # generate the Prisma Client Go client
 RUN task build
 
-FROM scratch as bin
-
-ENV PRISMA_CLI_QUERY_ENGINE_BINARY=/prisma/bin/engine
-
-COPY --from=build /workspace/app /app
-COPY --from=build /workspace/assets /assets
-COPY --from=build /workspace/prisma/bin /prisma/bin
-
 CMD ["/app"]
