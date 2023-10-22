@@ -1,18 +1,47 @@
 package auth
 
 import (
-	"context"
 	"log"
-	"strconv"
+	"time"
 
-	"github.com/auth0/go-auth0/authentication/passwordless"
 	"github.com/byvko-dev/youtube-app/internal/database"
 	"github.com/byvko-dev/youtube-app/internal/sessions"
 	"github.com/gofiber/fiber/v2"
+	"github.com/segmentio/ksuid"
 )
 
-// TODO: This should return some HTML or a proper redirect for HTMX
 func LoginStartHandler(c *fiber.Ctx) error {
+	sessionId := c.Cookies("session_id")
+	if sessionId != "" {
+		session, _ := sessions.FromID(sessionId)
+		if session.Valid() {
+			return c.Redirect("/app")
+		}
+		session.Delete()
+		c.ClearCookie("session_id")
+	}
+
+	id, err := ksuid.NewRandomWithTime(time.Now())
+	if err != nil {
+		log.Printf("ksuid.NewRandomWithTime: %v\n", err)
+		return c.Redirect("/error?message=Something went wrong while logging in&context=creating session ID")
+	}
+
+	nonce, err := database.C.NewAuthNonce(time.Now().Add(time.Minute*5), id.String())
+	if err != nil {
+		log.Printf("database.C.NewAuthNonce: %v\n", err)
+		return c.Redirect("/error?message=Something went wrong while logging in&context=creating auth nonce")
+	}
+
+	meta := make(map[string]any)
+	meta["nonce"] = nonce.Value
+	meta["expires_at"] = nonce.ExpiresAt
+
+	url := defaultAuthenticator.AuthCodeURL(nonce.Value)
+	return c.Redirect(url, fiber.StatusTemporaryRedirect)
+}
+
+func LoginCallbackHandler(c *fiber.Ctx) error {
 	existingSession := c.Cookies("session_id")
 	if existingSession != "" {
 		err := sessions.DeleteSession(existingSession)
@@ -21,70 +50,26 @@ func LoginStartHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	var body struct {
-		Email string `form:"email"`
-	}
-	err := c.BodyParser(&body)
+	token, err := defaultAuthenticator.Exchange(c.Context(), c.Query("code"))
 	if err != nil {
-		log.Printf("c.BodyParser: %v\n", err)
-		return c.SendStatus(fiber.StatusBadRequest)
+		log.Printf("defaultAuthenticator.Exchange: %v\n", err)
+		return c.Redirect("/error?message=Something went wrong while logging in&context=invalid auth code")
 	}
 
-	if body.Email == "" {
-		return c.SendStatus(fiber.StatusBadRequest)
-	}
-
-	_, err = client.Passwordless.SendEmail(context.Background(), passwordless.SendEmailRequest{Email: body.Email})
+	idToken, err := defaultAuthenticator.VerifyIDToken(c.Context(), token)
 	if err != nil {
-		log.Printf("Passwordless.SendEmail: %v\n", err)
-		return c.SendStatus(fiber.StatusInternalServerError)
+		log.Printf("defaultAuthenticator.VerifyIDToken: %v\n", err)
+		return c.Redirect("/error?message=Something went wrong while logging in&context=invalid id token")
 	}
 
-	session, err := sessions.New()
-	if err != nil {
-		log.Printf("sessions.NewSession: %v\n", err)
-		return c.SendStatus(fiber.StatusInternalServerError)
-	}
-
-	cookie, err := session.Cookie()
-	if err != nil {
-		log.Printf("session.Cookie: %v\n", err)
-		return c.SendStatus(fiber.StatusInternalServerError)
-	}
-
-	c.Cookie(cookie)
-	return c.SendString("Awesome! You can close this tab, and check your email for a link to log in.")
-}
-
-func LoginVerifyHandler(c *fiber.Ctx) error {
-	currentSessionId := c.Cookies("session_id")
-
-	var tokenExpiration int64
-	var accessToken string = c.Query("access_token")
-
-	expiration, err := strconv.Atoi(c.Query("expires_in"))
-	if err != nil {
-		log.Printf("strconv.Atoi: %v\n", err)
-		return c.Redirect("/error?message=Something went wrong while logging in&context=invalid token expiration")
-	}
-	tokenExpiration = int64(expiration)
-
-	if accessToken != "" && tokenExpiration > 0 {
-		info, err := client.UserInfo(context.Background(), accessToken)
+	if idToken.Subject != "" && idToken.Expiry.After(time.Now()) && token.Expiry.After(time.Now()) {
+		user, err := database.C.EnsureUserExists(idToken.Subject)
 		if err != nil {
-			sessions.DeleteSession(currentSessionId)
-			log.Printf("UserInfo: %v\n", err)
-			return c.Redirect("/error?message=Something went wrong while logging in&context=invalid auth token")
-		}
-
-		user, err := database.C.EnsureUserExists(info.Sub)
-		if err != nil {
-			sessions.DeleteSession(currentSessionId)
 			log.Printf("EnsureUserExists: %v\n", err)
 			return c.Redirect("/error?message=Something went wrong while logging in&context=invalid auth token")
 		}
 
-		session, err := sessions.New()
+		session, err := sessions.New(nil)
 		if err != nil {
 			session.Delete()
 			c.ClearCookie("session_id")
@@ -92,7 +77,7 @@ func LoginVerifyHandler(c *fiber.Ctx) error {
 			return c.Redirect("/error?message=Something went wrong while logging in&context=creating session")
 		}
 
-		err = session.Update(sessions.Options{UserID: user.ID, AuthID: info.Sub, AccessToken: accessToken})
+		err = session.Update(sessions.Options{UserID: user.ID, AuthID: idToken.Subject, AccessToken: token.AccessToken})
 		if err != nil {
 			session.Delete()
 			c.ClearCookie("session_id")

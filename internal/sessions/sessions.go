@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -41,13 +42,14 @@ func (s *Session) fetch() error {
 	return nil
 }
 
-func New() (Session, error) {
+func New(meta map[string]any) (Session, error) {
 	id, err := ksuid.NewRandom()
 	if err != nil {
 		return Session{}, err
 	}
 
 	session, err := database.C.NewSession(database.SessionOptions{
+		Meta:      meta,
 		ID:        id.String(),
 		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
 	})
@@ -100,6 +102,16 @@ func (s *Session) UserID() (string, bool) {
 		return s.data.UserID()
 	}
 	return "", false
+}
+
+func (s *Session) Meta() (map[string]any, error) {
+	data := make(map[string]any)
+	raw, ok := s.data.Meta()
+	if !ok {
+		return data, nil
+	}
+
+	return data, json.Unmarshal(raw, &data)
 }
 
 func (s *Session) Cookie() (*fiber.Cookie, error) {
