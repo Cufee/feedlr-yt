@@ -4,27 +4,28 @@ import "fmt"
 import "github.com/byvko-dev/youtube-app/internal/types"
 import "github.com/byvko-dev/youtube-app/internal/templates/components/icons"
 
-
 templ ChannelsFeed(channels []types.ChannelWithVideosProps) {
 	<div class="flex flex-col gap-4" id="components-channels-feed">
 		for _, channel := range channels {
 			<div id={ channel.ID }>
 				<div class="flex flex-col gap-2 p-3 shadow-inner md:gap-4 md:p-6 bg-base-300 rounded-xl">
 					<div class="flex flex-row items-center justify-between gap-2">
-						<div class="flex flex-row items-center gap-1">
-							<img src={ channel.Thumbnail } alt={ channel.Title } class="object-cover w-6 h-6 md:w-8 md:h-8 rounded-xl"/>
-							<span class="mx-2 text-xl font-bold md:text-2xl">{ channel.Title }</span>
-						</div>
+						<div class="flex flex-row items-center gap-1"><img src={ channel.Thumbnail } alt={ channel.Title } class="object-cover w-6 h-6 md:w-8 md:h-8 rounded-xl"/><span class="mx-2 text-xl font-bold md:text-2xl">{ channel.Title }</span></div>
 						@ChannelFavoriteButton(channel.ID, channel.Favorite)
 					</div>
-					
-					if len(channel.Videos) > 0 {
-						@VideoFeed(channel.Videos)
-					} else {
-						<div class="flex items-center justify-center flex-grow h-44 md:h-60">
-							<span class="text-xl font-bold text-center md:text-2xl">There are no videos from { channel.Title } just yet</span>
-						</div>
-					}
+					<div class="relative flex items-center justify-center flex-grow h-44 md:h-60">
+						if len(channel.Videos) > 0 {
+							<div class="absolute left-0 z-30 flex flex-row justify-between w-full p-2 -translate-y-1/2 pointer-events-none top-1/2">
+								if len(channel.Videos) > 1 {
+									<button onclick={ smoothScrollToId(fmt.Sprintf("video-tile-%s", channel.Videos[0].ID)) } class="pointer-events-auto btn md:btn-md btn-dark btn-square opacity-70 hover:opacity-100">❮</button>
+									<button onclick={ smoothScrollToId(fmt.Sprintf("video-tile-%s", channel.Videos[len(channel.Videos)-1].ID)) } class="pointer-events-auto btn md:btn-md btn-dark btn-square opacity-70 hover:opacity-100">❯</button>
+								}
+							</div>
+							@VideoFeed(channel.Videos)
+						} else {
+							<span class="text-xl font-bold text-center md:text-2xl">There are no videos from { channel.Title }just yet</span>
+						}
+					</div>
 				</div>
 			</div>
 		}
@@ -47,7 +48,6 @@ templ ChannelTile(channel types.ChannelWithVideosProps) {
 	</div>
 }
 
-
 templ ChannelFavoriteButton(id string, favorite bool) {
 	<button class="btn btn-sm btn-ghost btn-square" hx-post={ fmt.Sprintf("/api/channels/%s/favorite", id) } hx-target="this" hx-swap="outerHTML" id={ fmt.Sprintf("favorite-channel-button-%s", id) }>
 		if favorite {
@@ -56,5 +56,12 @@ templ ChannelFavoriteButton(id string, favorite bool) {
 			<span class="hover:text-yellow-500">@icons.Bookmark()</span>
 		}
 	</button>
+}
+
+script smoothScrollToId(id string) {
+var element = document.getElementById(id);
+if (element) {
+element.scrollIntoView({ block: 'nearest', behavior: "smooth" });
+}
 }
 

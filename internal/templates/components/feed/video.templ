@@ -4,9 +4,8 @@ import "fmt"
 import "github.com/byvko-dev/youtube-app/internal/types"
 import "github.com/byvko-dev/youtube-app/internal/templates/components/icons"
 
-
 templ VideoFeed(videos []types.VideoProps) {
-	<div class="flex flex-row w-full gap-1 p-0 space-x-2 overflow-scroll shadow-inner md:space-x-4 carousel carousel-center rounded-box" id="components-video-feed">
+	<div class="flex flex-row w-full gap-1 p-0 space-x-2 overflow-x-scroll shadow-inner md:space-x-4 carousel carousel-center rounded-box" id="components-video-feed">
 		for _, video := range videos {
 			@VideoTile(video)
 		}
