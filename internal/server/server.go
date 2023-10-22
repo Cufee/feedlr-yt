@@ -40,10 +40,8 @@ func New(port ...int) func() error {
 		server.All("/429", root.RateLimitedHandler)
 		server.Get("/error", root.GetOrPostError).Post("/error", root.GetOrPostError)
 		// Auth/Login
-		server.Get("/login", root.GetLogin)
-		server.Get("/login/redirect", root.GetLoginRedirect)
-		server.Get("/login/verify", auth.LoginVerifyHandler) // TODO: This should accept a code as fallback
-		server.Post("/login/start", auth.LoginStartHandler)
+		server.Get("/login", auth.LoginStartHandler)
+		server.Get("/login/callback", auth.LoginCallbackHandler)
 
 		// Routes with unique auth handlers
 		server.Get("/video/:id", video.VideoHandler)
