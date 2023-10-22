@@ -17,8 +17,8 @@ templ ChannelsFeed(channels []types.ChannelWithVideosProps) {
 						if len(channel.Videos) > 0 {
 							<div class="absolute left-0 z-30 flex flex-row justify-between w-full p-2 -translate-y-1/2 pointer-events-none top-1/2">
 								if len(channel.Videos) > 1 {
-									<button onclick={ smoothScrollToId(fmt.Sprintf("video-tile-%s", channel.Videos[0].ID)) } class="pointer-events-auto btn md:btn-md btn-dark btn-square opacity-70 hover:opacity-100">❮</button>
-									<button onclick={ smoothScrollToId(fmt.Sprintf("video-tile-%s", channel.Videos[len(channel.Videos)-1].ID)) } class="pointer-events-auto btn md:btn-md btn-dark btn-square opacity-70 hover:opacity-100">❯</button>
+									<button onclick={ smoothScrollToId(fmt.Sprintf("video-tile-%s", channel.Videos[0].ID)) } class="pointer-events-auto btn md:btn-md btn-secondary btn-circle opacity-70 hover:opacity-100">❮</button>
+									<button onclick={ smoothScrollToId(fmt.Sprintf("video-tile-%s", channel.Videos[len(channel.Videos)-1].ID)) } class="pointer-events-auto btn md:btn-md btn-secondary btn-circle opacity-70 hover:opacity-100">❯</button>
 								}
 							</div>
 							@VideoFeed(channel.Videos)
