@@ -1,12 +1,10 @@
 package youtube
 
 import (
-	"os"
-
 	"github.com/byvko-dev/youtube-app/internal/api/youtube/client"
 	"github.com/byvko-dev/youtube-app/internal/api/youtube/internal/google"
-	_ "github.com/joho/godotenv/autoload"
+	"github.com/byvko-dev/youtube-app/internal/utils"
 )
 
-var C client.YouTube = google.NewClient(os.Getenv("YOUTUBE_API_KEY"))
+var C client.YouTube = google.NewClient(utils.MustGetEnv("YOUTUBE_API_KEY"))
 var Client = C

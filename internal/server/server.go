@@ -1,7 +1,6 @@
 package server
 
 import (
-	"os"
 	"strconv"
 
 	"github.com/byvko-dev/youtube-app/internal/auth"
@@ -10,10 +9,9 @@ import (
 	appHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/app"
 	"github.com/byvko-dev/youtube-app/internal/server/handlers/video"
 	"github.com/byvko-dev/youtube-app/internal/templates"
+	"github.com/byvko-dev/youtube-app/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-
-	_ "github.com/joho/godotenv/autoload"
 )
 
 func New(port ...int) func() error {
@@ -21,7 +19,7 @@ func New(port ...int) func() error {
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
 	} else {
-		portString = os.Getenv("PORT")
+		portString = utils.MustGetEnv("PORT")
 	}
 
 	return func() error {

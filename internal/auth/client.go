@@ -3,10 +3,9 @@ package auth
 import (
 	"context"
 	"errors"
-	"os"
 
+	"github.com/byvko-dev/youtube-app/internal/utils"
 	"github.com/coreos/go-oidc/v3/oidc"
-	_ "github.com/joho/godotenv/autoload"
 	"golang.org/x/oauth2"
 )
 
@@ -30,16 +29,16 @@ type Authenticator struct {
 func New() (*Authenticator, error) {
 	provider, err := oidc.NewProvider(
 		context.Background(),
-		"https://"+os.Getenv("AUTH0_DOMAIN")+"/",
+		"https://"+utils.MustGetEnv("AUTH0_DOMAIN")+"/",
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	conf := oauth2.Config{
-		ClientID:     os.Getenv("AUTH0_CLIENT_ID"),
-		ClientSecret: os.Getenv("AUTH0_CLIENT_SECRET"),
-		RedirectURL:  os.Getenv("AUTH0_CALLBACK_URL"),
+		ClientID:     utils.MustGetEnv("AUTH0_CLIENT_ID"),
+		ClientSecret: utils.MustGetEnv("AUTH0_CLIENT_SECRET"),
+		RedirectURL:  utils.MustGetEnv("AUTH0_CALLBACK_URL"),
 		Endpoint:     provider.Endpoint(),
 		Scopes:       []string{oidc.ScopeOpenID, "profile"},
 	}
