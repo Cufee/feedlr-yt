@@ -19,7 +19,7 @@ tasks:
       BUILD_MODE: true
       CGO_ENABLED: 0
     cmds:
-      - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o out .
+      - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o app .
   test:
     cmds:
       - go test ./... -v          
