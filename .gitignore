@@ -4,5 +4,7 @@ tmp
 .vscode
 **/.DS_Store
 
+node_modules
+prisma/bin
 prisma/db
 .env

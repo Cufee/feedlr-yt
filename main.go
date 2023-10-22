@@ -5,7 +5,8 @@ import (
 	"github.com/byvko-dev/youtube-app/internal/server"
 )
 
-//go:generate go run github.com/steebchen/prisma-client-go generate
+//go:generate task db:generate
+//go:generate task style:generate
 
 func main() {
 	background.StartCronTasks()

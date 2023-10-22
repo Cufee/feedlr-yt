@@ -7,22 +7,30 @@ vars:
 
 tasks:
   dev:
-    deps: [db:generate, generate]
+    deps: [generate]
     cmds:
       - air
   generate:
     cmds:
-      - go generate ./internal/...
+      - go generate ./...
   build:
-    deps: [db:generate, test, generate]
+    deps: [generate]
+    env:
+      BUILD_MODE: true
+      CGO_ENABLED: 0
+      GOOS: linux
     cmds:
-      - CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o out .
+      - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o app .
   test:
     cmds:
       - go test ./... -v          
   upgrade:
     cmds:
       - go get -u ./...
+
+  style:generate:
+    cmds:
+      - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.css
 
   db:prefetch:
     cmds:
