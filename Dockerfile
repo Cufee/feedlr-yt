@@ -2,6 +2,8 @@ FROM golang:1.20 as build
 
 WORKDIR /workspace
 
+ENV PRISMA_QUERY_ENGINE_BINARY=/workspace/prisma/bin
+
 # install node
 RUN apt update && apt install nodejs npm -y
 
@@ -21,5 +23,13 @@ COPY . ./
 
 # generate the Prisma Client Go client
 RUN task build
+
+FROM scratch as bin
+
+ENV PRISMA_QUERY_ENGINE_BINARY=/prisma/bin
+
+COPY --from=build /workspace/app /app
+COPY --from=build /workspace/assets /assets
+COPY --from=build /workspace/prisma/bin /prisma/bin
 
 CMD ["/app"]
