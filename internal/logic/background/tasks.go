@@ -3,9 +3,9 @@ package background
 import (
 	"sync"
 
-	"github.com/byvko-dev/youtube-app/internal/database"
-	"github.com/byvko-dev/youtube-app/internal/logic"
-	"github.com/byvko-dev/youtube-app/prisma/db"
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/prisma/db"
 )
 
 func CacheAllChannelsWithVideos() error {

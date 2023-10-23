@@ -1,32 +1,14 @@
 package pages
 
 import (
-  "github.com/byvko-dev/youtube-app/internal/templates/components/shared"
+  "github.com/cufee/feedlr-yt/internal/templates/components/shared"
 )
 
 templ Landing() {
-  <div class="flex flex-col justify-center gap-4 m-auto" id="landing">
-    <div class="flex justify-center">
-      @shared.Logo("128")
-    </div>
-    <div class="max-w-4xl text-center">
-        <span class="text-xl">
-            Feedlr.app offers a refreshing open-source solution for managing your YouTube subscriptions.
-            This free platform is designed to provide an uninterrupted viewing experience, completely free from distracting elements and bothersome advertisements.
-        </span>
-    </div>
-    <div class="flex flex-col items-center justify-center gap-2">
-        <a href="/app">
-            <button class="btn btn-primary">
-                Start Watching
-            </button>
-        </a>
-        <a href="https://github.com/Cufee/feedlr-yt">
-            <button class="btn btn-dark">
-                GitHub
-            </button>
-        </a>
-    </div>
-  </div>
+	<div class="flex flex-col justify-center gap-4 m-auto" id="landing">
+		<div class="flex justify-center">@shared.Logo("128")</div>
+		<div class="max-w-4xl text-center"><span class="text-xl">Feedlr.app offers a refreshing open-source solution for managing your YouTube subscriptions. This free platform is designed to provide an uninterrupted viewing experience, completely free from distracting elements and bothersome advertisements.</span></div>
+		<div class="flex flex-col items-center justify-center gap-2"><a href="/app"><button class="btn btn-primary">Start Watching</button></a> <a href="https://github.com/Cufee/feedlr-yt"><button class="btn btn-dark">GitHub</button></a></div>
+	</div>
 }
 

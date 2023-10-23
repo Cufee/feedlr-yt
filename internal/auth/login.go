@@ -4,8 +4,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/byvko-dev/youtube-app/internal/database"
-	"github.com/byvko-dev/youtube-app/internal/sessions"
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/gofiber/fiber/v2"
 	"github.com/segmentio/ksuid"
 )

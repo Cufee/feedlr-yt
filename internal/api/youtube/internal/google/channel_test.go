@@ -5,7 +5,7 @@ import (
 	"log"
 	"testing"
 
-	"github.com/byvko-dev/youtube-app/internal/utils"
+	"github.com/cufee/feedlr-yt/internal/utils"
 )
 
 func TestGetChannelVideos(t *testing.T) {

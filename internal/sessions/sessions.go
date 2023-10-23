@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/byvko-dev/youtube-app/internal/database"
-	"github.com/byvko-dev/youtube-app/prisma/db"
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/prisma/db"
 	"github.com/gofiber/fiber/v2"
 	"github.com/segmentio/ksuid"
 )

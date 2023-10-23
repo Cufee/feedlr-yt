@@ -3,7 +3,7 @@ package server
 import (
 	"runtime"
 
-	"github.com/byvko-dev/youtube-app/internal/utils"
+	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/storage/redis/v3"
 )

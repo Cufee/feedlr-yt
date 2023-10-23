@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/byvko-dev/youtube-app/internal/logic/background"
-	"github.com/byvko-dev/youtube-app/internal/server"
+	"github.com/cufee/feedlr-yt/internal/logic/background"
+	"github.com/cufee/feedlr-yt/internal/server"
 )
 
 //go:generate task db:generate

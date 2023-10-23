@@ -1,4 +1,4 @@
-module github.com/byvko-dev/youtube-app
+module github.com/cufee/feedlr-yt
 
 go 1.20
 

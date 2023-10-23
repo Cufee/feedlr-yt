@@ -1,12 +1,12 @@
 package app
 
-import	"github.com/byvko-dev/youtube-app/internal/types"
-import 	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
+import	"github.com/cufee/feedlr-yt/internal/types"
+import 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
 
 templ Subscriptions(channels []types.ChannelProps) {
 	<head><title>Feedlr - Subscriptions</title></head>
 	<div class="flex flex-col gap-8">
-		<div id="search" class="flex flex-col gap-4"><span class="self-center text-xl font-bold">Search Channels</span> @subscriptions.SearchChannels()</div>
+		<div id="search" class="flex flex-col gap-4"><span class="self-center text-xl font-bold">Search Channels</span>@subscriptions.SearchChannels()</div>
 		<div id="subscriptions" class="flex flex-col gap-4">
 			<span class="self-center text-xl font-bold">Your Subscriptions</span>
 			<div class="flex flex-row flex-wrap gap-2" id="subscriptions-list">

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/byvko-dev/youtube-app/prisma/db"
+	"github.com/cufee/feedlr-yt/prisma/db"
 	"github.com/steebchen/prisma-client-go/runtime/transaction"
 )
 

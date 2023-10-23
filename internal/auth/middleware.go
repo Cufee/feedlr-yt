@@ -3,7 +3,7 @@ package auth
 import (
 	"log"
 
-	"github.com/byvko-dev/youtube-app/internal/sessions"
+	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/gofiber/fiber/v2"
 )
 

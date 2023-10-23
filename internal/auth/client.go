@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/byvko-dev/youtube-app/internal/utils"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/cufee/feedlr-yt/internal/utils"
 	"golang.org/x/oauth2"
 )
 

@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 
-	"github.com/byvko-dev/youtube-app/prisma/db"
+	"github.com/cufee/feedlr-yt/prisma/db"
 )
 
 func (c *Client) NewSubscription(userId, channelId string) (*db.UserSubscriptionModel, error) {

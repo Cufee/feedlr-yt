@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
+	yt "github.com/cufee/feedlr-yt/internal/api/youtube/client"
 	"google.golang.org/api/youtube/v3"
 )
 

@@ -1,9 +1,8 @@
 package feed
 
 import "fmt"
-import "github.com/byvko-dev/youtube-app/internal/types"
-import "github.com/byvko-dev/youtube-app/internal/templates/components/icons"
-import "github.com/byvko-dev/youtube-app/internal/templates/components/shared"
+import "github.com/cufee/feedlr-yt/internal/types"
+import "github.com/cufee/feedlr-yt/internal/templates/components/icons"
 
 templ VideoFeed(videos []types.VideoProps) {
 	<div class="relative flex w-full gap-1 p-0 space-x-2 overflow-x-scroll shadow-inner md:space-x-4 carousel carousel-center rounded-box" id="components-video-feed">
@@ -11,7 +10,6 @@ templ VideoFeed(videos []types.VideoProps) {
 			@VideoTile(video)
 		}
 	</div>
-	@shared.EmbedMinifiedScript(tilesScrollOnHover())
 }
 
 templ VideoTile(video types.VideoProps) {
@@ -46,13 +44,4 @@ templ VideoTile(video types.VideoProps) {
 			}
 		</a>
 	</div>
-}
-
-script tilesScrollOnHover() {
-	var tiles = document.querySelectorAll(".video-tile");
-	tiles.forEach((tile) => {
-		tile.addEventListener("mouseenter", () => {
-			tile.scrollIntoView({ block: 'nearest', behavior: "smooth" });
-		});
-	});
 }
