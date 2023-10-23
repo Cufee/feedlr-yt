@@ -12,5 +12,8 @@ func FindStylePath() string {
 	if len(files) == 0 {
 		panic("missing style file")
 	}
-	return strings.ReplaceAll(files[0], cwd, "")
+	if cwd == "/" {
+		return files[0]
+	}
+	return strings.Replace(files[0], cwd, "", 1)
 }
