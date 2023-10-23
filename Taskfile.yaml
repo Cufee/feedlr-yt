@@ -27,14 +27,22 @@ tasks:
     cmds:
       - go generate ./...
 
-  build:
-    deps: [generate]
+  build:fast:
     env:
       BUILD_MODE: true
       CGO_ENABLED: 0
       GOOS: linux
     cmds:
       - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o {{ .CLI_ARGS | default "app" }} .
+  build:full:
+    aliases: [build]
+    deps: [generate]
+    cmds:
+      - task: build:fast
+  build:docker:
+    deps: [db:generate]
+    cmds:
+      - task: build:fast
 
   style:generate:
     cmds:
