@@ -1,3 +1,20 @@
+FROM node as assets
+
+WORKDIR /workspace
+COPY . ./
+
+# We need a git repo in order to get a commit during build, the commit ID itself does not really matter though
+RUN git config --global init.defaultBranch main && \
+  git config --global user.email "pipeline@byvko.dev" && \
+  git config --global user.name "Docker Build" && \
+  git init && \
+  git add . && \
+  git commit -m "build commit"
+
+RUN npm install && npm install -g @go-task/cli
+RUN task style:generate
+
+
 FROM golang:1.20 as build
 
 WORKDIR /workspace
@@ -19,15 +36,16 @@ RUN go install github.com/go-task/task/v3/cmd/task@latest
 
 COPY . ./
 
-# We need a git repo in order to get a commit during build, the commit ID itself does not really matter though
-RUN git config --global init.defaultBranch main && \
-  git config --global user.email "pipeline@byvko.dev" && \
-  git config --global user.name "Docker Build" && \
-  git init && \
-  git add . && \
-  git commit -m "build commit"
-
 # generate the Prisma Client Go client
-RUN task build:full
+RUN task build:docker
+
+
+FROM scratch as run
+
+COPY --from=build /root/.cache/prisma/binaries /root/.cache/prisma/binaries
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+COPY --from=build /workspace/app .
+COPY --from=assets /workspace/assets ./assets
 
 CMD ["./app"]
