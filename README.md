@@ -22,6 +22,7 @@ Start a local dev server:
 ```
 task dev
 ```
+_using `air` directly will cause a panic due to a missing env variable_
 
 Run all tests:
 ```

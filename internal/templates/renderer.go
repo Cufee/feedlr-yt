@@ -54,7 +54,7 @@ func (r *renderer) Render(w io.Writer, layoutName string, component interface{},
 	}
 
 	// Merge head tags.
-	html, err := mergeHeadTags(buf.String())
+	html, err := movePartialTags(buf.String())
 	if err != nil {
 		fmt.Println(err)
 		_, err = w.Write(buf.Bytes())
@@ -65,8 +65,9 @@ func (r *renderer) Render(w io.Writer, layoutName string, component interface{},
 	return err
 }
 
-func mergeHeadTags(content string) (string, error) {
+func movePartialTags(content string) (string, error) {
 	headTags := []string{"meta", "link", "title", "style"}
+	bodyTags := []string{"script"}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(content))
 	if err != nil {
@@ -77,6 +78,13 @@ func mergeHeadTags(content string) (string, error) {
 	for _, tag := range headTags {
 		doc.Find("body").Find(tag).Each(func(i int, s *goquery.Selection) {
 			headTagNodes = append(headTagNodes, s.Remove())
+		})
+	}
+
+	body := doc.Find("body")
+	for _, tag := range bodyTags {
+		body.Find(tag).Each(func(i int, s *goquery.Selection) {
+			body.AppendSelection(s.Remove())
 		})
 	}
 

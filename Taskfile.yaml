@@ -1,5 +1,8 @@
 version: 3
 
+# User by --watch
+interval: '500ms'
+
 dotenv: ['.env']
 
 vars:
@@ -7,37 +10,62 @@ vars:
 
 tasks:
   dev:
-    deps: [generate]
+    desc: Run the application in development mode with hot reload
     cmds:
       - air
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./... -v          
+  upgrade:
+    desc: Upgrade dependencies
+    cmds:
+      - go get -u ./...
   generate:
+    desc: Run go generate
     cmds:
       - go generate ./...
-  build:
-    deps: [generate]
+
+  build:fast:
+    desc: Build the application without go generate
     env:
       BUILD_MODE: true
       CGO_ENABLED: 0
       GOOS: linux
     cmds:
-      - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o app .
-  test:
+      - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o {{ .CLI_ARGS | default "app" }} .
+  build:full:
+    desc: Build the application with go generate
+    aliases: [build]
+    deps: [generate]
     cmds:
-      - go test ./... -v          
-  upgrade:
+      - task: build:fast
+  build:docker:
+    desc: Build the application with go generate, but without style:generate
+    deps: [db:generate]
     cmds:
-      - go get -u ./...
+      - go generate ./internal/...
+      - task: build:fast
 
   style:generate:
+    desc: Generate the CSS files
     cmds:
-      - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.css
+      - rm -rf ./assets/css/style.*
+      - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.{{.COMMIT_ID}}.css --minify
+      - echo "@import url('style.{{.COMMIT_ID}}.css');" > ./assets/css/style.css
+    vars:
+      COMMIT_ID:
+        sh: git rev-parse --short HEAD || echo "unknown"
 
   db:prefetch:
+    desc: Prefetch Prisma binaries
     cmds:
       - "{{.PRISMA_CLIENT}} prefetch"
   db:generate:
+    desc: Generate Prisma client
     cmds:
       - "{{.PRISMA_CLIENT}} generate"
   db:push:
+    desc: Push Prisma schema to database
     cmds:
       - "{{.PRISMA_CLIENT}} db push"

@@ -6,7 +6,7 @@ import "github.com/byvko-dev/youtube-app/internal/types"
 templ ChannelTile(channel types.Channel) {
 	<div class="flex flex-row items-center gap-4 h-fit">
 		<div class="min-w-[6rem] w-[6rem] h-[6rem] rounded-lg overflow-hidden relative">
-			<img class="z-10 object-cover w-full h-full" src={ channel.Thumbnail } alt={ channel.Title } onerror="this.style.display='none'"/>
+			<img class="z-10 object-cover w-full h-full transition-all duration-500 group-hover:scale-125" src={ channel.Thumbnail } alt={ channel.Title } onerror="this.style.display='none'"/>
 			<div class="absolute w-full h-full bg-base-100 animate-pulse" />
 		</div>
 		<div class="box-border flex flex-col justify-center">
