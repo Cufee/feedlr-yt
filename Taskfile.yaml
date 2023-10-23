@@ -7,11 +7,6 @@ dotenv: ['.env']
 
 vars:
   PRISMA_CLIENT: 'go run github.com/steebchen/prisma-client-go'
-  COMMIT_ID:
-    sh: git rev-parse --short HEAD
-
-env:
-  COMMIT_ID: "{{.COMMIT_ID}}"
 
 tasks:
   dev:
@@ -47,8 +42,11 @@ tasks:
   style:generate:
     cmds:
       - rm -rf ./assets/css/style.*
-      - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.$COMMIT_ID.css --minify
-      - echo "@import url('style.$COMMIT_ID.css');" > ./assets/css/style.css
+      - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.{{.COMMIT_ID}}.css --minify
+      - echo "@import url('style.{{.COMMIT_ID}}.css');" > ./assets/css/style.css
+    vars:
+      COMMIT_ID:
+        sh: git rev-parse --short HEAD || echo "unknown"
 
   db:prefetch:
     cmds:
