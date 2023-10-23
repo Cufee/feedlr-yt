@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,4 +27,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("Downloaded %s/%s to %s", *engineName, *binaryName, enginePath)
 }
