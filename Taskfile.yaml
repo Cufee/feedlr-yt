@@ -38,7 +38,7 @@ tasks:
 
   style:generate:
     cmds:
-      - rm -rf ./assets/css/style.*.css
+      - rm -rf ./assets/css/style.*
       - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.$COMMIT_ID.css --minify
       - echo "@import url('style.$COMMIT_ID.css');" > ./assets/css/style.css
 
