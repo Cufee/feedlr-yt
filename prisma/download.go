@@ -13,7 +13,7 @@ func main() {
 	cwd, _ := os.Getwd()
 
 	engineName := flag.String("engine", "query-engine", "engine name")
-	binaryName := flag.String("binary", "debian-openssl-1.1.x", "binary name")
+	binaryName := flag.String("binary", "linux-static-x64", "binary name")
 	path := flag.String("path", filepath.Join(cwd, "prisma", "bin"), "path to store binary")
 
 	err := binaries.FetchEngine(*path, *engineName, *binaryName)

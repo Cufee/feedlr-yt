@@ -18,30 +18,24 @@ RUN task style:generate
 FROM golang:1.20 as build
 
 WORKDIR /workspace
+COPY . ./
 
 # install node
 RUN apt update && apt install nodejs npm -y
 
 # add go modules lockfiles
-COPY go.mod go.sum ./
 RUN go mod download
 
-# prefetch the binaries
-RUN go run github.com/steebchen/prisma-client-go prefetch
+# download the engine required for the next image
+RUN go run prisma/download.go
 
 # install templ
 RUN go install github.com/a-h/templ/cmd/templ@latest
 # install task
 RUN go install github.com/go-task/task/v3/cmd/task@latest
 
-COPY . ./
-
 # generate the Prisma Client Go client
 RUN task build:docker
-
-# download the engine required for scratch
-RUN go run prisma/download.go
-
 
 FROM scratch as run
 
