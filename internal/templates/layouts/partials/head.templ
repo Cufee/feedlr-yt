@@ -1,5 +1,7 @@
 package partials
 
+import "github.com/byvko-dev/youtube-app/internal/utils"
+
 templ Head(content ...templ.Component) {
 	<head>
 		<script src="/assets/js/htmx.min.js"></script>
@@ -10,7 +12,7 @@ templ Head(content ...templ.Component) {
 		<link href="/assets/app.webmanifest" rel="manifest"/>
 		<link href="/assets/css/animate.min.css" rel="stylesheet"/>
 		<link href="/assets/favicon.png" rel="icon" type="image/png"/>
-		<link href="/assets/css/style.css" rel="stylesheet" type="text/css"/>
+		<link href={ utils.FindStylePath() } rel="stylesheet" type="text/css"/>
 
 		<meta charset="UTF-8"/>
 		<meta name="color-scheme" content="dark"/>

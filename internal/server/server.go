@@ -33,6 +33,7 @@ func New(port ...int) func() error {
 			Level: compress.LevelBestSpeed,
 		}))
 
+		server.Get("/ping", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }).Use(limiterMiddleware)
 		server.Static("/assets", "./assets", fiber.Static{
 			Compress: true,
 		})

@@ -25,6 +25,10 @@ tasks:
     desc: Run go generate
     cmds:
       - go generate ./...
+  generate:internal:
+    desc: Run go generate
+    cmds:
+      - go generate ./internal/...
 
   build:fast:
     desc: Build the application without go generate
@@ -41,18 +45,20 @@ tasks:
     cmds:
       - task: build:fast
   build:docker:
-    desc: Build the application with go generate, but without style:generate
-    deps: [db:generate]
+    desc: Build the application without generating styles
+    deps: [db:generate, generate:internal]
     cmds:
-      - go generate ./internal/...
       - task: build:fast
+  build:image:
+    desc: Build the Docker image
+    cmds:
+      - docker build --progress=plain --platform linux/amd64 -t {{ .CLI_ARGS | default "github.com/cufee/feedlr-yt" }} .
 
   style:generate:
     desc: Generate the CSS files
     cmds:
-      - rm -rf ./assets/css/style.*
+      - rm -rf ./assets/css/style.*.css*
       - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.{{.COMMIT_ID}}.css --minify
-      - echo "@import url('style.{{.COMMIT_ID}}.css');" > ./assets/css/style.css
     vars:
       COMMIT_ID:
         sh: git rev-parse --short HEAD || echo "unknown"
