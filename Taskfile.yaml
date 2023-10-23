@@ -10,19 +10,24 @@ vars:
 
 tasks:
   dev:
+    desc: Run the application in development mode with hot reload
     cmds:
       - air
   test:
+    desc: Run tests
     cmds:
       - go test ./... -v          
   upgrade:
+    desc: Upgrade dependencies
     cmds:
       - go get -u ./...
   generate:
+    desc: Run go generate
     cmds:
       - go generate ./...
 
   build:fast:
+    desc: Build the application without go generate
     env:
       BUILD_MODE: true
       CGO_ENABLED: 0
@@ -30,17 +35,20 @@ tasks:
     cmds:
       - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o {{ .CLI_ARGS | default "app" }} .
   build:full:
+    desc: Build the application with go generate
     aliases: [build]
     deps: [generate]
     cmds:
       - task: build:fast
   build:docker:
+    desc: Build the application with go generate, but without style:generate
     deps: [db:generate]
     cmds:
       - go generate ./internal/...
       - task: build:fast
 
   style:generate:
+    desc: Generate the CSS files
     cmds:
       - rm -rf ./assets/css/style.*
       - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.{{.COMMIT_ID}}.css --minify
@@ -50,11 +58,14 @@ tasks:
         sh: git rev-parse --short HEAD || echo "unknown"
 
   db:prefetch:
+    desc: Prefetch Prisma binaries
     cmds:
       - "{{.PRISMA_CLIENT}} prefetch"
   db:generate:
+    desc: Generate Prisma client
     cmds:
       - "{{.PRISMA_CLIENT}} generate"
   db:push:
+    desc: Push Prisma schema to database
     cmds:
       - "{{.PRISMA_CLIENT}} db push"
