@@ -1,1 +1,4 @@
 *.fiber.gz
+
+css/style.css
+css/style.*.css

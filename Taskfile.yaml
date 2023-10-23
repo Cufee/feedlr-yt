@@ -40,12 +40,6 @@ tasks:
     deps: [generate]
     cmds:
       - task: build:fast
-  build:docker:
-    desc: Build the application with go generate, but without style:generate
-    deps: [db:generate]
-    cmds:
-      - go generate ./internal/...
-      - task: build:fast
 
   style:generate:
     desc: Generate the CSS files
