@@ -15,7 +15,7 @@ RUN npm install && npm install -g @go-task/cli
 RUN task style:generate
 
 
-FROM golang:1.20-buster as build
+FROM golang:1.20 as build
 
 WORKDIR /workspace
 
@@ -39,13 +39,18 @@ COPY . ./
 # generate the Prisma Client Go client
 RUN task build:docker
 
+# download the engine required for scratch
+RUN go run prisma/download.go
+
 
 FROM scratch as run
 
-COPY --from=build /root/.cache/prisma/binaries /root/.cache/prisma/binaries
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-COPY --from=build /workspace/app .
+COPY --from=build /workspace/prisma/bin/engine /prisma/bin/engine
+ENV PRISMA_QUERY_ENGINE_BINARY=/prisma/bin/engine
+
 COPY --from=assets /workspace/assets ./assets
+COPY --from=build /workspace/app .
 
 CMD ["./app"]
