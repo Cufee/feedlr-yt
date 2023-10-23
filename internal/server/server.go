@@ -11,6 +11,7 @@ import (
 	"github.com/byvko-dev/youtube-app/internal/templates"
 	"github.com/byvko-dev/youtube-app/internal/utils"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
@@ -28,6 +29,9 @@ func New(port ...int) func() error {
 			PassLocalsToViews: true,
 		})
 		server.Use(logger.New())
+		server.Use(compress.New(compress.Config{
+			Level: compress.LevelBestSpeed,
+		}))
 
 		server.Static("/assets", "./assets", fiber.Static{
 			Compress: true,

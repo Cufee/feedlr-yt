@@ -1,18 +1,32 @@
 version: 3
 
+# User by --watch
+interval: '500ms'
+
 dotenv: ['.env']
 
 vars:
   PRISMA_CLIENT: 'go run github.com/steebchen/prisma-client-go'
+  COMMIT_ID:
+    sh: git rev-parse --short HEAD
+
+env:
+  COMMIT_ID: "{{.COMMIT_ID}}"
 
 tasks:
   dev:
-    deps: [generate]
     cmds:
       - air
+  test:
+    cmds:
+      - go test ./... -v          
+  upgrade:
+    cmds:
+      - go get -u ./...
   generate:
     cmds:
       - go generate ./...
+
   build:
     deps: [generate]
     env:
@@ -20,17 +34,12 @@ tasks:
       CGO_ENABLED: 0
       GOOS: linux
     cmds:
-      - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o app .
-  test:
-    cmds:
-      - go test ./... -v          
-  upgrade:
-    cmds:
-      - go get -u ./...
+      - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o {{ .CLI_ARGS | default "app" }} .
 
   style:generate:
     cmds:
-      - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.css
+      - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.$COMMIT_ID.css --minify
+      - echo "@import url('style.$COMMIT_ID.css');" > ./assets/css/style.css
 
   db:prefetch:
     cmds:
