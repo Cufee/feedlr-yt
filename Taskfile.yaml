@@ -37,6 +37,7 @@ tasks:
   build:docker:
     deps: [db:generate]
     cmds:
+      - go generate ./internal/...
       - task: build:fast
 
   style:generate:
