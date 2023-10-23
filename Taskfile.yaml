@@ -57,9 +57,8 @@ tasks:
   style:generate:
     desc: Generate the CSS files
     cmds:
-      - rm -rf ./assets/css/style.*
+      - rm -rf ./assets/css/style.*.css*
       - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.{{.COMMIT_ID}}.css --minify
-      - echo "@import url('style.{{.COMMIT_ID}}.css');" > ./assets/css/style.css
     vars:
       COMMIT_ID:
         sh: git rev-parse --short HEAD || echo "unknown"
