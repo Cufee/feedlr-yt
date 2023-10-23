@@ -19,6 +19,9 @@ RUN go install github.com/go-task/task/v3/cmd/task@latest
 
 COPY . ./
 
+# We need a git repo in order to get a commit during build, the commit ID itself does not really matter though
+RUN git init && git add . && git commit -m "build commit"
+
 # generate the Prisma Client Go client
 RUN task build
 
