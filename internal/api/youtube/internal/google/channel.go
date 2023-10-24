@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sort"
 
-	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
+	yt "github.com/cufee/feedlr-yt/internal/api/youtube/client"
 )
 
 func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {

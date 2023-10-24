@@ -3,7 +3,7 @@ package sponsorblock
 import (
 	"log"
 
-	"github.com/byvko-dev/youtube-app/internal/utils"
+	"github.com/cufee/feedlr-yt/internal/utils"
 )
 
 type client struct {

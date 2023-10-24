@@ -1,43 +1,29 @@
 package subscriptions
 
 import "fmt"
-import "github.com/byvko-dev/youtube-app/internal/types"
+import "github.com/cufee/feedlr-yt/internal/types"
 
 templ SearchChannels() {
-  <div id="search" class="flex flex-col gap-2">
-    <form class="flex items-center justify-center gap-2 group" id="search-box" _="on clear send clear to #search-results">
-      <div class="invisible w-6 h-6"></div>
-
-      <input type="search" placeholder="Channel Name" name="search" minlength="5" maxlength="32"
-				_="on load set my value to '' then"
-        class="self-center w-full max-w-xs input input-bordered font-control" hx-indicator="#search-box"
-        hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML"
-        hx-trigger="keyup delay:750ms, search, refresh" hx-sync="this:replace" id="search-input"/>
-
-      <span class="htmx-indicator invisible group-[.htmx-request]:visible w-6 h-6 loading loading-spinner"></span>
-    </form>
-    <div id="search-results" class="flex flex-row flex-wrap gap-2"></div>
-  </div>
+	<div id="search" class="flex flex-col gap-2">
+		<form class="flex items-center justify-center gap-2 group" id="search-box" _="on clear send clear to #search-results">
+			<div class="invisible w-6 h-6"></div>
+			<input type="search" placeholder="Channel Name" name="search" minlength="5" maxlength="32" _="on load set my value to &#39;&#39; then" class="self-center w-full max-w-xs input input-bordered font-control" hx-indicator="#search-box" hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML" hx-trigger="keyup delay:750ms, search, refresh" hx-sync="this:replace" id="search-input"/>
+			<span class="htmx-indicator invisible group-[.htmx-request]:visible w-6 h-6 loading loading-spinner"></span>
+		</form>
+		<div id="search-results" class="flex flex-row flex-wrap gap-2"></div>
+	</div>
 }
 
 templ SearchResultChannels(channels []types.ChannelSearchResultProps) {
 	for _, channel := range channels {
 		<div class="relative flex-grow p-4 overflow-hidden group md:basis-1/3 rounded-xl bg-base-300 channel-btn" id={ fmt.Sprintf("channel-tile-%s", channel.ID) }>
 			if channel.Subscribed {
-				<div
-					class="absolute inset-0 z-10 flex items-center justify-center w-full text-lg font-bold uppercase bg-black bg-opacity-50 cursor-default">
-					Subscribed
-				</div>
+				<div class="absolute inset-0 z-10 flex items-center justify-center w-full text-lg font-bold uppercase bg-black bg-opacity-50 cursor-default">Subscribed</div>
 			} else {
-				<button type="button" _={ fmt.Sprintf("on htmx:afterRequest remove #channel-tile-%s", channel.ID) }
-				class="absolute inset-0 z-10 flex items-center justify-center invisible w-full text-lg font-bold uppercase bg-black bg-opacity-50 group-hover:visible group-[.htmx-request]:visible"
-				hx-indicator={ fmt.Sprintf("#channel-tile-%s", channel.ID) } hx-target="#subscriptions-list" hx-swap="afterbegin"
-				hx-post={ fmt.Sprintf("/api/channels/%s/subscribe", channel.ID) }>
-					<span class="loading loading-spinner loading-md md:loading-lg invisible group-[.htmx-request]:visible"></span>
-					<span class="group-[.htmx-request]:hidden">Subscribe</span>
-				</button>
+				<button type="button" _={ fmt.Sprintf("on htmx:afterRequest remove #channel-tile-%s", channel.ID) } class="absolute inset-0 z-10 flex items-center justify-center invisible w-full text-lg font-bold uppercase bg-black bg-opacity-50 group-hover:visible group-[.htmx-request]:visible" hx-indicator={ fmt.Sprintf("#channel-tile-%s", channel.ID) } hx-target="#subscriptions-list" hx-swap="afterbegin" hx-post={ fmt.Sprintf("/api/channels/%s/subscribe", channel.ID) }><span class="loading loading-spinner loading-md md:loading-lg invisible group-[.htmx-request]:visible"></span> <span class="group-[.htmx-request]:hidden">Subscribe</span></button>
 			}
 			@ChannelTile(channel.Channel)
 		</div>
 	}
 }
+

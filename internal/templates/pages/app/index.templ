@@ -1,7 +1,8 @@
 package app
 
-import "github.com/byvko-dev/youtube-app/internal/types"
-import "github.com/byvko-dev/youtube-app/internal/templates/components/feed"
+import "github.com/cufee/feedlr-yt/internal/types"
+import "github.com/cufee/feedlr-yt/internal/templates/components/feed"
+import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
 
 templ AppHome(props types.UserSubscriptionsFeedProps) {
 	<head><title>Feedlr</title></head>
@@ -24,4 +25,15 @@ templ AppHome(props types.UserSubscriptionsFeedProps) {
 
 		@feed.ChannelsFeed(props.WithoutNewVideos)
 	</div>
+
+	@shared.EmbedMinifiedScript(tilesScrollOnHover())
+}
+
+script tilesScrollOnHover() {
+	var tiles = document.querySelectorAll(".video-tile");
+	tiles.forEach((tile) => {
+		tile.addEventListener("mouseenter", () => {
+			tile.scrollIntoView({ block: 'nearest', behavior: "smooth" });
+		});
+	});
 }

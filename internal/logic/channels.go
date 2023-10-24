@@ -3,10 +3,10 @@ package logic
 import (
 	"sync"
 
-	"github.com/byvko-dev/youtube-app/internal/api/youtube"
-	"github.com/byvko-dev/youtube-app/internal/api/youtube/client"
-	"github.com/byvko-dev/youtube-app/internal/database"
-	"github.com/byvko-dev/youtube-app/internal/types"
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
+	"github.com/cufee/feedlr-yt/internal/api/youtube/client"
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/ssoroka/slice"
 )
 

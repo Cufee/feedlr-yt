@@ -13,7 +13,7 @@ import (
 //go:generate templ generate
 
 // This should be done properly, but for now it's ok.
-//go:generate go test -v "github.com/byvko-dev/youtube-app/internal/templates/gen"
+//go:generate go test -v "github.com/cufee/feedlr-yt/internal/templates/gen"
 
 type renderer struct {
 	layouts map[string]func(...templ.Component) templ.Component
@@ -67,7 +67,6 @@ func (r *renderer) Render(w io.Writer, layoutName string, component interface{},
 
 func movePartialTags(content string) (string, error) {
 	headTags := []string{"meta", "link", "title", "style"}
-	bodyTags := []string{"script"}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(content))
 	if err != nil {
@@ -78,13 +77,6 @@ func movePartialTags(content string) (string, error) {
 	for _, tag := range headTags {
 		doc.Find("body").Find(tag).Each(func(i int, s *goquery.Selection) {
 			headTagNodes = append(headTagNodes, s.Remove())
-		})
-	}
-
-	body := doc.Find("body")
-	for _, tag := range bodyTags {
-		body.Find(tag).Each(func(i int, s *goquery.Selection) {
-			body.AppendSelection(s.Remove())
 		})
 	}
 

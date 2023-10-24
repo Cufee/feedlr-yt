@@ -5,6 +5,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func RateLimitedHandler(c *fiber.Ctx) error {
-	return c.Render("layouts/HeadOnly", pages.RateLimited())
+func GetLogin(c *fiber.Ctx) error {
+	return c.Render("layouts/HeadOnly", pages.Login())
 }

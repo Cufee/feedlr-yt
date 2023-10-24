@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/byvko-dev/youtube-app/internal/templates/pages/app"
+	"github.com/cufee/feedlr-yt/internal/templates/pages/app"
 	"github.com/gofiber/fiber/v2"
 )
 

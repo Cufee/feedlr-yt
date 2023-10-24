@@ -4,8 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/byvko-dev/youtube-app/internal/database"
-	"github.com/byvko-dev/youtube-app/internal/types"
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/types"
 )
 
 func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {

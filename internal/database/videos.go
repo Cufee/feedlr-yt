@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/byvko-dev/youtube-app/prisma/db"
+	"github.com/cufee/feedlr-yt/prisma/db"
 )
 
 func (c *Client) GetVideoByID(id string) (*db.VideoModel, error) {

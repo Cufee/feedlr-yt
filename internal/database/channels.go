@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 
-	"github.com/byvko-dev/youtube-app/prisma/db"
+	"github.com/cufee/feedlr-yt/prisma/db"
 )
 
 type ChannelGetOptions struct {

@@ -39,12 +39,15 @@ RUN task build:docker
 
 FROM scratch as run
 
+ENV TZ=Europe/Berlin
+ENV ZONEINFO=/zoneinfo.zip
+COPY --from=build /usr/local/go/lib/time/zoneinfo.zip /
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-COPY --from=build /workspace/prisma/bin/engine /prisma/bin/engine
 ENV PRISMA_QUERY_ENGINE_BINARY=/prisma/bin/engine
+COPY --from=build /workspace/prisma/bin/engine /prisma/bin/engine
 
-COPY --from=assets /workspace/assets ./assets
 COPY --from=build /workspace/app .
+COPY --from=assets /workspace/assets ./assets
 
 CMD ["./app"]

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"log"
 
-	"github.com/byvko-dev/youtube-app/internal/logic"
-	"github.com/byvko-dev/youtube-app/internal/sessions"
-	"github.com/byvko-dev/youtube-app/internal/templates/pages"
+	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/sessions"
+	"github.com/cufee/feedlr-yt/internal/templates/pages"
 	"github.com/gofiber/fiber/v2"
 )
 

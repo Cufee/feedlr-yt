@@ -1,9 +1,8 @@
 package feed
 
 import "fmt"
-import "github.com/byvko-dev/youtube-app/internal/types"
-import "github.com/byvko-dev/youtube-app/internal/templates/components/icons"
-import "github.com/byvko-dev/youtube-app/internal/templates/components/shared"
+import "github.com/cufee/feedlr-yt/internal/types"
+import "github.com/cufee/feedlr-yt/internal/templates/components/icons"
 
 templ VideoFeed(videos []types.VideoProps) {
 	<div class="relative flex w-full gap-1 p-0 space-x-2 overflow-x-scroll shadow-inner md:space-x-4 carousel carousel-center rounded-box" id="components-video-feed">
@@ -11,7 +10,6 @@ templ VideoFeed(videos []types.VideoProps) {
 			@VideoTile(video)
 		}
 	</div>
-	@shared.EmbedMinifiedScript(tilesScrollOnHover())
 }
 
 templ VideoTile(video types.VideoProps) {
@@ -33,7 +31,7 @@ templ VideoTile(video types.VideoProps) {
 				<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-6xl">Watched</div>
 			}
 			<div class="cursor-pointer aspect-video h-44 md:h-60 ">
-				<img class="z-10 object-cover w-full h-full transition-all duration-500 group-hover:scale-110" src={ video.Thumbnail } alt={ video.Title } />
+				<img class="z-10 hidden object-cover w-full h-full transition-all duration-500 group-hover:scale-110" src={ video.Thumbnail } alt={ video.Title } onload="this.style.display=&#39;block&#39;" />
 				<div class="absolute w-full h-full bg-base-100 animate-pulse" />
 			</div>
 			<div class="absolute bottom-0 left-0 z-10 flex flex-col w-full gap-1 bg-black md:hidden group-hover:inline-block animate__faster bg-opacity-60 animate__animated animate__slideInUp">
@@ -46,13 +44,4 @@ templ VideoTile(video types.VideoProps) {
 			}
 		</a>
 	</div>
-}
-
-script tilesScrollOnHover() {
-	var tiles = document.querySelectorAll(".video-tile");
-	tiles.forEach((tile) => {
-		tile.addEventListener("mouseenter", () => {
-			tile.scrollIntoView({ block: 'nearest', behavior: "smooth" });
-		});
-	});
 }

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/byvko-dev/youtube-app/internal/database"
-	"github.com/byvko-dev/youtube-app/internal/logic"
-	"github.com/byvko-dev/youtube-app/internal/templates/components/feed"
-	"github.com/byvko-dev/youtube-app/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
+	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
 	"github.com/gofiber/fiber/v2"
 )
 

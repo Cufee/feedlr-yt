@@ -3,15 +3,14 @@ package server
 import (
 	"strconv"
 
-	"github.com/byvko-dev/youtube-app/internal/auth"
-	root "github.com/byvko-dev/youtube-app/internal/server/handlers"
-	apiHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/api"
-	appHandlers "github.com/byvko-dev/youtube-app/internal/server/handlers/app"
-	"github.com/byvko-dev/youtube-app/internal/server/handlers/video"
-	"github.com/byvko-dev/youtube-app/internal/templates"
-	"github.com/byvko-dev/youtube-app/internal/utils"
+	"github.com/cufee/feedlr-yt/internal/auth"
+	root "github.com/cufee/feedlr-yt/internal/server/handlers"
+	apiHandlers "github.com/cufee/feedlr-yt/internal/server/handlers/api"
+	appHandlers "github.com/cufee/feedlr-yt/internal/server/handlers/app"
+	"github.com/cufee/feedlr-yt/internal/server/handlers/video"
+	"github.com/cufee/feedlr-yt/internal/templates"
+	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
@@ -29,11 +28,7 @@ func New(port ...int) func() error {
 			PassLocalsToViews: true,
 		})
 		server.Use(logger.New())
-		server.Use(compress.New(compress.Config{
-			Level: compress.LevelBestSpeed,
-		}))
-
-		server.Get("/ping", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }).Use(limiterMiddleware)
+		server.Get("/ping", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 		server.Static("/assets", "./assets", fiber.Static{
 			Compress: true,
 		})
@@ -43,7 +38,8 @@ func New(port ...int) func() error {
 		server.All("/429", root.RateLimitedHandler)
 		server.Get("/error", root.GetOrPostError).Post("/error", root.GetOrPostError)
 		// Auth/Login
-		server.Get("/login", auth.LoginStartHandler)
+		server.Get("/login", root.GetLogin)
+		server.Get("/login/start", auth.LoginStartHandler)
 		server.Get("/login/callback", auth.LoginCallbackHandler)
 
 		// Routes with unique auth handlers

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"log"
 
-	"github.com/byvko-dev/youtube-app/internal/api/youtube"
-	"github.com/byvko-dev/youtube-app/internal/database"
-	"github.com/byvko-dev/youtube-app/prisma/db"
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/prisma/db"
 	"github.com/ssoroka/slice"
 )
 

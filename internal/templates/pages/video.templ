@@ -1,9 +1,9 @@
 package pages
 
 import (
-	"github.com/byvko-dev/youtube-app/internal/types"
-	"github.com/byvko-dev/youtube-app/internal/templates/components/shared"
-	"github.com/byvko-dev/youtube-app/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/types"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 )
 
 templ Video(props types.VideoPlayerProps) {
@@ -19,7 +19,6 @@ templ Video(props types.VideoPlayerProps) {
 		<meta name="twitter:image" content={ props.Video.Thumbnail }/>
 		<meta name="twitter:image:alt" content={ props.Video.Title }/>
 	</head>
-
 	<div class="relative flex items-center justify-start w-full h-full">
 		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 		@videoPlayer(props)
@@ -50,7 +49,7 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 	console.log("youtubePlayerInit", video, progress, withProgress)
 
 	if (withProgress) {
-		document.getElementById("close-button")?.addEventListener("click", saveProgress)
+		window.addEventListener("beforeunload", saveProgress);
 		setInterval(saveProgress, 10000)
 	}
 	
@@ -81,7 +80,9 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 	}, 100)
 
 	function onPlayerReady(event) { document.getElementById("player-loading").classList.add("hidden") }
-	function onPlayerStateChange(event) { withProgress && saveProgress() }
+	function onPlayerStateChange(event) { 
+		withProgress && saveProgress()
+	}
 	let lastProgress = 0
 	function saveProgress() {
 		const currentTime = Math.floor(window.feedlr_player.getCurrentTime())

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/byvko-dev/youtube-app/prisma/db"
+	"github.com/cufee/feedlr-yt/prisma/db"
 )
 
 func (c *Client) NewAuthNonce(expiration time.Time, value string) (*db.AuthNonceModel, error) {

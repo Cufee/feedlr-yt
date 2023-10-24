@@ -106,28 +106,6 @@ model UserSubscription {
   @@map("user_subscriptions")
 }
 
-model Session {
-  id        String   @id @map("_id")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  lastUsed  DateTime @default(now())
-
-  expiresAt DateTime
-  userId    String?
-  meta      Json?
-
-  authId         String?
-  accessToken    String?   @db.String
-  refreshToken   String?   @db.String
-  tokenExpiresAt DateTime?
-
-  @@index([userId], name: "userId")
-  @@index([authId], name: "authId")
-  @@index([expiresAt], name: "expiresAt")
-  @@index([tokenExpiresAt], name: "tokenExpiresAt")
-  @@map("sessions")
-}
-
 model AuthNonce {
   id        String   @id @default(cuid()) @map("_id")
   createdAt DateTime @default(now())

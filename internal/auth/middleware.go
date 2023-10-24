@@ -3,11 +3,16 @@ package auth
 import (
 	"log"
 
-	"github.com/byvko-dev/youtube-app/internal/sessions"
+	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/gofiber/fiber/v2"
 )
 
 func Middleware(c *fiber.Ctx) error {
+	// s := time.Now()
+	// defer func() {
+	// 	log.Printf("auth.Middleware: %v\n", time.Since(s))
+	// }()
+
 	session, err := sessions.FromID(c.Cookies("session_id"))
 	if err != nil {
 		log.Printf("sessions.FromID: %v\n", err)

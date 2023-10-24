@@ -3,8 +3,8 @@ package types
 import (
 	"log"
 
-	"github.com/byvko-dev/youtube-app/internal/api/sponsorblock"
-	yt "github.com/byvko-dev/youtube-app/internal/api/youtube/client"
+	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
+	yt "github.com/cufee/feedlr-yt/internal/api/youtube/client"
 	"github.com/goccy/go-json"
 )
 
