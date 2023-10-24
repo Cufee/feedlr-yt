@@ -11,7 +11,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
@@ -29,11 +28,7 @@ func New(port ...int) func() error {
 			PassLocalsToViews: true,
 		})
 		server.Use(logger.New())
-		server.Use(compress.New(compress.Config{
-			Level: compress.LevelBestSpeed,
-		}))
-
-		server.Get("/ping", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) }).Use(limiterMiddleware)
+		server.Get("/ping", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 		server.Static("/assets", "./assets", fiber.Static{
 			Compress: true,
 		})

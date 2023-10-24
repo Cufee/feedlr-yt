@@ -49,7 +49,7 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 	console.log("youtubePlayerInit", video, progress, withProgress)
 
 	if (withProgress) {
-		document.getElementById("close-button")?.addEventListener("click", saveProgress)
+		window.addEventListener("beforeunload", saveProgress);
 		setInterval(saveProgress, 10000)
 	}
 	
