@@ -80,7 +80,9 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 	}, 100)
 
 	function onPlayerReady(event) { document.getElementById("player-loading").classList.add("hidden") }
-	function onPlayerStateChange(event) { withProgress && saveProgress() }
+	function onPlayerStateChange(event) { 
+		withProgress && saveProgress()
+	}
 	let lastProgress = 0
 	function saveProgress() {
 		const currentTime = Math.floor(window.feedlr_player.getCurrentTime())

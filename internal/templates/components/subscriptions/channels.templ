@@ -6,7 +6,7 @@ import "github.com/cufee/feedlr-yt/internal/types"
 templ ChannelTile(channel types.Channel) {
 	<div class="flex flex-row items-center gap-4 h-fit">
 		<div class="min-w-[6rem] w-[6rem] h-[6rem] rounded-lg overflow-hidden relative">
-			<img class="z-10 object-cover w-full h-full transition-all duration-500 group-hover:scale-125" src={ channel.Thumbnail } alt={ channel.Title } onerror="this.style.display=&#39;none&#39;"/>
+			<img class="z-10 hidden object-cover w-full h-full transition-all duration-500 group-hover:scale-125" src={ channel.Thumbnail } alt={ channel.Title } onload="this.style.display=&#39;block&#39;" onerror="this.style.display=&#39;none&#39;"/>
 			<div class="absolute w-full h-full bg-base-100 animate-pulse"></div>
 		</div>
 		<div class="box-border flex flex-col justify-center">
@@ -23,6 +23,6 @@ templ ChannelTile(channel types.Channel) {
 }
 
 templ SubscribedChannelTile(channel types.ChannelProps) {
-	<div class="relative flex-grow p-4 overflow-hidden group md:basis-1/3 rounded-xl bg-base-300 channel-btn" id={ fmt.Sprintf("sub-channel-tile-%s", channel.ID) }><button type="button" _="on htmx:afterRequest send refresh to #search-input" class="absolute inset-0 z-10 flex items-center justify-center invisible w-full text-lg font-bold uppercase bg-black bg-opacity-50 group-hover:visible group-[.htmx-request]:visible" hx-indicator={ fmt.Sprintf("#sub-channel-tile-%s", channel.ID) } hx-target={ fmt.Sprintf("#sub-channel-tile-%s", channel.ID) } hx-swap="delete" hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe", channel.ID) }><span class="group-[.htmx-request]:hidden">Unsubscribe</span> <span class="loading loading-spinner loading-md md:loading-lg invisible group-[.htmx-request]:visible"></span></button> @ChannelTile(channel.Channel)</div>
+	<div class="relative flex-grow p-4 overflow-hidden group md:basis-1/3 rounded-xl bg-base-300 channel-btn" id={ fmt.Sprintf("sub-channel-tile-%s", channel.ID) }><button type="button" _="on htmx:afterRequest send refresh to #search-input" class="absolute inset-0 z-10 flex items-center justify-center invisible w-full text-lg font-bold uppercase bg-black bg-opacity-50 group-hover:visible group-[.htmx-request]:visible" hx-indicator={ fmt.Sprintf("#sub-channel-tile-%s", channel.ID) } hx-target={ fmt.Sprintf("#sub-channel-tile-%s", channel.ID) } hx-swap="delete" hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe", channel.ID) }><span class="group-[.htmx-request]:hidden">Unsubscribe</span><span class="loading loading-spinner loading-md md:loading-lg invisible group-[.htmx-request]:visible"></span></button>@ChannelTile(channel.Channel)</div>
 }
 

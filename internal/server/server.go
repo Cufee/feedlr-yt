@@ -43,7 +43,8 @@ func New(port ...int) func() error {
 		server.All("/429", root.RateLimitedHandler)
 		server.Get("/error", root.GetOrPostError).Post("/error", root.GetOrPostError)
 		// Auth/Login
-		server.Get("/login", auth.LoginStartHandler)
+		server.Get("/login", root.GetLogin)
+		server.Get("/login/start", auth.LoginStartHandler)
 		server.Get("/login/callback", auth.LoginCallbackHandler)
 
 		// Routes with unique auth handlers
