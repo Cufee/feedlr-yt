@@ -1,91 +1,70 @@
 package sessions
 
 import (
-	"encoding/json"
 	"errors"
 	"time"
 
-	"github.com/cufee/feedlr-yt/internal/database"
-	"github.com/cufee/feedlr-yt/prisma/db"
 	"github.com/gofiber/fiber/v2"
 	"github.com/segmentio/ksuid"
 )
 
 var ErrNotFound = errors.New("session not found")
 
-type Options = database.SessionOptions
-
 type Session struct {
 	ID   string
-	data *db.SessionModel
+	data SessionData
+}
+type SessionData struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+	AuthId string `json:"auth_id"`
+
+	ExpiresAt time.Time `json:"expires_at"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	LastUsed  time.Time `json:"last_used"`
 }
 
-func (s *Session) fetch() error {
-	if s == nil {
-		return ErrNotFound
-	}
-	if s.ID == "" {
-		return errors.New("session ID is empty")
-	}
-	if s.data != nil {
-		return nil
-	}
-
-	session, err := database.C.GetSession(s.ID)
-	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			return ErrNotFound
-		}
-		return err
-	}
-	s.data = session
-	return nil
-}
-
-func New(meta map[string]any) (Session, error) {
+func New() (*Session, error) {
 	id, err := ksuid.NewRandom()
 	if err != nil {
-		return Session{}, err
+		return &Session{}, err
 	}
 
-	session, err := database.C.NewSession(database.SessionOptions{
-		Meta:      meta,
-		ID:        id.String(),
-		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
-	})
+	var data SessionData
+	data.ID = id.String()
+	data.CreatedAt = time.Now()
+	data.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
+
+	err = defaultClient.Set("sessions", data.ID, data)
 	if err != nil {
-		return Session{}, err
+		return &Session{}, err
 	}
-
-	return Session{
-		ID:   session.ID,
-		data: session,
-	}, nil
+	return &Session{data: data, ID: data.ID}, nil
 }
 
-func FromID(id string) (Session, error) {
-	session, err := database.C.GetSession(id)
+func FromID(id string) (*Session, error) {
+	var found []SessionData
+	err := defaultClient.Get("sessions", id, &found)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			return Session{}, ErrNotFound
-		}
-		return Session{}, err
+		return &Session{}, err
+	}
+	if len(found) == 0 {
+		return &Session{}, ErrNotFound
+	}
+	if len(found) > 1 {
+		return &Session{}, errors.New("multiple sessions found")
 	}
 
-	return Session{
-		ID:   session.ID,
-		data: session,
-	}, nil
+	return &Session{data: found[0]}, nil
 }
 
 /* Finds a valid session by ID and returns the user ID associated with it */
 func (s *Session) Valid() bool {
-	err := s.fetch()
-	if err != nil {
-		return false
-	}
-	if _, ok := s.data.UserID(); s.data.ExpiresAt.After(time.Now()) && ok {
-		go s.Update(Options{LastUsed: time.Now()})
+	if s.data.UserID != "" && s.data.ExpiresAt.After(time.Now()) {
+		s.data.LastUsed = time.Now()
+		go s.save()
 		return true
 	}
 	return false
@@ -93,70 +72,43 @@ func (s *Session) Valid() bool {
 
 /* Sets the session expiration time to 7 days from now */
 func (s *Session) Refresh() error {
-	return s.Update(Options{ExpiresAt: time.Now().Add(time.Hour * 24 * 7)})
+	s.data.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
+	return s.save()
 }
 
 /* Finds a valid session by ID and returns the user ID associated with it */
 func (s *Session) UserID() (string, bool) {
 	if ok := s.Valid(); ok {
-		return s.data.UserID()
+		return s.data.UserID, true
 	}
 	return "", false
 }
 
-func (s *Session) Meta() (map[string]any, error) {
-	data := make(map[string]any)
-	raw, ok := s.data.Meta()
-	if !ok {
-		return data, nil
-	}
-
-	return data, json.Unmarshal(raw, &data)
-}
-
 func (s *Session) Cookie() (*fiber.Cookie, error) {
-	err := s.fetch()
-	if err != nil {
-		return nil, err
-	}
 	return &fiber.Cookie{
 		Name:     "session_id",
 		Value:    s.ID,
 		Expires:  s.data.ExpiresAt,
 		HTTPOnly: true,
-		SameSite: "Lax",
+		SameSite: "strict",
 	}, nil
 }
 
-func (s *Session) Update(session Options) error {
-	err := s.fetch()
-	if err != nil {
-		return err
-	}
+func (s *Session) AddUserID(userId, authId string) error {
+	s.data.UserID = userId
+	s.data.AuthId = authId
+	return s.save()
+}
 
-	s.data, err = database.C.UpdateSession(s.ID, session)
-	if errors.Is(err, db.ErrNotFound) {
-		return ErrNotFound
-	}
-	return err
+func (s *Session) save() error {
+	s.data.UpdatedAt = time.Now()
+	return defaultClient.Set("sessions", s.data.ID, s.data)
 }
 
 func (s *Session) Delete() error {
-	err := s.fetch()
-	if err != nil {
-		return err
-	}
-	err = database.C.DeleteSession(s.ID)
-	if errors.Is(err, db.ErrNotFound) {
-		return ErrNotFound
-	}
-	return err
+	return defaultClient.Del("sessions", s.ID)
 }
 
 func DeleteSession(id string) error {
-	err := database.C.DeleteSession(id)
-	if errors.Is(err, db.ErrNotFound) {
-		return ErrNotFound
-	}
-	return err
+	return defaultClient.Del("sessions", id)
 }

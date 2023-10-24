@@ -69,15 +69,15 @@ func LoginCallbackHandler(c *fiber.Ctx) error {
 			return c.Redirect("/error?message=Something went wrong while logging in&context=invalid auth token")
 		}
 
-		session, err := sessions.New(nil)
+		session, err := sessions.New()
 		if err != nil {
 			session.Delete()
 			c.ClearCookie("session_id")
-			log.Printf("sessions.FromID: %v\n", err)
+			log.Printf("sessions.Delete: %v\n", err)
 			return c.Redirect("/error?message=Something went wrong while logging in&context=creating session")
 		}
 
-		err = session.Update(sessions.Options{UserID: user.ID, AuthID: idToken.Subject, AccessToken: token.AccessToken})
+		err = session.AddUserID(user.ID, idToken.Subject)
 		if err != nil {
 			session.Delete()
 			c.ClearCookie("session_id")
