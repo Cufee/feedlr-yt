@@ -10,6 +10,7 @@ require (
 	github.com/goccy/go-json v0.10.2
 	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/gofiber/storage/redis/v3 v3.0.0
+	github.com/gomodule/redigo v1.8.3
 	github.com/iancoleman/strcase v0.3.0
 	github.com/joho/godotenv v1.5.1
 	github.com/segmentio/ksuid v1.0.4
@@ -30,6 +31,7 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
