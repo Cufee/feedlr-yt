@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+	"net/url"
 )
 
 type Segment struct {
@@ -28,8 +28,19 @@ func (c *client) GetVideoSegments(videoId string, categories ...string) ([]Segme
 		categories = []string{"sponsor", "selfpromo", "interaction"}
 	}
 
+	link, err := url.Parse(fmt.Sprintf("%s/skipSegments/", c.apiUrl))
+	if err != nil {
+		return nil, err
+	}
+	query := link.Query()
+	query.Add("videoID", videoId)
+	for _, category := range categories {
+		query.Add("category", category)
+	}
+	link.RawQuery = query.Encode()
+
 	var segments []Segment
-	res, err := http.DefaultClient.Get(fmt.Sprintf("%s/skipSegments/?videoID=%s&categories=%s", c.apiUrl, videoId, strings.Join(categories, ",")))
+	res, err := http.DefaultClient.Get(link.String())
 	if err != nil {
 		return nil, err
 	}
