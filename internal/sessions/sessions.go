@@ -45,19 +45,12 @@ func New() (*Session, error) {
 }
 
 func FromID(id string) (*Session, error) {
-	var found []SessionData
-	err := defaultClient.Get("sessions", id, &found)
+	var data SessionData
+	err := defaultClient.Get("sessions", id, &data)
 	if err != nil {
 		return &Session{}, err
 	}
-	if len(found) == 0 {
-		return &Session{}, ErrNotFound
-	}
-	if len(found) > 1 {
-		return &Session{}, errors.New("multiple sessions found")
-	}
-
-	return &Session{data: found[0]}, nil
+	return &Session{data: data}, nil
 }
 
 /* Finds a valid session by ID and returns the user ID associated with it */
