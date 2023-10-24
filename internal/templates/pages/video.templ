@@ -38,25 +38,27 @@ templ videoPlayer(player types.VideoPlayerProps) {
 }
 
 templ buttonLogin() {
-	<a class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-primary" href="/login" id="close-button">Login</a>
+	<a class="absolute opacity-50 close-button hover:opacity-100 top-2 right-2 btn btn-primary" href="/login" id="close-button">Login</a>
 }
 
 templ buttonBack() {
-	<a class="absolute opacity-50 hover:opacity-100 top-2 right-2 btn btn-primary btn-square" href="/app" id="close-button">@icons.Cross()</a>
+	<a class="absolute opacity-50 close-button hover:opacity-100 top-2 right-2 btn btn-primary btn-square" href="/app" id="close-button">@icons.Cross()</a>
 }
 
 script youtubePlayerInit(video string, progress int, withProgress bool) {
 	console.log("youtubePlayerInit", video, progress, withProgress)
 
 	if (withProgress) {
-		window.addEventListener("beforeunload", saveProgress);
+		setTimeout(() => {
+			document.querySelector("#close-button").addEventListener("click", saveProgress);
+		}, 100)
 		setInterval(saveProgress, 10000)
 	}
 	
 	let player;
 	var frame = document.getElementById("player")
 	const waitForYT = setInterval(() => {
-		if (YT?.loaded === 1) {
+		if (YT && YT.loaded === 1) {
 			clearInterval(waitForYT);
 			player = new YT.Player(frame, {
 				height: '100%',
@@ -86,7 +88,9 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 	let lastProgress = 0
 	function saveProgress() {
 		const currentTime = Math.floor(window.feedlr_player.getCurrentTime())
-		if (lastProgress === currentTime) return true
+		if (lastProgress === currentTime) {
+			return true
+		}
 		lastProgress = currentTime
 
 		fetch(`/api/videos/${video}/progress?progress=` + currentTime, {
@@ -98,14 +102,12 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 }
 
 script sponsorBlockInit(segments []types.SegmentProps) {
-	console.log("sponsorBlockInit", segments)
 	if (segments && segments.length > 0) {
 		setInterval(() => {
-			if (window.feedlr_player && window.feedlr_player.getPlayerState && window.feedlr_player.getPlayerState() === YT.PlayerState.PLAYING) {
+			if (window.feedlr_player && window.feedlr_player.getPlayerState && window.feedlr_player.getPlayerState() === 1) {
 				var currentTime = window.feedlr_player.getCurrentTime()
 				var segment = segments.find(segment => segment.start <= currentTime && segment.end >= currentTime)
 				if (segment) {
-					console.info("skipping segment")
 					window.feedlr_player.seekTo(segment.end, true)
 				}
 			}
