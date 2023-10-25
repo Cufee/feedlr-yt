@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io/fs"
 	"strconv"
 
 	"github.com/cufee/feedlr-yt/internal/auth"
@@ -14,7 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
-func New(port ...int) func() error {
+func New(assets fs.FS, port ...int) func() error {
 	var portString string
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
@@ -27,11 +28,11 @@ func New(port ...int) func() error {
 			Views:             templates.FiberEngine,
 			PassLocalsToViews: true,
 		})
-		server.Use(logger.New(), cacheHeaderMiddleware)
+		server.Use(logger.New())
 		server.Get("/ping", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
-		server.Static("/assets", "./assets", fiber.Static{
-			Compress: true,
-		})
+
+		server.Use("/assets", staticWithCacheMiddleware("assets", assets))
+		server.Use(cacheBusterMiddleware)
 
 		// Root/Error and etc
 		server.Get("/", root.GerOrPosLanding).Post("/", root.GerOrPosLanding)
