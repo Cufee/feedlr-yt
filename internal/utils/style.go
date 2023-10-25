@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+var CurrentStylePath = FindStylePath()
+
 func FindStylePath() string {
 	cwd, _ := os.Getwd()
 	files, _ := filepath.Glob(filepath.Join(cwd, "assets", "css", "style.*.css"))

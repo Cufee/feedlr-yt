@@ -28,3 +28,8 @@ var limiterMiddleware = limiter.New(limiter.Config{
 	},
 	Storage: newRedisStore(),
 })
+
+var cacheHeaderMiddleware = func(c *fiber.Ctx) error {
+	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	return c.Next()
+}

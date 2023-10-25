@@ -27,7 +27,7 @@ func New(port ...int) func() error {
 			Views:             templates.FiberEngine,
 			PassLocalsToViews: true,
 		})
-		server.Use(logger.New())
+		server.Use(logger.New(), cacheHeaderMiddleware)
 		server.Get("/ping", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 		server.Static("/assets", "./assets", fiber.Static{
 			Compress: true,
