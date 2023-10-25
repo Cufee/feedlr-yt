@@ -1,3 +1,3 @@
 package assets
 
-//go:generate task style:go:generate
+//go:generate go test -v "github.com/cufee/feedlr-yt/internal/assets/gen"
