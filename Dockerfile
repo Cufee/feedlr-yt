@@ -20,9 +20,6 @@ FROM golang:1.20 as build
 WORKDIR /workspace
 COPY . ./
 
-# install node
-RUN apt update && apt install nodejs npm -y
-
 # add go modules lockfiles
 RUN go mod download
 
