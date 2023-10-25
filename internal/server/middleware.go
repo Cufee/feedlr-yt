@@ -1,12 +1,14 @@
 package server
 
 import (
+	"crypto/sha256"
+	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
@@ -40,20 +42,52 @@ var cacheBusterMiddleware = func(c *fiber.Ctx) error {
 }
 
 var staticWithCacheMiddleware = func(path string, assets fs.FS) func(*fiber.Ctx) error {
+	hashes := getAssetsHashes(assets)
 	handler := filesystem.New(filesystem.Config{
 		Root:       http.FS(assets),
-		PathPrefix: path,
 		Browse:     true,
-		MaxAge:     86400, // 1 day
+		PathPrefix: path,
+		MaxAge:     86400,
 	})
+
 	return func(c *fiber.Ctx) error {
-		err := handler(c)
-		if c.Path() == utils.CurrentStylePath {
-			// This style is generated and will not be present in the next build - cache it forever
-			c.Set("Cache-Control", "public, max-age=31536000, immutable")
+		if c.Get("If-None-Match") == hashes[c.Path()] {
+			return c.SendStatus(fiber.StatusNotModified)
 		}
-		log.Print(c.Path(), err)
+		err := handler(c)
+		if hash, ok := hashes[c.Path()]; ok {
+			c.Set("Vary", "Accept-Encoding")
+			c.Set("ETag", hash)
+		}
 		return err
 	}
+}
 
+func getAssetsHashes(assets fs.FS) map[string]string {
+	assetsHashes := make(map[string]string)
+
+	err := fs.WalkDir(assets, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+
+		// Get SHA256 hash of the file
+		file, err := assets.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		hash := sha256.New()
+		if _, err := io.Copy(hash, file); err != nil {
+			return err
+		}
+
+		// Save hash to the map
+		assetsHashes["/"+path] = fmt.Sprintf("%x", hash.Sum(nil))
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	return assetsHashes
 }
