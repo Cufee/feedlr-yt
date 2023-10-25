@@ -7,6 +7,8 @@ dotenv: ['.env']
 
 vars:
   PRISMA_CLIENT: 'go run github.com/steebchen/prisma-client-go'
+  COMMIT_ID:
+    sh: git rev-parse --short HEAD || echo $RAILWAY_GIT_COMMIT_SHA | cut -c1-7
 
 tasks:
   dev:
@@ -46,23 +48,23 @@ tasks:
       - task: build:fast
   build:docker:
     desc: Build the application without generating styles
-    deps: [db:generate, generate:internal]
+    deps: [db:generate, style:go:generate, generate:internal]
     cmds:
       - task: build:fast
   build:image:
     desc: Build the Docker image
     cmds:
       - docker build --progress=plain --platform linux/amd64 -t {{ .CLI_ARGS | default "github.com/cufee/feedlr-yt" }} .
-
   style:generate:
     desc: Generate the CSS files
     cmds:
       - rm -rf ./assets/css/style.*.css*
       - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.{{.COMMIT_ID}}.css --minify
       - echo -n "package assets;var StylePath = \"/assets/css/style.{{.COMMIT_ID}}.css\"" > ./internal/assets/style_gen.go
-    vars:
-      COMMIT_ID:
-        sh: git rev-parse --short HEAD || echo $RAILWAY_GIT_COMMIT_SHA | cut -c1-7
+  style:go:generate:
+    desc: Generate the go file for the CSS files
+    cmds:
+      - echo "package assets;var StylePath = \"/assets/css/style.$COMMIT_ID.css\"" > ./internal/assets/style_gen.go
 
   db:prefetch:
     desc: Prefetch Prisma binaries

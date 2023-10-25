@@ -7,3 +7,5 @@ node_modules
 prisma/bin
 prisma/db
 .env
+
+**/*_gen.go
