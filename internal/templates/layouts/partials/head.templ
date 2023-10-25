@@ -1,6 +1,6 @@
 package partials
 
-import "github.com/cufee/feedlr-yt/internal/utils"
+import "github.com/cufee/feedlr-yt/internal/assets"
 
 templ Head(content ...templ.Component) {
 	<head>
@@ -11,7 +11,7 @@ templ Head(content ...templ.Component) {
 		<link href="/assets/app.webmanifest" rel="manifest"/>
 		<link href="/assets/css/animate.min.css" rel="stylesheet"/>
 		<link href="/assets/favicon.ico" rel="icon" type="x-icon"/>
-		<link href={ utils.CurrentStylePath } rel="stylesheet" type="text/css"/>
+		<link href={ assets.StylePath } rel="stylesheet" type="text/css"/>
 
 		<meta charset="UTF-8"/>
 		<meta name="color-scheme" content="dark"/>

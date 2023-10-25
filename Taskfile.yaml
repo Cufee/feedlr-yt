@@ -59,9 +59,10 @@ tasks:
     cmds:
       - rm -rf ./assets/css/style.*.css*
       - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.{{.COMMIT_ID}}.css --minify
+      - echo -n "package assets;var StylePath = \"/assets/css/style.{{.COMMIT_ID}}.css\"" > ./internal/assets/style_gen.go
     vars:
       COMMIT_ID:
-        sh: git rev-parse --short HEAD || echo "unknown"
+        sh: git rev-parse --short HEAD || echo $RAILWAY_GIT_COMMIT_SHA | cut -c1-7
 
   db:prefetch:
     desc: Prefetch Prisma binaries
