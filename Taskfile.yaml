@@ -48,7 +48,7 @@ tasks:
       - task: build:fast
   build:docker:
     desc: Build the application without generating styles
-    deps: [db:generate, style:go:generate, generate:internal]
+    deps: [db:generate, generate:internal]
     cmds:
       - task: build:fast
   build:image:
@@ -64,7 +64,7 @@ tasks:
   style:go:generate:
     desc: Generate the go file for the CSS files
     cmds:
-      - echo "package assets;var StylePath = \"/assets/css/style.$COMMIT_ID.css\"" > ./internal/assets/style_gen.go
+      - echo "package assets;var StylePath = \"/assets/css/style.{{.COMMIT_ID}}.css\"" > ./internal/assets/style_gen.go
 
   db:prefetch:
     desc: Prefetch Prisma binaries
