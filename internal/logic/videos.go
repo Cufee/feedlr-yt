@@ -8,6 +8,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/prisma/db"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 /*
@@ -95,13 +96,12 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 
 	if options.WithSegments {
 		segments, err := sponsorblock.C.GetVideoSegments(videoId)
-		if err != nil {
-			return types.VideoPlayerProps{}, err
+		if err == nil {
+			err = playerProps.AddSegments(segments...)
+			return playerProps, err
 		}
-		err = playerProps.AddSegments(segments...)
-		if err != nil {
-			return types.VideoPlayerProps{}, err
-		}
+		log.Warnf("failed to get sponsorblock segments for video %v: %v", videoId, err)
+		return playerProps, nil
 	}
 
 	return playerProps, nil

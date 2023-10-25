@@ -18,10 +18,8 @@ RUN task style:generate
 FROM golang:1.20 as build
 
 WORKDIR /workspace
+COPY --from=assets /workspace/assets ./assets
 COPY . ./
-
-# install node
-RUN apt update && apt install nodejs npm -y
 
 # add go modules lockfiles
 RUN go mod download
@@ -48,6 +46,5 @@ ENV PRISMA_QUERY_ENGINE_BINARY=/prisma/bin/engine
 COPY --from=build /workspace/prisma/bin/engine /prisma/bin/engine
 
 COPY --from=build /workspace/app .
-COPY --from=assets /workspace/assets ./assets
 
 CMD ["./app"]

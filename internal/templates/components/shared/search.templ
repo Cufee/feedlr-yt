@@ -1,0 +1,64 @@
+package shared
+
+import "fmt"
+
+templ FuseSearch(id string, label string, minLength int) {
+	<div class="flex items-center justify-center" id={ fmt.Sprintf("fuse-search-%s",id) }>
+		<input id={ fmt.Sprintf("search-input-%s",id) } type="text" placeholder={ label } class="w-full max-w-xs input input-bordered placeholder:text-center"/>
+		<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+		@EmbedMinifiedScript(fuseSearch(fmt.Sprintf("search-input-%s",id), id, id, minLength), fmt.Sprintf("search-input-%s",id), id, id, minLength)
+	</div>
+}
+
+script fuseSearch(searchInputId, targetId, parentId string, minLength int) {
+	const displayresults = (target, items) => {
+		if (parentId == targetId) {
+			for (const n of target.children) {
+				if (!items.includes(n.dataset.search)) {
+					n.classList.add("hidden")
+				} else {
+					n.classList.remove("hidden")
+				}
+			}
+		} else {
+			target.innerHTML = ""
+			for (const item of result) {
+				target.appendChild(item.item)
+			}
+		}
+	}
+
+	const initSearch = () => {
+		const target = document.getElementById(targetId)
+		const container = document.getElementById(parentId)
+		const input = document.getElementById(searchInputId)
+		const items = [...container.children].map(n => n.dataset.search)
+		const options = { includeScore: false }
+
+		const fuse = new Fuse(items, options)
+		const search = (query) => {
+			if (query.length == 0) {
+				input.classList.remove("input-error")
+				displayresults(target, items)
+				return
+			} else if (query.length >= minLength)  {
+				input.classList.remove("input-error")
+			} else if (query.length < minLength) {
+				input.classList.add("input-error")
+				return
+			}
+
+			const result = fuse.search(query.length > 1 ? `'"${query}"` : "'"+query)
+			displayresults(target, result.map(i => i.item))
+		}
+		
+		input.addEventListener("input", (e) => {
+			search(e.target.value)
+		})
+	}
+
+	const waitForParent = setTimeout(() => {
+		document.getElementById(parentId) && initSearch() && clearTimeout(waitForParent)
+	}, 100)
+}
+

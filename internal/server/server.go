@@ -1,6 +1,8 @@
 package server
 
 import (
+	"io/fs"
+	"net/http"
 	"strconv"
 
 	"github.com/cufee/feedlr-yt/internal/auth"
@@ -11,10 +13,11 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
-func New(port ...int) func() error {
+func New(assets fs.FS, port ...int) func() error {
 	var portString string
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
@@ -29,9 +32,18 @@ func New(port ...int) func() error {
 		})
 		server.Use(logger.New())
 		server.Get("/ping", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
-		server.Static("/assets", "./assets", fiber.Static{
-			Compress: true,
-		})
+
+		// Static files
+		server.Use(favicon.New(favicon.Config{
+			FileSystem:   http.FS(assets),
+			CacheControl: "public, max-age=86400",
+			File:         "assets/favicon.ico",
+			URL:          "/favicon.ico",
+		}))
+		server.Use("/assets", staticWithCacheMiddleware("assets", assets))
+
+		// Disable caching for all routes
+		server.Use(cacheBusterMiddleware)
 
 		// Root/Error and etc
 		server.Get("/", root.GerOrPosLanding).Post("/", root.GerOrPosLanding)

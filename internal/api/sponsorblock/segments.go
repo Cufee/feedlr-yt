@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 type Segment struct {
@@ -22,10 +23,24 @@ GetVideoSegments returns a list of _sponsor_ segments for a given video ID.
 
 https://wiki.sponsor.ajay.app/w/API_Docs#GET_/api/skipSegments
 */
-func (c *client) GetVideoSegments(videoId string) ([]Segment, error) {
-	var segments []Segment
+func (c *client) GetVideoSegments(videoId string, categories ...string) ([]Segment, error) {
+	if len(categories) == 0 {
+		categories = []string{"sponsor", "selfpromo", "interaction"}
+	}
 
-	res, err := http.DefaultClient.Get(fmt.Sprintf("%s/skipSegments/?videoID=%s", c.apiUrl, videoId))
+	link, err := url.Parse(fmt.Sprintf("%s/skipSegments/", c.apiUrl))
+	if err != nil {
+		return nil, err
+	}
+	query := link.Query()
+	query.Add("videoID", videoId)
+	for _, category := range categories {
+		query.Add("category", category)
+	}
+	link.RawQuery = query.Encode()
+
+	var segments []Segment
+	res, err := http.DefaultClient.Get(link.String())
 	if err != nil {
 		return nil, err
 	}

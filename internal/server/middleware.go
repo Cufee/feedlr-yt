@@ -1,9 +1,16 @@
 package server
 
 import (
+	"crypto/sha256"
+	"fmt"
+	"io"
+	"io/fs"
+	"log"
+	"net/http"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/google/uuid"
 )
@@ -28,3 +35,59 @@ var limiterMiddleware = limiter.New(limiter.Config{
 	},
 	Storage: newRedisStore(),
 })
+
+var cacheBusterMiddleware = func(c *fiber.Ctx) error {
+	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	return c.Next()
+}
+
+var staticWithCacheMiddleware = func(path string, assets fs.FS) func(*fiber.Ctx) error {
+	hashes := getAssetsHashes(assets)
+	handler := filesystem.New(filesystem.Config{
+		Root:       http.FS(assets),
+		Browse:     true,
+		PathPrefix: path,
+		MaxAge:     86400,
+	})
+
+	return func(c *fiber.Ctx) error {
+		if c.Get("If-None-Match") == hashes[c.Path()] {
+			return c.SendStatus(fiber.StatusNotModified)
+		}
+		err := handler(c)
+		if hash, ok := hashes[c.Path()]; ok {
+			c.Set("Vary", "Accept-Encoding")
+			c.Set("ETag", hash)
+		}
+		return err
+	}
+}
+
+func getAssetsHashes(assets fs.FS) map[string]string {
+	assetsHashes := make(map[string]string)
+
+	err := fs.WalkDir(assets, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+
+		// Get SHA256 hash of the file
+		file, err := assets.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		hash := sha256.New()
+		if _, err := io.Copy(hash, file); err != nil {
+			return err
+		}
+
+		// Save hash to the map
+		assetsHashes["/"+path] = fmt.Sprintf("%x", hash.Sum(nil))
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	return assetsHashes
+}
