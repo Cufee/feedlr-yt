@@ -3,6 +3,14 @@ FROM node as assets
 WORKDIR /workspace
 COPY . ./
 
+# We need a git repo in order to get a commit during build, the commit ID itself does not really matter though
+RUN git config --global init.defaultBranch main && \
+  git config --global user.email "pipeline@byvko.dev" && \
+  git config --global user.name "Docker Build" && \
+  git init && \
+  git add . && \
+  git commit -m "build commit"
+
 RUN npm install && npm install -g @go-task/cli
 RUN task style:generate
 
