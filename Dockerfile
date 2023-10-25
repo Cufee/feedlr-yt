@@ -48,6 +48,5 @@ ENV PRISMA_QUERY_ENGINE_BINARY=/prisma/bin/engine
 COPY --from=build /workspace/prisma/bin/engine /prisma/bin/engine
 
 COPY --from=build /workspace/app .
-COPY --from=assets /workspace/assets ./assets
 
 CMD ["./app"]
