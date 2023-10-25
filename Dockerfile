@@ -10,6 +10,7 @@ RUN task style:generate
 FROM golang:1.20 as build
 
 WORKDIR /workspace
+COPY --from=assets /workspace/assets ./assets
 COPY . ./
 
 # add go modules lockfiles
