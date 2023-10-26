@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	yt "github.com/cufee/feedlr-yt/internal/api/youtube/client"
+	"golang.org/x/exp/slices"
 	"google.golang.org/api/youtube/v3"
 )
 
@@ -27,7 +28,7 @@ func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
 	return playlists.Items[0].ContentDetails.RelatedPlaylists.Uploads, nil
 }
 
-func (c *client) GetPlaylistVideos(playlistId string, limit int) ([]yt.Video, error) {
+func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...string) ([]yt.Video, error) {
 	if limit < 1 {
 		limit = 3
 	}
@@ -42,6 +43,9 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int) ([]yt.Video, er
 	var validVideos = make(chan PlayListItemWithDuration, len(res.Items))
 
 	for _, item := range res.Items {
+		if slices.Contains(sipVideoIds, item.Snippet.ResourceId.VideoId) {
+			continue
+		}
 		wg.Add(1)
 		go func(item *youtube.PlaylistItem) {
 			defer wg.Done()

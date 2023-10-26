@@ -4,7 +4,7 @@ type YouTube interface {
 	SearchChannels(query string, maxResults int) ([]Channel, error)
 
 	GetChannel(channelId string) (*Channel, error)
-	GetChannelVideos(channelId string, maxResults int) ([]Video, error)
+	GetChannelVideos(channelId string, maxResults int, excludeIds ...string) ([]Video, error)
 }
 
 type Channel struct {
