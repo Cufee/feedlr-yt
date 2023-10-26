@@ -8,9 +8,13 @@ templ AppHome(props types.UserSubscriptionsFeedProps) {
 	<head><title>Feedlr</title></head>
 
 	<div id="app-index" class="flex flex-col gap-4">
-		@feed.ChannelsFeed("favorite-channels", props.Favorites, false)
-		@feed.ChannelsFeed("channels-with-videos", props.WithNewVideos, false)
-
+		if len(props.Favorites) > 0 {
+			@feed.ChannelsFeed("favorite-channels", props.Favorites, false)
+		}
+		if len(props.WithNewVideos) > 0 {
+			@feed.ChannelsFeed("channels-with-videos", props.WithNewVideos, false)
+		}
+		
 		if len(props.WithoutNewVideos) > 0 {
 			<div class="relative flex flex-col items-center justify-start min-h-screen gap-1 text-center">
 				if len(props.WithNewVideos) > 0 || len(props.Favorites) > 0 {
@@ -21,9 +25,8 @@ templ AppHome(props types.UserSubscriptionsFeedProps) {
 					<span class="sticky top-0 text-lg">Keep scrolling to see your subscriptions</span>
 				}
 			</div>
+			@feed.ChannelsFeed("channels-without-videos", props.WithoutNewVideos, len(props.WithoutNewVideos) > 10)
 		}
-
-		@feed.ChannelsFeed("channels-without-videos", props.WithoutNewVideos, len(props.WithoutNewVideos) > 10)
 	</div>
 
 	@shared.EmbedMinifiedScript(tilesScrollOnHover())
