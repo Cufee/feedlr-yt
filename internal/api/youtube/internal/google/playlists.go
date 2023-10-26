@@ -54,7 +54,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...
 				errChan <- err
 				return
 			}
-			if details.IsShort {
+			if details.IsShort || details.IsUnpublished {
 				return
 			}
 			validVideos <- PlayListItemWithDuration{
