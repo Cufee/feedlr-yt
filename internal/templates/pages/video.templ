@@ -27,7 +27,9 @@ templ Video(props types.VideoPlayerProps) {
 		} else {
 			@buttonLogin()
 		}
-		<div id="notification-toast" class="opacity-0 transition-all duration-[500ms] ease-out">@notificationToast("SponsorBlock skipped a video segment")</div>
+		<div id="notification-toast" class="opacity-100 transition-all duration-[500ms] ease-out pointer-events-none">
+			@notificationToast("SponsorBlock skipped a video segment")
+		</div>
 	</div>
 }
 
@@ -48,9 +50,7 @@ templ buttonBack() {
 
 templ notificationToast(message string) {
 	<div class="toast toast-center toast-bottom">
-		<div class="px-3 py-2 alert alert-info opacity-80">
-			<span>{ message }</span>
-		</div>
+		<div class="px-3 py-2 alert alert-info opacity-80"><span>{ message }</span></div>
 	</div>
 }
 
