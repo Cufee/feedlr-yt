@@ -23,7 +23,7 @@ templ AppHome(props types.UserSubscriptionsFeedProps) {
 			</div>
 		}
 
-		@feed.ChannelsFeed("channels-without-videos", props.WithoutNewVideos, true)
+		@feed.ChannelsFeed("channels-without-videos", props.WithoutNewVideos, len(props.WithoutNewVideos) > 10)
 	</div>
 
 	@shared.EmbedMinifiedScript(tilesScrollOnHover())
