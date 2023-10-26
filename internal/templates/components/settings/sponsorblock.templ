@@ -1,0 +1,17 @@
+package settings
+
+import "github.com/cufee/feedlr-yt/internal/types"
+import 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+
+templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
+	<div class="flex flex-col items-center gap-2">
+		<div class="flex flex-row items-center gap-2">
+			<div class="hidden">@icons.Info()</div>
+			<span class="self-center text-xl font-bold">SponsorBlock</span>
+			<div class="pointer-events-auto tooltip" data-tip="Automatically skip sponsored segments while watching videos">
+				@icons.Info()
+			</div>
+		</div>
+	</div>
+}
+

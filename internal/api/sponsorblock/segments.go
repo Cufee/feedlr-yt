@@ -23,9 +23,9 @@ GetVideoSegments returns a list of _sponsor_ segments for a given video ID.
 
 https://wiki.sponsor.ajay.app/w/API_Docs#GET_/api/skipSegments
 */
-func (c *client) GetVideoSegments(videoId string, categories ...string) ([]Segment, error) {
+func (c *client) GetVideoSegments(videoId string, categories ...Category) ([]Segment, error) {
 	if len(categories) == 0 {
-		categories = []string{"sponsor", "selfpromo", "interaction"}
+		categories = []Category{Sponsor, SelfPromo, Interaction}
 	}
 
 	link, err := url.Parse(fmt.Sprintf("%s/skipSegments/", c.apiUrl))
@@ -35,7 +35,7 @@ func (c *client) GetVideoSegments(videoId string, categories ...string) ([]Segme
 	query := link.Query()
 	query.Add("videoID", videoId)
 	for _, category := range categories {
-		query.Add("category", category)
+		query.Add("category", category.value)
 	}
 	link.RawQuery = query.Encode()
 

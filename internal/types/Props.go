@@ -8,6 +8,20 @@ import (
 	"github.com/goccy/go-json"
 )
 
+type SettingsPageProps struct {
+	SponsorBlock SponsorBlockSettingsProps
+}
+
+type SponsorBlockSettingsProps struct {
+	SponsorBlockEnabled             bool
+	SponsorBlockCategories          []string
+	AvailableSponsorBlockCategories []SponsorBlockCategory
+}
+
+type SponsorBlockCategory struct {
+	sponsorblock.Category
+}
+
 type Channel struct {
 	yt.Channel
 }
