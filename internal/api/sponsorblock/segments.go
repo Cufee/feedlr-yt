@@ -35,7 +35,7 @@ func (c *client) GetVideoSegments(videoId string, categories ...Category) ([]Seg
 	query := link.Query()
 	query.Add("videoID", videoId)
 	for _, category := range categories {
-		query.Add("category", category.value)
+		query.Add("category", category.Value)
 	}
 	link.RawQuery = query.Encode()
 

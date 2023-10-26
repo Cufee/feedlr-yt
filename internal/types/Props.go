@@ -14,12 +14,8 @@ type SettingsPageProps struct {
 
 type SponsorBlockSettingsProps struct {
 	SponsorBlockEnabled             bool
-	SponsorBlockCategories          []string
-	AvailableSponsorBlockCategories []SponsorBlockCategory
-}
-
-type SponsorBlockCategory struct {
-	sponsorblock.Category
+	SelectedSponsorBlockCategories  []string
+	AvailableSponsorBlockCategories []sponsorblock.Category
 }
 
 type Channel struct {
