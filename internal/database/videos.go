@@ -74,5 +74,6 @@ func (c *Client) UpsertView(user, video string, progress int) (*models.VideoView
 		return nil, err
 	}
 	view.Progress = progress
-	return view, mgm.Coll(view).Update(view)
+	_, err = mgm.Coll(view).UpdateByID(mgm.Ctx(), view.ID, bson.M{"$set": view})
+	return view, err
 }
