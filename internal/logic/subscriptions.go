@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"log"
 	"sort"
 	"strings"
 
@@ -104,9 +105,12 @@ func ToggleSubscriptionIsFavorite(userId, channelId string) (bool, error) {
 		return false, err
 	}
 
-	update, err := database.DefaultClient.ToggleSubscriptionIsFavorite(sub.ID)
+	log.Printf("%+v", sub)
+
+	sub.IsFavorite = !sub.IsFavorite
+	err = database.DefaultClient.UpdateSubscription(sub)
 	if err != nil {
 		return false, err
 	}
-	return update.IsFavorite, nil
+	return !sub.IsFavorite, nil
 }
