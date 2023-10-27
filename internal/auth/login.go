@@ -27,9 +27,9 @@ func LoginStartHandler(c *fiber.Ctx) error {
 		return c.Redirect("/error?message=Something went wrong while logging in&context=creating session ID")
 	}
 
-	nonce, err := database.C.NewAuthNonce(time.Now().Add(time.Minute*5), id.String())
+	nonce, err := database.DefaultClient.NewAuthNonce(time.Now().Add(time.Minute*5), id.String())
 	if err != nil {
-		log.Printf("database.C.NewAuthNonce: %v\n", err)
+		log.Printf("database.DefaultClient.NewAuthNonce: %v\n", err)
 		return c.Redirect("/error?message=Something went wrong while logging in&context=creating auth nonce")
 	}
 
@@ -63,7 +63,7 @@ func LoginCallbackHandler(c *fiber.Ctx) error {
 	}
 
 	if idToken.Subject != "" && idToken.Expiry.After(time.Now()) && token.Expiry.After(time.Now()) {
-		user, err := database.C.EnsureUserExists(idToken.Subject)
+		user, err := database.DefaultClient.EnsureUserExists(idToken.Subject)
 		if err != nil {
 			log.Printf("EnsureUserExists: %v\n", err)
 			return c.Redirect("/error?message=Something went wrong while logging in&context=invalid auth token")

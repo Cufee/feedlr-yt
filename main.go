@@ -7,7 +7,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/server"
 )
 
-//go:generate task db:generate
 //go:generate task style:generate
 
 // Embed assets

@@ -49,13 +49,13 @@ func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 	return &channel, nil
 }
 
-func (c *client) GetChannelVideos(channelID string, limit int) ([]yt.Video, error) {
+func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...string) ([]yt.Video, error) {
 	uploadsId, err := c.GetChannelUploadPlaylistID(channelID)
 	if err != nil {
 		return nil, err
 	}
 
-	videos, err := c.GetPlaylistVideos(uploadsId, limit)
+	videos, err := c.GetPlaylistVideos(uploadsId, limit, skipVideoIds...)
 	if err != nil {
 		return nil, err
 	}

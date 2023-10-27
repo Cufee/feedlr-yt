@@ -1,4 +1,4 @@
-package gen
+package main
 
 import (
 	"fmt"
@@ -7,6 +7,10 @@ import (
 	"runtime"
 	"strings"
 )
+
+func main() {
+	generateStyleFile()
+}
 
 func generateStyleFile() {
 	fmt.Println("Started generating style_gen.go...")

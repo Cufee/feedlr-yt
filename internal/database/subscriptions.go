@@ -1,15 +1,25 @@
 package database
 
 import (
-	"context"
-
-	"github.com/cufee/feedlr-yt/prisma/db"
+	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/kamva/mgm/v3"
+	"github.com/kamva/mgm/v3/builder"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
-func (c *Client) NewSubscription(userId, channelId string) (*db.UserSubscriptionModel, error) {
-	ul := db.UserSubscription.User.Link(db.User.ID.Equals(userId))
-	cl := db.UserSubscription.Channel.Link(db.Channel.ID.Equals(channelId))
-	return c.p.UserSubscription.CreateOne(ul, cl).With(db.UserSubscription.Channel.Fetch(), db.UserSubscription.User.Fetch()).Exec(context.TODO())
+func (c *Client) NewSubscription(userId, channelId string) (*models.UserSubscription, error) {
+	channel := &models.Channel{}
+	err := mgm.Coll(channel).FindByID(channelId, channel)
+	if err != nil {
+		return nil, err
+	}
+
+	sub := models.NewUserSubscription(userId, channelId)
+	err = mgm.Coll(sub).Create(sub)
+	if err != nil {
+		return nil, err
+	}
+	return sub, nil
 }
 
 type SubscriptionGetOptions struct {
@@ -17,70 +27,91 @@ type SubscriptionGetOptions struct {
 	WithUser    bool
 }
 
-func (c *Client) AllUserSubscriptions(userId string, opts ...SubscriptionGetOptions) ([]db.UserSubscriptionModel, error) {
+func (c *Client) AllUserSubscriptions(userId string, opts ...SubscriptionGetOptions) ([]models.UserSubscription, error) {
 	var options SubscriptionGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	query := c.p.UserSubscription.FindMany(db.UserSubscription.UserID.Equals(userId))
-	if options.WithChannel {
-		query = query.With(db.UserSubscription.Channel.Fetch())
-	}
-	if options.WithUser {
-		query = query.With(db.UserSubscription.User.Fetch())
+	coll := mgm.Coll(&models.UserSubscription{})
+	subscriptions := []models.UserSubscription{}
+	if !options.WithChannel && !options.WithUser {
+		err := coll.SimpleFind(&subscriptions, bson.M{"userId": userId})
+		return subscriptions, err
 	}
 
-	return query.Exec(context.TODO())
+	var stages []interface{}
+	stages = append(stages, bson.M{"$match": bson.M{"userId": userId}})
+	if options.WithChannel {
+		stages = append(stages, builder.Lookup(models.ChannelCollection, "channelId", "_id", "channels"))
+	}
+	if options.WithUser {
+		stages = append(stages, builder.Lookup(models.UserCollection, "userId", "_id", "users"))
+	}
+
+	return subscriptions, coll.SimpleAggregate(&subscriptions, stages...)
 }
 
-func (c *Client) FindSubscription(userId, channelId string, opts ...SubscriptionGetOptions) (*db.UserSubscriptionModel, error) {
+func (c *Client) FindSubscription(userId, channelId string, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
 	var options SubscriptionGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	query := c.p.UserSubscription.FindFirst(db.UserSubscription.ChannelID.Equals(channelId), db.UserSubscription.UserID.Equals(userId))
-	if options.WithChannel {
-		query = query.With(db.UserSubscription.Channel.Fetch())
-	}
-	if options.WithUser {
-		query = query.With(db.UserSubscription.User.Fetch())
+	subscription := &models.UserSubscription{}
+	coll := mgm.Coll(subscription)
+	if !options.WithChannel && !options.WithUser {
+		err := coll.First(bson.M{"userId": userId, "channelId": channelId}, subscription)
+		return subscription, err
 	}
 
-	return query.Exec(context.TODO())
+	var stages []interface{}
+	stages = append(stages, bson.M{"$match": bson.M{"userId": userId, "channelId": channelId}})
+	if options.WithChannel {
+		stages = append(stages, builder.Lookup(models.ChannelCollection, "channelId", "_id", "channels"))
+	}
+	if options.WithUser {
+		stages = append(stages, builder.Lookup(models.UserCollection, "userId", "_id", "users"))
+	}
+
+	return subscription, coll.SimpleAggregate(subscription, stages...)
 }
 
-func (c *Client) GetSubscription(id string, opts ...SubscriptionGetOptions) (*db.UserSubscriptionModel, error) {
+func (c *Client) GetSubscription(id string, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
 	var options SubscriptionGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	query := c.p.UserSubscription.FindUnique(db.UserSubscription.ID.Equals(id))
-	if options.WithChannel {
-		query = query.With(db.UserSubscription.Channel.Fetch())
-	}
-	if options.WithUser {
-		query = query.With(db.UserSubscription.User.Fetch())
+	subscription := &models.UserSubscription{}
+	coll := mgm.Coll(subscription)
+	if !options.WithChannel && !options.WithUser {
+		err := coll.FindByID(id, subscription)
+		return subscription, err
 	}
 
-	return query.Exec(context.TODO())
+	var stages []interface{}
+	stages = append(stages, bson.M{"$match": bson.M{"_id": id}})
+	if options.WithChannel {
+		stages = append(stages, builder.Lookup(models.ChannelCollection, "channelId", "_id", "channels"))
+	}
+	if options.WithUser {
+		stages = append(stages, builder.Lookup(models.UserCollection, "userId", "_id", "users"))
+	}
+
+	return subscription, coll.SimpleAggregate(subscription, stages...)
 }
 
 func (c *Client) DeleteSubscription(userId, channelId string) error {
-	sub, err := c.FindSubscription(userId, channelId)
-	if err != nil {
-		return err
-	}
-	_, err = c.p.UserSubscription.FindUnique(db.UserSubscription.ID.Equals(sub.ID)).Delete().Exec(context.TODO())
+	_, err := mgm.Coll(&models.UserSubscription{}).DeleteOne(mgm.Ctx(), bson.M{"userId": userId, "channelId": channelId})
 	return err
 }
 
-func (c *Client) ToggleSubscriptionIsFavorite(id string) (*db.UserSubscriptionModel, error) {
+func (c *Client) ToggleSubscriptionIsFavorite(id string) (*models.UserSubscription, error) {
 	sub, err := c.GetSubscription(id)
 	if err != nil {
 		return nil, err
 	}
-	return c.p.UserSubscription.FindUnique(db.UserSubscription.ID.Equals(id)).Update(db.UserSubscription.IsFavorite.Set(!sub.IsFavorite)).Exec(context.TODO())
+	sub.IsFavorite = !sub.IsFavorite
+	return sub, mgm.Coll(sub).Update(sub)
 }

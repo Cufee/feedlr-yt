@@ -8,13 +8,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gofiber/fiber/v2/log"
 	"golang.org/x/exp/maps"
 )
 
 type VideoDetails struct {
-	IsShort  bool `json:"isShort"`
-	Duration int  `json:"duration"`
+	IsShort       bool `json:"isShort"`
+	IsUnpublished bool `json:"IsUnpublished"`
+	Duration      int  `json:"duration"`
 }
 
 type PlayerResponse struct {
@@ -124,9 +124,9 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		}, nil
 	}
 
-	log.Warnf("no formats found for video %s", videoId)
 	return &VideoDetails{
-		IsShort:  false,
-		Duration: 0,
+		IsUnpublished: true,
+		IsShort:       false,
+		Duration:      0,
 	}, nil
 }

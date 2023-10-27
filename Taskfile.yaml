@@ -48,7 +48,7 @@ tasks:
       - task: build:fast
   build:docker:
     desc: Build the application without generating styles
-    deps: [db:generate, generate:internal]
+    deps: [generate:internal]
     cmds:
       - task: build:fast
   build:image:
@@ -60,16 +60,3 @@ tasks:
     cmds:
       - rm -rf ./assets/css/style.*.css*
       - npm install && npx tailwindcss -i ./assets/css/input.css -o ./assets/css/style.{{.COMMIT_ID}}.css --minify
-
-  db:prefetch:
-    desc: Prefetch Prisma binaries
-    cmds:
-      - "{{.PRISMA_CLIENT}} prefetch"
-  db:generate:
-    desc: Generate Prisma client
-    cmds:
-      - "{{.PRISMA_CLIENT}} generate"
-  db:push:
-    desc: Push Prisma schema to database
-    cmds:
-      - "{{.PRISMA_CLIENT}} db push"

@@ -1,42 +1,31 @@
 package database
 
 import (
-	"context"
 	"errors"
 
-	"github.com/cufee/feedlr-yt/prisma/db"
+	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/kamva/mgm/v3"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (c *Client) GetVideoByID(id string) (*db.VideoModel, error) {
-	video, err := c.p.Video.FindFirst(db.Video.ID.Equals(id)).Exec(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-	return video, nil
+func (c *Client) GetVideoByID(id string) (*models.Video, error) {
+	video := &models.Video{}
+	return video, mgm.Coll(video).First(bson.M{"_id": id}, video)
 }
 
-func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]db.VideoModel, error) {
-	query := c.p.Video.FindMany(db.Video.ChannelID.In(channelIds)).OrderBy(db.Video.CreatedAt.Order(db.SortOrderDesc))
-	videos, err := query.Exec(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	return videos, nil
+func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models.Video, error) {
+	videos := []models.Video{}
+	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": bson.M{"$in": channelIds}})
 }
 
-func (c *Client) GetVideos(id string, limit int) ([]db.VideoModel, error) {
-	query := c.p.Video.FindMany(db.Video.ChannelID.Equals(id)).OrderBy(db.Video.CreatedAt.Order(db.SortOrderDesc))
-	if limit > 0 {
-		query = query.Take(limit)
-	}
-
-	videos, err := query.Exec(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	return videos, nil
+func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, error) {
+	videos := []models.Video{}
+	opts := options.Find()
+	opts.SetSort(bson.M{"publishedAt": -1})
+	opts.SetLimit(int64(limit))
+	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": id}, opts)
 }
 
 type VideoCreateModel struct {
@@ -48,52 +37,41 @@ type VideoCreateModel struct {
 	Thumbnail   string
 }
 
-func (c *Client) NewVideo(channel string, videos ...VideoCreateModel) ([]db.VideoModel, error) {
-	cl := db.Video.Channel.Link(db.Channel.ID.Equals(channel))
-	var created []db.VideoModel
-
-	for _, vid := range videos {
-		v, err := c.p.Video.CreateOne(db.Video.ID.Set(vid.ID), db.Video.URL.Set(vid.URL), db.Video.Title.Set(vid.Title), db.Video.Description.Set(vid.Description), cl, db.Video.Thumbnail.Set(vid.Thumbnail), db.Video.Duration.Set(vid.Duration)).Exec(context.TODO())
-		if err != nil {
-			return nil, err
-		}
-		created = append(created, *v)
+func (c *Client) InsertChannelVideos(channel string, videos ...VideoCreateModel) error {
+	payload := []*models.Video{}
+	for _, video := range videos {
+		payload = append(payload, models.NewVideo(video.ID, video.URL, video.Title, channel, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description}))
 	}
-	return created, nil
+
+	var writes []mongo.WriteModel
+	for _, video := range payload {
+		writes = append(writes, mongo.NewInsertOneModel().SetDocument(video))
+	}
+
+	_, err := mgm.Coll(&models.Video{}).BulkWrite(mgm.Ctx(), writes)
+	return err
 }
 
-func (c *Client) GetUserVideoView(user, video string) (*db.VideoViewModel, error) {
-	view, err := c.p.VideoView.FindFirst(db.VideoView.UserID.Equals(user), db.VideoView.VideoID.Equals(video)).Exec(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	return view, nil
+func (c *Client) GetUserVideoView(user, video string) (*models.VideoView, error) {
+	view := &models.VideoView{}
+	return view, mgm.Coll(view).First(bson.M{"userId": user, "videoId": video}, view)
 }
 
-func (c *Client) GetAllUserViews(user string) ([]db.VideoViewModel, error) {
-	views, err := c.p.VideoView.FindMany(db.VideoView.UserID.Equals(user)).Exec(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	return views, nil
+func (c *Client) GetAllUserViews(user string) ([]models.VideoView, error) {
+	virews := []models.VideoView{}
+	return virews, mgm.Coll(&models.VideoView{}).SimpleFind(&virews, bson.M{"userId": user})
 }
 
-func (c *Client) UpsertView(user, video string, progress int) (*db.VideoViewModel, error) {
-	view, err := c.p.VideoView.FindFirst(db.VideoView.UserID.Equals(user), db.VideoView.VideoID.Equals(video)).Exec(context.Background())
+func (c *Client) UpsertView(user, video string, progress int) (*models.VideoView, error) {
+	view := &models.VideoView{}
+	err := mgm.Coll(view).First(bson.M{"userId": user, "videoId": video}, view)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			view, err = c.p.VideoView.CreateOne(db.VideoView.User.Link(db.User.ID.Equals(user)), db.VideoView.Video.Link(db.Video.ID.Equals(video)), db.VideoView.Progress.Set(progress)).Exec(context.Background())
-			if err != nil {
-				return nil, err
-			}
-			return view, nil
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			view = models.NewVideoView(user, video, models.VideoViewOptions{Progress: &progress})
+			return view, mgm.Coll(view).Create(view)
 		}
 		return nil, err
 	}
-
-	view, err = c.p.VideoView.FindUnique(db.VideoView.ID.Equals(view.ID)).Update(db.VideoView.Progress.Set(progress)).Exec(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	return view, nil
+	view.Progress = progress
+	return view, mgm.Coll(view).Update(view)
 }

@@ -4,7 +4,7 @@ import "fmt"
 
 templ FuseSearch(id string, label string, minLength int) {
 	<div class="flex items-center justify-center" id={ fmt.Sprintf("fuse-search-%s",id) }>
-		<input id={ fmt.Sprintf("search-input-%s",id) } type="text" placeholder={ label } class="w-full max-w-xs input input-bordered placeholder:text-center"/>
+		<input id={ fmt.Sprintf("search-input-%s",id) } type="text" placeholder={ label } class="w-full max-w-xs input input-bordered placeholder:text-center bg-base-200"/>
 		<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
 		@EmbedMinifiedScript(fuseSearch(fmt.Sprintf("search-input-%s",id), id, id, minLength), fmt.Sprintf("search-input-%s",id), id, id, minLength)
 	</div>

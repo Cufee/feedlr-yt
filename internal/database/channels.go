@@ -1,66 +1,126 @@
 package database
 
 import (
-	"context"
-
-	"github.com/cufee/feedlr-yt/prisma/db"
+	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/kamva/mgm/v3"
+	"github.com/kamva/mgm/v3/builder"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type ChannelGetOptions struct {
-	WithVideos bool
+	WithVideos        bool
+	WithSubscriptions bool
 }
 
-func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]db.ChannelModel, error) {
+func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]models.Channel, error) {
 	var options ChannelGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	query := c.p.Channel.FindMany()
-	if options.WithVideos {
-		query = query.With(db.Channel.Videos.Fetch())
+	coll := mgm.Coll(&models.Channel{})
+	channels := []models.Channel{}
+
+	if !options.WithVideos && !options.WithSubscriptions {
+		err := coll.SimpleFind(&channels, bson.M{})
+		if err != nil {
+			return nil, err
+		}
+		return channels, nil
 	}
-	return query.Exec(context.TODO())
+
+	var stages []interface{}
+	if options.WithVideos {
+		stages = append(stages, builder.Lookup(models.VideoCollection, "_id", "channelId", "videos"))
+	}
+	if options.WithSubscriptions {
+		stages = append(stages, builder.Lookup(models.UserSubscriptionCollection, "_id", "channelId", "subscriptions"))
+	}
+
+	return channels, coll.SimpleAggregate(&channels, stages...)
 }
 
-func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]db.ChannelModel, error) {
+func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]models.Channel, error) {
 	var options ChannelGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	query := c.p.Channel.FindMany(db.Channel.Subscriptions.Some(db.UserSubscription.UserID.GtIfPresent(nil)))
+	var stages []interface{}
+	coll := mgm.Coll(&models.Channel{})
+	channels := []models.Channel{}
+
+	stages = append(stages, builder.Lookup(models.UserSubscriptionCollection, "_id", "channelId", "subscriptions"))
 	if options.WithVideos {
-		query = query.With(db.Channel.Videos.Fetch())
+		stages = append(stages, builder.Lookup(models.VideoCollection, "_id", "channelId", "videos"))
 	}
 
-	return query.Exec(context.TODO())
+	// subscriptions > 0
+	stages = append(stages, bson.M{
+		"$match": bson.M{
+			"subscriptions": bson.M{
+				"$exists": true,
+				"$ne":     bson.A{},
+			},
+		},
+	})
+
+	return channels, coll.SimpleAggregate(&channels, stages...)
 }
 
-func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*db.ChannelModel, error) {
+func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*models.Channel, error) {
 	var options ChannelGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	query := c.p.Channel.FindUnique(db.Channel.ID.Equals(channelId))
-	if options.WithVideos {
-		query = query.With(db.Channel.Videos.Fetch())
+	channel := &models.Channel{}
+	coll := mgm.Coll(channel)
+	if !options.WithVideos && !options.WithSubscriptions {
+		err := coll.FindByID(channelId, channel)
+		if err != nil {
+			return nil, err
+		}
+		return channel, nil
 	}
-	return query.Exec(context.TODO())
+
+	var stages []interface{}
+	if options.WithVideos {
+		stages = append(stages, builder.Lookup(models.VideoCollection, "_id", "channelId", "videos"))
+	}
+	if options.WithSubscriptions {
+		stages = append(stages, builder.Lookup(models.UserSubscriptionCollection, "_id", "channelId", "subscriptions"))
+	}
+
+	return channel, coll.SimpleAggregate(channel, stages...)
 }
 
-func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions) ([]db.ChannelModel, error) {
+func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions) ([]models.Channel, error) {
 	var options ChannelGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	query := c.p.Channel.FindMany(db.Channel.ID.In(channelIds))
-	if options.WithVideos {
-		query = query.With(db.Channel.Videos.Fetch())
+	coll := mgm.Coll(&models.Channel{})
+	channels := []models.Channel{}
+	if !options.WithVideos && !options.WithSubscriptions {
+		err := coll.SimpleFind(&channels, bson.M{"_id": bson.M{"$in": channelIds}})
+		if err != nil {
+			return nil, err
+		}
+		return channels, nil
 	}
-	return query.Exec(context.TODO())
+
+	var stages []interface{}
+	stages = append(stages, bson.M{"$match": bson.M{"_id": bson.M{"$in": channelIds}}})
+	if options.WithVideos {
+		stages = append(stages, builder.Lookup(models.VideoCollection, "_id", "channelId", "videos"))
+	}
+	if options.WithSubscriptions {
+		stages = append(stages, builder.Lookup(models.UserSubscriptionCollection, "_id", "channelId", "subscriptions"))
+	}
+
+	return channels, coll.SimpleAggregate(&channels, stages...)
 }
 
 type ChannelCreateModel struct {
@@ -71,6 +131,13 @@ type ChannelCreateModel struct {
 	Thumbnail   string
 }
 
-func (c *Client) NewChannel(ch ChannelCreateModel) (*db.ChannelModel, error) {
-	return c.p.Channel.CreateOne(db.Channel.ID.Set(ch.ID), db.Channel.URL.Set(ch.URL), db.Channel.Title.Set(ch.Title), db.Channel.Description.Set(ch.Description), db.Channel.Thumbnail.Set(ch.Thumbnail)).Exec(context.TODO())
+func (c *Client) NewChannel(ch ChannelCreateModel) (*models.Channel, error) {
+	channel := models.NewChannel(ch.ID, ch.URL, ch.Title, models.ChannelOptions{Thumbnail: &ch.Thumbnail, Description: &ch.Description})
+	err := mgm.Coll(channel).Create(channel)
+	if err != nil {
+		return nil, err
+	}
+	channel.Subscriptions = []models.UserSubscription{}
+	channel.Videos = []models.Video{}
+	return channel, nil
 }

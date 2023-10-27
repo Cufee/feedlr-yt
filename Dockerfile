@@ -24,9 +24,6 @@ COPY . ./
 # add go modules lockfiles
 RUN go mod download
 
-# download the engine required for the next image
-RUN go run prisma/download.go
-
 # install templ
 RUN go install github.com/a-h/templ/cmd/templ@latest
 # install task
@@ -41,9 +38,6 @@ ENV TZ=Europe/Berlin
 ENV ZONEINFO=/zoneinfo.zip
 COPY --from=build /usr/local/go/lib/time/zoneinfo.zip /
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-
-ENV PRISMA_QUERY_ENGINE_BINARY=/prisma/bin/engine
-COPY --from=build /workspace/prisma/bin/engine /prisma/bin/engine
 
 COPY --from=build /workspace/app .
 
