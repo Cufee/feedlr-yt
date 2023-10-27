@@ -23,9 +23,9 @@ func newPool(uri string) *redis.Pool {
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.DialURL(uri)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(errors.New("redis.DialURL"), err)
 			}
-			return c, err
+			return c, nil
 		},
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
 			_, err := c.Do("PING")

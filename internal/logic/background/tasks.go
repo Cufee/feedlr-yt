@@ -25,7 +25,7 @@ func CacheAllChannelsWithVideos() error {
 			limiter <- 1
 			defer func() { <-limiter }()
 
-			err := logic.CacheChannelVideos(c.ID)
+			err := logic.CacheChannelVideos(c.ExternalID)
 			if err != nil {
 				errChan <- err
 			}

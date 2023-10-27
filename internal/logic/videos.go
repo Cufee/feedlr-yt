@@ -8,6 +8,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/gofiber/fiber/v2/log"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -21,14 +22,14 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 
 	videos, err := database.DefaultClient.GetVideosByChannelID(0, channelIds...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetChannelVideos.database.DefaultClient.GetVideosByChannelID failed to get videos"), err)
 	}
 
 	var props []types.VideoProps
 	for _, vid := range videos {
 		v := types.VideoProps{
 			Video: client.Video{
-				ID:          vid.ID,
+				ID:          vid.ExternalID,
 				URL:         vid.URL,
 				Title:       vid.Title,
 				Duration:    vid.Duration,
@@ -46,12 +47,12 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 func GetVideoByID(id string) (types.VideoProps, error) {
 	vid, err := database.DefaultClient.GetVideoByID(id)
 	if err != nil {
-		return types.VideoProps{}, err
+		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
 
 	v := types.VideoProps{
 		Video: client.Video{
-			ID:          vid.ID,
+			ID:          vid.ExternalID,
 			URL:         vid.URL,
 			Title:       vid.Title,
 			Duration:    vid.Duration,
@@ -77,7 +78,7 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 
 	video, err := GetVideoByID(videoId)
 	if err != nil {
-		return types.VideoPlayerProps{}, err
+		return types.VideoPlayerProps{}, errors.Join(errors.New("GetPlayerPropsWithOpts.GetVideoByID failed to get video"), err)
 	}
 
 	playerProps := types.VideoPlayerProps{
@@ -85,9 +86,13 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 	}
 
 	if options.WithProgress {
-		progress, err := database.DefaultClient.GetUserVideoView(userId, videoId)
+		oid, err := primitive.ObjectIDFromHex(userId)
+		if err != nil {
+			return types.VideoPlayerProps{}, errors.Join(errors.New("GetPlayerPropsWithOpts.primitive.ObjectIDFromHex failed to parse userId"), err)
+		}
+		progress, err := database.DefaultClient.GetUserVideoView(oid, videoId)
 		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-			return types.VideoPlayerProps{}, err
+			return types.VideoPlayerProps{}, errors.Join(errors.New("GetPlayerPropsWithOpts.database.DefaultClient.GetUserVideoView failed to get user video view"), err)
 		}
 		if progress != nil {
 			playerProps.Video.Progress = progress.Progress
@@ -97,8 +102,11 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 	if options.WithSegments {
 		segments, err := sponsorblock.C.GetVideoSegments(videoId)
 		if err == nil {
-			err = playerProps.AddSegments(segments...)
-			return playerProps, err
+			err := playerProps.AddSegments(segments...)
+			if err != nil {
+				return playerProps, errors.Join(errors.New("GetPlayerPropsWithOpts.playerProps.AddSegments failed to add segments"), err)
+			}
+			return playerProps, nil
 		}
 		log.Warnf("failed to get sponsorblock segments for video %v: %v", videoId, err)
 		return playerProps, nil
@@ -108,17 +116,26 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 }
 
 func UpdateViewProgress(userId, videoId string, progress int) error {
-	_, err := database.DefaultClient.UpsertView(userId, videoId, progress)
+	oid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return err
+	}
+	_, err = database.DefaultClient.UpsertView(oid, videoId, progress)
 	return err
 }
 
 func GetCompleteUserProgress(userId string) (map[string]int, error) {
-	views, err := database.DefaultClient.GetAllUserViews(userId)
+	oid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return nil, errors.Join(errors.New("GetCompleteUserProgress.primitive.ObjectIDFromHex failed to parse userId"), err)
+	}
+
+	views, err := database.DefaultClient.GetAllUserViews(oid)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return make(map[string]int), nil
 		}
-		return nil, err
+		return nil, errors.Join(errors.New("GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views"), err)
 	}
 
 	progress := make(map[string]int)

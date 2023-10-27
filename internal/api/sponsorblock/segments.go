@@ -2,6 +2,7 @@ package sponsorblock
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -30,7 +31,7 @@ func (c *client) GetVideoSegments(videoId string, categories ...Category) ([]Seg
 
 	link, err := url.Parse(fmt.Sprintf("%s/skipSegments/", c.apiUrl))
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetVideoSegments.url.Parse"), err)
 	}
 	query := link.Query()
 	query.Add("videoID", videoId)
@@ -42,7 +43,7 @@ func (c *client) GetVideoSegments(videoId string, categories ...Category) ([]Seg
 	var segments []Segment
 	res, err := http.DefaultClient.Get(link.String())
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetVideoSegments.http.DefaultClient.Get"), err)
 	}
 	if res == nil || res.StatusCode == http.StatusNotFound {
 		return segments, nil
@@ -53,7 +54,7 @@ func (c *client) GetVideoSegments(videoId string, categories ...Category) ([]Seg
 
 	err = json.NewDecoder(res.Body).Decode(&segments)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetVideoSegments.json.NewDecoder.Decode"), err)
 	}
 
 	return segments, nil

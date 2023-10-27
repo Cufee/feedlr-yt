@@ -18,11 +18,11 @@ type PlayListItemWithDuration struct {
 func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
 	playlists, err := c.service.Channels.List([]string{"id", "contentDetails"}).Id(channelId).Fields("items(contentDetails/relatedPlaylists/uploads)").Do()
 	if err != nil {
-		return "", err
+		return "", errors.Join(errors.New("GetChannelUploadPlaylistID.youtube.service.Channels.List"), err)
 	}
 
 	if len(playlists.Items) <= 0 {
-		return "", errors.New("channel not found")
+		return "", errors.New("GetChannelUploadPlaylistID.youtube.service.Channels.List: no channels found")
 	}
 
 	return playlists.Items[0].ContentDetails.RelatedPlaylists.Uploads, nil
@@ -35,7 +35,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...
 
 	res, err := c.service.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistId).MaxResults(int64(limit * 3)).Do()
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetPlaylistVideos.youtube.service.PlaylistItems.List"), err)
 	}
 
 	var wg sync.WaitGroup
@@ -51,7 +51,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...
 			defer wg.Done()
 			details, err := c.GetVideoPlayerDetails(item.Snippet.ResourceId.VideoId)
 			if err != nil {
-				errChan <- err
+				errChan <- errors.Join(errors.New("GetPlaylistVideos.youtube.GetVideoPlayerDetails"), err)
 				return
 			}
 			if details.IsShort || details.IsUnpublished {

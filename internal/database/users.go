@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -22,10 +21,22 @@ func (c *Client) EnsureUserExists(authId string) (*models.User, error) {
 
 func (c *Client) GetUserFromAuthID(authId string) (*models.User, error) {
 	user := &models.User{}
-	return user, mgm.Coll(user).First(bson.M{"authId": authId}, user)
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
+	return user, c.Collection(models.UserCollection).FindOne(ctx, bson.M{"authId": authId}).Decode(user)
 }
 
 func (c *Client) NewUser(authId string) (*models.User, error) {
 	user := models.NewUser(authId)
-	return user, mgm.Coll(user).Create(user)
+	user.Prepare()
+
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
+	res, err := c.Collection(models.UserCollection).InsertOne(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return user, user.ParseID(res.InsertedID)
 }

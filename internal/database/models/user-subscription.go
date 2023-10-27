@@ -1,5 +1,7 @@
 package models
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 // model UserSubscription {
 //   id        String   @id @default(cuid()) @map("_id")
 //   createdAt DateTime @default(now())
@@ -22,14 +24,13 @@ const UserSubscriptionCollection = "user_subscriptions"
 
 type UserSubscription struct {
 	Model `bson:",inline"`
-	ID    string `json:"id" bson:"_id,omitempty" field:"required"`
 
 	IsFavorite bool `json:"isFavorite" bson:"isFavorite"`
 
-	InternalUsers    []User    `json:"users" bson:"users,omitempty"`
-	UserId           string    `json:"userId" bson:"userId" field:"required"`
-	InternalChannels []Channel `json:"channels" bson:"channels,omitempty"`
-	ChannelId        string    `json:"channelId" bson:"channelId" field:"required"`
+	InternalUsers    []User             `json:"users" bson:"users,omitempty"`
+	UserId           primitive.ObjectID `json:"userId" bson:"userId" field:"required"`
+	InternalChannels []Channel          `json:"channels" bson:"channels,omitempty"`
+	ChannelId        string             `json:"channelId" bson:"channelId" field:"required"`
 }
 
 func (model *UserSubscription) User() *User {
@@ -50,7 +51,7 @@ type UserSubscriptionOptions struct {
 	IsFavorite *bool
 }
 
-func NewUserSubscription(userId string, channelId string, opts ...UserSubscriptionOptions) *UserSubscription {
+func NewUserSubscription(userId primitive.ObjectID, channelId string, opts ...UserSubscriptionOptions) *UserSubscription {
 	subscription := &UserSubscription{
 		UserId:     userId,
 		ChannelId:  channelId,

@@ -1,5 +1,7 @@
 package models
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 // model VideoView {
 //   id        String   @id @default(cuid()) @map("_id")
 //   createdAt DateTime @default(now())
@@ -22,12 +24,11 @@ const VideoViewCollection = "video_views"
 
 type VideoView struct {
 	Model `bson:",inline"`
-	ID    string `json:"id" bson:"_id,omitempty" field:"required"`
 
-	User    *User  `json:"user" bson:"user,omitempty"`
-	UserId  string `json:"userId" bson:"userId"`
-	Video   *Video `json:"video" bson:"video,omitempty"`
-	VideoId string `json:"videoId" bson:"videoId"`
+	User    *User              `json:"user" bson:"user,omitempty"`
+	UserId  primitive.ObjectID `json:"userId" bson:"userId"`
+	Video   *Video             `json:"video" bson:"video,omitempty"`
+	VideoId string             `json:"videoId" bson:"videoId"`
 
 	Progress int `json:"progress" bson:"progress"`
 }
@@ -36,7 +37,7 @@ type VideoViewOptions struct {
 	Progress *int
 }
 
-func NewVideoView(userId string, videoId string, opts ...VideoViewOptions) *VideoView {
+func NewVideoView(userId primitive.ObjectID, videoId string, opts ...VideoViewOptions) *VideoView {
 	view := &VideoView{
 		UserId:   userId,
 		VideoId:  videoId,

@@ -21,7 +21,6 @@ const AuthNonceCollection = "auth_nonces"
 
 type AuthNonce struct {
 	Model `bson:",inline"`
-	ID    string `json:"id" bson:"_id,omitempty" field:"required"`
 
 	ExpiresAt time.Time `json:"expiresAt" bson:"expiresAt"`
 	Value     string    `json:"value" bson:"value"`

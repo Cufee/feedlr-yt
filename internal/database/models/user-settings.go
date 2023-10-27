@@ -1,5 +1,7 @@
 package models
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 // model UserSettings {
 //   id        String   @id @default(cuid()) @map("_id")
 //   createdAt DateTime @default(now())
@@ -18,10 +20,9 @@ const UserSettingsCollection = "user_settings"
 
 type UserSettings struct {
 	Model `bson:",inline"`
-	ID    string `json:"id" bson:"_id,omitempty" field:"required"`
 
-	User   *User  `json:"user" bson:"user,omitempty"`
-	UserId string `json:"userId" bson:"userId" field:"required"`
+	User   *User              `json:"user" bson:"user,omitempty"`
+	UserId primitive.ObjectID `json:"userId" bson:"userId" field:"required"`
 
 	SponsorBlockEnabled    bool     `json:"sponsorBlockEnabled" bson:"sponsorBlockEnabled"`
 	SponsorBlockCategories []string `json:"sponsorBlockCategories" bson:"sponsorBlockCategories"`
@@ -32,7 +33,7 @@ type UserSettingsOptions struct {
 	SponsorBlockCategories *[]string
 }
 
-func NewUserSettings(userId string, opts ...UserSettingsOptions) *UserSettings {
+func NewUserSettings(userId primitive.ObjectID, opts ...UserSettingsOptions) *UserSettings {
 	settings := &UserSettings{
 		UserId:                 userId,
 		SponsorBlockEnabled:    true,

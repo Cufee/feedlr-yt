@@ -24,9 +24,9 @@ import "time"
 const VideoCollection = "videos"
 
 type Video struct {
-	Model `bson:",inline"`
+	Model      `bson:",inline"`
+	ExternalID string `json:"eid" bson:"eid"`
 
-	ID          string    `json:"id" bson:"_id" field:"required"`
 	URL         string    `json:"url" bson:"url" field:"required"`
 	Title       string    `json:"title" bson:"title" field:"required"`
 	Duration    int       `json:"duration" bson:"duration"`
@@ -60,8 +60,8 @@ func NewVideo(id, url, title, channelId string, publishedAt time.Time, opts ...V
 		}
 	}
 
-	return &Video{
-		ID:          id,
+	video := Video{
+		ExternalID:  id,
 		URL:         url,
 		Title:       title,
 		Duration:    duration,
@@ -70,6 +70,7 @@ func NewVideo(id, url, title, channelId string, publishedAt time.Time, opts ...V
 		Description: description,
 		ChannelId:   channelId,
 	}
+	return &video
 }
 
 func (v *Video) CollectionName() string {

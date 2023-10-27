@@ -16,8 +16,8 @@ package models
 const UserCollection = "users"
 
 type User struct {
-	Model  `bson:",inline"`
-	ID     string `json:"id" bson:"_id,omitempty" field:"required"`
+	Model `bson:",inline"`
+
 	AuthId string `json:"authId" bson:"authId" field:"required"`
 
 	Views         []VideoView        `json:"views" bson:"views,omitempty"`

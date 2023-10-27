@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
@@ -8,15 +9,21 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/ssoroka/slice"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 /*
 Returns a list of channel props for all user subscriptions
 */
 func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
-	subscriptions, err := database.DefaultClient.AllUserSubscriptions(userId, database.SubscriptionGetOptions{WithChannel: true})
+	oid, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetUserSubscribedChannels.primitive.ObjectIDFromHex failed to parse userId"), err)
+	}
+
+	subscriptions, err := database.DefaultClient.AllUserSubscriptions(oid, database.SubscriptionGetOptions{WithChannel: true})
+	if err != nil {
+		return nil, errors.Join(errors.New("GetUserSubscribedChannels.database.DefaultClient.AllUserSubscriptions failed to get subscriptions"), err)
 	}
 
 	var props []types.ChannelProps
@@ -27,7 +34,7 @@ func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 		}
 		c := types.ChannelProps{
 			Channel: types.Channel{Channel: client.Channel{
-				ID:          channel.ID,
+				ID:          channel.ExternalID,
 				URL:         channel.URL,
 				Title:       channel.Title,
 				Thumbnail:   channel.Thumbnail,
@@ -60,7 +67,13 @@ func SearchChannels(userId, query string, limit int) ([]types.ChannelSearchResul
 	go func(userId string) {
 		defer wg.Done()
 
-		subs, err := database.DefaultClient.AllUserSubscriptions(userId, database.SubscriptionGetOptions{WithChannel: true})
+		oid, err := primitive.ObjectIDFromHex(userId)
+		if err != nil {
+			subscriptionsErr = err
+			return
+		}
+
+		subs, err := database.DefaultClient.AllUserSubscriptions(oid, database.SubscriptionGetOptions{WithChannel: true})
 		subscriptionsErr = err
 		for _, sub := range subs {
 			subscriptions = append(subscriptions, sub.ChannelId)
@@ -69,10 +82,10 @@ func SearchChannels(userId, query string, limit int) ([]types.ChannelSearchResul
 
 	wg.Wait()
 	if channelsErr != nil {
-		return nil, channelsErr
+		return nil, errors.Join(errors.New("SearchChannels.youtube.C.SearchChannels failed to search channels"), channelsErr)
 	}
 	if subscriptionsErr != nil {
-		return nil, subscriptionsErr
+		return nil, errors.Join(errors.New("SearchChannels.database.DefaultClient.AllUserSubscriptions failed to get subscriptions"), subscriptionsErr)
 	}
 
 	var props []types.ChannelSearchResultProps

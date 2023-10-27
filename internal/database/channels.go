@@ -2,8 +2,6 @@ package database
 
 import (
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"github.com/kamva/mgm/v3"
-	"github.com/kamva/mgm/v3/builder"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -18,26 +16,46 @@ func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]models.Channel, er
 		options = opts[0]
 	}
 
-	coll := mgm.Coll(&models.Channel{})
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
 	channels := []models.Channel{}
 
 	if !options.WithVideos && !options.WithSubscriptions {
-		err := coll.SimpleFind(&channels, bson.M{})
+		cur, err := c.Collection(models.ChannelCollection).Find(ctx, bson.M{})
 		if err != nil {
 			return nil, err
 		}
-		return channels, nil
+		return channels, cur.All(ctx, &channels)
 	}
 
 	var stages []interface{}
 	if options.WithVideos {
-		stages = append(stages, builder.Lookup(models.VideoCollection, "_id", "channelId", "videos"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.VideoCollection,
+				"localField":   "eid",
+				"foreignField": "channelId",
+				"as":           "videos",
+			},
+		})
 	}
 	if options.WithSubscriptions {
-		stages = append(stages, builder.Lookup(models.UserSubscriptionCollection, "_id", "channelId", "subscriptions"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.UserSubscriptionCollection,
+				"localField":   "eid",
+				"foreignField": "channelId",
+				"as":           "subscriptions",
+			},
+		})
 	}
 
-	return channels, coll.SimpleAggregate(&channels, stages...)
+	cur, err := c.Collection(models.ChannelCollection).Aggregate(ctx, stages)
+	if err != nil {
+		return nil, err
+	}
+	return channels, cur.All(ctx, &channels)
 }
 
 func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]models.Channel, error) {
@@ -47,12 +65,25 @@ func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]m
 	}
 
 	var stages []interface{}
-	coll := mgm.Coll(&models.Channel{})
 	channels := []models.Channel{}
 
-	stages = append(stages, builder.Lookup(models.UserSubscriptionCollection, "_id", "channelId", "subscriptions"))
+	stages = append(stages, bson.M{
+		"$lookup": bson.M{
+			"from":         models.UserSubscriptionCollection,
+			"localField":   "eid",
+			"foreignField": "channelId",
+			"as":           "subscriptions",
+		},
+	})
 	if options.WithVideos {
-		stages = append(stages, builder.Lookup(models.VideoCollection, "_id", "channelId", "videos"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.VideoCollection,
+				"localField":   "eid",
+				"foreignField": "channelId",
+				"as":           "videos",
+			},
+		})
 	}
 
 	// subscriptions > 0
@@ -65,7 +96,13 @@ func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]m
 		},
 	})
 
-	return channels, coll.SimpleAggregate(&channels, stages...)
+	ctx, cancel := c.Ctx()
+	defer cancel()
+	cur, err := c.Collection(models.ChannelCollection).Aggregate(ctx, stages)
+	if err != nil {
+		return nil, err
+	}
+	return channels, cur.All(ctx, &channels)
 }
 
 func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*models.Channel, error) {
@@ -75,24 +112,40 @@ func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*model
 	}
 
 	channel := &models.Channel{}
-	coll := mgm.Coll(channel)
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
 	if !options.WithVideos && !options.WithSubscriptions {
-		err := coll.FindByID(channelId, channel)
-		if err != nil {
-			return nil, err
-		}
-		return channel, nil
+		return channel, c.Collection(models.ChannelCollection).FindOne(ctx, bson.M{"eid": channelId}).Decode(channel)
 	}
 
 	var stages []interface{}
 	if options.WithVideos {
-		stages = append(stages, builder.Lookup(models.VideoCollection, "_id", "channelId", "videos"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.VideoCollection,
+				"localField":   "eid",
+				"foreignField": "channelId",
+				"as":           "videos",
+			},
+		})
 	}
 	if options.WithSubscriptions {
-		stages = append(stages, builder.Lookup(models.UserSubscriptionCollection, "_id", "channelId", "subscriptions"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.UserSubscriptionCollection,
+				"localField":   "eid",
+				"foreignField": "channelId",
+				"as":           "subscriptions",
+			},
+		})
 	}
 
-	return channel, coll.SimpleAggregate(channel, stages...)
+	cur, err := c.Collection(models.ChannelCollection).Aggregate(ctx, stages)
+	if err != nil {
+		return nil, err
+	}
+	return channel, cur.Decode(channel)
 }
 
 func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions) ([]models.Channel, error) {
@@ -101,26 +154,46 @@ func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions)
 		options = opts[0]
 	}
 
-	coll := mgm.Coll(&models.Channel{})
 	channels := []models.Channel{}
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
 	if !options.WithVideos && !options.WithSubscriptions {
-		err := coll.SimpleFind(&channels, bson.M{"_id": bson.M{"$in": channelIds}})
+		cur, err := c.Collection(models.ChannelCollection).Find(ctx, bson.M{"eid": bson.M{"$in": channelIds}})
 		if err != nil {
 			return nil, err
 		}
-		return channels, nil
+		return channels, cur.All(ctx, &channels)
 	}
 
 	var stages []interface{}
-	stages = append(stages, bson.M{"$match": bson.M{"_id": bson.M{"$in": channelIds}}})
+	stages = append(stages, bson.M{"$match": bson.M{"eid": bson.M{"$in": channelIds}}})
 	if options.WithVideos {
-		stages = append(stages, builder.Lookup(models.VideoCollection, "_id", "channelId", "videos"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.VideoCollection,
+				"localField":   "eid",
+				"foreignField": "channelId",
+				"as":           "videos",
+			},
+		})
 	}
 	if options.WithSubscriptions {
-		stages = append(stages, builder.Lookup(models.UserSubscriptionCollection, "_id", "channelId", "subscriptions"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.UserSubscriptionCollection,
+				"localField":   "eid",
+				"foreignField": "channelId",
+				"as":           "subscriptions",
+			},
+		})
 	}
 
-	return channels, coll.SimpleAggregate(&channels, stages...)
+	cur, err := c.Collection(models.ChannelCollection).Aggregate(ctx, stages)
+	if err != nil {
+		return nil, err
+	}
+	return channels, cur.All(ctx, &channels)
 }
 
 type ChannelCreateModel struct {
@@ -133,10 +206,15 @@ type ChannelCreateModel struct {
 
 func (c *Client) NewChannel(ch ChannelCreateModel) (*models.Channel, error) {
 	channel := models.NewChannel(ch.ID, ch.URL, ch.Title, models.ChannelOptions{Thumbnail: &ch.Thumbnail, Description: &ch.Description})
-	err := mgm.Coll(channel).Create(channel)
+	channel.Prepare()
+
+	ctx, cancel := c.Ctx()
+	defer cancel()
+	res, err := c.Collection(models.ChannelCollection).InsertOne(ctx, channel)
 	if err != nil {
 		return nil, err
 	}
+	channel.ParseID(res.InsertedID)
 	channel.Subscriptions = []models.UserSubscription{}
 	channel.Videos = []models.Video{}
 	return channel, nil

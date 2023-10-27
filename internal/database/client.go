@@ -5,13 +5,14 @@ import (
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/utils"
-	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 )
 
-type Client struct{}
+type Client struct {
+	db *mongo.Database
+}
 
 var DefaultClient *Client = NewClient()
 
@@ -27,7 +28,6 @@ func NewClient() *Client {
 	if err != nil {
 		panic(err)
 	}
-	defer client.Disconnect(context.Background())
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -36,10 +36,21 @@ func NewClient() *Client {
 		panic(err)
 	}
 
-	err = mgm.SetDefaultConfig(nil, connString.Database, uriOptions)
-	if err != nil {
-		panic(err)
+	return &Client{
+		db: client.Database(connString.Database),
 	}
+}
 
-	return &Client{}
+func (c *Client) Close() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	c.db.Client().Disconnect(ctx)
+}
+
+func (c *Client) Ctx() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), time.Second*5)
+}
+
+func (c *Client) Collection(coll string) *mongo.Collection {
+	return c.db.Collection(coll)
 }

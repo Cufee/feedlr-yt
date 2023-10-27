@@ -19,9 +19,9 @@ package models
 const ChannelCollection = "channels"
 
 type Channel struct {
-	Model `bson:",inline"`
+	Model      `bson:",inline"`
+	ExternalID string `json:"eid" bson:"eid"`
 
-	ID          string `json:"id" bson:"_id" field:"required"`
 	URL         string `json:"url" bson:"url" field:"required"`
 	Title       string `json:"title" bson:"title" field:"required"`
 	Thumbnail   string `json:"thumbnail" bson:"thumbnail"`
@@ -47,13 +47,14 @@ func NewChannel(id, url, title string, opts ...ChannelOptions) *Channel {
 		}
 	}
 
-	return &Channel{
-		ID:          id,
+	channel := Channel{
+		ExternalID:  id,
 		URL:         url,
 		Title:       title,
 		Thumbnail:   thumbnail,
 		Description: description,
 	}
+	return &channel
 }
 
 func (c *Channel) CollectionName() string {

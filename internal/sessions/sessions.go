@@ -16,8 +16,8 @@ type Session struct {
 }
 type SessionData struct {
 	ID     string `json:"id"`
-	UserID string `json:"user_id"`
 	AuthId string `json:"auth_id"`
+	UserID string `json:"user_id"`
 
 	ExpiresAt time.Time `json:"expires_at"`
 
@@ -29,7 +29,7 @@ type SessionData struct {
 func New() (*Session, error) {
 	id, err := ksuid.NewRandom()
 	if err != nil {
-		return &Session{}, err
+		return &Session{}, errors.Join(errors.New("sessions.New"), err)
 	}
 
 	var data SessionData
@@ -39,7 +39,7 @@ func New() (*Session, error) {
 
 	err = defaultClient.Set("sessions", data.ID, data)
 	if err != nil {
-		return &Session{}, err
+		return &Session{}, errors.Join(errors.New("sessions.New"), err)
 	}
 	return &Session{data: data, ID: data.ID}, nil
 }
@@ -48,7 +48,7 @@ func FromID(id string) (*Session, error) {
 	var data SessionData
 	err := defaultClient.Get("sessions", id, &data)
 	if err != nil {
-		return &Session{}, err
+		return &Session{}, errors.Join(errors.New("sessions.FromID"), err)
 	}
 	return &Session{data: data}, nil
 }

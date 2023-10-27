@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
@@ -24,7 +23,7 @@ func SearchChannelsHandler(c *fiber.Ctx) error {
 
 	channels, err := logic.SearchChannels(userId, query, 4)
 	if err != nil {
-		log.Print(err)
+		log.Print("SearchChannels", err)
 		return err
 	}
 	if len(channels) == 0 {
@@ -54,9 +53,9 @@ func UnsubscribeHandler(c *fiber.Ctx) error {
 	}
 	channelId := c.Params("id")
 
-	err := database.DefaultClient.DeleteSubscription(userId, channelId)
+	err := logic.DeleteSubscription(userId, channelId)
 	if err != nil {
-		log.Print(err)
+		log.Print("DeleteSubscription", err)
 		return err
 	}
 
@@ -69,7 +68,7 @@ func PostFavoriteChannel(c *fiber.Ctx) error {
 
 	updated, err := logic.ToggleSubscriptionIsFavorite(userId, id)
 	if err != nil {
-		log.Print(err)
+		log.Print("ToggleSubscriptionIsFavorite", err)
 		return err
 	}
 
