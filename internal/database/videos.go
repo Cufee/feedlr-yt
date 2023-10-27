@@ -34,19 +34,20 @@ type VideoCreateModel struct {
 	URL         string
 	Title       string
 	Duration    int
+	ChannelID   string
 	Description string
 	Thumbnail   string
 }
 
-func (c *Client) InsertChannelVideos(channel string, videos ...VideoCreateModel) error {
+func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) error {
 	payload := []*models.Video{}
 	for _, video := range videos {
-		payload = append(payload, models.NewVideo(video.ID, video.URL, video.Title, channel, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description}))
+		payload = append(payload, models.NewVideo(video.ID, video.URL, video.Title, video.ChannelID, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description}))
 	}
 
 	var writes []mongo.WriteModel
 	for _, video := range payload {
-		writes = append(writes, mongo.NewInsertOneModel().SetDocument(video))
+		writes = append(writes, mongo.NewInsertOneModel().SetDocument(*video))
 	}
 
 	_, err := mgm.Coll(&models.Video{}).BulkWrite(mgm.Ctx(), writes)
