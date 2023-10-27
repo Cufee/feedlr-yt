@@ -14,7 +14,6 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kamva/mgm/v3 v3.5.0
 	github.com/segmentio/ksuid v1.0.4
-	github.com/steebchen/prisma-client-go v0.25.0
 	github.com/tdewolff/minify/v2 v2.12.9
 	go.mongodb.org/mongo-driver v1.12.1
 	golang.org/x/oauth2 v0.13.0

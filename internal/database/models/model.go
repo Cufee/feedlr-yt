@@ -46,7 +46,7 @@ func (f *IDField) SetID(id interface{}) {
 // DateFields struct contains the `created_at` and `updated_at`
 // fields that autofill when inserting or updating a model.
 type DateFields struct {
-	CreatedAt time.Time `json:"createAt" bson:"createAt"`
+	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 

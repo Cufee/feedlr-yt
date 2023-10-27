@@ -3,6 +3,7 @@ package logic
 import (
 	"errors"
 	"log"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
@@ -15,6 +16,8 @@ import (
 Saves last 3 videos for each channel to the database
 */
 func CacheChannelVideos(channelIds ...string) error {
+	var models []database.VideoCreateModel
+
 	for _, c := range channelIds {
 		newVideos, err := youtube.C.GetChannelVideos(c, 3)
 		if err != nil {
@@ -28,27 +31,37 @@ func CacheChannelVideos(channelIds ...string) error {
 		var existingIDs []string
 		for _, v := range existingVideos {
 			existingIDs = append(existingIDs, v.ID)
-		}
 
-		var models []database.VideoCreateModel
+		}
 		for _, video := range newVideos {
 			if slice.Contains(existingIDs, video.ID) {
 				continue
 			}
+			publishedAt, err := time.Parse(time.RFC3339, video.PublishedAt)
+			if err != nil {
+				log.Printf("Error parsing publishedAt %v", err)
+			}
 			models = append(models, database.VideoCreateModel{
+				ChannelID:   c,
 				ID:          video.ID,
 				URL:         video.URL,
 				Title:       video.Title,
 				Duration:    video.Duration,
-				Description: video.Description,
 				Thumbnail:   video.Thumbnail,
+				Description: video.Description,
+				PublishedAt: publishedAt,
 			})
 		}
-		err = database.DefaultClient.InsertChannelVideos(c, models...)
-		if err != nil {
-			log.Printf("Error saving videos for channel %s: %v", c, err)
-			return err
-		}
+	}
+
+	if len(models) == 0 {
+		log.Printf("No new videos to save")
+		return nil
+	}
+	err := database.DefaultClient.InsertChannelVideos(models...)
+	if err != nil {
+		log.Printf("Error saving videos %v", err)
+		return err
 	}
 	return nil
 }
