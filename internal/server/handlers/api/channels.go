@@ -54,7 +54,7 @@ func UnsubscribeHandler(c *fiber.Ctx) error {
 	}
 	channelId := c.Params("id")
 
-	err := database.C.DeleteSubscription(userId, channelId)
+	err := database.DefaultClient.DeleteSubscription(userId, channelId)
 	if err != nil {
 		log.Print(err)
 		return err

@@ -7,8 +7,8 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/youtube/client"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
-	"github.com/cufee/feedlr-yt/prisma/db"
 	"github.com/gofiber/fiber/v2/log"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 /*
@@ -19,7 +19,7 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 		return nil, nil
 	}
 
-	videos, err := database.C.GetVideosByChannelID(0, channelIds...)
+	videos, err := database.DefaultClient.GetVideosByChannelID(0, channelIds...)
 	if err != nil {
 		return nil, err
 	}
@@ -32,11 +32,11 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 				URL:         vid.URL,
 				Title:       vid.Title,
 				Duration:    vid.Duration,
+				Thumbnail:   vid.Thumbnail,
 				Description: vid.Description,
 			},
-			ChannelID: vid.ChannelID,
+			ChannelID: vid.ChannelId,
 		}
-		v.Thumbnail, _ = vid.Thumbnail()
 		props = append(props, v)
 	}
 
@@ -44,7 +44,7 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 }
 
 func GetVideoByID(id string) (types.VideoProps, error) {
-	vid, err := database.C.GetVideoByID(id)
+	vid, err := database.DefaultClient.GetVideoByID(id)
 	if err != nil {
 		return types.VideoProps{}, err
 	}
@@ -55,11 +55,11 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 			URL:         vid.URL,
 			Title:       vid.Title,
 			Duration:    vid.Duration,
+			Thumbnail:   vid.Thumbnail,
 			Description: vid.Description,
 		},
-		ChannelID: vid.ChannelID,
+		ChannelID: vid.ChannelId,
 	}
-	v.Thumbnail, _ = vid.Thumbnail()
 
 	return v, nil
 }
@@ -85,8 +85,8 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 	}
 
 	if options.WithProgress {
-		progress, err := database.C.GetUserVideoView(userId, videoId)
-		if err != nil && !errors.Is(err, db.ErrNotFound) {
+		progress, err := database.DefaultClient.GetUserVideoView(userId, videoId)
+		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 			return types.VideoPlayerProps{}, err
 		}
 		if progress != nil {
@@ -108,14 +108,14 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 }
 
 func UpdateViewProgress(userId, videoId string, progress int) error {
-	_, err := database.C.UpsertView(userId, videoId, progress)
+	_, err := database.DefaultClient.UpsertView(userId, videoId, progress)
 	return err
 }
 
 func GetCompleteUserProgress(userId string) (map[string]int, error) {
-	views, err := database.C.GetAllUserViews(userId)
+	views, err := database.DefaultClient.GetAllUserViews(userId)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return make(map[string]int), nil
 		}
 		return nil, err
@@ -123,7 +123,7 @@ func GetCompleteUserProgress(userId string) (map[string]int, error) {
 
 	progress := make(map[string]int)
 	for _, v := range views {
-		progress[v.VideoID] = v.Progress
+		progress[v.VideoId] = v.Progress
 	}
 
 	return progress, nil

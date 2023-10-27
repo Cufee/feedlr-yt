@@ -4,12 +4,12 @@ import (
 	"sync"
 
 	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/logic"
-	"github.com/cufee/feedlr-yt/prisma/db"
 )
 
 func CacheAllChannelsWithVideos() error {
-	channels, err := database.C.GetAllChannelsWithSubscriptions()
+	channels, err := database.DefaultClient.GetAllChannelsWithSubscriptions()
 	if err != nil {
 		return err
 	}
@@ -19,7 +19,7 @@ func CacheAllChannelsWithVideos() error {
 	var errChan = make(chan error, len(channels))
 	for _, c := range channels {
 		wg.Add(1)
-		go func(c db.ChannelModel) {
+		go func(c models.Channel) {
 			defer wg.Done()
 
 			limiter <- 1

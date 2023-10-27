@@ -6,8 +6,9 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
-	"github.com/cufee/feedlr-yt/prisma/db"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/ssoroka/slice"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 /*
@@ -20,8 +21,8 @@ func CacheChannelVideos(channelIds ...string) error {
 			return err
 		}
 
-		existingVideos, err := database.C.GetVideosByChannelID(0, c)
-		if err != nil && !errors.Is(err, db.ErrNotFound) {
+		existingVideos, err := database.DefaultClient.GetVideosByChannelID(0, c)
+		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 			return err
 		}
 		var existingIDs []string
@@ -43,7 +44,7 @@ func CacheChannelVideos(channelIds ...string) error {
 				Thumbnail:   video.Thumbnail,
 			})
 		}
-		_, err = database.C.NewVideo(c, models...)
+		err = database.DefaultClient.InsertChannelVideos(c, models...)
 		if err != nil {
 			log.Printf("Error saving videos for channel %s: %v", c, err)
 			return err
@@ -55,12 +56,12 @@ func CacheChannelVideos(channelIds ...string) error {
 /*
 Saves the channel to the database if it doesn't exist already and returns the channel model
 */
-func CacheChannel(channelId string) (*db.ChannelModel, error) {
-	exists, err := database.C.GetChannel(channelId)
+func CacheChannel(channelId string) (*models.Channel, error) {
+	exists, err := database.DefaultClient.GetChannel(channelId)
 	if err == nil {
 		return exists, nil
 	}
-	if !errors.Is(err, db.ErrNotFound) {
+	if !errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, err
 	}
 
@@ -69,7 +70,7 @@ func CacheChannel(channelId string) (*db.ChannelModel, error) {
 		return nil, err
 	}
 
-	cached, err := database.C.NewChannel(database.ChannelCreateModel{
+	cached, err := database.DefaultClient.NewChannel(database.ChannelCreateModel{
 		ID:          channel.ID,
 		URL:         channel.URL,
 		Title:       channel.Title,

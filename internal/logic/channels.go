@@ -14,7 +14,7 @@ import (
 Returns a list of channel props for all user subscriptions
 */
 func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
-	subscriptions, err := database.C.AllUserSubscriptions(userId, database.SubscriptionGetOptions{WithChannel: true})
+	subscriptions, err := database.DefaultClient.AllUserSubscriptions(userId, database.SubscriptionGetOptions{WithChannel: true})
 	if err != nil {
 		return nil, err
 	}
@@ -22,17 +22,20 @@ func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 	var props []types.ChannelProps
 	for _, sub := range subscriptions {
 		channel := sub.Channel()
+		if channel == nil {
+			continue
+		}
 		c := types.ChannelProps{
 			Channel: types.Channel{Channel: client.Channel{
-				ID:          sub.ChannelID,
+				ID:          channel.ID,
 				URL:         channel.URL,
 				Title:       channel.Title,
+				Thumbnail:   channel.Thumbnail,
 				Description: channel.Description,
 			},
 			},
 			Favorite: sub.IsFavorite,
 		}
-		c.Thumbnail, _ = channel.Thumbnail()
 		props = append(props, c)
 	}
 
@@ -57,10 +60,10 @@ func SearchChannels(userId, query string, limit int) ([]types.ChannelSearchResul
 	go func(userId string) {
 		defer wg.Done()
 
-		subs, err := database.C.AllUserSubscriptions(userId, database.SubscriptionGetOptions{WithChannel: true})
+		subs, err := database.DefaultClient.AllUserSubscriptions(userId, database.SubscriptionGetOptions{WithChannel: true})
 		subscriptionsErr = err
 		for _, sub := range subs {
-			subscriptions = append(subscriptions, sub.ChannelID)
+			subscriptions = append(subscriptions, sub.ChannelId)
 		}
 	}(userId)
 

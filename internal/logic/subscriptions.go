@@ -9,22 +9,22 @@ import (
 )
 
 func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
-	_, err := CacheChannel(channelId)
+	channel, err := CacheChannel(channelId)
 	if err != nil {
 		return nil, err
 	}
 	go CacheChannelVideos(channelId)
 
-	sub, err := database.C.NewSubscription(userId, channelId)
+	sub, err := database.DefaultClient.NewSubscription(userId, channel.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	var props types.ChannelProps
-	props.ID = sub.ChannelID
-	props.Title = sub.Channel().Title
-	props.Description = sub.Channel().Description
-	props.Thumbnail, _ = sub.Channel().Thumbnail()
+	props.ID = sub.ChannelId
+	props.Title = channel.Title
+	props.Thumbnail = channel.Thumbnail
+	props.Description = channel.Description
 	props.Favorite = false
 
 	return &props, nil
@@ -99,12 +99,12 @@ func GetUserSubscriptionsProps(userId string) (*types.UserSubscriptionsFeedProps
 }
 
 func ToggleSubscriptionIsFavorite(userId, channelId string) (bool, error) {
-	sub, err := database.C.FindSubscription(userId, channelId)
+	sub, err := database.DefaultClient.FindSubscription(userId, channelId)
 	if err != nil {
 		return false, err
 	}
 
-	update, err := database.C.ToggleSubscriptionIsFavorite(sub.ID)
+	update, err := database.DefaultClient.ToggleSubscriptionIsFavorite(sub.ID)
 	if err != nil {
 		return false, err
 	}
