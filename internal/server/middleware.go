@@ -7,8 +7,10 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/templates/pages"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
@@ -90,4 +92,11 @@ func getAssetsHashes(assets fs.FS) map[string]string {
 		log.Fatal(err)
 	}
 	return assetsHashes
+}
+
+func outageMiddleware(c *fiber.Ctx) error {
+	if os.Getenv("MAINTENANCE_MODE") != "true" {
+		return c.Next()
+	}
+	return c.Render("layouts/HeadOnly", pages.Outage())
 }

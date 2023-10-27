@@ -42,6 +42,9 @@ func New(assets fs.FS, port ...int) func() error {
 		}))
 		server.Use("/assets", staticWithCacheMiddleware("assets", assets))
 
+		// Maintenance mode
+		server.Use(outageMiddleware)
+
 		// Disable caching for all routes
 		server.Use(cacheBusterMiddleware)
 
