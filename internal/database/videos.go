@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/kamva/mgm/v3"
@@ -17,14 +18,14 @@ func (c *Client) GetVideoByID(id string) (*models.Video, error) {
 
 func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models.Video, error) {
 	videos := []models.Video{}
-	opts := options.Find().SetSort(bson.M{"createdAt": -1})
+	opts := options.Find().SetSort(bson.M{"createdAt": -1, "publishedAt": -1})
 	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": bson.M{"$in": channelIds}}, opts)
 }
 
 func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, error) {
 	videos := []models.Video{}
 	opts := options.Find()
-	opts.SetSort(bson.M{"createdAt": -1})
+	opts.SetSort(bson.M{"createdAt": -1, "publishedAt": -1})
 	opts.SetLimit(int64(limit))
 	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": id}, opts)
 }
@@ -35,6 +36,7 @@ type VideoCreateModel struct {
 	Title       string
 	Duration    int
 	ChannelID   string
+	PublishedAt time.Time
 	Description string
 	Thumbnail   string
 }
@@ -42,7 +44,7 @@ type VideoCreateModel struct {
 func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) error {
 	payload := []*models.Video{}
 	for _, video := range videos {
-		payload = append(payload, models.NewVideo(video.ID, video.URL, video.Title, video.ChannelID, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description}))
+		payload = append(payload, models.NewVideo(video.ID, video.URL, video.Title, video.ChannelID, video.PublishedAt, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description}))
 	}
 
 	var writes []mongo.WriteModel

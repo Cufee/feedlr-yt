@@ -21,5 +21,6 @@ type Video struct {
 	Title       string
 	Duration    int
 	Thumbnail   string
+	PublishedAt string
 	Description string
 }

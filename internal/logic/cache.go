@@ -3,6 +3,7 @@ package logic
 import (
 	"errors"
 	"log"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
@@ -36,14 +37,19 @@ func CacheChannelVideos(channelIds ...string) error {
 			if slice.Contains(existingIDs, video.ID) {
 				continue
 			}
+			publishedAt, err := time.Parse(time.RFC3339, video.PublishedAt)
+			if err != nil {
+				log.Printf("Error parsing publishedAt %v", err)
+			}
 			models = append(models, database.VideoCreateModel{
 				ChannelID:   c,
 				ID:          video.ID,
 				URL:         video.URL,
 				Title:       video.Title,
 				Duration:    video.Duration,
-				Description: video.Description,
 				Thumbnail:   video.Thumbnail,
+				Description: video.Description,
+				PublishedAt: publishedAt,
 			})
 		}
 	}

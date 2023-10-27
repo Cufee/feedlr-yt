@@ -87,6 +87,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...
 			Title:       item.Snippet.Title,
 			Duration:    item.Duration,
 			Description: item.Snippet.Description,
+			PublishedAt: item.Snippet.PublishedAt,
 			Thumbnail:   item.Snippet.Thumbnails.High.Url,
 			URL:         c.buildVideoEmbedURL(item.Snippet.ResourceId.VideoId),
 		})
