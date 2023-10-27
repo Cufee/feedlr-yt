@@ -107,11 +107,7 @@ func (c *Client) DeleteSubscription(userId, channelId string) error {
 	return err
 }
 
-func (c *Client) ToggleSubscriptionIsFavorite(id string) (*models.UserSubscription, error) {
-	sub, err := c.GetSubscription(id)
-	if err != nil {
-		return nil, err
-	}
-	sub.IsFavorite = !sub.IsFavorite
-	return sub, mgm.Coll(sub).Update(sub)
+func (c *Client) UpdateSubscription(sub *models.UserSubscription) error {
+	_, err := mgm.Coll(sub).UpdateByID(mgm.Ctx(), sub.ID, bson.M{"$set": sub})
+	return err
 }
