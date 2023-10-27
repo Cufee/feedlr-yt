@@ -23,7 +23,7 @@ func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models
 func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, error) {
 	videos := []models.Video{}
 	opts := options.Find()
-	opts.SetSort(bson.M{"publishedAt": -1})
+	opts.SetSort(bson.M{"updatedAt": -1})
 	opts.SetLimit(int64(limit))
 	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": id}, opts)
 }
