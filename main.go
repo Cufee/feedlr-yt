@@ -16,7 +16,6 @@ var assetsFs embed.FS
 
 func main() {
 	background.StartCronTasks()
-	background.CacheAllChannelsWithVideos()
 
 	start := server.New(assetsFs)
 	start()
