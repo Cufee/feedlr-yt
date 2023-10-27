@@ -17,13 +17,14 @@ func (c *Client) GetVideoByID(id string) (*models.Video, error) {
 
 func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models.Video, error) {
 	videos := []models.Video{}
-	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": bson.M{"$in": channelIds}})
+	opts := options.Find().SetSort(bson.M{"createdAt": -1})
+	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": bson.M{"$in": channelIds}}, opts)
 }
 
 func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, error) {
 	videos := []models.Video{}
 	opts := options.Find()
-	opts.SetSort(bson.M{"updatedAt": -1})
+	opts.SetSort(bson.M{"createdAt": -1})
 	opts.SetLimit(int64(limit))
 	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": id}, opts)
 }
