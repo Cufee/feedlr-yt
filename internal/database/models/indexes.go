@@ -13,11 +13,7 @@ var indexHandlers = make(map[string](func(collection *mongo.Database) ([]string,
 
 func addIndexHandler(collection string, handler func(db *mongo.Collection) ([]string, error)) {
 	indexHandlers[collection] = (func(db *mongo.Database) ([]string, error) {
-		names, err := handler(db.Collection(collection))
-		if err != nil && strings.Contains(err.Error(), "Index already exists") {
-			return names, nil
-		}
-		return names, err
+		return handler(db.Collection(collection))
 	})
 }
 
@@ -29,9 +25,12 @@ func SyncIndexes(db *mongo.Database) error {
 	for collection, handler := range indexHandlers {
 		names, err := handler(db)
 		if err != nil {
+			if strings.Contains(err.Error(), "Index already exists") {
+				continue
+			}
 			return err
 		}
-		log.Printf("Synced indexes for %s: %v", collection, names)
+		defer log.Printf("Synced indexes for %s: %v", collection, names)
 
 		current, err := db.Collection(collection).Indexes().ListSpecifications(context.Background())
 		if err != nil {
