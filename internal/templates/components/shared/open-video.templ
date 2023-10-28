@@ -33,6 +33,7 @@ templ OpenVideoInput(url string, valid bool) {
 script openVideoModalScript() {
 	const modal = document.getElementById("open_video_modal");
 	const modalBox = document.getElementById("open_video_modal_box");
+	const modalForm = document.getElementById("open_video_modal_form");
 	const modalButton = document.getElementById("open_video_modal_btn");
   const openModal = () => {
     const input = modalBox.querySelector("#open_video_input")
@@ -42,6 +43,11 @@ script openVideoModalScript() {
     input.focus();
 	}
 	modalButton.addEventListener("click", openModal);
+  modalForm.addEventListener("htmx:beforeRequest", (event) => {
+    if (modalBox.querySelector("#open_video_input").value == "") {
+      event.preventDefault();
+    }
+  })
   document.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       if (!modal.open) {
