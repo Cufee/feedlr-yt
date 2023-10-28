@@ -52,7 +52,7 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 			if err != nil {
 				return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
 			}
-			return types.VideoProps{Video: video.Video, ChannelID: video.ChannelID}, nil
+			return types.VideoProps{Video: *video}, nil
 		}
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
