@@ -35,6 +35,9 @@ func VideoHandler(c *fiber.Ctx) error {
 			return c.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&feedlr_error=failed to find video", video))
 		}
 		props.ReportProgress = true
+		if props.Video.Duration > 0 && props.Video.Progress >= props.Video.Duration {
+			props.Video.Progress = 0
+		}
 
 		return c.Render("layouts/HeadOnly", pages.Video(props))
 	}
