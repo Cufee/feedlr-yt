@@ -24,7 +24,11 @@ func (c *Client) GetUserFromAuthID(authId string) (*models.User, error) {
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	return user, c.Collection(models.UserCollection).FindOne(ctx, bson.M{"authId": authId}).Decode(user)
+	err := c.Collection(models.UserCollection).FindOne(ctx, bson.M{"authId": authId}).Decode(user)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (c *Client) NewUser(authId string) (*models.User, error) {

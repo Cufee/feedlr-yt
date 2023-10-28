@@ -15,7 +15,11 @@ func (c *Client) GetVideoByID(id string) (*models.Video, error) {
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	return video, c.Collection(models.VideoCollection).FindOne(ctx, bson.M{"eid": id}).Decode(video)
+	err := c.Collection(models.VideoCollection).FindOne(ctx, bson.M{"eid": id}).Decode(video)
+	if err != nil {
+		return nil, err
+	}
+	return video, nil
 }
 
 func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models.Video, error) {
@@ -28,8 +32,11 @@ func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models
 	if err != nil {
 		return nil, err
 	}
-
-	return videos, cur.All(ctx, &videos)
+	err = cur.All(ctx, &videos)
+	if err != nil {
+		return nil, err
+	}
+	return videos, nil
 }
 
 func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, error) {
@@ -44,8 +51,11 @@ func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, e
 	if err != nil {
 		return nil, err
 	}
-
-	return videos, cur.All(ctx, &videos)
+	err = cur.All(ctx, &videos)
+	if err != nil {
+		return nil, err
+	}
+	return videos, nil
 }
 
 type VideoCreateModel struct {
@@ -83,7 +93,11 @@ func (c *Client) GetUserVideoView(user primitive.ObjectID, video string) (*model
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	return view, c.Collection(models.VideoViewCollection).FindOne(ctx, bson.M{"userId": user, "videoId": video}).Decode(view)
+	err := c.Collection(models.VideoViewCollection).FindOne(ctx, bson.M{"userId": user, "videoId": video}).Decode(view)
+	if err != nil {
+		return nil, err
+	}
+	return view, nil
 }
 
 func (c *Client) GetAllUserViews(user primitive.ObjectID) ([]models.VideoView, error) {
@@ -95,8 +109,11 @@ func (c *Client) GetAllUserViews(user primitive.ObjectID) ([]models.VideoView, e
 	if err != nil {
 		return nil, err
 	}
-
-	return views, cur.All(ctx, &views)
+	err = cur.All(ctx, &views)
+	if err != nil {
+		return nil, err
+	}
+	return views, nil
 }
 
 func (c *Client) UpsertView(user primitive.ObjectID, video string, progress int) (*models.VideoView, error) {

@@ -69,8 +69,12 @@ func (c *Client) AllUserSubscriptions(userId primitive.ObjectID, opts ...Subscri
 	if err != nil {
 		return nil, err
 	}
+	err = cur.All(ctx, &subscriptions)
+	if err != nil {
+		return nil, err
+	}
 
-	return subscriptions, cur.All(ctx, &subscriptions)
+	return subscriptions, nil
 }
 
 func (c *Client) FindSubscription(userId primitive.ObjectID, channelId string, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
@@ -114,8 +118,12 @@ func (c *Client) FindSubscription(userId primitive.ObjectID, channelId string, o
 	if err != nil {
 		return nil, err
 	}
+	err = cur.All(ctx, &subscription)
+	if err != nil {
+		return nil, err
+	}
 
-	return subscription, cur.All(ctx, &subscription)
+	return subscription, nil
 }
 
 func (c *Client) GetSubscription(id primitive.ObjectID, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
@@ -162,7 +170,11 @@ func (c *Client) GetSubscription(id primitive.ObjectID, opts ...SubscriptionGetO
 	if err != nil {
 		return nil, err
 	}
-	return subscription, cur.All(ctx, &subscription)
+	err = cur.All(ctx, &subscription)
+	if err != nil {
+		return nil, err
+	}
+	return subscription, nil
 }
 
 func (c *Client) DeleteSubscription(userId primitive.ObjectID, channelId string) error {

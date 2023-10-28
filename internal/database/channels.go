@@ -55,7 +55,11 @@ func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]models.Channel, er
 	if err != nil {
 		return nil, err
 	}
-	return channels, cur.All(ctx, &channels)
+	err = cur.All(ctx, &channels)
+	if err != nil {
+		return nil, err
+	}
+	return channels, nil
 }
 
 func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]models.Channel, error) {
@@ -102,7 +106,11 @@ func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]m
 	if err != nil {
 		return nil, err
 	}
-	return channels, cur.All(ctx, &channels)
+	err = cur.All(ctx, &channels)
+	if err != nil {
+		return nil, err
+	}
+	return channels, nil
 }
 
 func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*models.Channel, error) {
@@ -145,7 +153,11 @@ func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*model
 	if err != nil {
 		return nil, err
 	}
-	return channel, cur.Decode(channel)
+	err = cur.Decode(channel)
+	if err != nil {
+		return nil, err
+	}
+	return channel, nil
 }
 
 func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions) ([]models.Channel, error) {
@@ -193,7 +205,12 @@ func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions)
 	if err != nil {
 		return nil, err
 	}
-	return channels, cur.All(ctx, &channels)
+
+	err = cur.All(ctx, &channels)
+	if err != nil {
+		return nil, err
+	}
+	return channels, nil
 }
 
 type ChannelCreateModel struct {

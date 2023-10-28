@@ -12,7 +12,11 @@ func (c *Client) GetUserSettings(userId primitive.ObjectID) (*models.UserSetting
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	return settings, c.Collection(models.UserSettingsCollection).FindOne(ctx, bson.M{"userId": userId}).Decode(settings)
+	err := c.Collection(models.UserSettingsCollection).FindOne(ctx, bson.M{"userId": userId}).Decode(settings)
+	if err != nil {
+		return nil, err
+	}
+	return settings, nil
 }
 
 func (c *Client) UpdateUserSettings(userId primitive.ObjectID, opts ...models.UserSettingsOptions) (*models.UserSettings, error) {
