@@ -48,11 +48,11 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 	vid, err := database.DefaultClient.GetVideoByID(id)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			details, err := youtube.DefaultClient.GetVideoPlayerDetails(id)
+			video, err := youtube.DefaultClient.GetVideoByID(id)
 			if err != nil {
 				return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
 			}
-			return types.VideoProps{Video: details.Video, ChannelID: details.ChannelID}, nil
+			return types.VideoProps{Video: video.Video, ChannelID: video.ChannelID}, nil
 		}
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
