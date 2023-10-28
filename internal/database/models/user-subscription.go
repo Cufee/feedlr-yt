@@ -40,8 +40,8 @@ type UserSubscription struct {
 }
 
 func init() {
-	addIndexHandler(UserSubscriptionCollection, func(coll *mongo.Collection) error {
-		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+	addIndexHandler(UserSubscriptionCollection, func(coll *mongo.Collection) ([]string, error) {
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
 			{
 				Keys: bson.M{"userId": 1},
 			},
@@ -55,7 +55,6 @@ func init() {
 				},
 			},
 		})
-		return err
 	})
 }
 

@@ -22,14 +22,13 @@ type UserSettings struct {
 }
 
 func init() {
-	addIndexHandler(UserSettingsCollection, func(coll *mongo.Collection) error {
-		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+	addIndexHandler(UserSettingsCollection, func(coll *mongo.Collection) ([]string, error) {
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
 			{
 				Keys:    bson.M{"userId": 1},
 				Options: &options.IndexOptions{Unique: &[]bool{true}[0]},
 			},
 		})
-		return err
 	})
 }
 

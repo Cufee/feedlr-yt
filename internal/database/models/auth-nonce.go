@@ -19,9 +19,9 @@ type AuthNonce struct {
 }
 
 func init() {
-	addIndexHandler(AuthNonceCollection, func(coll *mongo.Collection) error {
+	addIndexHandler(AuthNonceCollection, func(coll *mongo.Collection) ([]string, error) {
 		expiration := int32((time.Hour * 24).Seconds())
-		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
 			{
 				Keys: bson.D{
 					{Key: "expiresAt", Value: 1},
@@ -36,7 +36,6 @@ func init() {
 				Keys: bson.M{"value": 1},
 			},
 		})
-		return err
 	})
 }
 

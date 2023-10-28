@@ -24,14 +24,13 @@ type Channel struct {
 }
 
 func init() {
-	addIndexHandler(ChannelCollection, func(coll *mongo.Collection) error {
-		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+	addIndexHandler(ChannelCollection, func(coll *mongo.Collection) ([]string, error) {
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
 			{
 				Keys:    bson.M{"eid": 1},
-				Options: &options.IndexOptions{Unique: &[]bool{true}[0]},
+				Options: &options.IndexOptions{Unique: &[]bool{true}[0], Name: &[]string{"eid"}[0]},
 			},
 		})
-		return err
 	})
 }
 

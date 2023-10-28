@@ -33,13 +33,12 @@ type User struct {
 }
 
 func init() {
-	addIndexHandler(UserCollection, func(coll *mongo.Collection) error {
-		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+	addIndexHandler(UserCollection, func(coll *mongo.Collection) ([]string, error) {
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
 			{
 				Keys: bson.M{"authId": 1},
 			},
 		})
-		return err
 	})
 }
 
