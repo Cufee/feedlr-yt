@@ -129,7 +129,7 @@ func (c *Client) GetSubscription(id primitive.ObjectID, opts ...SubscriptionGetO
 	defer cancel()
 
 	if !options.WithChannel && !options.WithUser {
-		cur, err := c.Collection(models.UserSubscriptionCollection).Find(ctx, bson.M{"eid": id})
+		cur, err := c.Collection(models.UserSubscriptionCollection).Find(ctx, bson.M{"_id": id})
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +137,7 @@ func (c *Client) GetSubscription(id primitive.ObjectID, opts ...SubscriptionGetO
 	}
 
 	var stages []interface{}
-	stages = append(stages, bson.M{"$match": bson.M{"eid": id}})
+	stages = append(stages, bson.M{"$match": bson.M{"_id": id}})
 	if options.WithChannel {
 		stages = append(stages, bson.M{
 			"$lookup": bson.M{
@@ -182,6 +182,6 @@ func (c *Client) UpdateSubscription(sub *models.UserSubscription) error {
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	_, err := c.Collection(models.UserSubscriptionCollection).UpdateOne(ctx, bson.M{"eid": sub.ID}, bson.M{"$set": sub})
+	_, err := c.Collection(models.UserSubscriptionCollection).UpdateOne(ctx, bson.M{"_id": sub.ID}, bson.M{"$set": sub})
 	return err
 }
