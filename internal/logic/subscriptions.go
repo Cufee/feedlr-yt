@@ -134,5 +134,5 @@ func ToggleSubscriptionIsFavorite(userId, channelId string) (bool, error) {
 	if err != nil {
 		return false, errors.Join(errors.New("ToggleSubscriptionIsFavorite.database.DefaultClient.UpdateSubscription failed to update subscription"), err)
 	}
-	return !sub.IsFavorite, nil
+	return sub.IsFavorite, nil
 }

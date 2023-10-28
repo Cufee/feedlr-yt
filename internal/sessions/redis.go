@@ -58,7 +58,7 @@ func (c *client) Set(collection, key string, value interface{}) error {
 
 func (c *client) Get(collection, key string, target interface{}) error {
 	raw, err := redis.Bytes(c.redis.Get().Do("GET", fmt.Sprintf("%s:%s", collection, key)))
-	if err != nil {
+	if err != nil && !errors.Is(err, redis.ErrNil) {
 		return err
 	}
 	if len(raw) == 0 {

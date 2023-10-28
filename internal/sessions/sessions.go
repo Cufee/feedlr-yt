@@ -48,7 +48,7 @@ func FromID(id string) (*Session, error) {
 	var data SessionData
 	err := defaultClient.Get("sessions", id, &data)
 	if err != nil {
-		return &Session{}, errors.Join(errors.New("sessions.FromID"), err)
+		return &Session{}, err
 	}
 	return &Session{data: data}, nil
 }
