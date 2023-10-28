@@ -31,7 +31,7 @@ func SyncIndexes(db *mongo.Database) error {
 		if err != nil {
 			return err
 		}
-		log.Printf("Created indexes for %s: %v", collection, names)
+		log.Printf("Synced indexes for %s: %v", collection, names)
 
 		current, err := db.Collection(collection).Indexes().ListSpecifications(context.Background())
 		if err != nil {
