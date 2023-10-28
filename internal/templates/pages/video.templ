@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"fmt"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
@@ -12,11 +13,11 @@ templ Video(props types.VideoPlayerProps) {
 		<meta property="og:title" content={ props.Video.Title }/>
 		<meta property="og:type" content="video.episode"/>
 		<meta property="og:description" content={ props.Video.Description }/>
-		<meta property="og:image" content={ props.Video.Thumbnail }/>
+		<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
 		<meta name="twitter:card" content="summary_large_image"/>
 		<meta name="twitter:title" content={ props.Video.Title }/>
 		<meta name="twitter:description" content={ props.Video.Description }/>
-		<meta name="twitter:image" content={ props.Video.Thumbnail }/>
+		<meta name="twitter:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
 		<meta name="twitter:image:alt" content={ props.Video.Title }/>
 	</head>
 	<div class="relative flex items-center justify-start w-full h-full">
