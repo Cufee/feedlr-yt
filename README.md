@@ -9,7 +9,7 @@ Feedlr is using the following approach to achieve this:
 - Embedded ads can be skipped using an integration with SponsorBlock
 
 ## Current State
-I have finished the basic MVP and 90% of the functionality. There are a lot of UI elements missing and lorem needs to be replaced on the landing page.  
+The core functionality is fully complete and is working reliably.
 
 ### Stack
 - Go [templ](https://templ.guide/) with [HTMX](https://htmx.org/), [Tailwind](https://tailwindcss.com/), [DaisyUI](https://daisyui.com/) and [Hyperscript](https://hyperscript.org/)
