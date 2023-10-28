@@ -14,7 +14,7 @@ var indexHandlers = make(map[string](func(collection *mongo.Database) ([]string,
 func addIndexHandler(collection string, handler func(db *mongo.Collection) ([]string, error)) {
 	indexHandlers[collection] = (func(db *mongo.Database) ([]string, error) {
 		names, err := handler(db.Collection(collection))
-		if err != nil && !strings.Contains(err.Error(), "already exists") {
+		if err != nil && strings.Contains(err.Error(), "Index already exists") {
 			return names, nil
 		}
 		return names, err
