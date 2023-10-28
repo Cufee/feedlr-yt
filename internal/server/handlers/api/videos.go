@@ -53,6 +53,7 @@ func PostVideoOpen(c *fiber.Ctx) error {
 		return c.Render("layouts/blank", shared.OpenVideoInput(form.Link, false))
 	}
 
+	c.Set("HX-Reswap", "none")
 	c.Set("HX-Redirect", "/video/"+id)
-	return c.Render("layouts/blank", shared.OpenVideoInput(form.Link, true))
+	return c.SendStatus(fiber.StatusOK)
 }
