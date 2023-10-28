@@ -1,6 +1,12 @@
 package models
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 // model VideoView {
 //   id        String   @id @default(cuid()) @map("_id")
@@ -31,6 +37,26 @@ type VideoView struct {
 	VideoId string             `json:"videoId" bson:"videoId"`
 
 	Progress int `json:"progress" bson:"progress"`
+}
+
+func init() {
+	addIndexHandler(VideoViewCollection, func(coll *mongo.Collection) error {
+		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys: bson.M{"userId": 1},
+			},
+			{
+				Keys: bson.M{"videoId": 1},
+			},
+			{
+				Keys: bson.D{
+					{Key: "userId", Value: 1},
+					{Key: "videoId", Value: 1},
+				},
+			},
+		})
+		return err
+	})
 }
 
 type VideoViewOptions struct {

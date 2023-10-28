@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -36,8 +37,14 @@ func NewClient() *Client {
 		panic(err)
 	}
 
+	db := client.Database(connString.Database)
+	err = models.SyncIndexes(db)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Client{
-		db: client.Database(connString.Database),
+		db: db,
 	}
 }
 

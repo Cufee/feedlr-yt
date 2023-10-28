@@ -1,20 +1,12 @@
 package models
 
-// model Channel {
-//   id        String   @id @map("_id")
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
+import (
+	"context"
 
-//   url         String
-//   title       String
-//   thumbnail   String?
-//   description String  @db.String
-
-//   videos        Video[]
-//   subscriptions UserSubscription[]
-
-//   @@map("channels")
-// }
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
 
 const ChannelCollection = "channels"
 
@@ -29,6 +21,18 @@ type Channel struct {
 
 	Videos        []Video            `json:"videos" bson:"videos,omitempty"`
 	Subscriptions []UserSubscription `json:"subscriptions" bson:"subscriptions,omitempty"`
+}
+
+func init() {
+	addIndexHandler(ChannelCollection, func(coll *mongo.Collection) error {
+		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys:    bson.M{"eid": 1},
+				Options: &options.IndexOptions{Unique: &[]bool{true}[0]},
+			},
+		})
+		return err
+	})
 }
 
 type ChannelOptions struct {

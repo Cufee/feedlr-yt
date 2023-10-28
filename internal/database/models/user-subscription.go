@@ -1,6 +1,12 @@
 package models
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 // model UserSubscription {
 //   id        String   @id @default(cuid()) @map("_id")
@@ -31,6 +37,26 @@ type UserSubscription struct {
 	UserId           primitive.ObjectID `json:"userId" bson:"userId" field:"required"`
 	InternalChannels []Channel          `json:"channels" bson:"channels,omitempty"`
 	ChannelId        string             `json:"channelId" bson:"channelId" field:"required"`
+}
+
+func init() {
+	addIndexHandler(UserSubscriptionCollection, func(coll *mongo.Collection) error {
+		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys: bson.M{"userId": 1},
+			},
+			{
+				Keys: bson.M{"channelId": 1},
+			},
+			{
+				Keys: bson.D{
+					{Key: "userId", Value: 1},
+					{Key: "channelId", Value: 1},
+				},
+			},
+		})
+		return err
+	})
 }
 
 func (model *UserSubscription) User() *User {

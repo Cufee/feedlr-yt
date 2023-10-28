@@ -1,6 +1,12 @@
 package models
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 // model Video {
 //   id        String   @id @map("_id")
@@ -37,6 +43,26 @@ type Video struct {
 	Views     []VideoView `json:"views" bson:"views,omitempty"`
 	Channel   *Channel    `json:"channel" bson:"channel,omitempty"`
 	ChannelId string      `json:"channelId" bson:"channelId" field:"required"`
+}
+
+func init() {
+	addIndexHandler(VideoCollection, func(coll *mongo.Collection) error {
+		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys: bson.M{"eid": 1},
+			},
+			{
+				Keys: bson.M{"channelId": 1},
+			},
+			{
+				Keys: bson.D{
+					{Key: "channelId", Value: 1},
+					{Key: "publishedAt", Value: -1},
+				},
+			},
+		})
+		return err
+	})
 }
 
 type VideoOptions struct {

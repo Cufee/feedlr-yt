@@ -1,20 +1,13 @@
 package models
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"context"
 
-// model UserSettings {
-//   id        String   @id @default(cuid()) @map("_id")
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   userId String @unique
-
-//   sponsorBlockEnabled    Boolean  @default(true)
-//   sponsorBlockCategories String[] @default([])
-
-//   @@map("user_settings")
-// }
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
 
 const UserSettingsCollection = "user_settings"
 
@@ -26,6 +19,18 @@ type UserSettings struct {
 
 	SponsorBlockEnabled    bool     `json:"sponsorBlockEnabled" bson:"sponsorBlockEnabled"`
 	SponsorBlockCategories []string `json:"sponsorBlockCategories" bson:"sponsorBlockCategories"`
+}
+
+func init() {
+	addIndexHandler(UserSettingsCollection, func(coll *mongo.Collection) error {
+		_, err := coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys:    bson.M{"userId": 1},
+				Options: &options.IndexOptions{Unique: &[]bool{true}[0]},
+			},
+		})
+		return err
+	})
 }
 
 type UserSettingsOptions struct {
