@@ -1,0 +1,7 @@
+package shared
+
+templ Textbox(class string) {
+  <span class={ "overflow-hidden truncate whitespace-normal " + class } style="overflow-wrap: anywhere;">
+    { children... }
+  </span>
+}

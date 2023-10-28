@@ -5,6 +5,7 @@ import "golang.org/x/exp/slices"
 import "github.com/cufee/feedlr-yt/internal/types"
 import "github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 import 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
 
 templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
 	<div class="flex flex-col items-center w-full gap-4 p-3 shadow-inner md:gap-4 md:p-6 bg-base-300 rounded-xl" id="sponsorblock-settings">
@@ -37,7 +38,9 @@ templ CategoryCard(category sponsorblock.Category, checked, disabled bool) {
 			@CategoryToggleButton(category.Value, checked, disabled)
 		</div>		
 		<div class="flex break-words truncate">
-			<span>{category.Description}</span>
+			@shared.Textbox("") {
+				{ category.Description }
+			}
 		</div>
 	</div>
 }
