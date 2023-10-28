@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
-	yt "github.com/cufee/feedlr-yt/internal/api/youtube/client"
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/goccy/go-json"
 )
 
@@ -18,10 +18,6 @@ type SponsorBlockSettingsProps struct {
 	AvailableSponsorBlockCategories []sponsorblock.Category
 }
 
-type Channel struct {
-	yt.Channel
-}
-
 type NavbarProps struct {
 	CurrentURL string
 	BackURL    string
@@ -29,12 +25,12 @@ type NavbarProps struct {
 }
 
 type ChannelProps struct {
-	Channel
+	youtube.Channel
 	Favorite bool
 }
 
 type ChannelSearchResultProps struct {
-	Channel
+	youtube.Channel
 	Subscribed bool
 }
 
@@ -59,7 +55,7 @@ type ChannelWithVideosProps struct {
 }
 
 type VideoProps struct {
-	yt.Video
+	youtube.Video
 	ChannelID string
 	Progress  int
 }
@@ -97,7 +93,7 @@ func (v *VideoPlayerProps) AddSegments(segments ...sponsorblock.Segment) error {
 	return nil
 }
 
-func VideoToProps(video yt.Video, channelId string) VideoProps {
+func VideoToProps(video youtube.Video, channelId string) VideoProps {
 	return VideoProps{
 		Video:     video,
 		ChannelID: channelId,

@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
-	"github.com/cufee/feedlr-yt/internal/api/youtube/client"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/ssoroka/slice"
@@ -33,13 +32,12 @@ func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 			continue
 		}
 		c := types.ChannelProps{
-			Channel: types.Channel{Channel: client.Channel{
+			Channel: youtube.Channel{
 				ID:          channel.ExternalID,
 				URL:         channel.URL,
 				Title:       channel.Title,
 				Thumbnail:   channel.Thumbnail,
 				Description: channel.Description,
-			},
 			},
 			Favorite: sub.IsFavorite,
 		}
@@ -54,11 +52,11 @@ func SearchChannels(userId, query string, limit int) ([]types.ChannelSearchResul
 	var wg sync.WaitGroup
 
 	wg.Add(1)
-	var channels []client.Channel
+	var channels []youtube.Channel
 	var channelsErr error
 	go func(query string, limit int) {
 		defer wg.Done()
-		channels, channelsErr = youtube.C.SearchChannels(query, limit)
+		channels, channelsErr = youtube.DefaultClient.SearchChannels(query, limit)
 	}(query, limit)
 
 	wg.Add(1)
@@ -82,7 +80,7 @@ func SearchChannels(userId, query string, limit int) ([]types.ChannelSearchResul
 
 	wg.Wait()
 	if channelsErr != nil {
-		return nil, errors.Join(errors.New("SearchChannels.youtube.C.SearchChannels failed to search channels"), channelsErr)
+		return nil, errors.Join(errors.New("SearchChannels.youtube.DefaultClient.SearchChannels failed to search channels"), channelsErr)
 	}
 	if subscriptionsErr != nil {
 		return nil, errors.Join(errors.New("SearchChannels.database.DefaultClient.AllUserSubscriptions failed to get subscriptions"), subscriptionsErr)
@@ -91,7 +89,7 @@ func SearchChannels(userId, query string, limit int) ([]types.ChannelSearchResul
 	var props []types.ChannelSearchResultProps
 	for _, c := range channels {
 		props = append(props, types.ChannelSearchResultProps{
-			Channel:    types.Channel{Channel: c},
+			Channel:    c,
 			Subscribed: slice.Contains(subscriptions, c.ID),
 		})
 		// Cache all channels to make subsequent requests faster

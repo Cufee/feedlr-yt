@@ -2,6 +2,7 @@ package video
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/cufee/feedlr-yt/internal/logic"
@@ -31,7 +32,7 @@ func VideoHandler(c *fiber.Ctx) error {
 		props, err := logic.GetPlayerPropsWithOpts(uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: settings.SponsorBlock.SponsorBlockEnabled})
 		if err != nil {
 			log.Printf("GetVideoByID: %v", err)
-			return c.Redirect("/error?message=Something went wrong")
+			return c.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&feedlr_error=failed to find video", video))
 		}
 		props.ReportProgress = true
 
@@ -42,7 +43,7 @@ func VideoHandler(c *fiber.Ctx) error {
 	props, err := logic.GetPlayerPropsWithOpts("", video, logic.GetPlayerOptions{WithProgress: false, WithSegments: true})
 	if err != nil {
 		log.Printf("GetVideoByID: %v", err)
-		return c.Redirect("/error?message=Something went wrong")
+		return c.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&feedlr_error=failed to find video", video))
 	}
 
 	return c.Render("layouts/HeadOnly", pages.Video(props))

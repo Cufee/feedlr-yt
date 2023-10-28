@@ -1,4 +1,4 @@
-package google
+package youtube
 
 import (
 	"context"
@@ -12,11 +12,15 @@ type client struct {
 	service *youtube.Service
 }
 
-func (c *client) buildVideoEmbedURL(videoID string) string {
+func (c *client) BuildVideoThumbnailURL(videoID string) string {
+	return fmt.Sprintf("https://i.ytimg.com/vi/%s/hqdefault.jpg", videoID)
+}
+
+func (c *client) BuildVideoEmbedURL(videoID string) string {
 	return fmt.Sprintf("https://www.youtube.com/embed/%v", videoID)
 }
 
-func (c *client) buildChannelURL(ID string) string {
+func (c *client) BuildChannelURL(ID string) string {
 	return fmt.Sprintf("https://www.youtube.com/channel/%v", ID)
 }
 

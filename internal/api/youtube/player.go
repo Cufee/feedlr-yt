@@ -1,4 +1,4 @@
-package google
+package youtube
 
 import (
 	"bytes"
@@ -12,13 +12,16 @@ import (
 )
 
 type VideoDetails struct {
-	IsShort       bool `json:"isShort"`
-	IsUnpublished bool `json:"IsUnpublished"`
-	Duration      int  `json:"duration"`
+	Video
+	IsShort       bool   `json:"isShort"`
+	IsUnpublished bool   `json:"IsUnpublished"`
+	ChannelID     string `json:"channelId"`
+	Duration      int    `json:"duration"`
 }
 
 type PlayerResponse struct {
-	StreamingData StreamingData `json:"streamingData"`
+	StreamingData      StreamingData      `json:"streamingData"`
+	PlayerVideoDetails PlayerVideoDetails `json:"videoDetails,omitempty"`
 }
 
 type StreamingData struct {
@@ -69,6 +72,31 @@ type AdaptiveFormats struct {
 	LoudnessDb       float64 `json:"loudnessDb,omitempty"`
 }
 
+type Thumbnails struct {
+	URL    string `json:"url"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+}
+type Thumbnail struct {
+	Thumbnails []Thumbnails `json:"thumbnails"`
+}
+type PlayerVideoDetails struct {
+	VideoID           string    `json:"videoId"`
+	Title             string    `json:"title"`
+	LengthSeconds     string    `json:"lengthSeconds"`
+	ChannelID         string    `json:"channelId"`
+	IsOwnerViewing    bool      `json:"isOwnerViewing"`
+	ShortDescription  string    `json:"shortDescription"`
+	IsCrawlable       bool      `json:"isCrawlable"`
+	Thumbnail         Thumbnail `json:"thumbnail"`
+	AllowRatings      bool      `json:"allowRatings"`
+	ViewCount         string    `json:"viewCount"`
+	Author            string    `json:"author"`
+	IsPrivate         bool      `json:"isPrivate"`
+	IsUnpluggedCorpus bool      `json:"isUnpluggedCorpus"`
+	IsLiveContent     bool      `json:"isLiveContent"`
+}
+
 var defaultClientBodyString = `{"videoId":"","contentCheckOk":true,"racyCheckOk":true,"context":{"client":{"clientName":"WEB","clientVersion":"1.20210616.1.0","platform":"DESKTOP","clientScreen":"EMBED","clientFormFactor":"UNKNOWN_FORM_FACTOR","browserName":"Chrome"},"user":{"lockedSafetyMode":"false"},"request":{"useSsl":"true"}}}`
 var defaultClientBody map[string]any
 
@@ -108,25 +136,38 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		return nil, errors.Join(errors.New("GetVideoPlayerDetails.json.NewDecoder.Decode"), err)
 	}
 
+	duration, _ := strconv.Atoi(details.PlayerVideoDetails.LengthSeconds)
+	fullDetails := VideoDetails{
+		ChannelID: details.PlayerVideoDetails.ChannelID,
+		Video: Video{
+			ID:          details.PlayerVideoDetails.VideoID,
+			Title:       details.PlayerVideoDetails.Title,
+			Duration:    duration,
+			PublishedAt: time.Now().Format(time.RFC3339),
+			Description: details.PlayerVideoDetails.ShortDescription,
+			Thumbnail:   c.BuildVideoThumbnailURL(details.PlayerVideoDetails.VideoID),
+			URL:         c.BuildVideoEmbedURL(details.PlayerVideoDetails.VideoID),
+		},
+	}
+
 	if len(details.StreamingData.Formats) > 0 {
-		duration, _ := strconv.Atoi(details.StreamingData.Formats[0].ApproxDurationMs)
-		return &VideoDetails{
-			IsShort:  details.StreamingData.Formats[0].Width < details.StreamingData.Formats[0].Height,
-			Duration: duration / 1000,
-		}, nil
+		if fullDetails.Duration == 0 {
+			duration, _ := strconv.Atoi(details.StreamingData.Formats[0].ApproxDurationMs)
+			fullDetails.Duration = duration / 1000
+		}
+		fullDetails.IsShort = details.StreamingData.Formats[0].Width < details.StreamingData.Formats[0].Height
+		return &fullDetails, nil
 	}
 
 	if len(details.StreamingData.AdaptiveFormats) > 0 {
-		duration, _ := strconv.Atoi(details.StreamingData.AdaptiveFormats[0].ApproxDurationMs)
-		return &VideoDetails{
-			IsShort:  details.StreamingData.AdaptiveFormats[0].Width < details.StreamingData.AdaptiveFormats[0].Height,
-			Duration: duration / 1000,
-		}, nil
+		if fullDetails.Duration == 0 {
+			duration, _ := strconv.Atoi(details.StreamingData.AdaptiveFormats[0].ApproxDurationMs)
+			fullDetails.Duration = duration / 1000
+		}
+		fullDetails.IsShort = details.StreamingData.AdaptiveFormats[0].Width < details.StreamingData.AdaptiveFormats[0].Height
+		return &fullDetails, nil
 	}
 
-	return &VideoDetails{
-		IsUnpublished: true,
-		IsShort:       false,
-		Duration:      0,
-	}, nil
+	fullDetails.IsUnpublished = true
+	return &fullDetails, nil
 }

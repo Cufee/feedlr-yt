@@ -1,11 +1,10 @@
-package google
+package youtube
 
 import (
 	"errors"
 	"sort"
 	"sync"
 
-	yt "github.com/cufee/feedlr-yt/internal/api/youtube/client"
 	"golang.org/x/exp/slices"
 	"google.golang.org/api/youtube/v3"
 )
@@ -28,7 +27,7 @@ func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
 	return playlists.Items[0].ContentDetails.RelatedPlaylists.Uploads, nil
 }
 
-func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...string) ([]yt.Video, error) {
+func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...string) ([]Video, error) {
 	if limit < 1 {
 		limit = 3
 	}
@@ -80,16 +79,16 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...
 		return validVideosSlice[i].Snippet.PublishedAt > validVideosSlice[j].Snippet.PublishedAt
 	})
 
-	var videos []yt.Video
+	var videos []Video
 	for _, item := range validVideosSlice {
-		videos = append(videos, yt.Video{
+		videos = append(videos, Video{
 			ID:          item.Snippet.ResourceId.VideoId,
 			Title:       item.Snippet.Title,
 			Duration:    item.Duration,
 			Description: item.Snippet.Description,
 			PublishedAt: item.Snippet.PublishedAt,
 			Thumbnail:   item.Snippet.Thumbnails.High.Url,
-			URL:         c.buildVideoEmbedURL(item.Snippet.ResourceId.VideoId),
+			URL:         c.BuildVideoEmbedURL(item.Snippet.ResourceId.VideoId),
 		})
 		if len(videos) >= limit {
 			break

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
-	"github.com/cufee/feedlr-yt/internal/api/youtube/client"
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/gofiber/fiber/v2/log"
@@ -28,7 +28,7 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 	var props []types.VideoProps
 	for _, vid := range videos {
 		v := types.VideoProps{
-			Video: client.Video{
+			Video: youtube.Video{
 				ID:          vid.ExternalID,
 				URL:         vid.URL,
 				Title:       vid.Title,
@@ -47,11 +47,18 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 func GetVideoByID(id string) (types.VideoProps, error) {
 	vid, err := database.DefaultClient.GetVideoByID(id)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			details, err := youtube.DefaultClient.GetVideoPlayerDetails(id)
+			if err != nil {
+				return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
+			}
+			return types.VideoProps{Video: details.Video, ChannelID: details.ChannelID}, nil
+		}
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
 
 	v := types.VideoProps{
-		Video: client.Video{
+		Video: youtube.Video{
 			ID:          vid.ExternalID,
 			URL:         vid.URL,
 			Title:       vid.Title,

@@ -1,13 +1,28 @@
-package google
+package youtube
 
 import (
 	"errors"
 	"sort"
-
-	yt "github.com/cufee/feedlr-yt/internal/api/youtube/client"
 )
 
-func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {
+type Channel struct {
+	ID          string
+	URL         string
+	Title       string
+	Thumbnail   string
+	Description string
+}
+type Video struct {
+	ID          string
+	URL         string
+	Title       string
+	Duration    int
+	Thumbnail   string
+	PublishedAt string
+	Description string
+}
+
+func (c *client) SearchChannels(query string, limit int) ([]Channel, error) {
 	if limit < 1 {
 		limit = 3
 	}
@@ -16,21 +31,21 @@ func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {
 		return nil, errors.Join(errors.New("SearchChannels.youtube.service.Search.List"), err)
 	}
 
-	var channels []yt.Channel
+	var channels []Channel
 	for _, item := range res.Items {
-		channels = append(channels, yt.Channel{
+		channels = append(channels, Channel{
 			ID:          item.Id.ChannelId,
 			Title:       item.Snippet.Title,
 			Description: item.Snippet.Description,
 			Thumbnail:   item.Snippet.Thumbnails.Default.Url,
-			URL:         c.buildChannelURL(item.Id.ChannelId),
+			URL:         c.BuildChannelURL(item.Id.ChannelId),
 		})
 	}
 
 	return channels, nil
 }
 
-func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
+func (c *client) GetChannel(channelID string) (*Channel, error) {
 	res, err := c.service.Channels.List([]string{"id", "snippet"}).Id(channelID).Do()
 	if err != nil {
 		return nil, errors.Join(errors.New("GetChannel.youtube.service.Channels.List"), err)
@@ -40,7 +55,7 @@ func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 		return nil, errors.New("GetChannel.youtube.service.Channels.List: no channels found")
 	}
 
-	var channel yt.Channel
+	var channel Channel
 	channel.ID = res.Items[0].Id
 	channel.Title = res.Items[0].Snippet.Title
 	channel.Thumbnail = res.Items[0].Snippet.Thumbnails.Medium.Url
@@ -49,7 +64,7 @@ func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 	return &channel, nil
 }
 
-func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...string) ([]yt.Video, error) {
+func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...string) ([]Video, error) {
 	uploadsId, err := c.GetChannelUploadPlaylistID(channelID)
 	if err != nil {
 		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetChannelUploadPlaylistID"), err)
