@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -99,7 +100,7 @@ func generateLayoutsTree() {
 func parseDirectoryFunctions(base, name string) (map[string][]ast.FuncDecl, error) {
 	files, err := os.ReadDir(filepath.Join(base, name))
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("parseDirectoryFunctions.os.ReadDir failed to read directory"), err)
 	}
 
 	fns := make(map[string][]ast.FuncDecl)
@@ -108,7 +109,7 @@ func parseDirectoryFunctions(base, name string) (map[string][]ast.FuncDecl, erro
 		if file.IsDir() {
 			functions, err := parseDirectoryFunctions(filePath, file.Name())
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(errors.New("parseDirectoryFunctions.parseDirectoryFunctions failed to parse directory"), err)
 			}
 			for k, v := range functions {
 				fns[k] = append(fns[k], v...)
@@ -122,12 +123,12 @@ func parseDirectoryFunctions(base, name string) (map[string][]ast.FuncDecl, erro
 		fset := token.NewFileSet() // positions are relative to fset
 		parsed, err := parser.ParseFile(fset, filepath.Join(filePath, file.Name()), nil, 0)
 		if err != nil {
-			return nil, err
+			return nil, errors.Join(errors.New("parseDirectoryFunctions.parser.ParseFile failed to parse file"), err)
 		}
 
 		functions, err := parseFunctions(parsed)
 		if err != nil {
-			return nil, err
+			return nil, errors.Join(errors.New("parseDirectoryFunctions.parseFunctions failed to parse functions"), err)
 		}
 
 		fns[filePath] = append(fns[filePath], functions...)

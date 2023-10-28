@@ -2,6 +2,7 @@ package templates
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -56,7 +57,7 @@ func (r *renderer) Render(w io.Writer, layoutName string, component interface{},
 	// Merge head tags.
 	html, err := movePartialTags(buf.String())
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("movePartialTags", err)
 		_, err = w.Write(buf.Bytes())
 		return err
 	}
@@ -70,7 +71,7 @@ func movePartialTags(content string) (string, error) {
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(content))
 	if err != nil {
-		return "", err
+		return "", errors.Join(errors.New("goquery.NewDocumentFromReader"), err)
 	}
 
 	var headTagNodes []*goquery.Selection

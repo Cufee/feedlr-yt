@@ -1,25 +1,23 @@
 package database
 
 import (
+	"errors"
+
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"github.com/kamva/mgm/v3"
-	"github.com/kamva/mgm/v3/builder"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (c *Client) NewSubscription(userId, channelId string) (*models.UserSubscription, error) {
-	channel := &models.Channel{}
-	err := mgm.Coll(channel).FindByID(channelId, channel)
-	if err != nil {
-		return nil, err
-	}
-
+func (c *Client) NewSubscription(userId primitive.ObjectID, channelId string) (*models.UserSubscription, error) {
+	ctx, cancel := c.Ctx()
+	defer cancel()
 	sub := models.NewUserSubscription(userId, channelId)
-	err = mgm.Coll(sub).Create(sub)
+	res, err := c.Collection(models.UserSubscriptionCollection).InsertOne(ctx, sub)
 	if err != nil {
 		return nil, err
 	}
-	return sub, nil
+	return sub, sub.ParseID(res.InsertedID)
 }
 
 type SubscriptionGetOptions struct {
@@ -27,87 +25,163 @@ type SubscriptionGetOptions struct {
 	WithUser    bool
 }
 
-func (c *Client) AllUserSubscriptions(userId string, opts ...SubscriptionGetOptions) ([]models.UserSubscription, error) {
+func (c *Client) AllUserSubscriptions(userId primitive.ObjectID, opts ...SubscriptionGetOptions) ([]models.UserSubscription, error) {
 	var options SubscriptionGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	coll := mgm.Coll(&models.UserSubscription{})
 	subscriptions := []models.UserSubscription{}
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
 	if !options.WithChannel && !options.WithUser {
-		err := coll.SimpleFind(&subscriptions, bson.M{"userId": userId})
-		return subscriptions, err
+		cur, err := c.Collection(models.UserSubscriptionCollection).Find(ctx, bson.M{"userId": userId})
+		if err != nil {
+			return nil, err
+		}
+		return subscriptions, cur.All(ctx, &subscriptions)
 	}
 
 	var stages []interface{}
 	stages = append(stages, bson.M{"$match": bson.M{"userId": userId}})
 	if options.WithChannel {
-		stages = append(stages, builder.Lookup(models.ChannelCollection, "channelId", "_id", "channels"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.ChannelCollection,
+				"localField":   "channelId",
+				"foreignField": "eid",
+				"as":           "channels",
+			}})
 	}
 	if options.WithUser {
-		stages = append(stages, builder.Lookup(models.UserCollection, "userId", "_id", "users"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.UserCollection,
+				"localField":   "userId",
+				"foreignField": "eid",
+				"as":           "users",
+			},
+		})
 	}
 
-	return subscriptions, coll.SimpleAggregate(&subscriptions, stages...)
+	cur, err := c.Collection(models.UserSubscriptionCollection).Aggregate(ctx, stages)
+	if err != nil {
+		return nil, err
+	}
+
+	return subscriptions, cur.All(ctx, &subscriptions)
 }
 
-func (c *Client) FindSubscription(userId, channelId string, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
+func (c *Client) FindSubscription(userId primitive.ObjectID, channelId string, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
 	var options SubscriptionGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
 	subscription := &models.UserSubscription{}
-	coll := mgm.Coll(subscription)
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
 	if !options.WithChannel && !options.WithUser {
-		err := coll.First(bson.M{"userId": userId, "channelId": channelId}, subscription)
+		err := c.Collection(models.UserSubscriptionCollection).FindOne(ctx, bson.M{"userId": userId, "channelId": channelId}).Decode(subscription)
 		return subscription, err
 	}
 
 	var stages []interface{}
 	stages = append(stages, bson.M{"$match": bson.M{"userId": userId, "channelId": channelId}})
 	if options.WithChannel {
-		stages = append(stages, builder.Lookup(models.ChannelCollection, "channelId", "_id", "channels"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.ChannelCollection,
+				"localField":   "channelId",
+				"foreignField": "eid",
+				"as":           "channels",
+			}})
 	}
 	if options.WithUser {
-		stages = append(stages, builder.Lookup(models.UserCollection, "userId", "_id", "users"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.UserCollection,
+				"localField":   "userId",
+				"foreignField": "eid",
+				"as":           "users",
+			},
+		})
 	}
 
-	return subscription, coll.SimpleAggregate(subscription, stages...)
+	cur, err := c.Collection(models.UserSubscriptionCollection).Aggregate(ctx, stages)
+	if err != nil {
+		return nil, err
+	}
+
+	return subscription, cur.All(ctx, &subscription)
 }
 
-func (c *Client) GetSubscription(id string, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
+func (c *Client) GetSubscription(id primitive.ObjectID, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
 	var options SubscriptionGetOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
 	subscription := &models.UserSubscription{}
-	coll := mgm.Coll(subscription)
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
 	if !options.WithChannel && !options.WithUser {
-		err := coll.FindByID(id, subscription)
-		return subscription, err
+		cur, err := c.Collection(models.UserSubscriptionCollection).Find(ctx, bson.M{"eid": id})
+		if err != nil {
+			return nil, err
+		}
+		return subscription, cur.All(ctx, &subscription)
 	}
 
 	var stages []interface{}
-	stages = append(stages, bson.M{"$match": bson.M{"_id": id}})
+	stages = append(stages, bson.M{"$match": bson.M{"eid": id}})
 	if options.WithChannel {
-		stages = append(stages, builder.Lookup(models.ChannelCollection, "channelId", "_id", "channels"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.ChannelCollection,
+				"localField":   "channelId",
+				"foreignField": "eid",
+				"as":           "channels",
+			}})
 	}
 	if options.WithUser {
-		stages = append(stages, builder.Lookup(models.UserCollection, "userId", "_id", "users"))
+		stages = append(stages, bson.M{
+			"$lookup": bson.M{
+				"from":         models.UserCollection,
+				"localField":   "userId",
+				"foreignField": "eid",
+				"as":           "users",
+			},
+		})
 	}
 
-	return subscription, coll.SimpleAggregate(subscription, stages...)
+	cur, err := c.Collection(models.UserSubscriptionCollection).Aggregate(ctx, stages)
+	if err != nil {
+		return nil, err
+	}
+	return subscription, cur.All(ctx, &subscription)
 }
 
-func (c *Client) DeleteSubscription(userId, channelId string) error {
-	_, err := mgm.Coll(&models.UserSubscription{}).DeleteOne(mgm.Ctx(), bson.M{"userId": userId, "channelId": channelId})
+func (c *Client) DeleteSubscription(userId primitive.ObjectID, channelId string) error {
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
+	_, err := c.Collection(models.UserSubscriptionCollection).DeleteOne(ctx, bson.M{"userId": userId, "channelId": channelId})
+	if errors.Is(mongo.ErrNoDocuments, err) {
+		return nil
+	}
 	return err
 }
 
 func (c *Client) UpdateSubscription(sub *models.UserSubscription) error {
-	_, err := mgm.Coll(sub).UpdateByID(mgm.Ctx(), sub.ID, bson.M{"$set": sub})
+	sub.Prepare()
+
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
+	_, err := c.Collection(models.UserSubscriptionCollection).UpdateOne(ctx, bson.M{"eid": sub.ID}, bson.M{"$set": sub})
 	return err
 }

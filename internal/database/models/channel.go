@@ -1,27 +1,19 @@
 package models
 
-// model Channel {
-//   id        String   @id @map("_id")
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
+import (
+	"context"
 
-//   url         String
-//   title       String
-//   thumbnail   String?
-//   description String  @db.String
-
-//   videos        Video[]
-//   subscriptions UserSubscription[]
-
-//   @@map("channels")
-// }
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
 
 const ChannelCollection = "channels"
 
 type Channel struct {
-	Model `bson:",inline"`
+	Model      `bson:",inline"`
+	ExternalID string `json:"eid" bson:"eid"`
 
-	ID          string `json:"id" bson:"_id" field:"required"`
 	URL         string `json:"url" bson:"url" field:"required"`
 	Title       string `json:"title" bson:"title" field:"required"`
 	Thumbnail   string `json:"thumbnail" bson:"thumbnail"`
@@ -29,6 +21,17 @@ type Channel struct {
 
 	Videos        []Video            `json:"videos" bson:"videos,omitempty"`
 	Subscriptions []UserSubscription `json:"subscriptions" bson:"subscriptions,omitempty"`
+}
+
+func init() {
+	addIndexHandler(ChannelCollection, func(coll *mongo.Collection) ([]string, error) {
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys:    bson.M{"eid": 1},
+				Options: &options.IndexOptions{Unique: &[]bool{true}[0], Name: &[]string{"eid"}[0]},
+			},
+		})
+	})
 }
 
 type ChannelOptions struct {
@@ -47,13 +50,14 @@ func NewChannel(id, url, title string, opts ...ChannelOptions) *Channel {
 		}
 	}
 
-	return &Channel{
-		ID:          id,
+	channel := Channel{
+		ExternalID:  id,
 		URL:         url,
 		Title:       title,
 		Thumbnail:   thumbnail,
 		Description: description,
 	}
+	return &channel
 }
 
 func (c *Channel) CollectionName() string {

@@ -77,7 +77,7 @@ func LoginCallbackHandler(c *fiber.Ctx) error {
 			return c.Redirect("/error?message=Something went wrong while logging in&context=creating session")
 		}
 
-		err = session.AddUserID(user.ID, idToken.Subject)
+		err = session.AddUserID(user.ID.Hex(), idToken.Subject)
 		if err != nil {
 			session.Delete()
 			c.ClearCookie("session_id")

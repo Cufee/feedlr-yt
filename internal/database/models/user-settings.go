@@ -1,30 +1,35 @@
 package models
 
-// model UserSettings {
-//   id        String   @id @default(cuid()) @map("_id")
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
+import (
+	"context"
 
-//   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   userId String @unique
-
-//   sponsorBlockEnabled    Boolean  @default(true)
-//   sponsorBlockCategories String[] @default([])
-
-//   @@map("user_settings")
-// }
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
 
 const UserSettingsCollection = "user_settings"
 
 type UserSettings struct {
 	Model `bson:",inline"`
-	ID    string `json:"id" bson:"_id,omitempty" field:"required"`
 
-	User   *User  `json:"user" bson:"user,omitempty"`
-	UserId string `json:"userId" bson:"userId" field:"required"`
+	User   *User              `json:"user" bson:"user,omitempty"`
+	UserId primitive.ObjectID `json:"userId" bson:"userId" field:"required"`
 
 	SponsorBlockEnabled    bool     `json:"sponsorBlockEnabled" bson:"sponsorBlockEnabled"`
 	SponsorBlockCategories []string `json:"sponsorBlockCategories" bson:"sponsorBlockCategories"`
+}
+
+func init() {
+	addIndexHandler(UserSettingsCollection, func(coll *mongo.Collection) ([]string, error) {
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys:    bson.M{"userId": 1},
+				Options: &options.IndexOptions{Unique: &[]bool{true}[0]},
+			},
+		})
+	})
 }
 
 type UserSettingsOptions struct {
@@ -32,7 +37,7 @@ type UserSettingsOptions struct {
 	SponsorBlockCategories *[]string
 }
 
-func NewUserSettings(userId string, opts ...UserSettingsOptions) *UserSettings {
+func NewUserSettings(userId primitive.ObjectID, opts ...UserSettingsOptions) *UserSettings {
 	settings := &UserSettings{
 		UserId:                 userId,
 		SponsorBlockEnabled:    true,

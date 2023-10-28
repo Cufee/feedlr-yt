@@ -1,24 +1,29 @@
 package logic
 
 import (
-	"log"
+	"errors"
 	"sort"
 	"strings"
 
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
 	channel, err := CacheChannel(channelId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, errors.New("NewSubscription.CacheChannel failed to cache channel"))
 	}
 	go CacheChannelVideos(channelId)
 
-	sub, err := database.DefaultClient.NewSubscription(userId, channel.ID)
+	oid, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, errors.New("NewSubscription.primitive.ObjectIDFromHex failed to parse userId"))
+	}
+	sub, err := database.DefaultClient.NewSubscription(oid, channel.ExternalID)
+	if err != nil {
+		return nil, errors.Join(err, errors.New("NewSubscription.database.DefaultClient.NewSubscription failed to create subscription"))
 	}
 
 	var props types.ChannelProps
@@ -31,6 +36,20 @@ func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
 	return &props, nil
 }
 
+func DeleteSubscription(userId, channelId string) error {
+	oid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return err
+	}
+
+	err = database.DefaultClient.DeleteSubscription(oid, channelId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 /*
 Returns a list of channel props with videos for all user subscriptions
 */
@@ -38,7 +57,7 @@ func GetUserSubscriptionsProps(userId string) (*types.UserSubscriptionsFeedProps
 	// Get channels and convert them to WithVideo props
 	channels, err := GetUserSubscribedChannels(userId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetUserSubscribedChannels failed to get user subscribed channels"), err)
 	}
 
 	// Sort channels by title alphabetically
@@ -48,7 +67,7 @@ func GetUserSubscriptionsProps(userId string) (*types.UserSubscriptionsFeedProps
 
 	progress, err := GetCompleteUserProgress(userId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetCompleteUserProgress failed to get user progress"), err)
 	}
 
 	// Get videos for each channel and add them to the props
@@ -58,7 +77,7 @@ func GetUserSubscriptionsProps(userId string) (*types.UserSubscriptionsFeedProps
 	}
 	allVideos, err := GetChannelVideos(channelIds...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos"), err)
 	}
 
 	// Map videos to channel IDs
@@ -100,17 +119,20 @@ func GetUserSubscriptionsProps(userId string) (*types.UserSubscriptionsFeedProps
 }
 
 func ToggleSubscriptionIsFavorite(userId, channelId string) (bool, error) {
-	sub, err := database.DefaultClient.FindSubscription(userId, channelId)
+	oid, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
-		return false, err
+		return false, errors.Join(errors.New("ToggleSubscriptionIsFavorite.primitive.ObjectIDFromHex failed to parse userId"), err)
 	}
 
-	log.Printf("%+v", sub)
+	sub, err := database.DefaultClient.FindSubscription(oid, channelId)
+	if err != nil {
+		return false, errors.Join(errors.New("ToggleSubscriptionIsFavorite.database.DefaultClient.FindSubscription failed to find subscription"), err)
+	}
 
 	sub.IsFavorite = !sub.IsFavorite
 	err = database.DefaultClient.UpdateSubscription(sub)
 	if err != nil {
-		return false, err
+		return false, errors.Join(errors.New("ToggleSubscriptionIsFavorite.database.DefaultClient.UpdateSubscription failed to update subscription"), err)
 	}
 	return !sub.IsFavorite, nil
 }

@@ -91,21 +91,21 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 	body["videoId"] = videoId
 	encoded, err := json.Marshal(body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetVideoPlayerDetails.json.Marshal"), err)
 	}
 
 	res, err := http.Post("https://www.youtube.com/youtubei/v1/player", "application/json", bytes.NewReader(encoded))
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetVideoPlayerDetails.http.Post"), err)
 	}
 	if res == nil || res.StatusCode != 200 {
-		return nil, errors.New("invalid response")
+		return nil, errors.New("GetVideoPlayerDetails.http.Post: invalid response")
 	}
 
 	var details PlayerResponse
 	err = json.NewDecoder(res.Body).Decode(&details)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetVideoPlayerDetails.json.NewDecoder.Decode"), err)
 	}
 
 	if len(details.StreamingData.Formats) > 0 {

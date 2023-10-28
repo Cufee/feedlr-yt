@@ -1,5 +1,12 @@
 package models
 
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
 // model User {
 //   id        String   @id @default(cuid()) @map("_id")
 //   authId    String   @unique
@@ -16,13 +23,23 @@ package models
 const UserCollection = "users"
 
 type User struct {
-	Model  `bson:",inline"`
-	ID     string `json:"id" bson:"_id,omitempty" field:"required"`
+	Model `bson:",inline"`
+
 	AuthId string `json:"authId" bson:"authId" field:"required"`
 
 	Views         []VideoView        `json:"views" bson:"views,omitempty"`
 	Settings      *UserSettings      `json:"settings" bson:"settings,omitempty"`
 	Subscriptions []UserSubscription `json:"subscriptions" bson:"subscriptions,omitempty"`
+}
+
+func init() {
+	addIndexHandler(UserCollection, func(coll *mongo.Collection) ([]string, error) {
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys: bson.M{"authId": 1},
+			},
+		})
+	})
 }
 
 func NewUser(authId string) *User {

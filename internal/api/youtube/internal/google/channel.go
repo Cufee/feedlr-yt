@@ -13,7 +13,7 @@ func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {
 	}
 	res, err := c.service.Search.List([]string{"id", "snippet"}).Q(query).Type("channel").MaxResults((int64(limit))).Do()
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("SearchChannels.youtube.service.Search.List"), err)
 	}
 
 	var channels []yt.Channel
@@ -33,11 +33,11 @@ func (c *client) SearchChannels(query string, limit int) ([]yt.Channel, error) {
 func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 	res, err := c.service.Channels.List([]string{"id", "snippet"}).Id(channelID).Do()
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetChannel.youtube.service.Channels.List"), err)
 	}
 
 	if len(res.Items) <= 0 {
-		return nil, errors.New("channel not found")
+		return nil, errors.New("GetChannel.youtube.service.Channels.List: no channels found")
 	}
 
 	var channel yt.Channel
@@ -52,12 +52,12 @@ func (c *client) GetChannel(channelID string) (*yt.Channel, error) {
 func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...string) ([]yt.Video, error) {
 	uploadsId, err := c.GetChannelUploadPlaylistID(channelID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetChannelUploadPlaylistID"), err)
 	}
 
 	videos, err := c.GetPlaylistVideos(uploadsId, limit, skipVideoIds...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetPlaylistVideos"), err)
 	}
 
 	// Reverse slice to get videos in descending order

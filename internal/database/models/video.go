@@ -1,6 +1,12 @@
 package models
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 // model Video {
 //   id        String   @id @map("_id")
@@ -24,9 +30,9 @@ import "time"
 const VideoCollection = "videos"
 
 type Video struct {
-	Model `bson:",inline"`
+	Model      `bson:",inline"`
+	ExternalID string `json:"eid" bson:"eid"`
 
-	ID          string    `json:"id" bson:"_id" field:"required"`
 	URL         string    `json:"url" bson:"url" field:"required"`
 	Title       string    `json:"title" bson:"title" field:"required"`
 	Duration    int       `json:"duration" bson:"duration"`
@@ -37,6 +43,25 @@ type Video struct {
 	Views     []VideoView `json:"views" bson:"views,omitempty"`
 	Channel   *Channel    `json:"channel" bson:"channel,omitempty"`
 	ChannelId string      `json:"channelId" bson:"channelId" field:"required"`
+}
+
+func init() {
+	addIndexHandler(VideoCollection, func(coll *mongo.Collection) ([]string, error) {
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys: bson.M{"eid": 1},
+			},
+			{
+				Keys: bson.M{"channelId": 1},
+			},
+			{
+				Keys: bson.D{
+					{Key: "channelId", Value: 1},
+					{Key: "publishedAt", Value: -1},
+				},
+			},
+		})
+	})
 }
 
 type VideoOptions struct {
@@ -60,8 +85,8 @@ func NewVideo(id, url, title, channelId string, publishedAt time.Time, opts ...V
 		}
 	}
 
-	return &Video{
-		ID:          id,
+	video := Video{
+		ExternalID:  id,
 		URL:         url,
 		Title:       title,
 		Duration:    duration,
@@ -70,6 +95,7 @@ func NewVideo(id, url, title, channelId string, publishedAt time.Time, opts ...V
 		Description: description,
 		ChannelId:   channelId,
 	}
+	return &video
 }
 
 func (v *Video) CollectionName() string {

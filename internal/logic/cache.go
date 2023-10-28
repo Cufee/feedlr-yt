@@ -21,16 +21,16 @@ func CacheChannelVideos(channelIds ...string) error {
 	for _, c := range channelIds {
 		newVideos, err := youtube.C.GetChannelVideos(c, 3)
 		if err != nil {
-			return err
+			return errors.Join(errors.New("CacheChannelVideos.youtube.C.GetChannelVideos"), err)
 		}
 
 		existingVideos, err := database.DefaultClient.GetVideosByChannelID(0, c)
 		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-			return err
+			return errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.GetVideosByChannelID"), err)
 		}
 		var existingIDs []string
 		for _, v := range existingVideos {
-			existingIDs = append(existingIDs, v.ID)
+			existingIDs = append(existingIDs, v.ExternalID)
 
 		}
 		for _, video := range newVideos {
@@ -55,13 +55,11 @@ func CacheChannelVideos(channelIds ...string) error {
 	}
 
 	if len(models) == 0 {
-		log.Printf("No new videos to save")
 		return nil
 	}
 	err := database.DefaultClient.InsertChannelVideos(models...)
 	if err != nil {
-		log.Printf("Error saving videos %v", err)
-		return err
+		return errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.InsertChannelVideos"), err)
 	}
 	return nil
 }
@@ -75,12 +73,12 @@ func CacheChannel(channelId string) (*models.Channel, error) {
 		return exists, nil
 	}
 	if !errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, err
+		return nil, errors.Join(errors.New("CacheChannel.database.DefaultClient.GetChannel"), err)
 	}
 
 	channel, err := youtube.C.GetChannel(channelId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("CacheChannel.youtube.C.GetChannel"), err)
 	}
 
 	cached, err := database.DefaultClient.NewChannel(database.ChannelCreateModel{
@@ -91,7 +89,7 @@ func CacheChannel(channelId string) (*models.Channel, error) {
 		Thumbnail:   channel.Thumbnail,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("CacheChannel.database.DefaultClient.NewChannel"), err)
 	}
 
 	return cached, nil

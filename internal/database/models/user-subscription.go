@@ -1,5 +1,13 @@
 package models
 
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
 // model UserSubscription {
 //   id        String   @id @default(cuid()) @map("_id")
 //   createdAt DateTime @default(now())
@@ -22,14 +30,32 @@ const UserSubscriptionCollection = "user_subscriptions"
 
 type UserSubscription struct {
 	Model `bson:",inline"`
-	ID    string `json:"id" bson:"_id,omitempty" field:"required"`
 
 	IsFavorite bool `json:"isFavorite" bson:"isFavorite"`
 
-	InternalUsers    []User    `json:"users" bson:"users,omitempty"`
-	UserId           string    `json:"userId" bson:"userId" field:"required"`
-	InternalChannels []Channel `json:"channels" bson:"channels,omitempty"`
-	ChannelId        string    `json:"channelId" bson:"channelId" field:"required"`
+	InternalUsers    []User             `json:"users" bson:"users,omitempty"`
+	UserId           primitive.ObjectID `json:"userId" bson:"userId" field:"required"`
+	InternalChannels []Channel          `json:"channels" bson:"channels,omitempty"`
+	ChannelId        string             `json:"channelId" bson:"channelId" field:"required"`
+}
+
+func init() {
+	addIndexHandler(UserSubscriptionCollection, func(coll *mongo.Collection) ([]string, error) {
+		return coll.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+			{
+				Keys: bson.M{"userId": 1},
+			},
+			{
+				Keys: bson.M{"channelId": 1},
+			},
+			{
+				Keys: bson.D{
+					{Key: "userId", Value: 1},
+					{Key: "channelId", Value: 1},
+				},
+			},
+		})
+	})
 }
 
 func (model *UserSubscription) User() *User {
@@ -50,7 +76,7 @@ type UserSubscriptionOptions struct {
 	IsFavorite *bool
 }
 
-func NewUserSubscription(userId string, channelId string, opts ...UserSubscriptionOptions) *UserSubscription {
+func NewUserSubscription(userId primitive.ObjectID, channelId string, opts ...UserSubscriptionOptions) *UserSubscription {
 	subscription := &UserSubscription{
 		UserId:     userId,
 		ChannelId:  channelId,

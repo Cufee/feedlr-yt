@@ -32,7 +32,7 @@ func New() (*Authenticator, error) {
 		"https://"+utils.MustGetEnv("AUTH0_DOMAIN")+"/",
 	)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("Authenticator.New: failed to create provider"), err)
 	}
 
 	conf := oauth2.Config{
@@ -53,7 +53,7 @@ func New() (*Authenticator, error) {
 func (a *Authenticator) VerifyIDToken(ctx context.Context, token *oauth2.Token) (*oidc.IDToken, error) {
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		return nil, errors.New("no id_token field in oauth2 token")
+		return nil, errors.New("Authenticator.VerifyIDToken: no id_token field in oauth2 token")
 	}
 
 	oidcConfig := &oidc.Config{

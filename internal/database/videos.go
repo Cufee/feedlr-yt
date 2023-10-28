@@ -1,25 +1,35 @@
 package database
 
 import (
-	"errors"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"github.com/kamva/mgm/v3"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (c *Client) GetVideoByID(id string) (*models.Video, error) {
 	video := &models.Video{}
-	return video, mgm.Coll(video).First(bson.M{"_id": id}, video)
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
+	return video, c.Collection(models.VideoCollection).FindOne(ctx, bson.M{"eid": id}).Decode(video)
 }
 
 func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models.Video, error) {
 	videos := []models.Video{}
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
 	opts := options.Find().SetSort(bson.M{"publishedAt": -1})
-	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": bson.M{"$in": channelIds}}, opts)
+	cur, err := c.Collection(models.VideoCollection).Find(ctx, bson.M{"channelId": bson.M{"$in": channelIds}}, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return videos, cur.All(ctx, &videos)
 }
 
 func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, error) {
@@ -27,7 +37,15 @@ func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, e
 	opts := options.Find()
 	opts.SetSort(bson.M{"publishedAt": -1})
 	opts.SetLimit(int64(limit))
-	return videos, mgm.Coll(&models.Video{}).SimpleFind(&videos, bson.M{"channelId": id}, opts)
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
+	cur, err := c.Collection(models.VideoCollection).Find(ctx, bson.M{"channelId": id}, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return videos, cur.All(ctx, &videos)
 }
 
 type VideoCreateModel struct {
@@ -44,7 +62,9 @@ type VideoCreateModel struct {
 func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) error {
 	payload := []*models.Video{}
 	for _, video := range videos {
-		payload = append(payload, models.NewVideo(video.ID, video.URL, video.Title, video.ChannelID, video.PublishedAt, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description}))
+		v := models.NewVideo(video.ID, video.URL, video.Title, video.ChannelID, video.PublishedAt, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description})
+		v.Prepare()
+		payload = append(payload, v)
 	}
 
 	var writes []mongo.WriteModel
@@ -52,31 +72,49 @@ func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) error {
 		writes = append(writes, mongo.NewInsertOneModel().SetDocument(*video))
 	}
 
-	_, err := mgm.Coll(&models.Video{}).BulkWrite(mgm.Ctx(), writes)
+	ctx, cancel := c.Ctx()
+	defer cancel()
+	_, err := c.Collection(models.VideoCollection).BulkWrite(ctx, writes)
 	return err
 }
 
-func (c *Client) GetUserVideoView(user, video string) (*models.VideoView, error) {
+func (c *Client) GetUserVideoView(user primitive.ObjectID, video string) (*models.VideoView, error) {
 	view := &models.VideoView{}
-	return view, mgm.Coll(view).First(bson.M{"userId": user, "videoId": video}, view)
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
+	return view, c.Collection(models.VideoViewCollection).FindOne(ctx, bson.M{"userId": user, "videoId": video}).Decode(view)
 }
 
-func (c *Client) GetAllUserViews(user string) ([]models.VideoView, error) {
-	virews := []models.VideoView{}
-	return virews, mgm.Coll(&models.VideoView{}).SimpleFind(&virews, bson.M{"userId": user})
-}
+func (c *Client) GetAllUserViews(user primitive.ObjectID) ([]models.VideoView, error) {
+	views := []models.VideoView{}
+	ctx, cancel := c.Ctx()
+	defer cancel()
 
-func (c *Client) UpsertView(user, video string, progress int) (*models.VideoView, error) {
-	view := &models.VideoView{}
-	err := mgm.Coll(view).First(bson.M{"userId": user, "videoId": video}, view)
+	cur, err := c.Collection(models.VideoViewCollection).Find(ctx, bson.M{"userId": user})
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			view = models.NewVideoView(user, video, models.VideoViewOptions{Progress: &progress})
-			return view, mgm.Coll(view).Create(view)
-		}
 		return nil, err
 	}
+
+	return views, cur.All(ctx, &views)
+}
+
+func (c *Client) UpsertView(user primitive.ObjectID, video string, progress int) (*models.VideoView, error) {
+	view := models.NewVideoView(user, video, models.VideoViewOptions{Progress: &progress})
 	view.Progress = progress
-	_, err = mgm.Coll(view).UpdateByID(mgm.Ctx(), view.ID, bson.M{"$set": view})
-	return view, err
+	view.Model.UpdatedAt = time.Now()
+	view.Prepare()
+	opts := options.Update().SetUpsert(true)
+
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
+	res, err := c.Collection(models.VideoViewCollection).UpdateOne(ctx, bson.M{"userId": user, "videoId": video}, bson.M{"$set": view}, opts)
+	if err != nil {
+		return nil, err
+	}
+	if res.UpsertedID != nil {
+		return view, view.ParseID(res.UpsertedID)
+	}
+	return view, nil
 }

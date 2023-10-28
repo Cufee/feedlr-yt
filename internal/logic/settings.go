@@ -5,7 +5,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
-func GetUserSettings(userId string) (types.SettingsPageProps, error) {
+func GetUserSettings(id string) (types.SettingsPageProps, error) {
 	return types.SettingsPageProps{
 		SponsorBlock: types.SponsorBlockSettingsProps{
 			SponsorBlockEnabled:             true,
