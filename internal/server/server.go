@@ -62,6 +62,7 @@ func New(assets fs.FS, port ...int) func() error {
 
 		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
 		api.Post("/videos/:id/progress", apiHandlers.PostSaveVideoProgress)
+		api.Post("/videos/open", apiHandlers.PostVideoOpen)
 
 		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
 		api.Post("/channels/:id/favorite", apiHandlers.PostFavoriteChannel)

@@ -42,6 +42,7 @@ func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
 }
 
 type UserSubscriptionsFeedProps struct {
+	NextUpdate       int64
 	Favorites        []ChannelWithVideosProps
 	WithNewVideos    []ChannelWithVideosProps
 	WithoutNewVideos []ChannelWithVideosProps

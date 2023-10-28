@@ -2,6 +2,9 @@ package logic
 
 import (
 	"errors"
+	"net/url"
+	"regexp"
+	"strings"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
@@ -151,4 +154,27 @@ func GetCompleteUserProgress(userId string) (map[string]int, error) {
 	}
 
 	return progress, nil
+}
+
+func VideoIDFromURL(link string) (string, bool) {
+	var id string
+	parsed, _ := url.Parse(link)
+
+	switch {
+	case parsed.Query().Get("v") != "":
+		id = parsed.Query().Get("v")
+	case parsed.Path != "":
+		path := strings.Split(parsed.Path, "/")
+		id = path[len(path)-1]
+		if id == "" {
+			return "", false
+		}
+	default:
+		return "", false
+	}
+	id = strings.Trim(id, " ")
+	if matched, _ := regexp.MatchString(`^[a-zA-Z0-9_-]{5,}$`, id); matched {
+		return id, true
+	}
+	return "", false
 }
