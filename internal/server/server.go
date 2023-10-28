@@ -68,6 +68,9 @@ func New(assets fs.FS, port ...int) func() error {
 		api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
 		api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 
+		api.Post("/settings/sponsorblock/category", apiHandlers.PostToggleSponsorBlockCategory)
+		api.Post("/settings/sponsorblock", apiHandlers.PostToggleSponsorBlock)
+
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)
 		app.Get("/", appHandlers.GetOrPostApp).Post("/", appHandlers.GetOrPostApp)

@@ -22,7 +22,13 @@ func VideoHandler(c *fiber.Ctx) error {
 		c.Locals("userId", uid)
 		go session.Refresh()
 
-		props, err := logic.GetPlayerPropsWithOpts(uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: true})
+		settings, err := logic.GetUserSettings(uid)
+		if err != nil {
+			log.Printf("GetUserSettings: %v\n", err)
+			return c.Redirect("/error?message=Something went wrong")
+		}
+
+		props, err := logic.GetPlayerPropsWithOpts(uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: settings.SponsorBlock.SponsorBlockEnabled})
 		if err != nil {
 			log.Printf("GetVideoByID: %v", err)
 			return c.Redirect("/error?message=Something went wrong")
