@@ -1,0 +1,63 @@
+package shared
+
+import "fmt"
+
+templ OpenVideoButton() {
+  <div class="flex justify-center">
+    <div class="flex flex-row gap-2">
+      <button id="open_video_modal_btn" class="btn btn-ghost" onclick="open_video_modal.showModal()">
+        Open a YouTube Video
+      </button>
+    </div>
+    <dialog id="open_video_modal" class="bg-black bg-opacity-50 modal modal-top sm:modal-middle">
+      <div class="flex flex-col items-center justify-center gap-4 lg:!bg-transparent modal-box group" id="open_video_modal_box">
+        <div class="flex flex-col items-center justify-center w-full">
+          @OpenVideoInput("", true)
+        </div>
+        <div class="hidden lg:block">
+          Press <kbd class="kbd kbd-sm">Enter</kbd> to open this window and <kbd class="kbd kbd-sm">Esc</kbd> to close it.
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button id="open_video_close">close</button>
+      </form>
+    </dialog>
+    @EmbedMinifiedScript(openVideoModalScript())
+  </div>
+}
+
+templ OpenVideoInput(url string, valid bool) {
+  <form class="flex w-full m-0 join" id="open_video_modal_form"
+    hx-post="/api/videos/open" hx-indicator="#open_video_modal" hx-target="#open_video_modal_form" hx-swap="outerHTML" hx-sync="this:replace"
+    _="on htmx:beforeRequest
+        if #open_video_input.value == ''
+          halt"
+    >
+    <input type="text" id="open_video_input" name="link" value={ url } 
+      placeholder="https://youtube.com/watch..." class={ fmt.Sprintf("flex-grow input input-bordered join-item bg-base-200 %s", OptionalClass(!valid, "input-error")) } />
+    <button type="submit" class="btn btn-primary join-item">Watch</button>
+  </form>
+}
+
+script openVideoModalScript() {
+	const modal = document.getElementById("open_video_modal");
+	const modalBox = document.getElementById("open_video_modal_box");
+	const modalButton = document.getElementById("open_video_modal_btn");
+  const openModal = () => {
+    const input = modalBox.querySelector("#open_video_input")
+    input.classList.remove("input-error");
+    input.value = "";
+		modal.showModal();
+    input.focus();
+	}
+	modalButton.addEventListener("click", openModal);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      if (!modal.open) {
+        openModal()
+      }
+    }
+  });
+
+  
+}

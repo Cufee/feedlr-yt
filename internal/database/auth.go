@@ -24,5 +24,10 @@ func (c *Client) FindNonce(value string) (*models.AuthNonce, error) {
 	nonce := &models.AuthNonce{}
 	ctx, cancel := c.Ctx()
 	defer cancel()
-	return nonce, c.Collection(models.AuthNonceCollection).FindOne(ctx, bson.M{"value": value}).Decode(nonce)
+
+	err := c.Collection(models.AuthNonceCollection).FindOne(ctx, bson.M{"value": value}).Decode(nonce)
+	if err != nil {
+		return nil, err
+	}
+	return nonce, nil
 }

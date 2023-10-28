@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"fmt"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
@@ -12,11 +13,11 @@ templ Video(props types.VideoPlayerProps) {
 		<meta property="og:title" content={ props.Video.Title }/>
 		<meta property="og:type" content="video.episode"/>
 		<meta property="og:description" content={ props.Video.Description }/>
-		<meta property="og:image" content={ props.Video.Thumbnail }/>
-		<meta name="twitter:card" content="summary"/>
+		<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
+		<meta name="twitter:card" content="summary_large_image"/>
 		<meta name="twitter:title" content={ props.Video.Title }/>
 		<meta name="twitter:description" content={ props.Video.Description }/>
-		<meta name="twitter:image" content={ props.Video.Thumbnail }/>
+		<meta name="twitter:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
 		<meta name="twitter:image:alt" content={ props.Video.Title }/>
 	</head>
 	<div class="relative flex items-center justify-start w-full h-full">
@@ -27,9 +28,8 @@ templ Video(props types.VideoPlayerProps) {
 		} else {
 			@buttonLogin()
 		}
-		<div id="notification-toast" class="opacity-0 transition-all duration-[500ms] ease-out pointer-events-none">
-			@notificationToast("SponsorBlock skipped a video segment")
-		</div>
+		@shared.EmbedMinifiedScript(closeVideoHotkey())
+		<div id="notification-toast" class="opacity-0 transition-all duration-[500ms] ease-out pointer-events-none">@notificationToast("SponsorBlock skipped a video segment")</div>
 	</div>
 }
 
@@ -52,6 +52,14 @@ templ notificationToast(message string) {
 	<div class="toast toast-center toast-bottom">
 		<div class="px-3 py-2 alert alert-info opacity-80"><span>{ message }</span></div>
 	</div>
+}
+
+script closeVideoHotkey() {
+	document.addEventListener("keydown", (event) => {
+		if (event.key === "Escape") {
+			window.location.href = "/app"
+		}
+	})
 }
 
 script youtubePlayerInit(video string, progress int, withProgress bool) {

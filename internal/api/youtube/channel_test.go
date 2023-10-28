@@ -1,4 +1,4 @@
-package google
+package youtube
 
 import (
 	"encoding/json"

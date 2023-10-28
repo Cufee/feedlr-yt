@@ -2,9 +2,12 @@ package logic
 
 import (
 	"errors"
+	"net/url"
+	"regexp"
+	"strings"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
-	"github.com/cufee/feedlr-yt/internal/api/youtube/client"
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/gofiber/fiber/v2/log"
@@ -28,7 +31,7 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 	var props []types.VideoProps
 	for _, vid := range videos {
 		v := types.VideoProps{
-			Video: client.Video{
+			Video: youtube.Video{
 				ID:          vid.ExternalID,
 				URL:         vid.URL,
 				Title:       vid.Title,
@@ -47,11 +50,18 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 func GetVideoByID(id string) (types.VideoProps, error) {
 	vid, err := database.DefaultClient.GetVideoByID(id)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			video, err := youtube.DefaultClient.GetVideoByID(id)
+			if err != nil {
+				return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
+			}
+			return types.VideoProps{Video: *video}, nil
+		}
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
 
 	v := types.VideoProps{
-		Video: client.Video{
+		Video: youtube.Video{
 			ID:          vid.ExternalID,
 			URL:         vid.URL,
 			Title:       vid.Title,
@@ -144,4 +154,27 @@ func GetCompleteUserProgress(userId string) (map[string]int, error) {
 	}
 
 	return progress, nil
+}
+
+func VideoIDFromURL(link string) (string, bool) {
+	var id string
+	parsed, _ := url.Parse(link)
+
+	switch {
+	case parsed.Query().Get("v") != "":
+		id = parsed.Query().Get("v")
+	case parsed.Path != "":
+		path := strings.Split(parsed.Path, "/")
+		id = path[len(path)-1]
+		if id == "" {
+			return "", false
+		}
+	default:
+		return "", false
+	}
+	id = strings.Trim(id, " ")
+	if matched, _ := regexp.MatchString(`^[a-zA-Z0-9_-]{5,}$`, id); matched {
+		return id, true
+	}
+	return "", false
 }

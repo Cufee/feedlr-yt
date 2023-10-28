@@ -62,11 +62,15 @@ func New(assets fs.FS, port ...int) func() error {
 
 		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
 		api.Post("/videos/:id/progress", apiHandlers.PostSaveVideoProgress)
+		api.Post("/videos/open", apiHandlers.PostVideoOpen)
 
 		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
 		api.Post("/channels/:id/favorite", apiHandlers.PostFavoriteChannel)
 		api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
 		api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
+
+		api.Post("/settings/sponsorblock/category", apiHandlers.PostToggleSponsorBlockCategory)
+		api.Post("/settings/sponsorblock", apiHandlers.PostToggleSponsorBlock)
 
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)

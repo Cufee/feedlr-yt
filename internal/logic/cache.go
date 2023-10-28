@@ -19,7 +19,7 @@ func CacheChannelVideos(channelIds ...string) error {
 	var models []database.VideoCreateModel
 
 	for _, c := range channelIds {
-		newVideos, err := youtube.C.GetChannelVideos(c, 3)
+		newVideos, err := youtube.DefaultClient.GetChannelVideos(c, 3)
 		if err != nil {
 			return errors.Join(errors.New("CacheChannelVideos.youtube.C.GetChannelVideos"), err)
 		}
@@ -76,7 +76,7 @@ func CacheChannel(channelId string) (*models.Channel, error) {
 		return nil, errors.Join(errors.New("CacheChannel.database.DefaultClient.GetChannel"), err)
 	}
 
-	channel, err := youtube.C.GetChannel(channelId)
+	channel, err := youtube.DefaultClient.GetChannel(channelId)
 	if err != nil {
 		return nil, errors.Join(errors.New("CacheChannel.youtube.C.GetChannel"), err)
 	}

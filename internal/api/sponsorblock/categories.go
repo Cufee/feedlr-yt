@@ -16,4 +16,5 @@ var (
 	Music               = Category{"Music", "Segments featuring off-topic music in the video.", "music_offtopic"}
 	Filler              = Category{"Filler", "Tangential and humorous scenes added to the video that are not essential for understanding the main content.", "filler"}
 	AvailableCategories = []Category{Sponsor, SelfPromo, Interaction, Preview, Intro, Outro, Music, Filler}
+	ValidCategoryValues = []string{"sponsor", "selfpromo", "interaction", "preview", "intro", "outro", "music_offtopic", "filler"}
 )

@@ -15,7 +15,7 @@ templ Subscriptions(channels []types.ChannelProps) {
 			}
 			<div class="flex flex-row flex-wrap gap-2" id="subscriptions-list">
 				for _, channel := range channels {
-					<div data-search={ channel.Title } class="flex flex-grow md:basis-1/3">
+					<div data-search={ channel.Title } class="flex flex-grow basis-1/2 md:basis-1/3">
 						@subscriptions.SubscribedChannelTile(channel)
 					</div>
 				}

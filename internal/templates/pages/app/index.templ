@@ -8,6 +8,8 @@ templ AppHome(props types.UserSubscriptionsFeedProps) {
 	<head><title>Feedlr</title></head>
 
 	<div id="app-index" class="flex flex-col gap-4">
+		@shared.OpenVideoButton()
+
 		if len(props.Favorites) > 0 {
 			@feed.ChannelsFeed("favorite-channels", props.Favorites, false)
 		}
