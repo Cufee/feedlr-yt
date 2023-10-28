@@ -36,7 +36,7 @@ templ CategoryCard(category sponsorblock.Category, checked, disabled bool) {
 			<span class="font-bold">{category.Name}</span>
 			@CategoryToggleButton(category.Value, checked, disabled)
 		</div>		
-		<div class="flex">
+		<div class="flex break-words truncate">
 			<span>{category.Description}</span>
 		</div>
 	</div>

@@ -11,7 +11,7 @@ templ ChannelTile(channel types.Channel) {
 		</div>
 		<div class="box-border flex flex-col justify-center">
 			<div class="text-2xl font-bold text-ellipsis">{ channel.Title }</div>
-			<div class="break-normal truncate whitespace-normal line-clamp-2">
+			<div class="break-words truncate whitespace-normal line-clamp-2">
 				if channel.Description != "" {
 					{ channel.Description }
 				} else {
