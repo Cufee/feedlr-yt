@@ -11,7 +11,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
-	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -40,13 +39,23 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 		channelsMap[c.ID] = c
 		channelIds = append(channelIds, c.ID)
 	}
-	allVideos, err := GetLatestVideos(utils.MaxInt(len(channelIds), 20), 0, channelIds...)
+
+	limit := 48                                                // 48 can be divided by 1, 2, 3, 4
+	allVideos, err := GetLatestVideos(limit, 0, channelIds...) // TODO: pagination
 	if err != nil {
 		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos"), err)
 	}
 
+	cutoff := limit
+	if len(allVideos) > 12 {
+		cutoff = len(allVideos) - (len(allVideos) % 12)
+	}
+
 	var feed types.UserVideoFeedProps
-	for _, video := range allVideos {
+	for i, video := range allVideos {
+		if i >= cutoff {
+			break
+		}
 		video.Progress = progress[video.ID]
 		if video.Progress == 0 {
 			feed.NewVideos = append(feed.NewVideos, video)

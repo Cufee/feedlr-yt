@@ -39,7 +39,7 @@ templ VideosFeed(props types.UserVideoFeedProps) {
 
 	<div id="app-index" class="flex flex-col gap-4 px-4 md:px-0">
 		@shared.OpenVideoButton()
-		if len(props.NewVideos) > 0 {
+		if len(props.NewVideos) > 0 && len(props.Videos) != len(props.NewVideos) {
 			<div class="flex p-4 bg-base-300 rounded-box">
 				@feed.VideoCarousel(props.NewVideos)
 			</div>
