@@ -4,7 +4,7 @@ import "github.com/cufee/feedlr-yt/internal/types"
 import "github.com/cufee/feedlr-yt/internal/templates/components/feed"
 import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
 
-templ AppHome(props types.UserSubscriptionsFeedProps) {
+templ ChannelsFeed(props types.UserSubscriptionsFeedProps) {
 	<head><title>Feedlr</title></head>
 
 	<div id="app-index" class="flex flex-col gap-4">
@@ -29,6 +29,17 @@ templ AppHome(props types.UserSubscriptionsFeedProps) {
 			</div>
 			@feed.ChannelsFeed("channels-without-videos", props.WithoutNewVideos, len(props.WithoutNewVideos) > 10)
 		}
+	</div>
+
+	@shared.EmbedMinifiedScript(tilesScrollOnHover())
+}
+
+templ VideosFeed(props types.UserVideoFeedProps) {
+	<head><title>Feedlr</title></head>
+
+	<div id="app-index" class="flex flex-col gap-4">
+		@shared.OpenVideoButton()
+		@feed.VideoFeed(props.Videos)
 	</div>
 
 	@shared.EmbedMinifiedScript(tilesScrollOnHover())

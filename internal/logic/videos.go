@@ -2,6 +2,7 @@ package logic
 
 import (
 	"errors"
+	"math"
 	"net/url"
 	"regexp"
 	"strings"
@@ -14,6 +15,46 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+/*
+Returns a list of channel props with videos for all user subscriptions
+*/
+func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
+	// Get channels and convert them to WithVideo props
+	channels, err := GetUserSubscribedChannels(userId)
+	if err != nil {
+		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetUserSubscribedChannels failed to get user subscribed channels"), err)
+	}
+
+	progress, err := GetCompleteUserProgress(userId)
+	if err != nil {
+		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetCompleteUserProgress failed to get user progress"), err)
+	}
+
+	// Get videos for each channel and add them to the props
+	channelsMap := make(map[string]types.ChannelProps)
+	var channelIds []string
+	for _, c := range channels {
+		channelsMap[c.ID] = c
+		channelIds = append(channelIds, c.ID)
+	}
+	allVideos, err := GetLatestVideos(int(math.Max(float64(len(channelIds)), 20)), 0, channelIds...)
+	if err != nil {
+		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos"), err)
+	}
+
+	var feed types.UserVideoFeedProps
+	for _, video := range allVideos {
+		video.Progress = progress[video.ID]
+		feed.Videos = append(feed.Videos, types.VideoWithChannelProps{
+			VideoProps:       video,
+			ChannelID:        video.ChannelID,
+			ChannelTitle:     channelsMap[video.ChannelID].Title,
+			ChannelThumbnail: channelsMap[video.ChannelID].Thumbnail,
+		})
+	}
+	return &feed, nil
+}
 
 /*
 Returns a list of video props for provided channels
@@ -30,18 +71,28 @@ func GetChannelVideos(channelIds ...string) ([]types.VideoProps, error) {
 
 	var props []types.VideoProps
 	for _, vid := range videos {
-		v := types.VideoProps{
-			Video: youtube.Video{
-				ID:          vid.ExternalID,
-				URL:         vid.URL,
-				Title:       vid.Title,
-				Duration:    vid.Duration,
-				Thumbnail:   vid.Thumbnail,
-				Description: vid.Description,
-			},
-			ChannelID: vid.ChannelId,
-		}
-		props = append(props, v)
+		props = append(props, types.VideoModelToProps(&vid))
+	}
+
+	return props, nil
+}
+
+/*
+Returns a chronological list of video props for provided channels
+*/
+func GetLatestVideos(limit int, page int, channelIds ...string) ([]types.VideoProps, error) {
+	if len(channelIds) == 0 {
+		return nil, nil
+	}
+
+	videos, err := database.DefaultClient.GetLatestVideos(limit, page, channelIds...)
+	if err != nil {
+		return nil, errors.Join(errors.New("GetLatestVideos.database.DefaultClient.GetLatestVideos failed to get videos"), err)
+	}
+
+	var props []types.VideoProps
+	for _, vid := range videos {
+		props = append(props, types.VideoModelToProps(&vid))
 	}
 
 	return props, nil
@@ -60,19 +111,7 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
 
-	v := types.VideoProps{
-		Video: youtube.Video{
-			ID:          vid.ExternalID,
-			URL:         vid.URL,
-			Title:       vid.Title,
-			Duration:    vid.Duration,
-			Thumbnail:   vid.Thumbnail,
-			Description: vid.Description,
-		},
-		ChannelID: vid.ChannelId,
-	}
-
-	return v, nil
+	return types.VideoModelToProps(vid), nil
 }
 
 type GetPlayerOptions struct {

@@ -4,44 +4,79 @@ import "fmt"
 import "github.com/cufee/feedlr-yt/internal/types"
 import "github.com/cufee/feedlr-yt/internal/templates/components/icons"
 
-templ VideoFeed(videos []types.VideoProps) {
-	<div class="relative flex w-full gap-1 p-0 space-x-2 overflow-x-scroll shadow-inner md:space-x-4 carousel carousel-center rounded-box" id="components-video-feed">
+templ VideoFeed(videos []types.VideoWithChannelProps) {
+	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4" id="components-video-feed">
 		for _, video := range videos {
-			@VideoTile(video)
+			<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full h-full rounded-lg cursor-pointer group">
+				@VideoCard(video.VideoProps, true)
+				<div class="flex flex-col justify-between gap-1 pt-1 grow">
+					<span class="overflow-hidden text-lg leading-tight truncate whitespace-normal sm:text-md line-clamp-1" style="overflow-wrap: anywhere;">
+						{ video.Title }
+					</span>
+					<div class="flex flex-col">						
+						<span class="overflow-hidden text-gray-500 truncate text-md sm:text-sm">
+							{ video.ChannelTitle }
+						</span>
+					</div>
+				</div>
+			</a>
 		}
 	</div>
 }
 
-templ VideoTile(video types.VideoProps) {
-	<div class="relative overflow-hidden shadow-md video-tile carousel-item rounded-xl overscroll-contain" id={ fmt.Sprintf("video-tile-%s", video.ID) } >
-		if video.Progress < 1 {
-			<button class="absolute z-10 btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm top-2 right-2" title="Mark as watched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v", video.ID, video.Duration+1) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-tile-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-tile-%s-indicator", video.ID) }>
-			  @icons.Check()
-			</button>
-		} else {
-			<button class="absolute z-20 btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm top-2 right-2" title="Mark as unwatched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=0", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-tile-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-tile-%s-indicator", video.ID) }>
-				@icons.Refresh()
-			</button>
+templ VideoCarousel(videos []types.VideoProps) {
+	<div class="relative flex w-full gap-1 p-0 space-x-2 overflow-x-scroll shadow-inner md:space-x-4 carousel carousel-center rounded-box" id="components-video-carousel">
+		for _, video := range videos {
+			<div class="h-44 md:h-60 aspect-video">
+				@VideoTile(video)
+			</div>
 		}
-		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative group">
-			<div class="absolute z-20 top-2 left-2 htmx-indicator" id={ fmt.Sprintf("video-tile-%s-indicator", video.ID) }>
-				<span class="loading loading-spinner loading-lg md:loading-sm"></span>
-			</div>
+	</div>
+}
+
+templ VideoThumbnail(image, alt string) {
+	<div class="relative overflow-hidden">
+		<img class="z-10 hidden object-cover w-full h-full transition-all duration-500 group-hover:scale-110" src={ image } alt={ alt } onload="this.style.display=&#39;block&#39;" />
+		<div class="absolute w-full h-full bg-base-100 animate-pulse" />
+	</div>
+}
+
+templ VideoCard(video types.VideoProps, showProgress bool) {
+	<div class="relative overflow-hidden rounded-lg aspect-video" id={ fmt.Sprintf("video-card-%s", video.ID) }>
+		if showProgress {
 			if video.Progress > 0 {
+				<button class="absolute z-20 btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm top-2 right-2" title="Mark as unwatched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=0", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+					@icons.Refresh()
+				</button>
 				<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-6xl">Watched</div>
+				if video.Duration > 0 {
+					<progress class="absolute bottom-0 left-0 z-10 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(video.Duration) }></progress>
+				}
+			} else {
+				<button class="absolute z-10 btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm top-2 right-2" title="Mark as watched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v", video.ID, video.Duration+1) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+					@icons.Check()
+				</button>
 			}
-			<div class="cursor-pointer aspect-video h-44 md:h-60 ">
-				<img class="z-10 hidden object-cover w-full h-full transition-all duration-500 group-hover:scale-110" src={ video.Thumbnail } alt={ video.Title } onload="this.style.display=&#39;block&#39;" />
-				<div class="absolute w-full h-full bg-base-100 animate-pulse" />
-			</div>
-			<div class="absolute bottom-0 left-0 z-10 flex flex-col w-full gap-1 bg-black md:hidden group-hover:inline-block animate__faster bg-opacity-60 animate__animated animate__slideInUp">
-				<div class="px-2 py-1 font-bold text-center text-white truncate">
-					{ video.Title }
-				</div>
-			</div>
-			if video.Progress > 0 && video.Duration > 0 {
-				<progress class="absolute bottom-0 left-0 z-10 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(video.Duration) }></progress>
-			}
+		}
+		@VideoThumbnail(video.Thumbnail, video.Title)
+	</div>
+}
+
+templ VideoTile(video types.VideoProps) {
+	<div class="relative overflow-hidden video-tile rounded-xl"  >
+		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative group">
+			@VideoCard(video, true)
 		</a>
+	</div>
+}
+
+templ VideoTileWithTitle(video types.VideoProps) {
+	<div class="relative overflow-hidden shadow-md carousel-item rounded-xl w-fit" id={ fmt.Sprintf("video-tile-%s", video.ID) } >
+		@VideoTile(video)
+		<div class="absolute bottom-0 left-0 z-10 flex flex-col w-full gap-1 bg-black md:hidden group-hover:inline-block animate__faster bg-opacity-60 animate__animated animate__slideInUp">
+			<div class="px-2 py-1 font-bold text-center text-white truncate">
+				{ video.Title }
+			</div>
+		</div>
 	</div>
 }

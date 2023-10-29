@@ -19,6 +19,8 @@ type UserSettings struct {
 
 	SponsorBlockEnabled    bool     `json:"sponsorBlockEnabled" bson:"sponsorBlockEnabled"`
 	SponsorBlockCategories []string `json:"sponsorBlockCategories" bson:"sponsorBlockCategories"`
+
+	FeedMode string `json:"feedMode" bson:"feedMode"`
 }
 
 func init() {
@@ -33,6 +35,7 @@ func init() {
 }
 
 type UserSettingsOptions struct {
+	FeedMode               *string
 	SponsorBlockEnabled    *bool
 	SponsorBlockCategories *[]string
 }
@@ -50,6 +53,9 @@ func NewUserSettings(userId primitive.ObjectID, opts ...UserSettingsOptions) *Us
 		}
 		if opts[0].SponsorBlockCategories != nil {
 			settings.SponsorBlockCategories = *opts[0].SponsorBlockCategories
+		}
+		if opts[0].FeedMode != nil {
+			settings.FeedMode = *opts[0].FeedMode
 		}
 	}
 
