@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/url"
 	"regexp"
+
 	"strings"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
@@ -14,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/exp/slices"
 )
 
 /*
@@ -56,6 +58,7 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 			ChannelThumbnail: channelsMap[video.ChannelID].Thumbnail,
 		})
 	}
+	slices.Reverse(feed.NewVideos)
 	return &feed, nil
 }
 
