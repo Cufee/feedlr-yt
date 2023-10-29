@@ -53,6 +53,7 @@ type UserSubscriptionsFeedProps struct {
 
 type UserVideoFeedProps struct {
 	NextUpdate int64
+	NewVideos  []VideoProps
 	Videos     []VideoWithChannelProps
 }
 

@@ -46,6 +46,9 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 	var feed types.UserVideoFeedProps
 	for _, video := range allVideos {
 		video.Progress = progress[video.ID]
+		if video.Progress == 0 {
+			feed.NewVideos = append(feed.NewVideos, video)
+		}
 		feed.Videos = append(feed.Videos, types.VideoWithChannelProps{
 			VideoProps:       video,
 			ChannelID:        video.ChannelID,
