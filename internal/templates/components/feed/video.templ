@@ -11,11 +11,11 @@ templ VideoFeed(videos []types.VideoWithChannelProps) {
 			<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full h-full cursor-pointer rounded-box group">
 				@VideoCard(video.VideoProps, true, true)
 				<div class="flex flex-col justify-between pt-1 grow">
-					<span class="overflow-hidden text-lg leading-tight truncate whitespace-normal sm:text-md line-clamp-1" style="overflow-wrap: anywhere;">
+					<span class="overflow-hidden text-lg leading-tight truncate whitespace-normal md:text-sm line-clamp-1" style="overflow-wrap: anywhere;">
 						{ video.Title }
 					</span>
 					<div class="flex flex-col">						
-						<span class="overflow-hidden text-gray-500 truncate text-md sm:text-sm">
+						<span class="overflow-hidden text-gray-500 truncate text-md md:text-sm">
 							{ video.ChannelTitle }
 						</span>
 					</div>
