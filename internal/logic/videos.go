@@ -2,7 +2,6 @@ package logic
 
 import (
 	"errors"
-	"math"
 	"net/url"
 	"regexp"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
+	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -38,7 +38,7 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 		channelsMap[c.ID] = c
 		channelIds = append(channelIds, c.ID)
 	}
-	allVideos, err := GetLatestVideos(int(math.Max(float64(len(channelIds)), 20)), 0, channelIds...)
+	allVideos, err := GetLatestVideos(utils.MaxInt(len(channelIds), 20), 0, channelIds...)
 	if err != nil {
 		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos"), err)
 	}

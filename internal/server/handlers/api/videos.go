@@ -31,7 +31,7 @@ func PostSaveVideoProgress(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	return c.Render("layouts/blank", feed.VideoCard(props.Video, true))
+	return c.Render("layouts/blank", feed.VideoCard(props.Video, true, true))
 }
 
 type videoOpenInput struct {
