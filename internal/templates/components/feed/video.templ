@@ -53,8 +53,8 @@ templ VideoCard(video types.VideoProps, showProgress, progressActions bool) {
 					<button _="on click halt" class="absolute z-20 btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm top-2 right-2" title="Mark as unwatched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=0", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
 						@icons.Refresh()
 					</button>
-					<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-4xl">Watched</div>
 				}
+				<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-4xl">Watched</div>
 				<progress class="absolute bottom-0 left-0 z-10 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(utils.MaxInt(video.Duration, video.Progress)) }></progress>
 			} else if progressActions {
 				<button _="on click halt" class="absolute z-20 btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm top-2 right-2" title="Mark as watched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v", video.ID, video.Duration+1) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
