@@ -9,7 +9,7 @@ templ App(content ...templ.Component) {
 		@partials.Head()
 		<body class="flex flex-col h-full">
 			<div class="w-full p-2 mx-auto max-w-7xl md:p-0">@partials.Navbar()</div>
-			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 mx-auto max-w-7xl md:p-0">
+			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 mx-auto max-w-7xl md:px-4">
 				for _, c := range content {
 					@c
 				}
