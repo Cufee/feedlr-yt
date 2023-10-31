@@ -14,7 +14,6 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"golang.org/x/exp/slices"
 )
 
 /*
@@ -40,7 +39,7 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 		channelIds = append(channelIds, c.ID)
 	}
 
-	limit := 48                                                // 48 can be divided by 1, 2, 3, 4
+	limit := 24                                                // 48 can be divided by 1, 2, 3, 4
 	allVideos, err := GetLatestVideos(limit, 0, channelIds...) // TODO: pagination
 	if err != nil {
 		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos"), err)
@@ -67,7 +66,6 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 			ChannelThumbnail: channelsMap[video.ChannelID].Thumbnail,
 		})
 	}
-	slices.Reverse(feed.NewVideos)
 	return &feed, nil
 }
 

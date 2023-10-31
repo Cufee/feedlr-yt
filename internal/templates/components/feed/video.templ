@@ -6,7 +6,7 @@ import "github.com/cufee/feedlr-yt/internal/utils"
 import "github.com/cufee/feedlr-yt/internal/templates/components/icons"
 
 templ VideoFeed(videos []types.VideoWithChannelProps) {
-	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4" id="components-video-feed">
+	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3" id="components-video-feed">
 		for _, video := range videos {
 			<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full h-full cursor-pointer rounded-box group">
 				@VideoCard(video.VideoProps, true, true)
