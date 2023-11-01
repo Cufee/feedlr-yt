@@ -13,11 +13,18 @@ import (
 func PostSaveVideoProgress(c *fiber.Ctx) error {
 	video := c.Params("id")
 	user, _ := c.Locals("userId").(string)
+	volume, _ := strconv.Atoi(c.Query("volume"))
 	progress, _ := strconv.Atoi(c.Query("progress"))
 
 	err := logic.UpdateViewProgress(user, video, progress)
 	if err != nil {
-		log.Printf("CountVideoView: %v\n", err)
+		log.Printf("UpdateViewProgress: %v\n", err)
+		return c.SendStatus(fiber.StatusInternalServerError)
+	}
+
+	err = logic.UpdatePlayerVolume(user, volume)
+	if err != nil {
+		log.Printf("UpdatePlayerVolume: %v\n", err)
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
@@ -27,7 +34,7 @@ func PostSaveVideoProgress(c *fiber.Ctx) error {
 
 	props, err := logic.GetPlayerPropsWithOpts(user, video, logic.GetPlayerOptions{WithProgress: true})
 	if err != nil {
-		log.Printf("GetVideoWithProgress: %v\n", err)
+		log.Printf("GetPlayerPropsWithOpts: %v\n", err)
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 

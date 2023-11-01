@@ -21,7 +21,7 @@ func GetOrPostApp(c *fiber.Ctx) error {
 		layout = "layouts/blank"
 	}
 
-	if settings.FeedMore == "channels" || c.Query("view") == "channels" {
+	if settings.FeedMode == "channels" || c.Query("view") == "channels" {
 		props, err := logic.GetUserSubscriptionsProps(userId)
 		if err != nil {
 			log.Printf("GetUserVideosProps: %v", err)

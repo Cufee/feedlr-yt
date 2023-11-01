@@ -21,6 +21,8 @@ type UserSettings struct {
 	SponsorBlockCategories []string `json:"sponsorBlockCategories" bson:"sponsorBlockCategories"`
 
 	FeedMode string `json:"feedMode" bson:"feedMode"`
+
+	PlayerVolumeLevel int `json:"playerVolumeLevel" bson:"playerVolumeLevel"`
 }
 
 func init() {
@@ -36,6 +38,7 @@ func init() {
 
 type UserSettingsOptions struct {
 	FeedMode               *string
+	PlayerVolumeLevel      *int
 	SponsorBlockEnabled    *bool
 	SponsorBlockCategories *[]string
 }
@@ -56,6 +59,9 @@ func NewUserSettings(userId primitive.ObjectID, opts ...UserSettingsOptions) *Us
 		}
 		if opts[0].FeedMode != nil {
 			settings.FeedMode = *opts[0].FeedMode
+		}
+		if opts[0].PlayerVolumeLevel != nil {
+			settings.PlayerVolumeLevel = *opts[0].PlayerVolumeLevel
 		}
 	}
 

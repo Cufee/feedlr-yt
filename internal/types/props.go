@@ -10,7 +10,8 @@ import (
 )
 
 type SettingsPageProps struct {
-	FeedMore     string
+	FeedMode     string
+	PlayerVolume int
 	SponsorBlock SponsorBlockSettingsProps
 }
 
@@ -84,6 +85,8 @@ type SegmentProps struct {
 type VideoPlayerProps struct {
 	Video          VideoProps `json:"video"`
 	ReportProgress bool       `json:"reportProgress"`
+
+	PlayerVolumeLevel int `json:"playerVolumeLevel"`
 
 	SkipSegments     []SegmentProps `json:"skipSegments"`
 	SkipSegmentsJSON string         `json:"skipSegmentsJSON"`

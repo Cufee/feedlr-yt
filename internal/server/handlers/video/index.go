@@ -35,6 +35,7 @@ func VideoHandler(c *fiber.Ctx) error {
 			return c.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&feedlr_error=failed to find video", video))
 		}
 		props.ReportProgress = true
+		props.PlayerVolumeLevel = settings.PlayerVolume
 		if props.Video.Duration > 0 && props.Video.Progress >= props.Video.Duration {
 			props.Video.Progress = 0
 		}

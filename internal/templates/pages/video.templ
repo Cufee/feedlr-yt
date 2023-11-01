@@ -37,7 +37,7 @@ templ videoPlayer(player types.VideoPlayerProps) {
 	<div id="player"></div>
 	<script id="" src="https://www.youtube.com/iframe_api"></script>
 	@shared.EmbedMinifiedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
-	@shared.EmbedMinifiedScript(youtubePlayerInit(player.Video.ID, player.Video.Progress, player.ReportProgress), player.Video.ID, player.Video.Progress, player.ReportProgress)
+	@shared.EmbedMinifiedScript(youtubePlayerInit(player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress), player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress)
 }
 
 templ buttonLogin() {
@@ -62,8 +62,8 @@ script closeVideoHotkey() {
 	})
 }
 
-script youtubePlayerInit(video string, progress int, withProgress bool) {
-	console.log("youtubePlayerInit", video, progress, withProgress)
+script youtubePlayerInit(video string, progress, volume int, withProgress bool) {
+	console.log("youtubePlayerInit", video, progress, volume, withProgress)
 
 	if (withProgress) {
 		setTimeout(() => {
@@ -98,19 +98,23 @@ script youtubePlayerInit(video string, progress int, withProgress bool) {
 		}
 	}, 100)
 
-	function onPlayerReady(event) { document.getElementById("player-loading").classList.add("hidden") }
+	function onPlayerReady(event) { 
+		document.getElementById("player-loading").classList.add("hidden")
+		if (volume > 0) window.feedlr_player.setVolume(volume)
+	}
 	function onPlayerStateChange(event) { 
 		withProgress && saveProgress()
 	}
 	let lastProgress = 0
 	function saveProgress() {
+		const currentVolume = Math.floor(window.feedlr_player.getVolume())
 		const currentTime = Math.floor(window.feedlr_player.getCurrentTime())
 		if (lastProgress === currentTime) {
 			return true
 		}
 		lastProgress = currentTime
 
-		fetch(`/api/videos/${video}/progress?progress=` + currentTime, {
+		fetch(`/api/videos/${video}/progress?progress=${currentTime}&volume=${currentVolume || 100}`, {
 			method: 'POST',
 			credentials: 'include'
 		})
