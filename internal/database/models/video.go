@@ -8,25 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// model Video {
-//   id        String   @id @map("_id")
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   url         String
-//   title       String
-//   duration    Int     @default(0)
-//   thumbnail   String?
-//   description String  @db.String
-
-//   views     VideoView[]
-//   channel   Channel     @relation(fields: [channelId], references: [id], onDelete: Cascade)
-//   channelId String
-
-//   @@index([channelId], name: "channelId")
-//   @@map("videos")
-// }
-
 const VideoCollection = "videos"
 
 type Video struct {

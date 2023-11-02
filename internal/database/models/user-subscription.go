@@ -8,24 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// model UserSubscription {
-//   id        String   @id @default(cuid()) @map("_id")
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   isFavorite Boolean @default(false)
-
-//   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   userId    String
-//   channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-//   channelId String
-
-//   @@index([userId], name: "userId")
-//   @@index([channelId], name: "channelId")
-//   @@index([userId, channelId], name: "userId_channelId")
-//   @@map("user_subscriptions")
-// }
-
 const UserSubscriptionCollection = "user_subscriptions"
 
 type UserSubscription struct {

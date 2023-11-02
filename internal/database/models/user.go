@@ -7,19 +7,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// model User {
-//   id        String   @id @default(cuid()) @map("_id")
-//   authId    String   @unique
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   views         VideoView[]
-//   settings      UserSettings?
-//   subscriptions UserSubscription[]
-
-//   @@map("users")
-// }
-
 const UserCollection = "users"
 
 type User struct {
