@@ -15,14 +15,14 @@ type UserSettings struct {
 	Model `bson:",inline"`
 
 	User   *User              `json:"user" bson:"user,omitempty"`
-	UserId primitive.ObjectID `json:"userId" bson:"userId" field:"required"`
+	UserId primitive.ObjectID `json:"userId" bson:"userId,omitempty"`
 
-	SponsorBlockEnabled    bool     `json:"sponsorBlockEnabled" bson:"sponsorBlockEnabled"`
-	SponsorBlockCategories []string `json:"sponsorBlockCategories" bson:"sponsorBlockCategories"`
+	SponsorBlockEnabled    bool     `json:"sponsorBlockEnabled" bson:"sponsorBlockEnabled,omitempty"`
+	SponsorBlockCategories []string `json:"sponsorBlockCategories" bson:"sponsorBlockCategories,omitempty"`
 
-	FeedMode string `json:"feedMode" bson:"feedMode"`
+	FeedMode string `json:"feedMode" bson:"feedMode,omitempty"`
 
-	PlayerVolumeLevel int `json:"playerVolumeLevel" bson:"playerVolumeLevel"`
+	PlayerVolumeLevel int `json:"playerVolumeLevel" bson:"playerVolumeLevel,omitempty"`
 }
 
 func init() {

@@ -25,7 +25,7 @@ const UserCollection = "users"
 type User struct {
 	Model `bson:",inline"`
 
-	AuthId string `json:"authId" bson:"authId" field:"required"`
+	AuthId string `json:"authId" bson:"authId,omitempty"`
 
 	Views         []VideoView        `json:"views" bson:"views,omitempty"`
 	Settings      *UserSettings      `json:"settings" bson:"settings,omitempty"`

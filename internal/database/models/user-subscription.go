@@ -31,12 +31,12 @@ const UserSubscriptionCollection = "user_subscriptions"
 type UserSubscription struct {
 	Model `bson:",inline"`
 
-	IsFavorite bool `json:"isFavorite" bson:"isFavorite"`
+	IsFavorite bool `json:"isFavorite" bson:"isFavorite,omitempty"`
 
 	InternalUsers    []User             `json:"users" bson:"users,omitempty"`
-	UserId           primitive.ObjectID `json:"userId" bson:"userId" field:"required"`
+	UserId           primitive.ObjectID `json:"userId" bson:"userId,omitempty"`
 	InternalChannels []Channel          `json:"channels" bson:"channels,omitempty"`
-	ChannelId        string             `json:"channelId" bson:"channelId" field:"required"`
+	ChannelId        string             `json:"channelId" bson:"channelId,omitempty"`
 }
 
 func init() {

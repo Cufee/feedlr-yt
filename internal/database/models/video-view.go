@@ -32,11 +32,11 @@ type VideoView struct {
 	Model `bson:",inline"`
 
 	User    *User              `json:"user" bson:"user,omitempty"`
-	UserId  primitive.ObjectID `json:"userId" bson:"userId"`
-	Video   *Video             `json:"video" bson:"video,omitempty"`
-	VideoId string             `json:"videoId" bson:"videoId"`
+	UserId  primitive.ObjectID `json:"userId" bson:"userId,omitempty"`
+	Video   *Video             `json:"video" bson:"video,omitempty,omitempty"`
+	VideoId string             `json:"videoId" bson:"videoId,omitempty"`
 
-	Progress int `json:"progress" bson:"progress"`
+	Progress int `json:"progress" bson:"progress,omitempty"`
 }
 
 func init() {
