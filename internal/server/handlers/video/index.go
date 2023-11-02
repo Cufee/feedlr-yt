@@ -9,6 +9,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/feedlr-yt/internal/templates/pages"
 	"github.com/gofiber/fiber/v2"
+	"github.com/houseme/mobiledetect/ua"
 )
 
 func VideoHandler(c *fiber.Ctx) error {
@@ -34,8 +35,12 @@ func VideoHandler(c *fiber.Ctx) error {
 			log.Printf("GetVideoByID: %v", err)
 			return c.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&feedlr_error=failed to find video", video))
 		}
+
 		props.ReportProgress = true
-		props.PlayerVolumeLevel = settings.PlayerVolume
+		props.PlayerVolumeLevel = 100
+		if ua.New(c.Get("User-Agent")).Desktop() {
+			props.PlayerVolumeLevel = settings.PlayerVolume // Sound controls don't work on mobile
+		}
 		if props.Video.Duration > 0 && props.Video.Progress >= props.Video.Duration {
 			props.Video.Progress = 0
 		}
