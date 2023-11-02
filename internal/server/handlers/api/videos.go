@@ -8,6 +8,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/gofiber/fiber/v2"
+	"github.com/houseme/mobiledetect/ua"
 )
 
 func PostSaveVideoProgress(c *fiber.Ctx) error {
@@ -22,10 +23,13 @@ func PostSaveVideoProgress(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 
-	err = logic.UpdatePlayerVolume(user, volume)
-	if err != nil {
-		log.Printf("UpdatePlayerVolume: %v\n", err)
-		return c.SendStatus(fiber.StatusInternalServerError)
+	if ua.New(c.Get("User-Agent")).Desktop() {
+		// Sound controls don't work on mobile, we always set the volume to 100 there
+		err = logic.UpdatePlayerVolume(user, volume)
+		if err != nil {
+			log.Printf("UpdatePlayerVolume: %v\n", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
 	}
 
 	if c.Get("HX-Request") == "" {
