@@ -87,7 +87,10 @@ func ToggleSponsorBlock(id string, value bool) (types.SettingsPageProps, error) 
 		SponsorBlockEnabled:    &settings.SponsorBlock.SponsorBlockEnabled,
 		SponsorBlockCategories: &settings.SponsorBlock.SelectedSponsorBlockCategories,
 	})
-	return settings, err
+	if err != nil {
+		return types.SettingsPageProps{}, err
+	}
+	return GetUserSettings(id)
 }
 
 func UpdateFeedMode(user, mode string) (types.SettingsPageProps, error) {
