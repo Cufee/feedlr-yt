@@ -21,7 +21,13 @@ type VideoDetails struct {
 
 type PlayerResponse struct {
 	StreamingData      StreamingData      `json:"streamingData"`
+	PlayabilityStatus  PlayabilityStatus  `json:"playabilityStatus"`
 	PlayerVideoDetails PlayerVideoDetails `json:"videoDetails,omitempty"`
+}
+
+type PlayabilityStatus struct {
+	Status string `json:"status"`
+	Reason string `json:"reason"`
 }
 
 type StreamingData struct {
