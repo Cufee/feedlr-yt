@@ -32,11 +32,13 @@ func GetUserSettings(id string) (types.SettingsPageProps, error) {
 	if settings == nil {
 		return defaultSettings, nil
 	}
-	var props = defaultSettings
-	props.PlayerVolume = settings.PlayerVolumeLevel
-	props.SponsorBlock.SponsorBlockEnabled = settings.SponsorBlockEnabled
-	props.SponsorBlock.SelectedSponsorBlockCategories = settings.SponsorBlockCategories
-	return props, nil
+	return types.SettingsPageProps{
+		PlayerVolume: settings.PlayerVolumeLevel,
+		SponsorBlock: types.SponsorBlockSettingsProps{
+			SponsorBlockEnabled:             *settings.SponsorBlockEnabled,
+			AvailableSponsorBlockCategories: sponsorblock.AvailableCategories,
+			SelectedSponsorBlockCategories:  settings.SponsorBlockCategories,
+		}}, nil
 }
 
 func ToggleSponsorBlockCategory(id string, category string) (types.SettingsPageProps, error) {
@@ -63,14 +65,12 @@ func ToggleSponsorBlockCategory(id string, category string) (types.SettingsPageP
 	}
 
 	_, err = database.DefaultClient.UpdateUserSettings(oid, models.UserSettingsOptions{
-		PlayerVolumeLevel:      &settings.PlayerVolume,
-		SponsorBlockEnabled:    &settings.SponsorBlock.SponsorBlockEnabled,
 		SponsorBlockCategories: &settings.SponsorBlock.SelectedSponsorBlockCategories,
 	})
 	return settings, err
 }
 
-func ToggleSponsorBlock(id string, value bool) (types.SettingsPageProps, error) {
+func ToggleSponsorBlock(id string) (types.SettingsPageProps, error) {
 	settings, err := GetUserSettings(id)
 	if err != nil {
 		return types.SettingsPageProps{}, err
@@ -83,14 +83,12 @@ func ToggleSponsorBlock(id string, value bool) (types.SettingsPageProps, error) 
 
 	settings.SponsorBlock.SponsorBlockEnabled = !settings.SponsorBlock.SponsorBlockEnabled
 	_, err = database.DefaultClient.UpdateUserSettings(oid, models.UserSettingsOptions{
-		PlayerVolumeLevel:      &settings.PlayerVolume,
-		SponsorBlockEnabled:    &settings.SponsorBlock.SponsorBlockEnabled,
-		SponsorBlockCategories: &settings.SponsorBlock.SelectedSponsorBlockCategories,
+		SponsorBlockEnabled: &settings.SponsorBlock.SponsorBlockEnabled,
 	})
 	if err != nil {
 		return types.SettingsPageProps{}, err
 	}
-	return GetUserSettings(id)
+	return settings, nil
 }
 
 func UpdateFeedMode(user, mode string) (types.SettingsPageProps, error) {

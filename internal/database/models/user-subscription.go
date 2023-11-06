@@ -60,9 +60,8 @@ type UserSubscriptionOptions struct {
 
 func NewUserSubscription(userId primitive.ObjectID, channelId string, opts ...UserSubscriptionOptions) *UserSubscription {
 	subscription := &UserSubscription{
-		UserId:     userId,
-		ChannelId:  channelId,
-		IsFavorite: false,
+		UserId:    userId,
+		ChannelId: channelId,
 	}
 
 	if len(opts) > 0 {

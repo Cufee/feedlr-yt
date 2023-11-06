@@ -25,9 +25,8 @@ func PostToggleSponsorBlockCategory(c *fiber.Ctx) error {
 
 func PostToggleSponsorBlock(c *fiber.Ctx) error {
 	user, _ := c.Locals("userId").(string)
-	value := c.Query("value")
 
-	updated, err := logic.ToggleSponsorBlock(user, value == "true")
+	updated, err := logic.ToggleSponsorBlock(user)
 	if err != nil {
 		log.Printf("CountVideoView: %v\n", err)
 		return c.SendStatus(fiber.StatusInternalServerError)
