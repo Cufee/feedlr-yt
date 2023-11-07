@@ -11,12 +11,20 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+type VideoType string
+
+const (
+	VideoTypeUpcomingStream VideoType = "upcoming_stream"
+	VideoTypeLiveStream     VideoType = "live_stream"
+	VideoTypeVideo          VideoType = "video"
+	VideoTypeShort          VideoType = "short"
+	VideoTypePrivate        VideoType = "private"
+)
+
 type VideoDetails struct {
 	Video
-	IsShort       bool   `json:"isShort"`
-	IsUnpublished bool   `json:"IsUnpublished"`
-	ChannelID     string `json:"channelId"`
-	Duration      int    `json:"duration"`
+	ChannelID string `json:"channelId"`
+	Duration  int    `json:"duration"`
 }
 
 type PlayerResponse struct {
@@ -100,7 +108,9 @@ type PlayerVideoDetails struct {
 	Author            string    `json:"author"`
 	IsPrivate         bool      `json:"isPrivate"`
 	IsUnpluggedCorpus bool      `json:"isUnpluggedCorpus"`
+	IsLive            bool      `json:"isLive"`
 	IsLiveContent     bool      `json:"isLiveContent"`
+	IsUpcoming        bool      `json:"isUpcoming"`
 }
 
 var defaultClientBodyString = `{"videoId":"","contentCheckOk":true,"racyCheckOk":true,"context":{"client":{"clientName":"WEB","clientVersion":"1.20210616.1.0","platform":"DESKTOP","clientScreen":"EMBED","clientFormFactor":"UNKNOWN_FORM_FACTOR","browserName":"Chrome"},"user":{"lockedSafetyMode":"false"},"request":{"useSsl":"true"}}}`
@@ -146,6 +156,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 	fullDetails := VideoDetails{
 		ChannelID: details.PlayerVideoDetails.ChannelID,
 		Video: Video{
+			Type:        VideoTypeVideo,
 			ID:          details.PlayerVideoDetails.VideoID,
 			Title:       details.PlayerVideoDetails.Title,
 			Duration:    duration,
@@ -156,24 +167,41 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		},
 	}
 
+	// Check if a video is a live stream
+	// Status will not be OK if a video is an upcoming stream
+	if details.PlayerVideoDetails.IsLiveContent {
+		if details.PlayerVideoDetails.IsLive {
+			fullDetails.Type = VideoTypeLiveStream
+		} else {
+			fullDetails.Type = VideoTypeUpcomingStream
+		}
+		return &fullDetails, nil
+	} else if details.PlayabilityStatus.Status != "OK" || details.PlayerVideoDetails.IsPrivate {
+		fullDetails.Type = VideoTypePrivate
+		return &fullDetails, nil
+	}
+
+	// Check if this video is Short
 	if len(details.StreamingData.Formats) > 0 {
 		if fullDetails.Duration == 0 {
 			duration, _ := strconv.Atoi(details.StreamingData.Formats[0].ApproxDurationMs)
 			fullDetails.Duration = duration / 1000
 		}
-		fullDetails.IsShort = details.StreamingData.Formats[0].Width < details.StreamingData.Formats[0].Height
+		if details.StreamingData.Formats[0].Width < details.StreamingData.Formats[0].Height {
+			fullDetails.Type = VideoTypeShort
+		}
 		return &fullDetails, nil
 	}
-
 	if len(details.StreamingData.AdaptiveFormats) > 0 {
 		if fullDetails.Duration == 0 {
 			duration, _ := strconv.Atoi(details.StreamingData.AdaptiveFormats[0].ApproxDurationMs)
 			fullDetails.Duration = duration / 1000
 		}
-		fullDetails.IsShort = details.StreamingData.AdaptiveFormats[0].Width < details.StreamingData.AdaptiveFormats[0].Height
+		if details.StreamingData.AdaptiveFormats[0].Width < details.StreamingData.AdaptiveFormats[0].Height {
+			fullDetails.Type = VideoTypeShort
+		}
 		return &fullDetails, nil
 	}
 
-	fullDetails.IsUnpublished = true
 	return &fullDetails, nil
 }

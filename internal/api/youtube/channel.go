@@ -13,6 +13,7 @@ type Channel struct {
 	Description string
 }
 type Video struct {
+	Type        VideoType
 	ID          string
 	URL         string
 	Title       string

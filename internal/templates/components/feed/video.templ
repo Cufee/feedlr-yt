@@ -62,11 +62,15 @@ templ VideoCard(video types.VideoProps, showProgress, progressActions bool) {
 				</button>
 			}
 		}
-		if video.Duration > 0 {
-			<div class="absolute z-30 px-1 text-sm bg-black bg-opacity-50 rounded-md bottom-2 right-2">
+		<div class="absolute z-30 flex items-center justify-center gap-1 px-1 text-sm bg-black bg-opacity-50 rounded-md bottom-2 right-2">
+			if video.Type == "live_stream" {
+				<div class="w-2 h-2 bg-red-500 rounded-full"></div> STREAM
+			} else if video.Type == "upcoming_stream" {
+				<div class="w-2 h-2 bg-gray-500 rounded-full"></div> STREAM
+			} else {
 				{ secondsToDurationString(video.Duration) }
-			</div>
-		}
+			}
+		</div>
 		@VideoThumbnail(video.Thumbnail, video.Title)
 	</div>
 }
@@ -91,6 +95,9 @@ templ VideoTileWithTitle(video types.VideoProps) {
 }
 
 func secondsToDurationString(seconds int) string {
+	if seconds == 0 {
+		return ""
+	}
 	hours := seconds / 3600
 	minutes := (seconds % 3600) / 60
 	seconds = seconds % 60

@@ -9,7 +9,7 @@ import (
 	"google.golang.org/api/youtube/v3"
 )
 
-type PlayListItemWithDuration struct {
+type PlayListItemWithDetails struct {
 	*youtube.PlaylistItem
 	Duration int
 }
@@ -39,7 +39,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...
 
 	var wg sync.WaitGroup
 	var errChan = make(chan error, len(res.Items))
-	var validVideos = make(chan PlayListItemWithDuration, len(res.Items))
+	var videoDetails = make(chan *VideoDetails, len(res.Items))
 
 	for _, item := range res.Items {
 		if slices.Contains(sipVideoIds, item.Snippet.ResourceId.VideoId) {
@@ -53,47 +53,33 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...
 				errChan <- errors.Join(errors.New("GetPlaylistVideos.youtube.GetVideoPlayerDetails"), err)
 				return
 			}
-			if details.IsShort || details.IsUnpublished {
+			if details.Type == VideoTypeShort {
+				// This app doesn't support shorts at all by design
 				return
 			}
-			validVideos <- PlayListItemWithDuration{
-				PlaylistItem: item,
-				Duration:     details.Duration,
-			}
+			details.PublishedAt = item.Snippet.PublishedAt
+			videoDetails <- details
 		}(item)
 	}
 	wg.Wait()
 	close(errChan)
-	close(validVideos)
+	close(videoDetails)
 
 	if len(errChan) > 0 {
 		return nil, <-errChan
 	}
 
-	var validVideosSlice []PlayListItemWithDuration
-	for item := range validVideos {
-		validVideosSlice = append(validVideosSlice, item)
+	var videos []Video
+	for item := range videoDetails {
+		videos = append(videos, item.Video)
 	}
 
-	sort.Slice(validVideosSlice, func(i, j int) bool {
-		return validVideosSlice[i].Snippet.PublishedAt > validVideosSlice[j].Snippet.PublishedAt
+	sort.Slice(videos, func(i, j int) bool {
+		return videos[i].PublishedAt > videos[j].PublishedAt
 	})
 
-	var videos []Video
-	for _, item := range validVideosSlice {
-		videos = append(videos, Video{
-			ID:          item.Snippet.ResourceId.VideoId,
-			Title:       item.Snippet.Title,
-			Duration:    item.Duration,
-			Description: item.Snippet.Description,
-			PublishedAt: item.Snippet.PublishedAt,
-			Thumbnail:   item.Snippet.Thumbnails.High.Url,
-			URL:         c.BuildVideoEmbedURL(item.Snippet.ResourceId.VideoId),
-		})
-		if len(videos) >= limit {
-			break
-		}
+	if len(videos) > limit {
+		videos = videos[:limit]
 	}
-
 	return videos, nil
 }

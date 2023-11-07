@@ -122,6 +122,7 @@ func VideoToProps(video youtube.Video, channelId string) VideoProps {
 func VideoModelToProps(video *models.Video) VideoProps {
 	return VideoProps{
 		Video: youtube.Video{
+			Type:        youtube.VideoType(video.Type),
 			ID:          video.ExternalID,
 			URL:         video.URL,
 			Title:       video.Title,

@@ -43,6 +43,7 @@ func CacheChannelVideos(channelIds ...string) error {
 			}
 			models = append(models, database.VideoCreateModel{
 				ChannelID:   c,
+				Type:        string(video.Type),
 				ID:          video.ID,
 				URL:         video.URL,
 				Title:       video.Title,

@@ -28,7 +28,7 @@ func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models
 	defer cancel()
 
 	opts := options.Find().SetSort(bson.M{"publishedAt": -1})
-	cur, err := c.Collection(models.VideoCollection).Find(ctx, bson.M{"channelId": bson.M{"$in": channelIds}}, opts)
+	cur, err := c.Collection(models.VideoCollection).Find(ctx, bson.M{"channelId": bson.M{"$in": channelIds}, "type": bson.M{"$ne": "private"}}, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -44,9 +44,9 @@ func (c *Client) GetLatestVideos(limit int, page int, channelIds ...string) ([]m
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	filter := bson.M{}
+	filter := bson.M{"type": bson.M{"$ne": "private"}}
 	if len(channelIds) > 0 {
-		filter = bson.M{"channelId": bson.M{"$in": channelIds}}
+		filter["channelId"] = bson.M{"$in": channelIds}
 	}
 
 	opts := options.Find().SetSort(bson.M{"publishedAt": -1})
@@ -71,7 +71,7 @@ func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, e
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	cur, err := c.Collection(models.VideoCollection).Find(ctx, bson.M{"channelId": id}, opts)
+	cur, err := c.Collection(models.VideoCollection).Find(ctx, bson.M{"channelId": id, "type": bson.M{"$ne": "private"}}, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +83,7 @@ func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, e
 }
 
 type VideoCreateModel struct {
+	Type        string
 	ID          string
 	URL         string
 	Title       string
@@ -96,7 +97,7 @@ type VideoCreateModel struct {
 func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) error {
 	payload := []*models.Video{}
 	for _, video := range videos {
-		v := models.NewVideo(video.ID, video.URL, video.Title, video.ChannelID, video.PublishedAt, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description})
+		v := models.NewVideo(video.ID, video.Type, video.URL, video.Title, video.ChannelID, video.PublishedAt, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description})
 		v.Prepare()
 		payload = append(payload, v)
 	}
