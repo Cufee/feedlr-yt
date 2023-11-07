@@ -21,6 +21,7 @@ templ Video(props types.VideoPlayerProps) {
 		<meta name="twitter:image:alt" content={ props.Video.Title }/>
 	</head>
 	<div class="relative flex items-center justify-start w-full h-full">
+		@shared.EmbedMinifiedScript(hotkeyInterceptScript())
 		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 		@videoPlayer(props)
 		if (props.ReportProgress) {
@@ -28,7 +29,6 @@ templ Video(props types.VideoPlayerProps) {
 		} else {
 			@buttonLogin()
 		}
-		@shared.EmbedMinifiedScript(closeVideoHotkey())
 		<div id="notification-toast" class="opacity-0 transition-all duration-[500ms] ease-out pointer-events-none">@notificationToast("SponsorBlock skipped a video segment")</div>
 	</div>
 }
@@ -54,24 +54,58 @@ templ notificationToast(message string) {
 	</div>
 }
 
-script closeVideoHotkey() {
-	document.addEventListener("keydown", (event) => {
-		if (event.key === "Escape") {
-			window.location.href = "/app"
+script hotkeyInterceptScript() {
+	setInterval(()=>{
+		window.focus()
+	}, 100)
+	window.addEventListener("keydown", (event) => {
+		if (event.keyCode === 27) {
+			event.preventDefault()
+			window.feedlr_player?.pauseVideo()
+			document.getElementById("player-loading").classList.remove("hidden")
+			window.location.assign(window.location.origin + "/app")
+			return false
+		}
+		if (!window.feedlr_player) {
+			return
+		}
+		// Play/Pause
+		if (event.keyCode === 32) {
+			event.preventDefault()
+			if (window.feedlr_player.getPlayerState() === 1) {
+				window.feedlr_player.pauseVideo()
+			} else {
+				window.feedlr_player.playVideo()
+			}
+		}
+		// Seek 5 seconds
+		if (event.keyCode === 37) {
+			event.preventDefault()
+			window.feedlr_player.seekTo(window.feedlr_player.getCurrentTime() - 5, true)
+		}
+		if (event.keyCode === 39) {
+			event.preventDefault()
+			window.feedlr_player.seekTo(window.feedlr_player.getCurrentTime() + 5, true)
+		}
+		// Volume
+		if (event.keyCode === 38) {
+			event.preventDefault()
+			window.feedlr_player.setVolume(window.feedlr_player.getVolume() + 5)
+		}
+		if (event.keyCode === 40) {
+			event.preventDefault()
+			window.feedlr_player.setVolume(window.feedlr_player.getVolume() - 5)
 		}
 	})
 }
 
 script youtubePlayerInit(video string, progress, volume int, withProgress bool) {
-	console.log("youtubePlayerInit", video, progress, volume, withProgress)
-
 	if (withProgress) {
 		setTimeout(() => {
 			document.querySelector("#close-button").addEventListener("click", saveProgress);
 		}, 100)
 		setInterval(saveProgress, 10000)
 	}
-	
 	let player;
 	var frame = document.getElementById("player")
 	const waitForYT = setInterval(() => {
@@ -113,11 +147,10 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 			return true
 		}
 		lastProgress = currentTime
-
 		fetch(`/api/videos/${video}/progress?progress=${currentTime}&volume=${currentVolume || 100}`, {
 			method: 'POST',
 			credentials: 'include'
-		})
+		}).catch(e => console.error(e))
 		return true
 	}
 }
