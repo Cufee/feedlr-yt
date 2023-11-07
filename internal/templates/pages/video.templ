@@ -66,9 +66,15 @@ script hotkeyInterceptScript() {
 			window.location.assign(window.location.origin + "/app")
 			return false
 		}
+		// Check if the player exists
 		if (!window.feedlr_player) {
 			return
 		}
+		// Check all mod keys
+		for (const k of ["Alt", "AltGraph", "Control", "Meta"]) {
+			if (event.getModifierState(k) === true) return
+		}
+
 		// Play/Pause
 		if (event.keyCode === 32) {
 			event.preventDefault()
