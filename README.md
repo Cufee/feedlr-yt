@@ -10,6 +10,13 @@ Feedlr is using the following approach to achieve this:
 
 ## Current State
 The core functionality is fully complete and is working reliably.
+#### Nice To Have
+- A more descriptive landing page with examples
+- Demo page that does not require login
+- An onboarding flow with a tutorial on functionality and available settings
+- Clenup of private videos
+- Marking live streams
+- Database cleanup / ttl indexes on Videos
 
 ### Stack
 - Go [templ](https://templ.guide/) with [HTMX](https://htmx.org/), [Tailwind](https://tailwindcss.com/), [DaisyUI](https://daisyui.com/) and [Hyperscript](https://hyperscript.org/)
