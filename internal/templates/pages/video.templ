@@ -63,7 +63,7 @@ script hotkeyInterceptScript() {
 			event.preventDefault()
 			window.feedlr_player?.pauseVideo()
 			document.getElementById("player-loading").classList.remove("hidden")
-			window.location.assign(window.location.origin + "/app")
+			window.location.href = window.location.origin + "/app"
 			return false
 		}
 		// Check if the player exists
