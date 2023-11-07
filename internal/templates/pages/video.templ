@@ -61,8 +61,6 @@ script hotkeyInterceptScript() {
 	window.addEventListener("keydown", (event) => {
 		if (event.keyCode === 27) {
 			event.preventDefault()
-			window.feedlr_player?.pauseVideo()
-			document.getElementById("player-loading").classList.remove("hidden")
 			window.location.href = window.location.origin + "/app"
 			return false
 		}
