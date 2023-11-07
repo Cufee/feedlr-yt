@@ -181,13 +181,12 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		ChannelID: details.PlayerVideoDetails.ChannelID,
 		Video: Video{
 			Type:        VideoTypeVideo,
-			ID:          details.PlayerVideoDetails.VideoID,
+			ID:          videoId,
 			Title:       details.PlayerVideoDetails.Title,
 			Duration:    duration,
-			PublishedAt: time.Now().Format(time.RFC3339),
 			Description: details.PlayerVideoDetails.ShortDescription,
-			Thumbnail:   c.BuildVideoThumbnailURL(details.PlayerVideoDetails.VideoID),
-			URL:         c.BuildVideoEmbedURL(details.PlayerVideoDetails.VideoID),
+			Thumbnail:   c.BuildVideoThumbnailURL(videoId),
+			URL:         c.BuildVideoEmbedURL(videoId),
 		},
 	}
 	if details.Microformat.PlayerMicroformatRenderer.PublishDate != "" {

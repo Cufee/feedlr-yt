@@ -57,6 +57,9 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...
 				// This app doesn't support shorts at all by design
 				return
 			}
+			details.Title = item.Snippet.Title
+			details.ChannelID = item.Snippet.ChannelId
+			details.Description = item.Snippet.Description
 			details.PublishedAt = item.Snippet.PublishedAt
 			videoDetails <- details
 		}(item)

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/url"
 	"regexp"
-	"time"
 
 	"strings"
 
@@ -129,17 +128,12 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 }
 
 func UpdateVideoCache(videoId string) error {
-	video, err := youtube.DefaultClient.GetVideoPlayerDetails(videoId)
+	video, err := youtube.DefaultClient.GetVideoByID(videoId)
 	if err != nil {
 		return errors.Join(errors.New("UpdateVideoCache.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
 	}
 
-	publishedAt, err := time.Parse(time.RFC3339, video.PublishedAt)
-	if err != nil {
-		return errors.Join(errors.New("UpdateVideoCache.time.Parse failed to parse publishedAt"), err)
-	}
-	err = database.DefaultClient.UpdateVideos(true, database.VideoCreateModel{
-		ChannelID:   video.ChannelID,
+	err = database.DefaultClient.UpdateVideos(false, database.VideoCreateModel{
 		Type:        string(video.Type),
 		ID:          video.ID,
 		URL:         video.URL,
@@ -147,7 +141,6 @@ func UpdateVideoCache(videoId string) error {
 		Duration:    video.Duration,
 		Thumbnail:   video.Thumbnail,
 		Description: video.Description,
-		PublishedAt: publishedAt,
 	})
 	return err
 }
