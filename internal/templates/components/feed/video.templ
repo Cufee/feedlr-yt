@@ -64,9 +64,9 @@ templ VideoCard(video types.VideoProps, showProgress, progressActions bool) {
 		}
 		<div class="absolute z-30 flex items-center justify-center gap-1 px-1 text-sm bg-black bg-opacity-50 rounded-md bottom-2 right-2">
 			if video.Type == "live_stream" {
-				<div class="w-2 h-2 bg-red-500 rounded-full"></div> STREAM
+				<div class="w-2 h-2 bg-red-500 rounded-full"></div> LIVE
 			} else if video.Type == "upcoming_stream" {
-				<div class="w-2 h-2 bg-gray-500 rounded-full"></div> STREAM
+				<div class="w-2 h-2 bg-gray-500 rounded-full"></div>
 			} else {
 				{ secondsToDurationString(video.Duration) }
 			}
