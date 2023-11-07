@@ -39,7 +39,6 @@ func SubscribeHandler(c *fiber.Ctx) error {
 
 	props, err := logic.NewSubscription(userId, channelId)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 

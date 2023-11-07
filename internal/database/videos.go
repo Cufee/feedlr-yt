@@ -94,6 +94,29 @@ type VideoCreateModel struct {
 	Thumbnail   string
 }
 
+func (c *Client) UpdateVideos(upsert bool, videos ...VideoCreateModel) error {
+	payload := []*models.Video{}
+	for _, video := range videos {
+		v := models.NewVideo(video.ID, video.Type, video.URL, video.Title, video.ChannelID, video.PublishedAt, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description})
+		v.Prepare()
+		payload = append(payload, v)
+	}
+
+	var writes []mongo.WriteModel
+	for _, video := range payload {
+		model := mongo.NewUpdateOneModel()
+		model.SetUpsert(upsert)
+		model.SetUpdate(bson.M{"$set": video})
+		model.SetFilter(bson.M{"eid": video.ExternalID})
+		writes = append(writes, model)
+	}
+
+	ctx, cancel := c.Ctx()
+	defer cancel()
+	_, err := c.Collection(models.VideoCollection).BulkWrite(ctx, writes)
+	return err
+}
+
 func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) error {
 	payload := []*models.Video{}
 	for _, video := range videos {

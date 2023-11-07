@@ -30,7 +30,8 @@ type VideoDetails struct {
 type PlayerResponse struct {
 	StreamingData      StreamingData      `json:"streamingData"`
 	PlayabilityStatus  PlayabilityStatus  `json:"playabilityStatus"`
-	PlayerVideoDetails PlayerVideoDetails `json:"videoDetails,omitempty"`
+	PlayerVideoDetails PlayerVideoDetails `json:"videoDetails"`
+	Microformat        Microformat        `json:"microformat"`
 }
 
 type PlayabilityStatus struct {
@@ -38,6 +39,29 @@ type PlayabilityStatus struct {
 	Reason string `json:"reason"`
 }
 
+type Microformat struct {
+	PlayerMicroformatRenderer PlayerMicroformatRenderer `json:"playerMicroformatRenderer"`
+}
+type PlayerMicroformatRenderer struct {
+	Thumbnail            Thumbnail            `json:"thumbnail"`
+	LengthSeconds        string               `json:"lengthSeconds"`
+	OwnerProfileURL      string               `json:"ownerProfileUrl"`
+	ExternalChannelID    string               `json:"externalChannelId"`
+	IsFamilySafe         bool                 `json:"isFamilySafe"`
+	AvailableCountries   []string             `json:"availableCountries"`
+	IsUnlisted           bool                 `json:"isUnlisted"`
+	HasYpcMetadata       bool                 `json:"hasYpcMetadata"`
+	ViewCount            string               `json:"viewCount"`
+	Category             string               `json:"category"`
+	PublishDate          string               `json:"publishDate"`
+	OwnerChannelName     string               `json:"ownerChannelName"`
+	LiveBroadcastDetails LiveBroadcastDetails `json:"liveBroadcastDetails"`
+	UploadDate           string               `json:"uploadDate"`
+}
+type LiveBroadcastDetails struct {
+	IsLiveNow    bool      `json:"isLiveNow"`
+	EndTimestamp time.Time `json:"endTimestamp"`
+}
 type StreamingData struct {
 	ExpiresInSeconds string            `json:"expiresInSeconds"`
 	Formats          []Formats         `json:"formats"`
@@ -165,6 +189,9 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 			Thumbnail:   c.BuildVideoThumbnailURL(details.PlayerVideoDetails.VideoID),
 			URL:         c.BuildVideoEmbedURL(details.PlayerVideoDetails.VideoID),
 		},
+	}
+	if details.Microformat.PlayerMicroformatRenderer.PublishDate != "" {
+		fullDetails.Video.PublishedAt = details.Microformat.PlayerMicroformatRenderer.PublishDate
 	}
 
 	// Check if a video is a live stream

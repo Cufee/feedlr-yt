@@ -10,7 +10,7 @@ import (
 
 func TestGetPlaylistVideos(t *testing.T) {
 	client := NewClient(utils.MustGetEnv("YOUTUBE_API_KEY"))
-	playlist, err := client.GetChannelUploadPlaylistID("UCQSG4J_ssXdZXI4b36RpkRQ")
+	playlist, err := client.GetChannelUploadPlaylistID("UCUyeluBRhGPCW4rPe_UvBZQ")
 	if err != nil {
 		t.Error(err)
 	}
