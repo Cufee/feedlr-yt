@@ -5,10 +5,13 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/goccy/go-json"
 )
 
 type SettingsPageProps struct {
+	FeedMode     string
+	PlayerVolume int
 	SponsorBlock SponsorBlockSettingsProps
 }
 
@@ -49,6 +52,12 @@ type UserSubscriptionsFeedProps struct {
 	All              []ChannelWithVideosProps
 }
 
+type UserVideoFeedProps struct {
+	NextUpdate int64
+	NewVideos  []VideoProps
+	Videos     []VideoWithChannelProps
+}
+
 type ChannelWithVideosProps struct {
 	ChannelProps
 	Videos   []VideoProps
@@ -61,6 +70,13 @@ type VideoProps struct {
 	Progress  int
 }
 
+type VideoWithChannelProps struct {
+	VideoProps
+	ChannelID        string
+	ChannelTitle     string
+	ChannelThumbnail string
+}
+
 type SegmentProps struct {
 	Start int `json:"start"`
 	End   int `json:"end"`
@@ -69,6 +85,8 @@ type SegmentProps struct {
 type VideoPlayerProps struct {
 	Video          VideoProps `json:"video"`
 	ReportProgress bool       `json:"reportProgress"`
+
+	PlayerVolumeLevel int `json:"playerVolumeLevel"`
 
 	SkipSegments     []SegmentProps `json:"skipSegments"`
 	SkipSegmentsJSON string         `json:"skipSegmentsJSON"`
@@ -98,5 +116,20 @@ func VideoToProps(video youtube.Video, channelId string) VideoProps {
 	return VideoProps{
 		Video:     video,
 		ChannelID: channelId,
+	}
+}
+
+func VideoModelToProps(video *models.Video) VideoProps {
+	return VideoProps{
+		Video: youtube.Video{
+			ID:          video.ExternalID,
+			URL:         video.URL,
+			Title:       video.Title,
+			Duration:    video.Duration,
+			Thumbnail:   video.Thumbnail,
+			PublishedAt: video.PublishedAt.String(),
+			Description: video.Description,
+		},
+		ChannelID: video.ChannelId,
 	}
 }

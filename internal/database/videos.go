@@ -39,6 +39,30 @@ func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models
 	return videos, nil
 }
 
+func (c *Client) GetLatestVideos(limit int, page int, channelIds ...string) ([]models.Video, error) {
+	videos := []models.Video{}
+	ctx, cancel := c.Ctx()
+	defer cancel()
+
+	filter := bson.M{}
+	if len(channelIds) > 0 {
+		filter = bson.M{"channelId": bson.M{"$in": channelIds}}
+	}
+
+	opts := options.Find().SetSort(bson.M{"publishedAt": -1})
+	opts.SetSkip(int64(page * limit))
+	opts.SetLimit(int64(limit))
+	cur, err := c.Collection(models.VideoCollection).Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	err = cur.All(ctx, &videos)
+	if err != nil {
+		return nil, err
+	}
+	return videos, nil
+}
+
 func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, error) {
 	videos := []models.Video{}
 	opts := options.Find()

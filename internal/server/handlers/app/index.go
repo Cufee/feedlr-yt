@@ -11,13 +11,9 @@ import (
 func GetOrPostApp(c *fiber.Ctx) error {
 	userId, _ := c.Locals("userId").(string)
 
-	subscriptions, err := logic.GetUserSubscriptionsProps(userId)
+	settings, err := logic.GetUserSettings(userId)
 	if err != nil {
-		log.Printf("GetUserSubscriptionsProps: %v", err)
-		return c.Redirect("/error?message=Something went wrong")
-	}
-	if len(subscriptions.All) == 0 {
-		return c.Redirect("/app/onboarding")
+		return err
 	}
 
 	layout := "layouts/app"
@@ -25,5 +21,26 @@ func GetOrPostApp(c *fiber.Ctx) error {
 		layout = "layouts/blank"
 	}
 
-	return c.Render(layout, app.AppHome(*subscriptions))
+	if settings.FeedMode == "channels" || c.Query("view") == "channels" {
+		props, err := logic.GetUserSubscriptionsProps(userId)
+		if err != nil {
+			log.Printf("GetUserVideosProps: %v", err)
+			return c.Redirect("/error?message=Something went wrong")
+		}
+		if len(props.All) == 0 {
+			return c.Redirect("/app/onboarding")
+		}
+		return c.Render(layout, app.ChannelsFeed(*props))
+	}
+
+	props, err := logic.GetUserVideosProps(userId)
+	if err != nil {
+		log.Printf("GetUserVideosProps: %v", err)
+		return c.Redirect("/error?message=Something went wrong")
+	}
+	if len(props.Videos) == 0 {
+		return c.Redirect("/app/onboarding")
+	}
+
+	return c.Render(layout, app.VideosFeed(*props))
 }

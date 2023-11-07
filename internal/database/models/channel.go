@@ -12,12 +12,12 @@ const ChannelCollection = "channels"
 
 type Channel struct {
 	Model      `bson:",inline"`
-	ExternalID string `json:"eid" bson:"eid"`
+	ExternalID string `json:"eid" bson:"eid,omitempty"`
 
-	URL         string `json:"url" bson:"url" field:"required"`
-	Title       string `json:"title" bson:"title" field:"required"`
-	Thumbnail   string `json:"thumbnail" bson:"thumbnail"`
-	Description string `json:"description" bson:"description"`
+	URL         string `json:"url" bson:"url,omitempty"`
+	Title       string `json:"title" bson:"title,omitempty"`
+	Thumbnail   string `json:"thumbnail" bson:"thumbnail,omitempty"`
+	Description string `json:"description" bson:"description,omitempty"`
 
 	Videos        []Video            `json:"videos" bson:"videos,omitempty"`
 	Subscriptions []UserSubscription `json:"subscriptions" bson:"subscriptions,omitempty"`

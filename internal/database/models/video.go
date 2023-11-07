@@ -8,41 +8,22 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// model Video {
-//   id        String   @id @map("_id")
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   url         String
-//   title       String
-//   duration    Int     @default(0)
-//   thumbnail   String?
-//   description String  @db.String
-
-//   views     VideoView[]
-//   channel   Channel     @relation(fields: [channelId], references: [id], onDelete: Cascade)
-//   channelId String
-
-//   @@index([channelId], name: "channelId")
-//   @@map("videos")
-// }
-
 const VideoCollection = "videos"
 
 type Video struct {
 	Model      `bson:",inline"`
-	ExternalID string `json:"eid" bson:"eid"`
+	ExternalID string `json:"eid" bson:"eid,omitempty"`
 
-	URL         string    `json:"url" bson:"url" field:"required"`
-	Title       string    `json:"title" bson:"title" field:"required"`
-	Duration    int       `json:"duration" bson:"duration"`
-	Thumbnail   string    `json:"thumbnail" bson:"thumbnail"`
-	Description string    `json:"description" bson:"description"`
-	PublishedAt time.Time `json:"publishedAt" bson:"publishedAt"`
+	URL         string    `json:"url" bson:"url,omitempty"`
+	Title       string    `json:"title" bson:"title,omitempty"`
+	Duration    int       `json:"duration" bson:"duration,omitempty"`
+	Thumbnail   string    `json:"thumbnail" bson:"thumbnail,omitempty"`
+	Description string    `json:"description" bson:"description,omitempty"`
+	PublishedAt time.Time `json:"publishedAt" bson:"publishedAt,omitempty"`
 
 	Views     []VideoView `json:"views" bson:"views,omitempty"`
 	Channel   *Channel    `json:"channel" bson:"channel,omitempty"`
-	ChannelId string      `json:"channelId" bson:"channelId" field:"required"`
+	ChannelId string      `json:"channelId" bson:"channelId,omitempty"`
 }
 
 func init() {

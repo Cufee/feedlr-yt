@@ -19,7 +19,7 @@ templ ChannelsFeed(id string, channels []types.ChannelWithVideosProps, withSearc
 					</div>
 					<div class="relative flex items-center justify-center flex-grow h-44 md:h-60">
 						if len(channel.Videos) > 0 {
-							@VideoFeed(channel.Videos)
+							@VideoCarousel(channel.Videos)
 						} else {
 							<span class="text-xl font-bold text-center md:text-2xl">There are no videos from { channel.Title }just yet</span>
 						}

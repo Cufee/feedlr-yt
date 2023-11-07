@@ -7,25 +7,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// model User {
-//   id        String   @id @default(cuid()) @map("_id")
-//   authId    String   @unique
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   views         VideoView[]
-//   settings      UserSettings?
-//   subscriptions UserSubscription[]
-
-//   @@map("users")
-// }
-
 const UserCollection = "users"
 
 type User struct {
 	Model `bson:",inline"`
 
-	AuthId string `json:"authId" bson:"authId" field:"required"`
+	AuthId string `json:"authId" bson:"authId,omitempty"`
 
 	Views         []VideoView        `json:"views" bson:"views,omitempty"`
 	Settings      *UserSettings      `json:"settings" bson:"settings,omitempty"`

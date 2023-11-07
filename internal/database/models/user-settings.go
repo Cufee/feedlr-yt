@@ -15,10 +15,14 @@ type UserSettings struct {
 	Model `bson:",inline"`
 
 	User   *User              `json:"user" bson:"user,omitempty"`
-	UserId primitive.ObjectID `json:"userId" bson:"userId" field:"required"`
+	UserId primitive.ObjectID `json:"userId" bson:"userId,omitempty"`
 
-	SponsorBlockEnabled    bool     `json:"sponsorBlockEnabled" bson:"sponsorBlockEnabled"`
-	SponsorBlockCategories []string `json:"sponsorBlockCategories" bson:"sponsorBlockCategories"`
+	SponsorBlockEnabled    *bool    `json:"sponsorBlockEnabled" bson:"sponsorBlockEnabled,omitempty"`
+	SponsorBlockCategories []string `json:"sponsorBlockCategories" bson:"sponsorBlockCategories,omitempty"`
+
+	FeedMode string `json:"feedMode" bson:"feedMode,omitempty"`
+
+	PlayerVolumeLevel int `json:"playerVolumeLevel" bson:"playerVolumeLevel,omitempty"`
 }
 
 func init() {
@@ -33,23 +37,29 @@ func init() {
 }
 
 type UserSettingsOptions struct {
+	FeedMode               *string
+	PlayerVolumeLevel      *int
 	SponsorBlockEnabled    *bool
 	SponsorBlockCategories *[]string
 }
 
 func NewUserSettings(userId primitive.ObjectID, opts ...UserSettingsOptions) *UserSettings {
 	settings := &UserSettings{
-		UserId:                 userId,
-		SponsorBlockEnabled:    true,
-		SponsorBlockCategories: []string{},
+		UserId: userId,
 	}
 
 	if len(opts) > 0 {
 		if opts[0].SponsorBlockEnabled != nil {
-			settings.SponsorBlockEnabled = *opts[0].SponsorBlockEnabled
+			settings.SponsorBlockEnabled = opts[0].SponsorBlockEnabled
 		}
 		if opts[0].SponsorBlockCategories != nil {
 			settings.SponsorBlockCategories = *opts[0].SponsorBlockCategories
+		}
+		if opts[0].FeedMode != nil {
+			settings.FeedMode = *opts[0].FeedMode
+		}
+		if opts[0].PlayerVolumeLevel != nil {
+			settings.PlayerVolumeLevel = *opts[0].PlayerVolumeLevel
 		}
 	}
 
