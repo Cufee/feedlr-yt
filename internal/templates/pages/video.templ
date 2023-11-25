@@ -13,6 +13,7 @@ templ Video(props types.VideoPlayerProps) {
 		<meta property="og:title" content={ props.Video.Title }/>
 		<meta property="og:type" content="video.episode"/>
 		<meta property="og:description" content={ props.Video.Description }/>
+		<meta property="og:video:duration" content={ fmt.Sprint(props.Video.Duration) } />
 		<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
 		<meta name="twitter:card" content="summary_large_image"/>
 		<meta name="twitter:title" content={ props.Video.Title }/>
