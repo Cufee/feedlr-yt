@@ -195,7 +195,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 
 	// Check if a video is a live stream
 	// Status will not be OK if a video is an upcoming stream
-	if details.PlayerVideoDetails.IsLiveContent {
+	if details.PlayerVideoDetails.IsLiveContent && duration == 0 {
 		if details.PlayerVideoDetails.IsLive {
 			fullDetails.Type = VideoTypeLiveStream
 		} else {
