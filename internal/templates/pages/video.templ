@@ -2,10 +2,20 @@ package pages
 
 import (
 	"fmt"
+	"time"
+	"github.com/sosodev/duration"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 )
+
+func durationToString(videoDuration int) string {
+	d := duration.FromTimeDuration(time.Duration(videoDuration))
+	if d == nil {
+		return ""
+	}
+	return d.String()
+}
 
 templ Video(props types.VideoPlayerProps) {
 	<head>
@@ -15,6 +25,7 @@ templ Video(props types.VideoPlayerProps) {
 		<meta property="og:description" content={ props.Video.Description }/>
 		<meta property="og:video:duration" content={ fmt.Sprint(props.Video.Duration) } />
 		<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
+		<meta itemprop="duration" content={ durationToString(props.Video.Duration) } />
 		<meta name="twitter:card" content="summary_large_image"/>
 		<meta name="twitter:title" content={ props.Video.Title }/>
 		<meta name="twitter:description" content={ props.Video.Description }/>

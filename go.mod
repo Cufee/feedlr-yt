@@ -14,6 +14,7 @@ require (
 	github.com/houseme/mobiledetect v1.2.1
 	github.com/joho/godotenv v1.5.1
 	github.com/segmentio/ksuid v1.0.4
+	github.com/sosodev/duration v1.2.0
 	github.com/tdewolff/minify/v2 v2.20.6
 	go.mongodb.org/mongo-driver v1.12.1
 	golang.org/x/oauth2 v0.13.0
