@@ -153,6 +153,9 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 	}
 	function onPlayerStateChange(event) { 
 		withProgress && saveProgress()
+		if (event.data === 0) {
+			window.location.href = window.location.origin + "/app"
+		}
 	}
 	let lastProgress = 0
 	function saveProgress() {
