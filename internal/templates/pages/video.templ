@@ -115,6 +115,7 @@ script hotkeyInterceptScript() {
 }
 
 script youtubePlayerInit(video string, progress, volume int, withProgress bool) {
+	const pageLoadTime = new Date()
 	if (withProgress) {
 		setTimeout(() => {
 			document.querySelector("#close-button").addEventListener("click", saveProgress);
@@ -153,7 +154,7 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 	}
 	function onPlayerStateChange(event) { 
 		withProgress && saveProgress()
-		if (event.data === 0) {
+		if (event.data === 0 && pageLoadTime < new Date() - 5000) {
 			window.location.href = window.location.origin + "/app"
 		}
 	}
