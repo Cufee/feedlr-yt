@@ -9,6 +9,6 @@ templ DemoVideosFeed(props types.UserVideoFeedProps) {
 
 	<div id="demo-app-index" class="flex flex-col gap-4 px-4 md:px-0">
 		@shared.OpenVideoButton()
-		@feed.VideoFeed(props.Videos, false)
+		@feed.VideoFeed(props.Videos, false, true)
 	</div>
 }

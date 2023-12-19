@@ -10,16 +10,56 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (c *Client) GetVideoByID(id string) (*models.Video, error) {
-	video := &models.Video{}
+type GetVideoOptions struct {
+	WithChannel bool
+}
+
+func (c *Client) GetVideoByID(id string, opts ...GetVideoOptions) (*models.Video, error) {
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	err := c.Collection(models.VideoCollection).FindOne(ctx, bson.M{"eid": id}).Decode(video)
+	var options GetVideoOptions
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
+	if !options.WithChannel {
+		video := &models.Video{}
+		err := c.Collection(video.CollectionName()).FindOne(ctx, bson.M{"eid": id}).Decode(video)
+		if err != nil {
+			return nil, err
+		}
+		return video, nil
+	}
+
+	var stages []interface{}
+	stages = append(stages, bson.M{"$match": bson.M{"eid": id}})
+	stages = append(stages, bson.M{"$limit": 1})
+	if options.WithChannel {
+		lookup := bson.M{
+			"from":         models.ChannelCollection,
+			"localField":   "channelId",
+			"foreignField": "eid",
+			"as":           "channel",
+		}
+		stages = append(stages, bson.M{"$lookup": lookup})
+		stages = append(stages, bson.M{"$addFields": bson.M{"channel": bson.M{"$arrayElemAt": bson.A{"$channel", 0}}}})
+	}
+
+	var videos []models.Video
+	cur, err := c.Collection(models.VideoCollection).Aggregate(ctx, stages)
 	if err != nil {
 		return nil, err
 	}
-	return video, nil
+	err = cur.All(ctx, &videos)
+	if err != nil {
+		return nil, err
+	}
+	if len(videos) == 0 {
+		return nil, mongo.ErrNoDocuments
+	}
+
+	return &videos[0], nil
 }
 
 func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models.Video, error) {
@@ -136,24 +176,12 @@ func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) error {
 	return err
 }
 
-func (c *Client) GetUserVideoView(user primitive.ObjectID, video string) (*models.VideoView, error) {
-	view := &models.VideoView{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	err := c.Collection(models.VideoViewCollection).FindOne(ctx, bson.M{"userId": user, "videoId": video}).Decode(view)
-	if err != nil {
-		return nil, err
-	}
-	return view, nil
-}
-
-func (c *Client) GetAllUserViews(user primitive.ObjectID) ([]models.VideoView, error) {
+func (c *Client) GetUserViews(user primitive.ObjectID, videos ...string) ([]models.VideoView, error) {
 	views := []models.VideoView{}
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	cur, err := c.Collection(models.VideoViewCollection).Find(ctx, bson.M{"userId": user})
+	cur, err := c.Collection(models.VideoViewCollection).Find(ctx, bson.M{"userId": user, "videoId": bson.M{"$in": videos}})
 	if err != nil {
 		return nil, err
 	}

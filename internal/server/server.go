@@ -9,6 +9,7 @@ import (
 	root "github.com/cufee/feedlr-yt/internal/server/handlers"
 	apiHandlers "github.com/cufee/feedlr-yt/internal/server/handlers/api"
 	appHandlers "github.com/cufee/feedlr-yt/internal/server/handlers/app"
+	"github.com/cufee/feedlr-yt/internal/server/handlers/channel"
 	"github.com/cufee/feedlr-yt/internal/server/handlers/video"
 	"github.com/cufee/feedlr-yt/internal/templates"
 	"github.com/cufee/feedlr-yt/internal/utils"
@@ -59,13 +60,13 @@ func New(assets fs.FS, port ...int) func() error {
 
 		// Routes with unique auth handlers
 		server.Get("/video/:id", video.VideoHandler)
+		server.Get("/channel/:id", channel.ChannelHandler)
 
 		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
 		api.Post("/videos/:id/progress", apiHandlers.PostSaveVideoProgress)
 		api.Post("/videos/open", apiHandlers.PostVideoOpen)
 
 		api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
-		api.Post("/channels/:id/favorite", apiHandlers.PostFavoriteChannel)
 		api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
 		api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
 

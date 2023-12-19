@@ -3,10 +3,12 @@ package database
 import (
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type ChannelGetOptions struct {
 	WithVideos        bool
+	VideosLimit       int
 	WithSubscriptions bool
 }
 
@@ -31,14 +33,20 @@ func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]models.Channel, er
 
 	var stages []interface{}
 	if options.WithVideos {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.VideoCollection,
-				"localField":   "eid",
-				"foreignField": "channelId",
-				"as":           "videos",
-			},
-		})
+		lookup := bson.M{
+			"from":         models.VideoCollection,
+			"localField":   "eid",
+			"foreignField": "channelId",
+			"as":           "videos",
+		}
+		if options.VideosLimit > 0 {
+			lookup["let"] = bson.M{"indicator_id": "$eid"}
+			lookup["pipeline"] = mongo.Pipeline{
+				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}}}},
+				{{Key: "$limit", Value: options.VideosLimit}},
+			}
+		}
+		stages = append(stages, bson.M{"$lookup": lookup})
 	}
 	if options.WithSubscriptions {
 		stages = append(stages, bson.M{

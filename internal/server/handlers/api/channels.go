@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/cufee/feedlr-yt/internal/logic"
-	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
 	"github.com/gofiber/fiber/v2"
 )
@@ -59,17 +58,4 @@ func UnsubscribeHandler(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusOK)
-}
-
-func PostFavoriteChannel(c *fiber.Ctx) error {
-	id := c.Params("id")
-	userId, _ := c.Locals("userId").(string)
-
-	updated, err := logic.ToggleSubscriptionIsFavorite(userId, id)
-	if err != nil {
-		log.Print("ToggleSubscriptionIsFavorite", err)
-		return err
-	}
-
-	return c.Render("layouts/blank", feed.ChannelFavoriteButton(id, updated))
 }

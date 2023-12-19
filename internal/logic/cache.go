@@ -68,8 +68,8 @@ func CacheChannelVideos(channelIds ...string) error {
 /*
 Saves the channel to the database if it doesn't exist already and returns the channel model
 */
-func CacheChannel(channelId string) (*models.Channel, error) {
-	exists, err := database.DefaultClient.GetChannel(channelId)
+func CacheChannel(channelId string, opts ...database.ChannelGetOptions) (*models.Channel, error) {
+	exists, err := database.DefaultClient.GetChannel(channelId, opts...)
 	if err == nil {
 		return exists, nil
 	}

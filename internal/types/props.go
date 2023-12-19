@@ -5,7 +5,6 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
-	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/goccy/go-json"
 )
 
@@ -44,37 +43,24 @@ func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
 	}
 }
 
-type UserSubscriptionsFeedProps struct {
-	NextUpdate       int64
-	Favorites        []ChannelWithVideosProps
-	WithNewVideos    []ChannelWithVideosProps
-	WithoutNewVideos []ChannelWithVideosProps
-	All              []ChannelWithVideosProps
+type UserVideoFeedProps struct {
+	Videos []VideoProps
 }
 
-type UserVideoFeedProps struct {
-	NextUpdate int64
-	NewVideos  []VideoProps
-	Videos     []VideoWithChannelProps
+type ChannelPageProps struct {
+	Authenticated bool
+	Channel       ChannelWithVideosProps
 }
 
 type ChannelWithVideosProps struct {
 	ChannelProps
-	Videos   []VideoProps
-	CaughtUp bool
+	Videos []VideoProps
 }
 
 type VideoProps struct {
 	youtube.Video
-	ChannelID string
-	Progress  int
-}
-
-type VideoWithChannelProps struct {
-	VideoProps
-	ChannelID        string
-	ChannelTitle     string
-	ChannelThumbnail string
+	Progress int
+	Channel  ChannelProps
 }
 
 type SegmentProps struct {
@@ -110,27 +96,4 @@ func (v *VideoPlayerProps) AddSegments(segments ...sponsorblock.Segment) error {
 	}
 	v.SkipSegmentsJSON = string(encoded)
 	return nil
-}
-
-func VideoToProps(video youtube.Video, channelId string) VideoProps {
-	return VideoProps{
-		Video:     video,
-		ChannelID: channelId,
-	}
-}
-
-func VideoModelToProps(video *models.Video) VideoProps {
-	return VideoProps{
-		Video: youtube.Video{
-			Type:        youtube.VideoType(video.Type),
-			ID:          video.ExternalID,
-			URL:         video.URL,
-			Title:       video.Title,
-			Duration:    video.Duration,
-			Thumbnail:   video.Thumbnail,
-			PublishedAt: video.PublishedAt.String(),
-			Description: video.Description,
-		},
-		ChannelID: video.ChannelId,
-	}
 }
