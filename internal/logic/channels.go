@@ -68,7 +68,7 @@ func GetChannelPageProps(userId, channelId string) (*types.ChannelPageProps, err
 		return nil, err
 	}
 
-	props.Channel.Videos = trimVideoList(12, videos) // 12 can be divided by 1, 2, 3, 4 to get a nice grid
+	props.Channel.Videos = trimVideoList(24, 12, videos) // 12 can be divided by 1, 2, 3, 4 to get a nice grid
 
 	if userId != "" && len(props.Channel.Videos) > 0 {
 		var videoIds []string

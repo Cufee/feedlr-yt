@@ -19,6 +19,7 @@ The core functionality is fully complete and is working reliably.
   - Video/Audio needs to be synced for streams better than 720p
 - Channel View
   - Tiles for Subscriptions should open Channel View
+- Playlists / Watch Later
 
 ### Stack
 - Go [templ](https://templ.guide/) with [HTMX](https://htmx.org/), [Tailwind](https://tailwindcss.com/), [DaisyUI](https://daisyui.com/) and [Hyperscript](https://hyperscript.org/)

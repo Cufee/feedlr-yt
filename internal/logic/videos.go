@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/url"
 	"regexp"
+	"slices"
+	"time"
 
 	"strings"
 
@@ -39,11 +41,16 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos"), err)
 	}
 
-	videos := trimVideoList(12, allVideos) // 12 can be divided by 1, 2, 3, 4 for a nice grid
+	videos := trimVideoList(24, 12, allVideos) // 12 can be divided by 1, 2, 3, 4 for a nice grid
 	videoIds := make([]string, len(videos))
 	for i, v := range videos {
 		videoIds[i] = v.ID
 	}
+	slices.SortFunc(videos, func(a, b types.VideoProps) int {
+		aT, _ := time.Parse(time.RFC3339, a.PublishedAt)
+		bT, _ := time.Parse(time.RFC3339, b.PublishedAt)
+		return int(bT.Unix() - aT.Unix())
+	})
 
 	progress, err := GetUserVideoProgress(userId, videoIds...)
 	if err != nil {
@@ -80,7 +87,7 @@ func GetChannelVideos(limit int, channelIds ...string) ([]types.VideoProps, erro
 		}
 	}
 
-	return props, nil
+	return trimVideoList(limit, 12, props), nil
 }
 
 func GetVideoByID(id string) (types.VideoProps, error) {
@@ -216,7 +223,10 @@ func VideoIDFromURL(link string) (string, bool) {
 	return "", false
 }
 
-func trimVideoList(batchSize int, videos []types.VideoProps) []types.VideoProps {
+func trimVideoList(limit, batchSize int, videos []types.VideoProps) []types.VideoProps {
+	if len(videos) > limit {
+		return videos[:limit]
+	}
 	if len(videos) > batchSize {
 		cutoff := len(videos) - (len(videos) % batchSize)
 		return videos[:cutoff]

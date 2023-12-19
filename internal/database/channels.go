@@ -43,6 +43,7 @@ func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]models.Channel, er
 			lookup["let"] = bson.M{"indicator_id": "$eid"}
 			lookup["pipeline"] = mongo.Pipeline{
 				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}}}},
+				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
 				{{Key: "$limit", Value: options.VideosLimit}},
 			}
 		}
@@ -88,14 +89,21 @@ func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]m
 		},
 	})
 	if options.WithVideos {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.VideoCollection,
-				"localField":   "eid",
-				"foreignField": "channelId",
-				"as":           "videos",
-			},
-		})
+		lookup := bson.M{
+			"from":         models.VideoCollection,
+			"localField":   "eid",
+			"foreignField": "channelId",
+			"as":           "videos",
+		}
+		if options.VideosLimit > 0 {
+			lookup["let"] = bson.M{"indicator_id": "$eid"}
+			lookup["pipeline"] = mongo.Pipeline{
+				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}}}},
+				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
+				{{Key: "$limit", Value: options.VideosLimit}},
+			}
+		}
+		stages = append(stages, bson.M{"$lookup": lookup})
 	}
 
 	// subscriptions > 0
@@ -137,14 +145,21 @@ func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*model
 
 	var stages []interface{}
 	if options.WithVideos {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.VideoCollection,
-				"localField":   "eid",
-				"foreignField": "channelId",
-				"as":           "videos",
-			},
-		})
+		lookup := bson.M{
+			"from":         models.VideoCollection,
+			"localField":   "eid",
+			"foreignField": "channelId",
+			"as":           "videos",
+		}
+		if options.VideosLimit > 0 {
+			lookup["let"] = bson.M{"indicator_id": "$eid"}
+			lookup["pipeline"] = mongo.Pipeline{
+				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}}}},
+				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
+				{{Key: "$limit", Value: options.VideosLimit}},
+			}
+		}
+		stages = append(stages, bson.M{"$lookup": lookup})
 	}
 	if options.WithSubscriptions {
 		stages = append(stages, bson.M{
@@ -189,14 +204,21 @@ func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions)
 	var stages []interface{}
 	stages = append(stages, bson.M{"$match": bson.M{"eid": bson.M{"$in": channelIds}}})
 	if options.WithVideos {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.VideoCollection,
-				"localField":   "eid",
-				"foreignField": "channelId",
-				"as":           "videos",
-			},
-		})
+		lookup := bson.M{
+			"from":         models.VideoCollection,
+			"localField":   "eid",
+			"foreignField": "channelId",
+			"as":           "videos",
+		}
+		if options.VideosLimit > 0 {
+			lookup["let"] = bson.M{"indicator_id": "$eid"}
+			lookup["pipeline"] = mongo.Pipeline{
+				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}}}},
+				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
+				{{Key: "$limit", Value: options.VideosLimit}},
+			}
+		}
+		stages = append(stages, bson.M{"$lookup": lookup})
 	}
 	if options.WithSubscriptions {
 		stages = append(stages, bson.M{

@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 )
@@ -21,7 +23,7 @@ func VideoModelToProps(video *models.Video, channel ChannelProps) VideoProps {
 			Title:       video.Title,
 			Duration:    video.Duration,
 			Thumbnail:   video.Thumbnail,
-			PublishedAt: video.PublishedAt.String(),
+			PublishedAt: video.PublishedAt.Format(time.RFC3339),
 			Description: video.Description,
 		},
 		Channel: channel,
