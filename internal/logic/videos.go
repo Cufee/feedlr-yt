@@ -41,15 +41,8 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos"), err)
 	}
 
-	slices.SortFunc(allVideos, func(a, b types.VideoProps) int {
-		aT, _ := time.Parse(time.RFC3339, a.PublishedAt)
-		bT, _ := time.Parse(time.RFC3339, b.PublishedAt)
-		return int(bT.Unix() - aT.Unix())
-	})
-
-	videos := trimVideoList(24, 12, allVideos) // 12 can be divided by 1, 2, 3, 4 for a nice grid
-	videoIds := make([]string, len(videos))
-	for i, v := range videos {
+	videoIds := make([]string, len(allVideos))
+	for i, v := range allVideos {
 		videoIds[i] = v.ID
 	}
 
@@ -59,7 +52,7 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 	}
 
 	var feed types.UserVideoFeedProps
-	for _, video := range videos {
+	for _, video := range allVideos {
 		video.Progress = progress[video.ID]
 		feed.Videos = append(feed.Videos, video)
 	}
@@ -87,6 +80,12 @@ func GetChannelVideos(limit int, channelIds ...string) ([]types.VideoProps, erro
 			props = append(props, types.VideoModelToProps(&video, c))
 		}
 	}
+
+	slices.SortFunc(props, func(a, b types.VideoProps) int {
+		aT, _ := time.Parse(time.RFC3339, a.PublishedAt)
+		bT, _ := time.Parse(time.RFC3339, b.PublishedAt)
+		return int(bT.Unix() - aT.Unix())
+	})
 
 	return trimVideoList(limit, 12, props), nil
 }
