@@ -42,7 +42,7 @@ func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]models.Channel, er
 		if options.VideosLimit > 0 {
 			lookup["let"] = bson.M{"indicator_id": "$eid"}
 			lookup["pipeline"] = mongo.Pipeline{
-				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}}}},
+				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}, {Key: "type", Value: bson.M{"$ne": "private"}}}}},
 				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
 				{{Key: "$limit", Value: options.VideosLimit}},
 			}
@@ -71,12 +71,7 @@ func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]models.Channel, er
 	return channels, nil
 }
 
-func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]models.Channel, error) {
-	var options ChannelGetOptions
-	if len(opts) > 0 {
-		options = opts[0]
-	}
-
+func (c *Client) GetAllChannelsWithSubscriptions() ([]models.Channel, error) {
 	var stages []interface{}
 	channels := []models.Channel{}
 
@@ -88,23 +83,6 @@ func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]m
 			"as":           "subscriptions",
 		},
 	})
-	if options.WithVideos {
-		lookup := bson.M{
-			"from":         models.VideoCollection,
-			"localField":   "eid",
-			"foreignField": "channelId",
-			"as":           "videos",
-		}
-		if options.VideosLimit > 0 {
-			lookup["let"] = bson.M{"indicator_id": "$eid"}
-			lookup["pipeline"] = mongo.Pipeline{
-				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}}}},
-				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
-				{{Key: "$limit", Value: options.VideosLimit}},
-			}
-		}
-		stages = append(stages, bson.M{"$lookup": lookup})
-	}
 
 	// subscriptions > 0
 	stages = append(stages, bson.M{
@@ -130,57 +108,14 @@ func (c *Client) GetAllChannelsWithSubscriptions(opts ...ChannelGetOptions) ([]m
 }
 
 func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*models.Channel, error) {
-	var options ChannelGetOptions
-	if len(opts) > 0 {
-		options = opts[0]
-	}
-
-	channel := &models.Channel{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	if !options.WithVideos && !options.WithSubscriptions {
-		return channel, c.Collection(models.ChannelCollection).FindOne(ctx, bson.M{"eid": channelId}).Decode(channel)
-	}
-
-	var stages []interface{}
-	if options.WithVideos {
-		lookup := bson.M{
-			"from":         models.VideoCollection,
-			"localField":   "eid",
-			"foreignField": "channelId",
-			"as":           "videos",
-		}
-		if options.VideosLimit > 0 {
-			lookup["let"] = bson.M{"indicator_id": "$eid"}
-			lookup["pipeline"] = mongo.Pipeline{
-				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}}}},
-				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
-				{{Key: "$limit", Value: options.VideosLimit}},
-			}
-		}
-		stages = append(stages, bson.M{"$lookup": lookup})
-	}
-	if options.WithSubscriptions {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.UserSubscriptionCollection,
-				"localField":   "eid",
-				"foreignField": "channelId",
-				"as":           "subscriptions",
-			},
-		})
-	}
-
-	cur, err := c.Collection(models.ChannelCollection).Aggregate(ctx, stages)
+	channels, err := c.GetChannelsByID([]string{channelId}, opts...)
 	if err != nil {
 		return nil, err
 	}
-	err = cur.Decode(channel)
-	if err != nil {
-		return nil, err
+	if len(channels) == 0 {
+		return nil, mongo.ErrNoDocuments
 	}
-	return channel, nil
+	return &channels[0], nil
 }
 
 func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions) ([]models.Channel, error) {
@@ -213,7 +148,7 @@ func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions)
 		if options.VideosLimit > 0 {
 			lookup["let"] = bson.M{"indicator_id": "$eid"}
 			lookup["pipeline"] = mongo.Pipeline{
-				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}}}},
+				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}, {Key: "type", Value: bson.M{"$ne": "private"}}}}},
 				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
 				{{Key: "$limit", Value: options.VideosLimit}},
 			}

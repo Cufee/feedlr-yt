@@ -79,49 +79,6 @@ func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models
 	return videos, nil
 }
 
-func (c *Client) GetLatestVideos(limit int, page int, channelIds ...string) ([]models.Video, error) {
-	videos := []models.Video{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	filter := bson.M{"type": bson.M{"$ne": "private"}}
-	if len(channelIds) > 0 {
-		filter["channelId"] = bson.M{"$in": channelIds}
-	}
-
-	opts := options.Find().SetSort(bson.M{"publishedAt": -1})
-	opts.SetSkip(int64(page * limit))
-	opts.SetLimit(int64(limit))
-	cur, err := c.Collection(models.VideoCollection).Find(ctx, filter, opts)
-	if err != nil {
-		return nil, err
-	}
-	err = cur.All(ctx, &videos)
-	if err != nil {
-		return nil, err
-	}
-	return videos, nil
-}
-
-func (c *Client) GetLatestChannelVideos(id string, limit int) ([]models.Video, error) {
-	videos := []models.Video{}
-	opts := options.Find()
-	opts.SetSort(bson.M{"publishedAt": -1})
-	opts.SetLimit(int64(limit))
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	cur, err := c.Collection(models.VideoCollection).Find(ctx, bson.M{"channelId": id, "type": bson.M{"$ne": "private"}}, opts)
-	if err != nil {
-		return nil, err
-	}
-	err = cur.All(ctx, &videos)
-	if err != nil {
-		return nil, err
-	}
-	return videos, nil
-}
-
 type VideoCreateModel struct {
 	Type        string
 	ID          string
