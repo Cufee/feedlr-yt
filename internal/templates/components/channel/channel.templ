@@ -1,0 +1,23 @@
+package channel
+
+import "github.com/cufee/feedlr-yt/internal/api/youtube"
+import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
+
+templ ChannelTile(channel youtube.Channel) {
+	<div class="flex flex-row items-center gap-4 h-fit">
+		<div class="min-w-[6rem] w-[6rem] h-[6rem] rounded-lg overflow-hidden relative">
+			<img class="z-10 hidden object-cover w-full h-full transition-all duration-500 group-hover:scale-125" src={ channel.Thumbnail } alt={ channel.Title } onload="this.style.display=&#39;block&#39;" onerror="this.style.display=&#39;none&#39;"/>
+			<div class="absolute w-full h-full bg-base-100 animate-pulse"></div>
+		</div>
+		<div class="flex flex-col justify-center">
+			<div class="text-2xl font-bold whitespace-normal">{ channel.Title }</div>
+				@shared.Textbox("line-clamp-2") {
+					if channel.Description != "" {
+						{ channel.Description }
+					} else {
+						We don't know much about them, but we're sure they are great.
+					}
+				}
+		</div>
+	</div>
+}

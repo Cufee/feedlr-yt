@@ -2,18 +2,31 @@ package pages
 
 import (
 	"fmt"
+	"time"
+	"github.com/sosodev/duration"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 )
 
+func durationToString(videoDuration int) string {
+	d := duration.FromTimeDuration(time.Duration(videoDuration))
+	if d == nil {
+		return ""
+	}
+	return d.String()
+}
+
 templ Video(props types.VideoPlayerProps) {
 	<head>
 		<title>Feedlr - { props.Video.Title }</title>
+		<meta name="author" content={ props.Video.Channel.Title }/>
 		<meta property="og:title" content={ props.Video.Title }/>
 		<meta property="og:type" content="video.episode"/>
 		<meta property="og:description" content={ props.Video.Description }/>
+		<meta property="og:video:duration" content={ fmt.Sprint(props.Video.Duration) } />
 		<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
+		<meta itemprop="duration" content={ durationToString(props.Video.Duration) } />
 		<meta name="twitter:card" content="summary_large_image"/>
 		<meta name="twitter:title" content={ props.Video.Title }/>
 		<meta name="twitter:description" content={ props.Video.Description }/>
@@ -28,7 +41,6 @@ templ Video(props types.VideoPlayerProps) {
 		} else {
 			@buttonLogin()
 		}
-		@shared.EmbedMinifiedScript(closeVideoHotkey())
 		<div id="notification-toast" class="opacity-0 transition-all duration-[500ms] ease-out pointer-events-none">@notificationToast("SponsorBlock skipped a video segment")</div>
 	</div>
 }
@@ -54,24 +66,63 @@ templ notificationToast(message string) {
 	</div>
 }
 
-script closeVideoHotkey() {
-	document.addEventListener("keydown", (event) => {
-		if (event.key === "Escape") {
-			window.location.href = "/app"
+script hotkeyInterceptScript() {
+	setInterval(()=>{
+		window.focus()
+	}, 100)
+	window.addEventListener("keydown", (event) => {
+		if (event.keyCode === 27) {
+			event.preventDefault()
+			window.location.href = window.location.origin + "/app"
+			return false
+		}
+		// Check if the player exists
+		if (!window.feedlr_player) {
+			return
+		}
+		// Check all mod keys
+		for (const k of ["Alt", "AltGraph", "Control", "Meta"]) {
+			if (event.getModifierState(k) === true) return
+		}
+
+		// Play/Pause
+		if (event.keyCode === 32) {
+			event.preventDefault()
+			if (window.feedlr_player.getPlayerState() === 1) {
+				window.feedlr_player.pauseVideo()
+			} else {
+				window.feedlr_player.playVideo()
+			}
+		}
+		// Seek 5 seconds
+		if (event.keyCode === 37) {
+			event.preventDefault()
+			window.feedlr_player.seekTo(window.feedlr_player.getCurrentTime() - 5, true)
+		}
+		if (event.keyCode === 39) {
+			event.preventDefault()
+			window.feedlr_player.seekTo(window.feedlr_player.getCurrentTime() + 5, true)
+		}
+		// Volume
+		if (event.keyCode === 38) {
+			event.preventDefault()
+			window.feedlr_player.setVolume(window.feedlr_player.getVolume() + 5)
+		}
+		if (event.keyCode === 40) {
+			event.preventDefault()
+			window.feedlr_player.setVolume(window.feedlr_player.getVolume() - 5)
 		}
 	})
 }
 
 script youtubePlayerInit(video string, progress, volume int, withProgress bool) {
-	console.log("youtubePlayerInit", video, progress, volume, withProgress)
-
+	const pageLoadTime = new Date()
 	if (withProgress) {
 		setTimeout(() => {
 			document.querySelector("#close-button").addEventListener("click", saveProgress);
 		}, 100)
 		setInterval(saveProgress, 10000)
 	}
-	
 	let player;
 	var frame = document.getElementById("player")
 	const waitForYT = setInterval(() => {
@@ -104,6 +155,9 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 	}
 	function onPlayerStateChange(event) { 
 		withProgress && saveProgress()
+		if (event.data === 0 && pageLoadTime < new Date() - 5000) {
+			window.location.href = window.location.origin + "/app"
+		}
 	}
 	let lastProgress = 0
 	function saveProgress() {
@@ -113,11 +167,10 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 			return true
 		}
 		lastProgress = currentTime
-
 		fetch(`/api/videos/${video}/progress?progress=${currentTime}&volume=${currentVolume || 100}`, {
 			method: 'POST',
 			credentials: 'include'
-		})
+		}).catch(e => console.error(e))
 		return true
 	}
 }

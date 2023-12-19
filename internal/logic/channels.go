@@ -9,6 +9,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/ssoroka/slice"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 /*
@@ -45,6 +46,48 @@ func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 	}
 
 	return props, nil
+}
+
+func GetChannelPageProps(userId, channelId string) (*types.ChannelPageProps, error) {
+	channel, err := CacheChannel(channelId)
+	if err != nil {
+		return nil, err
+	}
+
+	channelProps := types.ChannelModelToProps(channel)
+	props := types.ChannelPageProps{
+		Authenticated: userId != "",
+		Channel: types.ChannelWithVideosProps{
+			ChannelProps: channelProps,
+		},
+	}
+
+	videos, err := GetChannelVideos(24, channelId)
+	if err != nil && err != mongo.ErrNoDocuments {
+		// No video in cache is not really an error and should be handled by the UI
+		return nil, err
+	}
+
+	props.Channel.Videos = trimVideoList(24, 12, videos) // 12 can be divided by 1, 2, 3, 4 to get a nice grid
+
+	if userId != "" && len(props.Channel.Videos) > 0 {
+		var videoIds []string
+		for _, v := range props.Channel.Videos {
+			videoIds = append(videoIds, v.ID)
+		}
+
+		progress, err := GetUserVideoProgress(userId, videoIds...)
+		if err != nil {
+			return nil, errors.Join(errors.New("GetChannelPageProps.GetUserVideoProgress failed to get user progress"), err)
+		}
+
+		for i, v := range props.Channel.Videos {
+			v.Progress = progress[v.ID]
+			props.Channel.Videos[i] = v
+		}
+	}
+
+	return &props, nil
 }
 
 func SearchChannels(userId, query string, limit int) ([]types.ChannelSearchResultProps, error) {

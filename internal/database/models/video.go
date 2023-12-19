@@ -15,6 +15,7 @@ type Video struct {
 	ExternalID string `json:"eid" bson:"eid,omitempty"`
 
 	URL         string    `json:"url" bson:"url,omitempty"`
+	Type        string    `json:"type" bson:"type,omitempty"`
 	Title       string    `json:"title" bson:"title,omitempty"`
 	Duration    int       `json:"duration" bson:"duration,omitempty"`
 	Thumbnail   string    `json:"thumbnail" bson:"thumbnail,omitempty"`
@@ -51,7 +52,7 @@ type VideoOptions struct {
 	Description *string
 }
 
-func NewVideo(id, url, title, channelId string, publishedAt time.Time, opts ...VideoOptions) *Video {
+func NewVideo(id, videoType, url, title, channelId string, publishedAt time.Time, opts ...VideoOptions) *Video {
 	var duration int
 	var thumbnail, description string
 	if len(opts) > 0 {
@@ -68,6 +69,7 @@ func NewVideo(id, url, title, channelId string, publishedAt time.Time, opts ...V
 
 	video := Video{
 		ExternalID:  id,
+		Type:        videoType,
 		URL:         url,
 		Title:       title,
 		Duration:    duration,

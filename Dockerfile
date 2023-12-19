@@ -15,7 +15,7 @@ RUN npm install && npm install -g @go-task/cli
 RUN task style:generate
 
 
-FROM golang:1.20 as build
+FROM golang:1.21 as build
 
 WORKDIR /workspace
 COPY --from=assets /workspace/assets ./assets

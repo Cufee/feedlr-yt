@@ -20,6 +20,14 @@ func VideoHandler(c *fiber.Ctx) error {
 	}
 
 	video := c.Params("id")
+	// Update cache in background
+	go func() {
+		err := logic.UpdateVideoCache(video)
+		if err != nil {
+			log.Printf("VideoHandler.UpdateVideoCache error: %v\n", err)
+		}
+	}()
+
 	if uid, valid := session.UserID(); valid {
 		c.Locals("userId", uid)
 		go session.Refresh()
