@@ -95,7 +95,7 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
-	if vid != nil {
+	if vid != nil && vid.Channel != nil {
 		return types.VideoModelToProps(vid, types.ChannelModelToProps(vid.Channel)), nil
 	}
 
@@ -103,6 +103,7 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 	if err != nil {
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
 	}
+
 	channel, _, err := CacheChannel(details.ChannelID)
 	if err != nil {
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.CacheChannel failed to cache channel"), err)
