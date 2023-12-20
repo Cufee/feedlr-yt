@@ -92,26 +92,38 @@ func GetChannelVideos(limit int, channelIds ...string) ([]types.VideoProps, erro
 
 func GetVideoByID(id string) (types.VideoProps, error) {
 	vid, err := database.DefaultClient.GetVideoByID(id, database.GetVideoOptions{WithChannel: true})
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			video, err := youtube.DefaultClient.GetVideoByID(id)
-			if err != nil {
-				return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
-			}
-			return types.VideoProps{Video: *video}, nil
-		}
+	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
-	return types.VideoModelToProps(vid, types.ChannelModelToProps(vid.Channel)), nil
-}
-
-func UpdateVideoCache(videoId string) error {
-	video, err := youtube.DefaultClient.GetVideoByID(videoId)
-	if err != nil {
-		return errors.Join(errors.New("UpdateVideoCache.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
+	if vid != nil {
+		return types.VideoModelToProps(vid, types.ChannelModelToProps(vid.Channel)), nil
 	}
 
-	err = database.DefaultClient.UpdateVideos(false, database.VideoCreateModel{
+	details, err := youtube.DefaultClient.GetVideoDetailsByID(id)
+	if err != nil {
+		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
+	}
+	channel, _, err := CacheChannel(details.ChannelID)
+	if err != nil {
+		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.CacheChannel failed to cache channel"), err)
+	}
+
+	go UpdateVideoCache(details.Video)
+	props := types.VideoProps{Video: details.Video, Channel: types.ChannelModelToProps(channel)}
+	return props, nil
+
+}
+
+func CacheVideo(video string) error {
+	details, err := youtube.DefaultClient.GetVideoDetailsByID(video)
+	if err != nil {
+		return errors.Join(errors.New("CacheVideo.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
+	}
+	return UpdateVideoCache(details.Video)
+}
+
+func UpdateVideoCache(video youtube.Video) error {
+	err := database.DefaultClient.UpdateVideos(true, database.VideoCreateModel{
 		Type:        string(video.Type),
 		ID:          video.ID,
 		URL:         video.URL,

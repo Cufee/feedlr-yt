@@ -25,7 +25,7 @@ func FindSubscription(userId, channelId string) (bool, error) {
 }
 
 func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
-	channel, err := CacheChannel(channelId)
+	channel, _, err := CacheChannel(channelId)
 	if err != nil {
 		return nil, errors.Join(err, errors.New("NewSubscription.CacheChannel failed to cache channel"))
 	}
