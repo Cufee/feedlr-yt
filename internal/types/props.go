@@ -49,6 +49,7 @@ type UserVideoFeedProps struct {
 
 type ChannelPageProps struct {
 	Authenticated bool
+	Subscribed    bool
 	Channel       ChannelWithVideosProps
 }
 
@@ -76,6 +77,8 @@ type VideoPlayerProps struct {
 
 	SkipSegments     []SegmentProps `json:"skipSegments"`
 	SkipSegmentsJSON string         `json:"skipSegmentsJSON"`
+
+	ReturnURL string `json:"returnURL"`
 }
 
 func (v *VideoPlayerProps) AddSegments(segments ...sponsorblock.Segment) error {

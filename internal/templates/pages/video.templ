@@ -36,13 +36,17 @@ templ Video(props types.VideoPlayerProps) {
 	<div class="relative flex items-center justify-start w-full h-full">
 		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 		@videoPlayer(props)
-		if (props.ReportProgress) {
-			@buttonBack()
-		} else {
-			@buttonLogin()
-		}
+		<div class="absolute flex gap-2 top-2 right-2">
+			<a href={ templ.URL(fmt.Sprintf("/channel/%s", props.Video.Channel.ID)) } class="btn btn-square">@icons.Profile()</a>
+			if (props.ReportProgress) {
+				@buttonBack(props.ReturnURL)
+			} else {
+				@buttonLogin()
+			}
+		</div>
 		<div id="notification-toast" class="opacity-0 transition-all duration-[500ms] ease-out pointer-events-none">@notificationToast("SponsorBlock skipped a video segment")</div>
 	</div>
+	@shared.EmbedMinifiedScript(hotkeyScript(props.ReturnURL), props.ReturnURL)
 }
 
 templ videoPlayer(player types.VideoPlayerProps) {
@@ -53,11 +57,11 @@ templ videoPlayer(player types.VideoPlayerProps) {
 }
 
 templ buttonLogin() {
-	<a class="absolute opacity-50 close-button hover:opacity-100 top-2 right-2 btn btn-primary" href="/login" id="close-button">Login</a>
+	<a class="opacity-50 close-button hover:opacity-100 btn btn-primary" href="/login" id="close-button">Login</a>
 }
 
-templ buttonBack() {
-	<a class="absolute opacity-50 close-button hover:opacity-100 top-2 right-2 btn btn-primary btn-square" href="/app" id="close-button">@icons.Cross()</a>
+templ buttonBack(url string) {
+	<a class="opacity-50 close-button hover:opacity-100 btn btn-primary btn-square" href={ templ.URL(url) } id="close-button">@icons.Cross()</a>
 }
 
 templ notificationToast(message string) {
@@ -66,14 +70,18 @@ templ notificationToast(message string) {
 	</div>
 }
 
-script hotkeyInterceptScript() {
-	setInterval(()=>{
-		window.focus()
-	}, 100)
+script hotkeyScript(returnUrl string) {
 	window.addEventListener("keydown", (event) => {
 		if (event.keyCode === 27) {
 			event.preventDefault()
-			window.location.href = window.location.origin + "/app"
+			document.getElementById("player-loading").classList.remove("hidden")
+			if (window.feedlr_player) {
+				window.feedlr_player.pauseVideo()
+			}
+			window.location.href = window.location.origin + returnUrl
+			setTimeout(() => {
+				window.location.href = window.location.origin + returnUrl
+			}, 250)
 			return false
 		}
 		// Check if the player exists
@@ -116,7 +124,6 @@ script hotkeyInterceptScript() {
 }
 
 script youtubePlayerInit(video string, progress, volume int, withProgress bool) {
-	const pageLoadTime = new Date()
 	if (withProgress) {
 		setTimeout(() => {
 			document.querySelector("#close-button").addEventListener("click", saveProgress);
@@ -155,8 +162,8 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 	}
 	function onPlayerStateChange(event) { 
 		withProgress && saveProgress()
-		if (event.data === 0 && pageLoadTime < new Date() - 5000) {
-			window.location.href = window.location.origin + "/app"
+		if ([0, 2].includes(event.data)) {
+			window.focus() // Focus the window when the video ends or is paused to allow hotkeys to work
 		}
 	}
 	let lastProgress = 0

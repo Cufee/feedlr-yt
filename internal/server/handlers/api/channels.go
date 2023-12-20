@@ -41,6 +41,9 @@ func SubscribeHandler(c *fiber.Ctx) error {
 		return err
 	}
 
+	if c.Query("type") == "button" {
+		return c.Render("layouts/blank", subscriptions.UnsubscribeButtonSmall(props.ID))
+	}
 	return c.Render("layouts/blank", subscriptions.SubscribedChannelTile(*props))
 }
 
@@ -57,5 +60,8 @@ func UnsubscribeHandler(c *fiber.Ctx) error {
 		return err
 	}
 
+	if c.Query("type") == "button" {
+		return c.Render("layouts/blank", subscriptions.SubscribeButtonSmall(channelId))
+	}
 	return c.SendStatus(fiber.StatusOK)
 }

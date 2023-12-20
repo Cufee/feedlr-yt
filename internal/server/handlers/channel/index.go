@@ -21,20 +21,26 @@ func ChannelHandler(c *fiber.Ctx) error {
 		c.Locals("userId", uid)
 		go session.Refresh()
 
-		channel, err := logic.GetChannelPageProps(uid, c.Params("id"))
+		props, err := logic.GetChannelPageProps(uid, c.Params("id"))
 		if err != nil {
 			log.Printf("GetChannelPageProps: %v\n", err)
 			return c.Redirect("/error?message=Something went wrong")
 		}
 
-		return c.Render("layouts/App", pages.Channel(*channel))
+		subscribed, err := logic.FindSubscription(uid, props.Channel.ID)
+		if err != nil {
+			log.Printf("FindSubscription: %v\n", err)
+		}
+		props.Subscribed = subscribed
+
+		return c.Render("layouts/App", pages.Channel(*props))
 	}
 
-	channel, err := logic.GetChannelPageProps("", c.Params("id"))
+	props, err := logic.GetChannelPageProps("", c.Params("id"))
 	if err != nil {
 		log.Printf("GetChannelPageProps: %v\n", err)
 		return c.Redirect("/error?message=Something went wrong")
 	}
 
-	return c.Render("layouts/Share", pages.Channel(*channel))
+	return c.Render("layouts/Share", pages.Channel(*props))
 }

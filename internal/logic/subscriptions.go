@@ -6,7 +6,23 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
+
+func FindSubscription(userId, channelId string) (bool, error) {
+	oid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return false, errors.Join(err, errors.New("NewSubscription.primitive.ObjectIDFromHex failed to parse userId"))
+	}
+	_, err = database.DefaultClient.FindSubscription(oid, channelId)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return false, nil
+		}
+		return false, errors.Join(err, errors.New("NewSubscription.database.DefaultClient.NewSubscription failed to create subscription"))
+	}
+	return true, nil
+}
 
 func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
 	channel, err := CacheChannel(channelId)
