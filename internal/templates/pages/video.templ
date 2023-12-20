@@ -37,7 +37,7 @@ templ Video(props types.VideoPlayerProps) {
 		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 		@videoPlayer(props)
 		<div class="absolute flex gap-2 top-2 right-2">
-			<a href={ templ.URL(fmt.Sprintf("/channel/%s", props.Video.Channel.ID)) } class="btn btn-square">@icons.Profile()</a>
+			<a href={ templ.URL(fmt.Sprintf("/channel/%s", props.Video.Channel.ID)) } class="opacity-50 hover:opacity-100 btn btn-square">@icons.Profile()</a>
 			if (props.ReportProgress) {
 				@buttonBack(props.ReturnURL)
 			} else {
