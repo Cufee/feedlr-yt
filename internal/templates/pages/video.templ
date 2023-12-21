@@ -37,7 +37,8 @@ templ Video(props types.VideoPlayerProps) {
 		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 		@videoPlayer(props)
 		<div class="absolute flex gap-2 top-2 right-2">
-			<a href={ templ.URL(fmt.Sprintf("/channel/%s", props.Video.Channel.ID)) } class="opacity-50 hover:opacity-100 btn btn-square">@icons.Profile()</a>
+			@buttonShare(props.Video.ID)
+			@buttonChannel(props.Video.Channel.ID)
 			if (props.ReportProgress) {
 				@buttonBack(props.ReturnURL)
 			} else {
@@ -54,6 +55,28 @@ templ videoPlayer(player types.VideoPlayerProps) {
 	<script id="" src="https://www.youtube.com/iframe_api"></script>
 	@shared.EmbedMinifiedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
 	@shared.EmbedMinifiedScript(youtubePlayerInit(player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress), player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress)
+}
+
+templ buttonChannel(id string) {
+	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="opacity-50 hover:opacity-100 btn btn-square">@icons.Profile()</a>
+}
+
+templ buttonShare(id string) {
+	<button id="share-video-link-btn" class="opacity-50 hover:opacity-100 btn btn-square">@icons.Share()</button>
+	@shared.EmbedMinifiedScript(shareButtonScript(id), id)
+}
+script shareButtonScript(id string) {
+	const link = window.location.origin + "/video/" + id
+	document.getElementById("share-video-link-btn").addEventListener("click", () => {
+		if (!navigator.share) {
+			navigator.clipboard.writeText(link);
+			return
+		}
+		navigator.share({
+			title: document.title,
+			url: link
+		})
+	})
 }
 
 templ buttonLogin() {
