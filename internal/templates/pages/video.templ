@@ -59,11 +59,11 @@ templ videoPlayer(player types.VideoPlayerProps) {
 }
 
 templ buttonChannel(id string) {
-	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="opacity-50 hover:opacity-100 btn btn-square">@icons.Profile()</a>
+	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="opacity-75 md:opacity-50 hover:opacity-100 btn btn-square">@icons.Profile()</a>
 }
 
 templ buttonShare(id string) {
-	<button id="share-video-link-btn" class="opacity-50 hover:opacity-100 btn btn-square">@icons.Share()</button>
+	<button id="share-video-link-btn" class="opacity-75 md:opacity-50 hover:opacity-100 btn btn-square">@icons.Share()</button>
 	@shared.EmbedMinifiedScript(shareButtonScript(id), id)
 }
 script shareButtonScript(id string) {
@@ -81,11 +81,11 @@ script shareButtonScript(id string) {
 }
 
 templ buttonLogin() {
-	<a class="opacity-50 close-button hover:opacity-100 btn btn-primary" href="/login" id="close-button">Login</a>
+	<a class="opacity-75 md:opacity-50 close-button hover:opacity-100 btn btn-primary" href="/login" id="close-button">Login</a>
 }
 
 templ buttonBack(url string) {
-	<a class="opacity-50 close-button hover:opacity-100 btn btn-primary btn-square" href={ templ.URL(url) } id="close-button">@icons.Cross()</a>
+	<a class="opacity-75 md:opacity-50 close-button hover:opacity-100 btn btn-primary btn-square" href={ templ.URL(url) } id="close-button">@icons.Cross()</a>
 }
 
 templ notificationToast(message string) {
