@@ -9,7 +9,7 @@ templ Share(content ...templ.Component) {
 		@partials.Head()
 		<body class="flex flex-col h-full">
 			<div class="w-full p-2 mx-auto max-w-7xl md:p-0">@partials.NavbarWithLogin()</div>
-			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 mx-auto max-w-7xl md:px-4">
+			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 mx-auto max-w-7xl">
 				for _, c := range content {
 					@c
 				}

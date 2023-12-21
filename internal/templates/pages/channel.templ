@@ -24,15 +24,18 @@ templ Channel(props types.ChannelPageProps) {
 	<div class="relative flex flex-col items-center w-full h-full gap-4 justify-staert">
 		<div class="flex items-center w-full gap-2 p-4 rounded-lg bg-base-300">
 			<div class="grow">
-				@channel.ChannelTile(props.Channel.Channel)
+				@channel.ChannelTile(props.Channel.Channel, subscribeButton(props.Channel.ID, props.Authenticated, props.Subscribed))
 			</div>
-			if props.Authenticated && props.Subscribed {
-				@subscriptions.UnsubscribeButtonSmall(props.Channel.ID)
-			} else if props.Authenticated {
-				@subscriptions.SubscribeButtonSmall(props.Channel.ID)
-			}
 		</div>
 
 		@feed.VideoFeed(props.Channel.Videos, fmt.Sprintf("/channel/%s", props.Channel.ID), false, false)
 	</div>
+}
+
+templ subscribeButton(id string, authenticated, subscribed bool) {
+		if authenticated && subscribed {
+			@subscriptions.UnsubscribeButtonSmall(id)
+		} else if authenticated {
+			@subscriptions.SubscribeButtonSmall(id)
+		}
 }

@@ -23,7 +23,7 @@ templ SearchResultChannels(channels []types.ChannelSearchResultProps) {
 			} else {
 				<button type="button" _={ fmt.Sprintf("on htmx:afterRequest remove #channel-tile-%s", ch.ID) } class="absolute inset-0 z-10 flex items-center justify-center invisible w-full text-lg font-bold uppercase bg-black bg-opacity-50 group-hover:visible group-[.htmx-request]:visible" hx-indicator={ fmt.Sprintf("#channel-tile-%s", ch.ID) } hx-target="#subscriptions-list" hx-swap="afterbegin" hx-post={ fmt.Sprintf("/api/channels/%s/subscribe", ch.ID) }><span class="loading loading-spinner loading-md md:loading-lg invisible group-[.htmx-request]:visible"></span><span class="group-[.htmx-request]:hidden">Subscribe</span></button>
 			}
-			@channel.ChannelTile(ch.Channel)
+			@channel.ChannelTile(ch.Channel, nil)
 		</div>
 	}
 }

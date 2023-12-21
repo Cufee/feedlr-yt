@@ -13,9 +13,9 @@ templ SubscribedChannelTile(props types.ChannelProps) {
 			hx-indicator={ fmt.Sprintf("#sub-channel-tile-%s", props.ID) } hx-target="body" hx-boost="true"
 			href={ templ.URL(fmt.Sprintf("/channel/%s", props.ID)) }>
 			<span class="group-[.htmx-request]:hidden">View</span>
-			<span class="loading loading-spinner loading-md md:loading-lg invisible group-[.htmx-request]:visible"></span>
+			<span class="absolute loading loading-spinner loading-md md:loading-lg invisible group-[.htmx-request]:visible"></span>
 		</a>
-		@channel.ChannelTile(props.Channel)
+		@channel.ChannelTile(props.Channel, nil)
 	</div>
 }
 
