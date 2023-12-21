@@ -37,11 +37,12 @@ templ Video(props types.VideoPlayerProps) {
 		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 		@videoPlayer(props)
 		<div class="absolute flex gap-2 top-2 right-2">
-			@buttonChannel(props.Video.Channel.ID)
-			@buttonShare(props.Video.ID)
-			if (props.ReportProgress) {
+			if (props.Authenticated) {
+				@buttonChannel(props.Video.Channel.ID)
+				@buttonShare(props.Video.ID)
 				@buttonBack(props.ReturnURL)
 			} else {
+				@buttonShare(props.Video.ID)
 				@buttonLogin()
 			}
 		</div>

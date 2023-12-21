@@ -70,6 +70,8 @@ type SegmentProps struct {
 }
 
 type VideoPlayerProps struct {
+	Authenticated bool `json:"authenticated"`
+
 	Video          VideoProps `json:"video"`
 	ReportProgress bool       `json:"reportProgress"`
 

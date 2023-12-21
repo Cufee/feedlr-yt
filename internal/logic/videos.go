@@ -153,7 +153,8 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 	}
 
 	playerProps := types.VideoPlayerProps{
-		Video: video,
+		Authenticated: userId != "",
+		Video:         video,
 	}
 
 	if options.WithProgress {
