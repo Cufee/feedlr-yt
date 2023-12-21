@@ -8,7 +8,7 @@ templ SearchChannels() {
 	<div id="search" class="flex flex-col gap-2">
 		<form class="flex items-center justify-center gap-2 group" id="search-box" _="on clear send clear to #search-results">
 			<div class="invisible w-6 h-6"></div>
-			<input type="search" placeholder="Enter Channel Name" name="search" minlength="5" maxlength="32" _="on load set my value to &#39;&#39; then" class="self-center w-full max-w-xs bg-base-200 placeholder:text-center input input-bordered font-control" hx-indicator="#search-box" hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML" hx-trigger="keyup delay:750ms, search, refresh" hx-sync="this:replace" id="search-input"/>
+			<input type="search" placeholder="Enter Channel Name" name="search" minlength="5" maxlength="64" _="on load set my value to &#39;&#39; then" class="self-center w-full max-w-full md:max-w-xs bg-base-200 placeholder:text-center input input-bordered font-control" hx-indicator="#search-box" hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML" hx-trigger="keyup delay:750ms, search, refresh" hx-sync="this:replace" id="search-input"/>
 			<span class="htmx-indicator invisible group-[.htmx-request]:visible w-6 h-6 loading loading-spinner"></span>
 		</form>
 		<div id="search-results" class="flex flex-row flex-wrap gap-2"></div>
