@@ -11,8 +11,8 @@ import (
 type Model struct {
 	ID primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 
-	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
+	CreatedAt time.Time `json:"createdAt" bson:"createdAt,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt,omitempty"`
 }
 
 func (model *Model) Prepare() {
