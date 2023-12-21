@@ -9,8 +9,8 @@ templ App(content ...templ.Component) {
 		@partials.Head()
 		<body class="flex flex-col h-full">
 			@partials.NavProgressAnimated()
-			<div class="w-full p-2 mx-auto max-w-7xl md:p-0">@partials.Navbar()</div>
-			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 mx-auto max-w-7xl">
+			<div class="w-full px-2 mx-auto max-w-7xl">@partials.Navbar()</div>
+			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 pt-0 mx-auto max-w-7xl">
 				for _, c := range content {
 					@c
 				}
