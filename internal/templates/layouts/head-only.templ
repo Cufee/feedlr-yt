@@ -7,7 +7,7 @@ import (
 templ HeadOnly(content ...templ.Component) {
 	<html lang="en" class="h-full">
 		@partials.Head()
-		<body class="h-full">
+		<body class="h-full" _="on htmx:beforeSend add @disabled=&#39;true&#39; to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
 			@partials.NavProgressAnimated()
 			<div id="main" class="w-full h-full">
 				for _, c := range content {
