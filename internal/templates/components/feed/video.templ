@@ -4,6 +4,7 @@ import "fmt"
 import "github.com/cufee/feedlr-yt/internal/types"
 import "github.com/cufee/feedlr-yt/internal/utils"
 import "github.com/cufee/feedlr-yt/internal/templates/components/icons"
+import "time"
 
 templ VideoFeed(videos []types.VideoProps, returnUrl string, withProgressActions, withChannelName bool) {
 	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3" id="components-video-feed">
@@ -16,11 +17,16 @@ templ VideoFeed(videos []types.VideoProps, returnUrl string, withProgressActions
 					<span class="overflow-hidden text-lg leading-tight truncate whitespace-normal line-clamp-2" style="overflow-wrap: anywhere;" title={ video.Title }>
 						{ video.Title }
 					</span>
-					if withChannelName {
-						<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="overflow-hidden text-gray-500 truncate text-md w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Title }>
-							{ video.Channel.Title }
-						</a>
-					}
+					<div class="flex flex-col">
+						if withChannelName {
+							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="overflow-hidden text-gray-500 truncate text-md w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Title }>
+								{ video.Channel.Title }
+							</a>
+						}
+						<span class="text-sm text-gray-500 w-fit">
+							{ formatTimestamp(video.PublishedAt) }
+						</span>
+					</div>
 				</div>
 			</div>
 		}
@@ -107,4 +113,34 @@ func secondsToDurationString(seconds int) string {
 		return fmt.Sprintf("%02d:%02d", minutes, seconds)
 	}
 	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+}
+
+func formatTimestamp(timestamp string) string {
+	if timestamp == "" {
+		return ""
+	}
+
+	published, err := time.Parse(time.RFC3339, timestamp)
+	if err != nil {
+		return ""
+	}
+
+	now := time.Now()
+	diff := now.Sub(published)
+
+	if diff < time.Minute {
+		return "Just now"
+	} else if diff < time.Hour {
+		return fmt.Sprintf("%d minutes ago", int(diff.Minutes()))
+	} else if diff < time.Hour*24 {
+		return fmt.Sprintf("%d hours ago", int(diff.Hours()))
+	} else if diff < time.Hour*24*7 {
+		return fmt.Sprintf("%d days ago", int(diff.Hours()/24))
+	} else if diff < time.Hour*24*30 {
+		return fmt.Sprintf("%d weeks ago", int(diff.Hours()/24/7))
+	} else if diff < time.Hour*24*365 {
+		return fmt.Sprintf("%d months ago", int(diff.Hours()/24/30))
+	} else {
+		return fmt.Sprintf("%d years ago", int(diff.Hours()/24/365))
+	}
 }
