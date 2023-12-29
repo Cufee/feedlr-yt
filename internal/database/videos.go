@@ -114,12 +114,14 @@ func (c *Client) UpdateVideos(upsert bool, videos ...VideoCreateModel) error {
 	return err
 }
 
-func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) error {
+func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) ([]*models.Video, error) {
 	payload := []*models.Video{}
+	var inserts []*models.Video
 	for _, video := range videos {
 		v := models.NewVideo(video.ID, video.Type, video.URL, video.Title, video.ChannelID, video.PublishedAt, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description})
 		v.Prepare()
 		payload = append(payload, v)
+		inserts = append(inserts, v)
 	}
 
 	var writes []mongo.WriteModel
@@ -130,7 +132,7 @@ func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) error {
 	ctx, cancel := c.Ctx()
 	defer cancel()
 	_, err := c.Collection(models.VideoCollection).BulkWrite(ctx, writes)
-	return err
+	return inserts, err
 }
 
 func (c *Client) GetUserViews(user primitive.ObjectID, videos ...string) ([]models.VideoView, error) {

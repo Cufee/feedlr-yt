@@ -7,10 +7,10 @@ import (
 templ App(content ...templ.Component) {
 	<html lang="en" class="h-full">
 		@partials.Head()
-		<body class="flex flex-col h-full">
+		<body class="flex flex-col h-full" _="on htmx:beforeSend add @disabled=&#39;true&#39; to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
 			@partials.NavProgressAnimated()
-			<div class="w-full p-2 mx-auto max-w-7xl md:p-0">@partials.Navbar()</div>
-			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 mx-auto max-w-7xl md:px-4">
+			<div class="w-full p-2 pt-0 mx-auto max-w-7xl">@partials.Navbar()</div>
+			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 pt-0 mx-auto max-w-7xl">
 				for _, c := range content {
 					@c
 				}

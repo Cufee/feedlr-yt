@@ -4,7 +4,7 @@ import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
 
 
 templ NavProgressAnimated(...templ.Component) {
-	<div class="absolute top-0 left-0 w-full">
+	<div class="w-full h-fit">
 		<div id="nav-progress" class="invisible h-1 transition-all bg-primary rounded-r-full duration-[50ms] ease-in" style="width: 0%"></div>
 	</div>
 	@shared.EmbedMinifiedScript(animateNavProgress())

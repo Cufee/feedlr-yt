@@ -3,18 +3,39 @@ package subscriptions
 import "fmt"
 import "github.com/cufee/feedlr-yt/internal/types"
 import "github.com/cufee/feedlr-yt/internal/templates/components/channel"
+import "github.com/cufee/feedlr-yt/internal/templates/components/icons"
 
 
 templ SubscribedChannelTile(props types.ChannelProps) {
-	<div class="relative flex-grow p-4 overflow-hidden group rounded-xl bg-base-300 channel-btn" id={ fmt.Sprintf("sub-channel-tile-%s", props.ID) }>
-		<button type="button" _="on htmx:afterRequest send refresh to #search-input"
-			class="absolute inset-0 z-10 flex items-center justify-center invisible w-full text-lg font-bold uppercase bg-black bg-opacity-50 group-hover:visible group-[.htmx-request]:visible"
-			hx-indicator={ fmt.Sprintf("#sub-channel-tile-%s", props.ID) } hx-target={ fmt.Sprintf("#sub-channel-tile-%s", props.ID) } hx-swap="delete"
-			hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe", props.ID) }>
-			<span class="group-[.htmx-request]:hidden">Unsubscribe</span>
-			<span class="loading loading-spinner loading-md md:loading-lg invisible group-[.htmx-request]:visible"></span>
-		</button>
-		@channel.ChannelTile(props.Channel)
-	</div>
+	<a
+		data-search={ props.Title } class="relative flex flex-grow p-4 overflow-hidden basis-1/2 md:basis-1/3 group rounded-xl bg-base-300 hover:bg-base-200 channel-btn"
+		href={ templ.URL(fmt.Sprintf("/channel/%s", props.ID)) }
+		hx-target="body" hx-boost="true"
+	>
+		@channel.ChannelTile(props.Channel, nil)
+	</a>
 }
 
+templ UnsubscribeButtonSmall(channelId string) {
+	<button type="button"
+			class="btn btn-square"
+			hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe?type=button", channelId) }
+			hx-swap="outerHTML"
+			hx-target="this"
+			title="Unsubscribe"
+	>
+		@icons.BookmarkCrossed()
+	</button>
+}
+
+templ SubscribeButtonSmall(channelId string) {
+	<button type="button"
+			class="btn btn-primary btn-square"
+			hx-post={ fmt.Sprintf("/api/channels/%s/subscribe?type=button", channelId) }
+			hx-swap="outerHTML"
+			hx-target="this"
+			title="Subscribe"
+	>
+		@icons.Bookmark()
+	</button>
+}

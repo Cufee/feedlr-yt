@@ -15,18 +15,18 @@ import (
 /*
 Saves last 3 videos for each channel to the database
 */
-func CacheChannelVideos(channelIds ...string) error {
+func CacheChannelVideos(channelIds ...string) ([]*models.Video, error) {
 	var models []database.VideoCreateModel
 
 	for _, c := range channelIds {
 		newVideos, err := youtube.DefaultClient.GetChannelVideos(c, 3)
 		if err != nil {
-			return errors.Join(errors.New("CacheChannelVideos.youtube.C.GetChannelVideos"), err)
+			return nil, errors.Join(errors.New("CacheChannelVideos.youtube.C.GetChannelVideos"), err)
 		}
 
 		existingVideos, err := database.DefaultClient.GetVideosByChannelID(0, c)
 		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-			return errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.GetVideosByChannelID"), err)
+			return nil, errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.GetVideosByChannelID"), err)
 		}
 		var existingIDs []string
 		for _, v := range existingVideos {
@@ -56,33 +56,33 @@ func CacheChannelVideos(channelIds ...string) error {
 	}
 
 	if len(models) == 0 {
-		return nil
+		return nil, nil
 	}
-	err := database.DefaultClient.InsertChannelVideos(models...)
+	inserted, err := database.DefaultClient.InsertChannelVideos(models...)
 	if err != nil {
-		return errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.InsertChannelVideos"), err)
+		return nil, errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.InsertChannelVideos"), err)
 	}
-	return nil
+	return inserted, nil
 }
 
 /*
 Saves the channel to the database if it doesn't exist already and returns the channel model
 */
-func CacheChannel(channelId string, opts ...database.ChannelGetOptions) (*models.Channel, error) {
-	exists, err := database.DefaultClient.GetChannel(channelId, opts...)
+func CacheChannel(channelId string, opts ...database.ChannelGetOptions) (*models.Channel, bool, error) {
+	existing, err := database.DefaultClient.GetChannel(channelId, opts...)
 	if err == nil {
-		return exists, nil
+		return existing, true, nil
 	}
 	if !errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, errors.Join(errors.New("CacheChannel.database.DefaultClient.GetChannel"), err)
+		return nil, false, errors.Join(errors.New("CacheChannel.database.DefaultClient.GetChannel"), err)
 	}
 
 	channel, err := youtube.DefaultClient.GetChannel(channelId)
 	if err != nil {
-		return nil, errors.Join(errors.New("CacheChannel.youtube.C.GetChannel"), err)
+		return nil, false, errors.Join(errors.New("CacheChannel.youtube.C.GetChannel"), err)
 	}
 
-	cached, err := database.DefaultClient.NewChannel(database.ChannelCreateModel{
+	created, err := database.DefaultClient.NewChannel(database.ChannelCreateModel{
 		ID:          channel.ID,
 		URL:         channel.URL,
 		Title:       channel.Title,
@@ -90,8 +90,8 @@ func CacheChannel(channelId string, opts ...database.ChannelGetOptions) (*models
 		Thumbnail:   channel.Thumbnail,
 	})
 	if err != nil {
-		return nil, errors.Join(errors.New("CacheChannel.database.DefaultClient.NewChannel"), err)
+		return nil, false, errors.Join(errors.New("CacheChannel.database.DefaultClient.NewChannel"), err)
 	}
 
-	return cached, nil
+	return created, false, nil
 }

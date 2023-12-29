@@ -7,12 +7,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (c *Client) NewSubscription(userId primitive.ObjectID, channelId string) (*models.UserSubscription, error) {
 	ctx, cancel := c.Ctx()
 	defer cancel()
 	sub := models.NewUserSubscription(userId, channelId)
+	sub.Prepare()
 	res, err := c.Collection(models.UserSubscriptionCollection).InsertOne(ctx, sub)
 	if err != nil {
 		return nil, err
@@ -25,18 +27,20 @@ type SubscriptionGetOptions struct {
 	WithUser    bool
 }
 
-func (c *Client) AllUserSubscriptions(userId primitive.ObjectID, opts ...SubscriptionGetOptions) ([]models.UserSubscription, error) {
-	var options SubscriptionGetOptions
-	if len(opts) > 0 {
-		options = opts[0]
+func (c *Client) AllUserSubscriptions(userId primitive.ObjectID, o ...SubscriptionGetOptions) ([]models.UserSubscription, error) {
+	var opts SubscriptionGetOptions
+	if len(o) > 0 {
+		opts = o[0]
 	}
 
 	subscriptions := []models.UserSubscription{}
 	ctx, cancel := c.Ctx()
 	defer cancel()
 
-	if !options.WithChannel && !options.WithUser {
-		cur, err := c.Collection(models.UserSubscriptionCollection).Find(ctx, bson.M{"userId": userId})
+	if !opts.WithChannel && !opts.WithUser {
+		findOpts := options.Find()
+		findOpts.SetSort(bson.M{"createdAt": -1})
+		cur, err := c.Collection(models.UserSubscriptionCollection).Find(ctx, bson.M{"userId": userId}, findOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +49,8 @@ func (c *Client) AllUserSubscriptions(userId primitive.ObjectID, opts ...Subscri
 
 	var stages []interface{}
 	stages = append(stages, bson.M{"$match": bson.M{"userId": userId}})
-	if options.WithChannel {
+	stages = append(stages, bson.M{"$sort": bson.M{"createdAt": -1}})
+	if opts.WithChannel {
 		stages = append(stages, bson.M{
 			"$lookup": bson.M{
 				"from":         models.ChannelCollection,
@@ -54,7 +59,7 @@ func (c *Client) AllUserSubscriptions(userId primitive.ObjectID, opts ...Subscri
 				"as":           "channels",
 			}})
 	}
-	if options.WithUser {
+	if opts.WithUser {
 		stages = append(stages, bson.M{
 			"$lookup": bson.M{
 				"from":         models.UserCollection,

@@ -2,10 +2,12 @@ package logic
 
 import (
 	"errors"
+	"slices"
 	"sync"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/ssoroka/slice"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -49,11 +51,10 @@ func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
 }
 
 func GetChannelPageProps(userId, channelId string) (*types.ChannelPageProps, error) {
-	channel, err := CacheChannel(channelId)
+	channel, cached, err := CacheChannel(channelId)
 	if err != nil {
 		return nil, err
 	}
-
 	channelProps := types.ChannelModelToProps(channel)
 	props := types.ChannelPageProps{
 		Authenticated: userId != "",
@@ -63,9 +64,21 @@ func GetChannelPageProps(userId, channelId string) (*types.ChannelPageProps, err
 	}
 
 	videos, err := GetChannelVideos(24, channelId)
-	if err != nil && err != mongo.ErrNoDocuments {
-		// No video in cache is not really an error and should be handled by the UI
+	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, err
+	}
+
+	if len(videos) == 0 && !cached {
+		inserted, err := CacheChannelVideos(channelId)
+		if err != nil {
+			return nil, errors.Join(errors.New("GetChannelPageProps.CacheChannelVideos failed to cache channel videos"), err)
+		}
+		slices.SortFunc(inserted, func(i, j *models.Video) int {
+			return int(j.PublishedAt.Unix()) - int(i.PublishedAt.Unix())
+		})
+		for _, v := range inserted {
+			videos = append(videos, types.VideoModelToProps(v, channelProps))
+		}
 	}
 
 	props.Channel.Videos = trimVideoList(24, 12, videos) // 12 can be divided by 1, 2, 3, 4 to get a nice grid

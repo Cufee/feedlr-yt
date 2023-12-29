@@ -7,9 +7,9 @@ import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
 templ VideosFeed(props types.UserVideoFeedProps) {
 	<head><title>Feedlr</title></head>
 
-	<div id="app-index" class="flex flex-col gap-4 px-4 md:px-0">
+	<div id="app-index" class="flex flex-col gap-4">
 		@shared.OpenVideoButton()
-		@feed.VideoFeed(props.Videos, true, true)
+		@feed.VideoFeed(props.Videos, "/app", true, true)
 	</div>
 }
 
