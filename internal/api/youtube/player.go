@@ -229,5 +229,10 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		return &fullDetails, nil
 	}
 
+	// Hotfix for shorts popping up, I don't think many videos would be shorter than a minute anyways - Mar 5 2024
+	if fullDetails.Type != VideoTypeShort && fullDetails.Duration < 61 {
+		fullDetails.Type = VideoTypeShort
+	}
+
 	return &fullDetails, nil
 }
