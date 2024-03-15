@@ -207,31 +207,24 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		return &fullDetails, nil
 	}
 
-	// Check if this video is Short
-	if len(details.StreamingData.Formats) > 0 {
+	// Check if this video is a Short and get duration if needed
+	for _, format := range details.StreamingData.Formats {
 		if fullDetails.Duration == 0 {
-			duration, _ := strconv.Atoi(details.StreamingData.Formats[0].ApproxDurationMs)
+			duration, _ := strconv.Atoi(format.ApproxDurationMs)
 			fullDetails.Duration = duration / 1000
 		}
-		if details.StreamingData.Formats[0].Width < details.StreamingData.Formats[0].Height {
+		if format.Width < format.Height {
 			fullDetails.Type = VideoTypeShort
 		}
-		return &fullDetails, nil
 	}
-	if len(details.StreamingData.AdaptiveFormats) > 0 {
+	for _, format := range details.StreamingData.AdaptiveFormats {
 		if fullDetails.Duration == 0 {
-			duration, _ := strconv.Atoi(details.StreamingData.AdaptiveFormats[0].ApproxDurationMs)
+			duration, _ := strconv.Atoi(format.ApproxDurationMs)
 			fullDetails.Duration = duration / 1000
 		}
-		if details.StreamingData.AdaptiveFormats[0].Width < details.StreamingData.AdaptiveFormats[0].Height {
+		if format.Width < format.Height {
 			fullDetails.Type = VideoTypeShort
 		}
-		return &fullDetails, nil
-	}
-
-	// Hotfix for shorts popping up, I don't think many videos would be shorter than a minute anyways - Mar 5 2024
-	if fullDetails.Type != VideoTypeShort && fullDetails.Duration < 61 {
-		fullDetails.Type = VideoTypeShort
 	}
 
 	return &fullDetails, nil
