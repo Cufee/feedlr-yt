@@ -215,6 +215,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		}
 		if format.Width < format.Height {
 			fullDetails.Type = VideoTypeShort
+			return &fullDetails, nil
 		}
 	}
 	for _, format := range details.StreamingData.AdaptiveFormats {
@@ -224,6 +225,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		}
 		if format.Width < format.Height {
 			fullDetails.Type = VideoTypeShort
+			return &fullDetails, nil
 		}
 	}
 
