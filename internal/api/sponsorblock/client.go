@@ -26,7 +26,7 @@ func init() {
 	}
 
 	DefaultClient = &client{
-		http:   http.Client{Timeout: time.Second * 5},
+		http:   http.Client{Timeout: time.Millisecond * 500},
 		apiUrl: apiUrl,
 	}
 	C = DefaultClient
