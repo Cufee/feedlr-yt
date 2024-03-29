@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 )
 
 type Segment struct {
@@ -41,8 +42,11 @@ func (c *client) GetVideoSegments(videoId string, categories ...Category) ([]Seg
 	link.RawQuery = query.Encode()
 
 	var segments []Segment
-	res, err := http.DefaultClient.Get(link.String())
+	res, err := c.http.Get(link.String())
 	if err != nil {
+		if os.IsTimeout(err) {
+			return nil, ErrRequestTimeout
+		}
 		return nil, errors.Join(errors.New("GetVideoSegments.http.DefaultClient.Get"), err)
 	}
 	if res == nil || res.StatusCode == http.StatusNotFound {

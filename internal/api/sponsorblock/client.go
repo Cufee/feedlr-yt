@@ -1,17 +1,23 @@
 package sponsorblock
 
 import (
+	"errors"
 	"log"
+	"net/http"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/utils"
 )
 
 type client struct {
 	apiUrl string
+	http   http.Client
 }
 
 var DefaultClient *client
 var C *client
+
+var ErrRequestTimeout = errors.New("request timeout")
 
 func init() {
 	apiUrl := utils.MustGetEnv("SPONSORBLOCK_API_URL")
@@ -20,6 +26,7 @@ func init() {
 	}
 
 	DefaultClient = &client{
+		http:   http.Client{Timeout: time.Second * 5},
 		apiUrl: apiUrl,
 	}
 	C = DefaultClient
