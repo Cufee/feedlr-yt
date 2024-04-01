@@ -192,6 +192,7 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 	}
 	let lastProgress = 0
 	function saveProgress() {
+		if (!window.feedlr_player) return;
 		const currentVolume = Math.floor(window.feedlr_player.getVolume())
 		const currentTime = Math.floor(window.feedlr_player.getCurrentTime())
 		if (lastProgress === currentTime) {
