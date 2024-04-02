@@ -39,8 +39,9 @@ type PlayerResponse struct {
 }
 
 type PlayabilityStatus struct {
-	Status string `json:"status"`
-	Reason string `json:"reason"`
+	Status          string `json:"status"`
+	Reason          string `json:"reason"`
+	PlayableInEmbed bool   `json:"playableInEmbed"`
 }
 
 type Microformat struct {
@@ -141,7 +142,7 @@ type PlayerVideoDetails struct {
 	IsUpcoming        bool      `json:"isUpcoming"`
 }
 
-var defaultClientBodyString = `{"videoId":"","contentCheckOk":true,"racyCheckOk":true,"context":{"client":{"clientName":"WEB","clientVersion":"1.20210616.1.0","platform":"DESKTOP","clientScreen":"EMBED","clientFormFactor":"UNKNOWN_FORM_FACTOR","browserName":"Chrome"},"user":{"lockedSafetyMode":"false"},"request":{"useSsl":"true"}}}`
+var defaultClientBodyString = `{"videoId":"J8USJWN51SU","context":{"client":{"clientName":"TVHTML5_SIMPLY_EMBEDDED_PLAYER","clientVersion":"2.0"},"thirdParty":{"embedUrl":"https://feedlr.app"}}}`
 var defaultClientBody map[string]any
 
 func init() {
@@ -166,7 +167,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		return nil, errors.Join(errors.New("GetVideoPlayerDetails.json.Marshal"), err)
 	}
 
-	res, err := http.Post("https://www.youtube.com/youtubei/v1/player", "application/json", bytes.NewReader(encoded))
+	res, err := http.Post("https://www.youtube.com/youtubei/v1/player?key=AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w", "application/json", bytes.NewReader(encoded))
 	if err != nil {
 		return nil, errors.Join(errors.New("GetVideoPlayerDetails.http.Post"), err)
 	}
@@ -206,7 +207,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 			fullDetails.Type = VideoTypeUpcomingStream
 		}
 		return &fullDetails, nil
-	} else if details.PlayabilityStatus.Status != "OK" || details.PlayerVideoDetails.IsPrivate {
+	} else if !details.PlayabilityStatus.PlayableInEmbed || details.PlayabilityStatus.Status != "OK" || details.PlayerVideoDetails.IsPrivate {
 		fullDetails.Type = VideoTypePrivate
 		return &fullDetails, nil
 	}
