@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -12,6 +13,9 @@ import (
 )
 
 type VideoType string
+
+// Not sure why, but some videos end up with the duration values below every now and then
+var invalidVideoDurations = []int{93}
 
 const (
 	VideoTypeUpcomingStream VideoType = "upcoming_stream"
@@ -211,7 +215,9 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 	for _, format := range details.StreamingData.Formats {
 		if fullDetails.Duration == 0 {
 			duration, _ := strconv.Atoi(format.ApproxDurationMs)
-			fullDetails.Duration = duration / 1000
+			if !slices.Contains(invalidVideoDurations, duration) {
+				fullDetails.Duration = duration / 1000
+			}
 		}
 		if format.Width < format.Height {
 			fullDetails.Type = VideoTypeShort
@@ -221,12 +227,17 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 	for _, format := range details.StreamingData.AdaptiveFormats {
 		if fullDetails.Duration == 0 {
 			duration, _ := strconv.Atoi(format.ApproxDurationMs)
-			fullDetails.Duration = duration / 1000
+			if !slices.Contains(invalidVideoDurations, duration) {
+				fullDetails.Duration = duration / 1000
+			}
 		}
 		if format.Width < format.Height {
 			fullDetails.Type = VideoTypeShort
 			return &fullDetails, nil
 		}
+	}
+	if fullDetails.Duration <= 60 {
+		fullDetails.Type = VideoTypeShort
 	}
 
 	return &fullDetails, nil
