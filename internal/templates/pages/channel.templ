@@ -28,7 +28,7 @@ templ Channel(props types.ChannelPageProps) {
 			</div>
 		</div>
 
-		@feed.VideoFeed(props.Channel.Videos, fmt.Sprintf("/channel/%s", props.Channel.ID), true, false)
+		@feed.VideoFeed(props.Channel.Videos, fmt.Sprintf("/channel/%s", props.Channel.ID), props.Authenticated && props.Subscribed, false)
 	</div>
 }
 
