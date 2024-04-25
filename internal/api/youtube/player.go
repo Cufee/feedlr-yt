@@ -237,7 +237,9 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 			return &fullDetails, nil
 		}
 	}
-	if fullDetails.Duration <= 60 {
+
+	// Shorts keep creeping in somehow, going to increase this to 100 seconds for now
+	if fullDetails.Duration <= 100 {
 		fullDetails.Type = VideoTypeShort
 	}
 
