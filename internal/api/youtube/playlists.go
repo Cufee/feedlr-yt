@@ -27,7 +27,7 @@ func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
 	return playlists.Items[0].ContentDetails.RelatedPlaylists.Uploads, nil
 }
 
-func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...string) ([]Video, error) {
+func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ...string) ([]Video, error) {
 	if limit < 1 {
 		limit = 3
 	}
@@ -42,7 +42,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, sipVideoIds ...
 	var videoDetails = make(chan *VideoDetails, len(res.Items))
 
 	for _, item := range res.Items {
-		if slices.Contains(sipVideoIds, item.Snippet.ResourceId.VideoId) {
+		if slices.Contains(skipVideoIds, item.Snippet.ResourceId.VideoId) {
 			continue
 		}
 		wg.Add(1)
