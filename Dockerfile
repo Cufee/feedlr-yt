@@ -11,7 +11,7 @@ RUN git config --global init.defaultBranch main && \
   git add . && \
   git commit -m "build commit"
 
-RUN npm install && npm install -g @go-task/cli
+RUN npm install && npm install -g @go-task/cli@3.35.1
 RUN task style:generate
 
 
