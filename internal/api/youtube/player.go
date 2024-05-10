@@ -142,7 +142,7 @@ type PlayerVideoDetails struct {
 	IsUpcoming        bool      `json:"isUpcoming"`
 }
 
-var defaultClientBodyString = `{"videoId":"J8USJWN51SU","context":{"client":{"clientName":"TVHTML5_SIMPLY_EMBEDDED_PLAYER","clientVersion":"2.0"},"thirdParty":{"embedUrl":"https://feedlr.app"}}}`
+var defaultClientBodyString = `{"videoId":"","contentCheckOk":true,"racyCheckOk":true,"context":{"client":{"clientName":"WEB","clientVersion":"1.20210616.1.0","platform":"DESKTOP","clientScreen":"EMBED","clientFormFactor":"UNKNOWN_FORM_FACTOR","browserName":"Chrome"},"user":{"lockedSafetyMode":"false"},"request":{"useSsl":"true"}}}`
 var defaultClientBody map[string]any
 
 func init() {
@@ -167,7 +167,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		return nil, errors.Join(errors.New("GetVideoPlayerDetails.json.Marshal"), err)
 	}
 
-	res, err := http.Post("https://www.youtube.com/youtubei/v1/player?key=AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w", "application/json", bytes.NewReader(encoded))
+	res, err := http.Post("https://www.youtube.com/youtubei/v1/player", "application/json", bytes.NewReader(encoded))
 	if err != nil {
 		return nil, errors.Join(errors.New("GetVideoPlayerDetails.http.Post"), err)
 	}
@@ -239,7 +239,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 	}
 
 	// Shorts keep creeping in somehow, going to increase this to 100 seconds for now
-	if fullDetails.Duration > 0 && fullDetails.Duration <= 100 {
+	if fullDetails.Duration <= 100 {
 		fullDetails.Type = VideoTypeShort
 	}
 
