@@ -207,7 +207,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 			fullDetails.Type = VideoTypeUpcomingStream
 		}
 		return &fullDetails, nil
-	} else if !details.PlayabilityStatus.PlayableInEmbed || details.PlayabilityStatus.Status != "OK" || details.PlayerVideoDetails.IsPrivate {
+	} else if details.PlayabilityStatus.Status != "OK" || details.PlayerVideoDetails.IsPrivate {
 		fullDetails.Type = VideoTypePrivate
 		return &fullDetails, nil
 	}
