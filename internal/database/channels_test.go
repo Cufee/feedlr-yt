@@ -1,35 +1,36 @@
 package database
 
 import (
+	"context"
+	"os"
 	"testing"
+
+	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/matryer/is"
 )
 
-func TestGetAllChannels(t *testing.T) {
-	videoLimit := 3
-	c := DefaultClient
-	channels, err := c.GetAllChannels(ChannelGetOptions{WithVideos: true, VideosLimit: videoLimit})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(channels) == 0 {
-		t.Fatal("no channels")
-	}
-	for _, channel := range channels {
-		if len(channel.Videos) > videoLimit {
-			t.Fatal("too many videos")
-		}
-		t.Logf("TestGetAllChannels Found %v videos", len(channel.Videos))
-	}
-}
+func TestInsertAndGetChannels(t *testing.T) {
+	is := is.New(t)
 
-func TestGetAllChannelsWithSubscriptions(t *testing.T) {
-	c := DefaultClient
-	channels, err := c.GetAllChannelsWithSubscriptions()
-	if err != nil {
-		t.Fatal(err)
+	c, err := NewSQLiteClient(os.Getenv("DATABASE_PATH"))
+	is.NoErr(err)
+
+	c1 := models.Channel{
+		ID:          "channel-1",
+		Title:       "Channel 1 Title",
+		Description: "Channel 1 Description",
 	}
-	if len(channels) == 0 {
-		t.Fatal("no channels")
-	}
-	t.Logf("TestGetAllChannelsWithSubscriptions Found %v channels", len(channels))
+	err = c.UpsertChannel(context.Background(), &c1)
+	is.NoErr(err)
+
+	rc1, err := c.GetChannel(context.Background(), "channel-1")
+	is.NoErr(err)
+	is.True(rc1.ID == c1.ID)
+	is.True(rc1.Title == c1.Title)
+	is.True(rc1.Description == c1.Description)
+
+	rc2, err := c.GetChannels(context.Background())
+	is.NoErr(err)
+	is.True(len(rc2) == 1)
+	is.True(rc2[0].ID == c1.ID)
 }

@@ -1,63 +1,43 @@
 package database
 
 import (
-	"context"
-	"time"
+	"database/sql"
+	"fmt"
 
-	"github.com/cufee/feedlr-yt/internal/database/models"
-	"github.com/cufee/feedlr-yt/internal/utils"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-type Client struct {
-	db *mongo.Database
+type Client interface {
+	AuthNonceClient
+
+	ChannelsClient
+	VideosClient
+	ViewsClient
+
+	UsersClient
+	SettingsClient
+	ConnectionsClient
+	SubscriptionsClient
+
+	Close() error
 }
 
-var DefaultClient *Client = NewClient()
-
-func NewClient() *Client {
-	connString, err := connstring.ParseAndValidate(utils.MustGetEnv("DATABASE_URL"))
+func NewSQLiteClient(path string) (Client, error) {
+	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file://%s?_fk=1&_auto_vacuum=2&_synchronous=1&_journal_mode=WAL", path)) // _mutex
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+	sqldb.SetMaxOpenConns(1)
 
-	uriOptions := options.Client().ApplyURI(connString.String())
-
-	client, err := mongo.Connect(context.TODO(), uriOptions)
-	if err != nil {
-		panic(err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	err = client.Ping(ctx, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	db := client.Database(connString.Database)
-	err = models.SyncIndexes(db)
-	if err != nil {
-		panic(err)
-	}
-
-	return &Client{
-		db: db,
-	}
+	return &sqliteClient{
+		db: sqldb,
+	}, nil
 }
 
-func (c *Client) Close() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	c.db.Client().Disconnect(ctx)
+type sqliteClient struct {
+	db *sql.DB
 }
 
-func (c *Client) Ctx() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), time.Second*5)
-}
-
-func (c *Client) Collection(coll string) *mongo.Collection {
-	return c.db.Collection(coll)
+func (c *sqliteClient) Close() error {
+	return c.db.Close()
 }

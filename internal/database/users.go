@@ -1,46 +1,41 @@
 package database
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func (c *Client) EnsureUserExists(authId string) (*models.User, error) {
-	user, err := c.GetUserFromAuthID(authId)
+type UsersClient interface {
+	CreateUser(ctx context.Context) (*models.User, error)
+	GetOrCreateUser(ctx context.Context, id string) (*models.User, error)
+	GetUser(ctx context.Context, id string) (*models.User, error)
+}
+
+func (c *sqliteClient) GetOrCreateUser(ctx context.Context, id string) (*models.User, error) {
+	user, err := c.GetUser(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return c.CreateUser(ctx)
+	}
+	return user, err
+}
+
+func (c *sqliteClient) GetUser(ctx context.Context, id string) (*models.User, error) {
+	user, err := models.FindUser(ctx, c.db, id)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return c.NewUser(authId)
-		}
 		return nil, err
 	}
 	return user, nil
 }
 
-func (c *Client) GetUserFromAuthID(authId string) (*models.User, error) {
-	user := &models.User{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	err := c.Collection(models.UserCollection).FindOne(ctx, bson.M{"authId": authId}).Decode(user)
+func (c *sqliteClient) CreateUser(ctx context.Context) (*models.User, error) {
+	user := models.User{}
+	err := user.Insert(ctx, c.db, boil.Infer())
 	if err != nil {
 		return nil, err
 	}
-	return user, nil
-}
-
-func (c *Client) NewUser(authId string) (*models.User, error) {
-	user := models.NewUser(authId)
-	user.Prepare()
-
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	res, err := c.Collection(models.UserCollection).InsertOne(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	return user, user.ParseID(res.InsertedID)
+	return &user, nil
 }

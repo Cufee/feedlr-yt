@@ -1,204 +1,152 @@
 package database
 
 import (
-	"errors"
+	"context"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/pkg/errors"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func (c *Client) NewSubscription(userId primitive.ObjectID, channelId string) (*models.UserSubscription, error) {
-	ctx, cancel := c.Ctx()
-	defer cancel()
-	sub := models.NewUserSubscription(userId, channelId)
-	sub.Prepare()
-	res, err := c.Collection(models.UserSubscriptionCollection).InsertOne(ctx, sub)
+type SubscriptionsClient interface {
+	NewSubscription(ctx context.Context, userID string, channelID string) (*models.Subscription, error)
+	FindSubscription(ctx context.Context, userID string, channelID string, opts ...SubscriptionQuery) (*models.Subscription, error)
+	UserSubscriptions(ctx context.Context, userID string, o ...SubscriptionQuery) ([]*models.Subscription, error)
+	GetSubscription(ctx context.Context, id string, opts ...SubscriptionQuery) (*models.Subscription, error)
+	UpdateSubscription(ctx context.Context, sub *models.Subscription) error
+	DeleteSubscription(ctx context.Context, userID string, channelID string) error
+}
+
+type subscriptionQuery struct {
+	withChannel bool
+	withUser    bool
+}
+
+type SubscriptionQuery func(*subscriptionQuery)
+
+type subscriptionGetOptionSlice []SubscriptionQuery
+
+func (s subscriptionGetOptionSlice) opts() subscriptionQuery {
+	var o subscriptionQuery
+	for _, apply := range s {
+		apply(&o)
+	}
+	return o
+}
+
+type Subscription struct{}
+
+func (Subscription) WithChannel() SubscriptionQuery {
+	return func(o *subscriptionQuery) {
+		o.withChannel = true
+	}
+}
+func (Subscription) WithUser() SubscriptionQuery {
+	return func(o *subscriptionQuery) {
+		o.withUser = true
+	}
+}
+
+func (c *sqliteClient) NewSubscription(ctx context.Context, userID, channelID string) (*models.Subscription, error) {
+	sub := models.Subscription{
+		UserID:    userID,
+		ChannelID: channelID,
+		Favorite:  false,
+	}
+
+	err := sub.Insert(ctx, c.db, boil.Infer())
 	if err != nil {
 		return nil, err
 	}
-	return sub, sub.ParseID(res.InsertedID)
+
+	return &sub, nil
 }
 
-type SubscriptionGetOptions struct {
-	WithChannel bool
-	WithUser    bool
-}
+func (c *sqliteClient) UserSubscriptions(ctx context.Context, userID string, o ...SubscriptionQuery) ([]*models.Subscription, error) {
+	opts := subscriptionGetOptionSlice(o).opts()
 
-func (c *Client) AllUserSubscriptions(userId primitive.ObjectID, o ...SubscriptionGetOptions) ([]models.UserSubscription, error) {
-	var opts SubscriptionGetOptions
-	if len(o) > 0 {
-		opts = o[0]
+	subscriptions, err := models.Subscriptions(models.SubscriptionWhere.UserID.EQ(userID)).All(ctx, c.db)
+	if err != nil {
+		return nil, err
 	}
 
-	subscriptions := []models.UserSubscription{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	if !opts.WithChannel && !opts.WithUser {
-		findOpts := options.Find()
-		findOpts.SetSort(bson.M{"createdAt": -1})
-		cur, err := c.Collection(models.UserSubscriptionCollection).Find(ctx, bson.M{"userId": userId}, findOpts)
+	if opts.withChannel {
+		err := models.Subscription{}.L.LoadChannel(ctx, c.db, false, &subscriptions, nil)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to load subscription channel")
 		}
-		return subscriptions, cur.All(ctx, &subscriptions)
 	}
-
-	var stages []interface{}
-	stages = append(stages, bson.M{"$match": bson.M{"userId": userId}})
-	stages = append(stages, bson.M{"$sort": bson.M{"createdAt": -1}})
-	if opts.WithChannel {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.ChannelCollection,
-				"localField":   "channelId",
-				"foreignField": "eid",
-				"as":           "channels",
-			}})
-	}
-	if opts.WithUser {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.UserCollection,
-				"localField":   "userId",
-				"foreignField": "eid",
-				"as":           "users",
-			},
-		})
-	}
-
-	cur, err := c.Collection(models.UserSubscriptionCollection).Aggregate(ctx, stages)
-	if err != nil {
-		return nil, err
-	}
-	err = cur.All(ctx, &subscriptions)
-	if err != nil {
-		return nil, err
+	if opts.withUser {
+		err := models.Subscription{}.L.LoadUser(ctx, c.db, false, &subscriptions, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load subscription user")
+		}
 	}
 
 	return subscriptions, nil
 }
 
-func (c *Client) FindSubscription(userId primitive.ObjectID, channelId string, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
-	var options SubscriptionGetOptions
-	if len(opts) > 0 {
-		options = opts[0]
-	}
+func (c *sqliteClient) FindSubscription(ctx context.Context, userID, channelID string, o ...SubscriptionQuery) (*models.Subscription, error) {
+	opts := subscriptionGetOptionSlice(o).opts()
 
-	subscription := &models.UserSubscription{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	if !options.WithChannel && !options.WithUser {
-		err := c.Collection(models.UserSubscriptionCollection).FindOne(ctx, bson.M{"userId": userId, "channelId": channelId}).Decode(subscription)
-		return subscription, err
-	}
-
-	var stages []interface{}
-	stages = append(stages, bson.M{"$match": bson.M{"userId": userId, "channelId": channelId}})
-	if options.WithChannel {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.ChannelCollection,
-				"localField":   "channelId",
-				"foreignField": "eid",
-				"as":           "channels",
-			}})
-	}
-	if options.WithUser {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.UserCollection,
-				"localField":   "userId",
-				"foreignField": "eid",
-				"as":           "users",
-			},
-		})
-	}
-
-	cur, err := c.Collection(models.UserSubscriptionCollection).Aggregate(ctx, stages)
-	if err != nil {
-		return nil, err
-	}
-	err = cur.All(ctx, &subscription)
+	subscription, err := models.Subscriptions(models.SubscriptionWhere.UserID.EQ(userID), models.SubscriptionWhere.ChannelID.EQ(channelID)).One(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
 
-	return subscription, nil
-}
-
-func (c *Client) GetSubscription(id primitive.ObjectID, opts ...SubscriptionGetOptions) (*models.UserSubscription, error) {
-	var options SubscriptionGetOptions
-	if len(opts) > 0 {
-		options = opts[0]
-	}
-
-	subscription := &models.UserSubscription{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	if !options.WithChannel && !options.WithUser {
-		cur, err := c.Collection(models.UserSubscriptionCollection).Find(ctx, bson.M{"_id": id})
+	if opts.withChannel {
+		err := models.Subscription{}.L.LoadChannel(ctx, c.db, true, &subscription, nil)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to load subscription channel")
 		}
-		return subscription, cur.All(ctx, &subscription)
+	}
+	if opts.withUser {
+		err := models.Subscription{}.L.LoadUser(ctx, c.db, true, &subscription, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load subscription user")
+		}
 	}
 
-	var stages []interface{}
-	stages = append(stages, bson.M{"$match": bson.M{"_id": id}})
-	if options.WithChannel {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.ChannelCollection,
-				"localField":   "channelId",
-				"foreignField": "eid",
-				"as":           "channels",
-			}})
-	}
-	if options.WithUser {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.UserCollection,
-				"localField":   "userId",
-				"foreignField": "eid",
-				"as":           "users",
-			},
-		})
-	}
+	return subscription, nil
 
-	cur, err := c.Collection(models.UserSubscriptionCollection).Aggregate(ctx, stages)
+}
+
+func (c *sqliteClient) GetSubscription(ctx context.Context, id string, o ...SubscriptionQuery) (*models.Subscription, error) {
+	opts := subscriptionGetOptionSlice(o).opts()
+
+	subscription, err := models.FindSubscription(ctx, c.db, id)
 	if err != nil {
 		return nil, err
 	}
-	err = cur.All(ctx, &subscription)
-	if err != nil {
-		return nil, err
+
+	if opts.withChannel {
+		err := models.Subscription{}.L.LoadChannel(ctx, c.db, true, &subscription, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load subscription channel")
+		}
 	}
+	if opts.withUser {
+		err := models.Subscription{}.L.LoadUser(ctx, c.db, true, &subscription, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load subscription user")
+		}
+	}
+
 	return subscription, nil
 }
 
-func (c *Client) DeleteSubscription(userId primitive.ObjectID, channelId string) error {
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	_, err := c.Collection(models.UserSubscriptionCollection).DeleteOne(ctx, bson.M{"userId": userId, "channelId": channelId})
-	if errors.Is(mongo.ErrNoDocuments, err) {
-		return nil
+func (c *sqliteClient) DeleteSubscription(ctx context.Context, userID string, channelID string) error {
+	_, err := models.Subscriptions(models.SubscriptionWhere.UserID.EQ(userID), models.SubscriptionWhere.ChannelID.EQ(channelID)).DeleteAll(ctx, c.db)
+	if err != nil {
+		return err
 	}
-	return err
+	return nil
 }
 
-func (c *Client) UpdateSubscription(sub *models.UserSubscription) error {
-	sub.Prepare()
-
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	_, err := c.Collection(models.UserSubscriptionCollection).UpdateOne(ctx, bson.M{"_id": sub.ID}, bson.M{"$set": sub})
-	return err
+func (c *sqliteClient) UpdateSubscription(ctx context.Context, sub *models.Subscription) error {
+	_, err := sub.Update(ctx, c.db, boil.Infer())
+	if err != nil {
+		return err
+	}
+	return nil
 }

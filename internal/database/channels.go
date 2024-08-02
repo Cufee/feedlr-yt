@@ -1,203 +1,143 @@
 package database
 
 import (
+	"context"
+
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-type ChannelGetOptions struct {
-	WithVideos        bool
-	VideosLimit       int
-	WithSubscriptions bool
+type ChannelsClient interface {
+	GetChannel(ctx context.Context, channelId string, opts ...ChannelQuery) (*models.Channel, error)
+	GetChannels(ctx context.Context, opts ...ChannelQuery) ([]*models.Channel, error)
+	GetChannelsWithSubscriptions(ctx context.Context) ([]*models.Channel, error)
+	UpsertChannel(ctx context.Context, data *models.Channel) error
 }
 
-func (c *Client) GetAllChannels(opts ...ChannelGetOptions) ([]models.Channel, error) {
-	var options ChannelGetOptions
-	if len(opts) > 0 {
-		options = opts[0]
+type ChannelQuery func(*channelQuery)
+
+type channelQuery struct {
+	id                []string
+	withVideos        bool
+	videosLimit       int
+	withSubscriptions bool
+}
+
+type channelQuerySlice []ChannelQuery
+
+func (s channelQuerySlice) opts() channelQuery {
+	var o channelQuery
+	for _, apply := range s {
+		apply(&o)
+	}
+	return o
+}
+
+type Channel struct{}
+
+func (Channel) WithVideos(limit int) ChannelQuery {
+	return func(o *channelQuery) {
+		o.videosLimit = limit
+		o.withVideos = true
+	}
+}
+func (Channel) WithSubscriptions() ChannelQuery {
+	return func(o *channelQuery) {
+		o.withSubscriptions = true
+	}
+}
+func (Channel) ID(ids ...string) ChannelQuery {
+	return func(o *channelQuery) {
+		o.id = append(o.id, ids...)
+	}
+}
+
+func (c *sqliteClient) GetChannels(ctx context.Context, o ...ChannelQuery) ([]*models.Channel, error) {
+	opts := channelQuerySlice(o).opts()
+
+	var mods []qm.QueryMod
+	if opts.id != nil {
+		mods = append(mods, models.ChannelWhere.ID.IN(opts.id))
 	}
 
-	ctx, cancel := c.Ctx()
-	defer cancel()
+	channels, err := models.Channels(mods...).All(ctx, c.db)
+	if err != nil {
+		return nil, err
+	}
 
-	channels := []models.Channel{}
-
-	if !options.WithVideos && !options.WithSubscriptions {
-		cur, err := c.Collection(models.ChannelCollection).Find(ctx, bson.M{})
+	if opts.withVideos {
+		var mods queries.Applicator
+		if opts.videosLimit > 0 {
+			mods = qm.Limit(opts.videosLimit)
+		}
+		err = models.Channel{}.L.LoadVideos(ctx, c.db, false, &channels, mods)
 		if err != nil {
 			return nil, err
 		}
-		return channels, cur.All(ctx, &channels)
 	}
-
-	var stages []interface{}
-	if options.WithVideos {
-		lookup := bson.M{
-			"from":         models.VideoCollection,
-			"localField":   "eid",
-			"foreignField": "channelId",
-			"as":           "videos",
-		}
-		if options.VideosLimit > 0 {
-			lookup["let"] = bson.M{"indicator_id": "$eid"}
-			lookup["pipeline"] = mongo.Pipeline{
-				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}, {Key: "type", Value: bson.M{"$ne": "private"}}}}},
-				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
-				{{Key: "$limit", Value: options.VideosLimit}},
-			}
-		}
-		stages = append(stages, bson.M{"$lookup": lookup})
-	}
-	if options.WithSubscriptions {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.UserSubscriptionCollection,
-				"localField":   "eid",
-				"foreignField": "channelId",
-				"as":           "subscriptions",
-			},
-		})
-	}
-
-	cur, err := c.Collection(models.ChannelCollection).Aggregate(ctx, stages)
-	if err != nil {
-		return nil, err
-	}
-	err = cur.All(ctx, &channels)
-	if err != nil {
-		return nil, err
-	}
-	return channels, nil
-}
-
-func (c *Client) GetAllChannelsWithSubscriptions() ([]models.Channel, error) {
-	var stages []interface{}
-	channels := []models.Channel{}
-
-	stages = append(stages, bson.M{
-		"$lookup": bson.M{
-			"from":         models.UserSubscriptionCollection,
-			"localField":   "eid",
-			"foreignField": "channelId",
-			"as":           "subscriptions",
-		},
-	})
-
-	// subscriptions > 0
-	stages = append(stages, bson.M{
-		"$match": bson.M{
-			"subscriptions": bson.M{
-				"$exists": true,
-				"$ne":     bson.A{},
-			},
-		},
-	})
-
-	ctx, cancel := c.Ctx()
-	defer cancel()
-	cur, err := c.Collection(models.ChannelCollection).Aggregate(ctx, stages)
-	if err != nil {
-		return nil, err
-	}
-	err = cur.All(ctx, &channels)
-	if err != nil {
-		return nil, err
-	}
-	return channels, nil
-}
-
-func (c *Client) GetChannel(channelId string, opts ...ChannelGetOptions) (*models.Channel, error) {
-	channels, err := c.GetChannelsByID([]string{channelId}, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if len(channels) == 0 {
-		return nil, mongo.ErrNoDocuments
-	}
-	return &channels[0], nil
-}
-
-func (c *Client) GetChannelsByID(channelIds []string, opts ...ChannelGetOptions) ([]models.Channel, error) {
-	var options ChannelGetOptions
-	if len(opts) > 0 {
-		options = opts[0]
-	}
-
-	channels := []models.Channel{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	if !options.WithVideos && !options.WithSubscriptions {
-		cur, err := c.Collection(models.ChannelCollection).Find(ctx, bson.M{"eid": bson.M{"$in": channelIds}})
+	if opts.withSubscriptions {
+		err = models.Channel{}.L.LoadSubscriptions(ctx, c.db, false, &channels, nil)
 		if err != nil {
 			return nil, err
 		}
-		return channels, cur.All(ctx, &channels)
 	}
 
-	var stages []interface{}
-	stages = append(stages, bson.M{"$match": bson.M{"eid": bson.M{"$in": channelIds}}})
-	if options.WithVideos {
-		lookup := bson.M{
-			"from":         models.VideoCollection,
-			"localField":   "eid",
-			"foreignField": "channelId",
-			"as":           "videos",
-		}
-		if options.VideosLimit > 0 {
-			lookup["let"] = bson.M{"indicator_id": "$eid"}
-			lookup["pipeline"] = mongo.Pipeline{
-				{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$eq", Value: bson.A{"$channelId", "$$indicator_id"}}}}, {Key: "type", Value: bson.M{"$ne": "private"}}}}},
-				{{Key: "$sort", Value: bson.D{{Key: "publishedAt", Value: -1}}}},
-				{{Key: "$limit", Value: options.VideosLimit}},
-			}
-		}
-		stages = append(stages, bson.M{"$lookup": lookup})
-	}
-	if options.WithSubscriptions {
-		stages = append(stages, bson.M{
-			"$lookup": bson.M{
-				"from":         models.UserSubscriptionCollection,
-				"localField":   "eid",
-				"foreignField": "channelId",
-				"as":           "subscriptions",
-			},
-		})
+	return channels, nil
+}
+
+func (c *sqliteClient) GetChannelsWithSubscriptions(ctx context.Context) ([]*models.Channel, error) {
+	var subscriptions []struct {
+		ChannelID string `boil:"channel_id"`
 	}
 
-	cur, err := c.Collection(models.ChannelCollection).Aggregate(ctx, stages)
+	err := models.Subscriptions(qm.GroupBy(models.SubscriptionColumns.ChannelID), qm.Select(models.SubscriptionColumns.ChannelID)).Bind(ctx, c.db, &subscriptions)
 	if err != nil {
 		return nil, err
 	}
 
-	err = cur.All(ctx, &channels)
+	var ids []string
+	for _, s := range subscriptions {
+		ids = append(ids, s.ChannelID)
+	}
+
+	channels, err := models.Channels(models.ChannelWhere.ID.IN(ids)).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
 	return channels, nil
 }
 
-type ChannelCreateModel struct {
-	ID          string
-	URL         string
-	Title       string
-	Description string
-	Thumbnail   string
-}
+func (c *sqliteClient) GetChannel(ctx context.Context, channelId string, o ...ChannelQuery) (*models.Channel, error) {
+	opts := channelQuerySlice(o).opts()
 
-func (c *Client) NewChannel(ch ChannelCreateModel) (*models.Channel, error) {
-	channel := models.NewChannel(ch.ID, ch.URL, ch.Title, models.ChannelOptions{Thumbnail: &ch.Thumbnail, Description: &ch.Description})
-	channel.Prepare()
-
-	ctx, cancel := c.Ctx()
-	defer cancel()
-	res, err := c.Collection(models.ChannelCollection).InsertOne(ctx, channel)
+	channel, err := models.FindChannel(ctx, c.db, channelId)
 	if err != nil {
 		return nil, err
 	}
-	channel.ParseID(res.InsertedID)
-	channel.Subscriptions = []models.UserSubscription{}
-	channel.Videos = []models.Video{}
+
+	if opts.withVideos {
+		var mods queries.Applicator
+		if opts.videosLimit > 0 {
+			mods = qm.Limit(opts.videosLimit)
+		}
+		err = models.Channel{}.L.LoadVideos(ctx, c.db, true, &channel, mods)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if opts.withSubscriptions {
+		err = models.Channel{}.L.LoadSubscriptions(ctx, c.db, true, &channel, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return channel, nil
+}
+
+func (c *sqliteClient) UpsertChannel(ctx context.Context, data *models.Channel) error {
+	return data.Upsert(ctx, c.db, true, []string{models.ChannelColumns.ID}, boil.Infer(), boil.Infer())
 }

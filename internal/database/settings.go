@@ -1,37 +1,29 @@
 package database
 
 import (
+	"context"
+
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func (c *Client) GetUserSettings(userId primitive.ObjectID) (*models.UserSettings, error) {
-	settings := &models.UserSettings{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
+type SettingsClient interface {
+	GetUserSettings(ctx context.Context, userID string) (*models.Setting, error)
+	UpsertSettings(ctx context.Context, settings *models.Setting) error
+}
 
-	err := c.Collection(models.UserSettingsCollection).FindOne(ctx, bson.M{"userId": userId}).Decode(settings)
+func (c *sqliteClient) GetUserSettings(ctx context.Context, userID string) (*models.Setting, error) {
+	settings, err := models.Settings(models.SettingWhere.UserID.EQ(userID)).One(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
 	return settings, nil
 }
 
-func (c *Client) UpdateUserSettings(userId primitive.ObjectID, opts ...models.UserSettingsOptions) (*models.UserSettings, error) {
-	settings := models.NewUserSettings(userId, opts...)
-	settings.Prepare()
-
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	res, err := c.Collection(models.UserSettingsCollection).UpdateOne(ctx, bson.M{"userId": userId}, bson.M{"$set": settings}, options.Update().SetUpsert(true))
+func (c *sqliteClient) UpsertSettings(ctx context.Context, settings *models.Setting) error {
+	err := settings.Upsert(ctx, c.db, true, []string{models.SettingColumns.ID, models.SettingColumns.UserID}, boil.Infer(), boil.Infer())
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if res.UpsertedID == nil {
-		return settings, nil
-	}
-	return settings, settings.ParseID(res.UpsertedID)
+	return nil
 }
