@@ -1,172 +1,137 @@
 package database
 
 import (
-	"time"
+	"context"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/pkg/errors"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-type GetVideoOptions struct {
-	WithChannel bool
+type VideosClient interface {
+	GetVideoByID(ctx context.Context, id string, o ...VideoQuery) (*models.Video, error)
+	FindVideos(ctx context.Context, o ...VideoQuery) ([]*models.Video, error)
 }
 
-func (c *Client) GetVideoByID(id string, opts ...GetVideoOptions) (*models.Video, error) {
-	ctx, cancel := c.Ctx()
-	defer cancel()
+type VideoQuery func(o *videoQuery)
 
-	var options GetVideoOptions
-	if len(opts) > 0 {
-		options = opts[0]
+type videoQuery struct {
+	withChannel bool
+	channels    []string
+	typesIn     []string
+	typesNotIn  []string
+}
+
+type videoQuerySlice []VideoQuery
+
+func (s videoQuerySlice) opts() videoQuery {
+	var q videoQuery
+	for _, apply := range s {
+		apply(&q)
+	}
+	return q
+}
+
+type Video struct{}
+
+func (Video) WithChannel() VideoQuery {
+	return func(o *videoQuery) {
+		o.withChannel = true
+	}
+}
+func (Video) Channel(id ...string) VideoQuery {
+	return func(o *videoQuery) {
+		o.channels = append(o.channels, id...)
+	}
+}
+func (Video) TypeEq(types ...string) VideoQuery {
+	return func(o *videoQuery) {
+		o.typesIn = append(o.typesIn, types...)
+	}
+}
+func (Video) TypeNot(types ...string) VideoQuery {
+	return func(o *videoQuery) {
+		o.typesNotIn = append(o.typesNotIn, types...)
+	}
+}
+
+func (c *sqliteClient) GetVideoByID(ctx context.Context, id string, o ...VideoQuery) (*models.Video, error) {
+	opts := videoQuerySlice(o).opts()
+
+	video, err := models.FindVideo(ctx, c.db, id)
+	if err != nil {
+		return nil, err
 	}
 
-	if !options.WithChannel {
-		video := &models.Video{}
-		err := c.Collection(video.CollectionName()).FindOne(ctx, bson.M{"eid": id}).Decode(video)
+	if opts.withChannel {
+		err := video.L.LoadChannel(ctx, c.db, true, &video, nil)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to load video channel")
 		}
-		return video, nil
 	}
 
-	var stages []interface{}
-	stages = append(stages, bson.M{"$match": bson.M{"eid": id}})
-	stages = append(stages, bson.M{"$limit": 1})
-	if options.WithChannel {
-		lookup := bson.M{
-			"from":         models.ChannelCollection,
-			"localField":   "channelId",
-			"foreignField": "eid",
-			"as":           "channel",
-		}
-		stages = append(stages, bson.M{"$lookup": lookup})
-		stages = append(stages, bson.M{"$addFields": bson.M{"channel": bson.M{"$arrayElemAt": bson.A{"$channel", 0}}}})
-	}
-
-	var videos []models.Video
-	cur, err := c.Collection(models.VideoCollection).Aggregate(ctx, stages)
-	if err != nil {
-		return nil, err
-	}
-	err = cur.All(ctx, &videos)
-	if err != nil {
-		return nil, err
-	}
-	if len(videos) == 0 {
-		return nil, mongo.ErrNoDocuments
-	}
-
-	return &videos[0], nil
+	return video, nil
 }
 
-func (c *Client) GetVideosByChannelID(limit int, channelIds ...string) ([]models.Video, error) {
-	videos := []models.Video{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
+func (c *sqliteClient) FindVideos(ctx context.Context, o ...VideoQuery) ([]*models.Video, error) {
+	opts := videoQuerySlice(o).opts()
 
-	opts := options.Find().SetSort(bson.M{"publishedAt": -1})
-	cur, err := c.Collection(models.VideoCollection).Find(ctx, bson.M{"channelId": bson.M{"$in": channelIds}, "type": bson.M{"$ne": "private"}}, opts)
+	mods := []qm.QueryMod{}
+	if opts.channels != nil {
+		mods = append(mods, models.VideoWhere.ChannelID.IN(opts.channels))
+	}
+	if opts.typesIn != nil {
+		mods = append(mods, models.VideoWhere.Type.IN(opts.typesIn))
+	}
+	if opts.typesNotIn != nil {
+		mods = append(mods, models.VideoWhere.Type.NIN(opts.typesNotIn))
+	}
+
+	videos, err := models.Videos(mods...).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
-	err = cur.All(ctx, &videos)
-	if err != nil {
-		return nil, err
+
+	if opts.withChannel {
+		err := models.Video{}.L.LoadChannel(ctx, c.db, false, &videos, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load video channel")
+		}
 	}
+
 	return videos, nil
 }
 
-type VideoCreateModel struct {
-	Type        string
-	ID          string
-	URL         string
-	Title       string
-	Duration    int
-	ChannelID   string
-	PublishedAt time.Time
-	Description string
-	Thumbnail   string
+func (c *sqliteClient) UpsertVideos(ctx context.Context, videos ...*models.Video) error {
+	for _, v := range videos {
+		err := v.Upsert(ctx, c.db, true, []string{models.VideoColumns.ID}, boil.Infer(), boil.Infer())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (c *Client) UpdateVideos(upsert bool, videos ...VideoCreateModel) error {
-	payload := []*models.Video{}
-	for _, video := range videos {
-		v := models.NewVideo(video.ID, video.Type, video.URL, video.Title, video.ChannelID, video.PublishedAt, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description})
-		v.Prepare()
-		payload = append(payload, v)
-	}
-
-	var writes []mongo.WriteModel
-	for _, video := range payload {
-		model := mongo.NewUpdateOneModel()
-		model.SetUpsert(upsert)
-		model.SetUpdate(bson.M{"$set": video})
-		model.SetFilter(bson.M{"eid": video.ExternalID})
-		writes = append(writes, model)
-	}
-
-	ctx, cancel := c.Ctx()
-	defer cancel()
-	_, err := c.Collection(models.VideoCollection).BulkWrite(ctx, writes)
-	return err
+type ViewsClient interface {
+	GetVideoByID(ctx context.Context, id string, o ...VideoQuery) (*models.Video, error)
+	FindVideos(ctx context.Context, o ...VideoQuery) ([]*models.Video, error)
 }
 
-func (c *Client) InsertChannelVideos(videos ...VideoCreateModel) ([]*models.Video, error) {
-	payload := []*models.Video{}
-	var inserts []*models.Video
-	for _, video := range videos {
-		v := models.NewVideo(video.ID, video.Type, video.URL, video.Title, video.ChannelID, video.PublishedAt, models.VideoOptions{Thumbnail: &video.Thumbnail, Duration: &video.Duration, Description: &video.Description})
-		v.Prepare()
-		payload = append(payload, v)
-		inserts = append(inserts, v)
+func (c *sqliteClient) GetUserViews(ctx context.Context, userID string, videoID ...string) ([]*models.View, error) {
+	mods := []qm.QueryMod{models.ViewWhere.UserID.EQ(userID)}
+	if videoID != nil {
+		mods = append(mods, models.ViewWhere.VideoID.IN(videoID))
 	}
 
-	var writes []mongo.WriteModel
-	for _, video := range payload {
-		writes = append(writes, mongo.NewInsertOneModel().SetDocument(*video))
-	}
-
-	ctx, cancel := c.Ctx()
-	defer cancel()
-	_, err := c.Collection(models.VideoCollection).BulkWrite(ctx, writes)
-	return inserts, err
-}
-
-func (c *Client) GetUserViews(user primitive.ObjectID, videos ...string) ([]models.VideoView, error) {
-	views := []models.VideoView{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	cur, err := c.Collection(models.VideoViewCollection).Find(ctx, bson.M{"userId": user, "videoId": bson.M{"$in": videos}})
+	views, err := models.Views(mods...).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
-	err = cur.All(ctx, &views)
-	if err != nil {
-		return nil, err
-	}
+
 	return views, nil
 }
 
-func (c *Client) UpsertView(user primitive.ObjectID, video string, progress int) (*models.VideoView, error) {
-	view := models.NewVideoView(user, video, models.VideoViewOptions{Progress: &progress})
-	view.Progress = progress
-	view.Model.UpdatedAt = time.Now()
-	view.Prepare()
-	opts := options.Update().SetUpsert(true)
-
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	res, err := c.Collection(models.VideoViewCollection).UpdateOne(ctx, bson.M{"userId": user, "videoId": video}, bson.M{"$set": view}, opts)
-	if err != nil {
-		return nil, err
-	}
-	if res.UpsertedID != nil {
-		return view, view.ParseID(res.UpsertedID)
-	}
-	return view, nil
+func (c *sqliteClient) UpsertView(ctx context.Context, view *models.View) error {
+	return view.Upsert(ctx, c.db, true, []string{models.ViewColumns.ID}, boil.Infer(), boil.Infer())
 }

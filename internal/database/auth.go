@@ -1,31 +1,35 @@
 package database
 
 import (
+	"context"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func (c *Client) NewAuthNonce(expiration time.Time, value string) (*models.AuthNonce, error) {
-	nonce := models.NewAuthNonce(expiration, value)
-	nonce.Prepare()
+type AuthNonceClient interface {
+	NewAuthNonce(ctx context.Context, expiration time.Time, value string) (*models.AuthNonce, error)
+	FindNonce(ctx context.Context, value string) (*models.AuthNonce, error)
+}
 
-	ctx, cancel := c.Ctx()
-	defer cancel()
-	res, err := c.Collection(models.AuthNonceCollection).InsertOne(ctx, nonce)
+func (c *sqliteClient) NewAuthNonce(ctx context.Context, expiration time.Time, value string) (*models.AuthNonce, error) {
+	nonce := models.AuthNonce{
+		ID:        ensureID(""),
+		Used:      false,
+		Value:     value,
+		ExpiresAt: expiration,
+	}
+
+	err := nonce.Insert(ctx, c.db, boil.Infer())
 	if err != nil {
 		return nil, err
 	}
-	return nonce, nonce.ParseID(res.InsertedID)
+	return &nonce, nil
 }
 
-func (c *Client) FindNonce(value string) (*models.AuthNonce, error) {
-	nonce := &models.AuthNonce{}
-	ctx, cancel := c.Ctx()
-	defer cancel()
-
-	err := c.Collection(models.AuthNonceCollection).FindOne(ctx, bson.M{"value": value}).Decode(nonce)
+func (c *sqliteClient) FindNonce(ctx context.Context, value string) (*models.AuthNonce, error) {
+	nonce, err := models.AuthNonces(models.AuthNonceWhere.Value.EQ(value)).One(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}

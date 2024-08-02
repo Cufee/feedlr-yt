@@ -1,0 +1,10 @@
+output = "internal/database/models"
+wipe = true
+no-tests = false
+add-enum-types = true
+
+[sqlite3]
+dbname = "/Users/vovko/Documents/code/youtube-app/tmp/database/local.db"
+
+[aliases.tables.user_subscriptions.relationships.user_subscriptions_user_id_fkey]
+foreign = "Subscriptions"
