@@ -1,15 +1,24 @@
 package background
 
 import (
+	"context"
 	"sync"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database"
-	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/logic"
 )
 
-func CacheAllChannelsWithVideos() error {
-	channels, err := database.DefaultClient.GetAllChannelsWithSubscriptions()
+type databaseClient interface {
+	database.ChannelsClient
+	database.VideosClient
+}
+
+func CacheAllChannelsWithVideos(db databaseClient) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	channels, err := db.GetChannelsWithSubscriptions(ctx)
 	if err != nil {
 		return err
 	}
@@ -19,17 +28,17 @@ func CacheAllChannelsWithVideos() error {
 	var errChan = make(chan error, len(channels))
 	for _, c := range channels {
 		wg.Add(1)
-		go func(c models.Channel) {
+		go func(id string) {
 			defer wg.Done()
 
 			limiter <- 1
 			defer func() { <-limiter }()
 
-			_, err := logic.CacheChannelVideos(c.ExternalID)
+			_, err := logic.CacheChannelVideos(context.Background(), db, id)
 			if err != nil {
 				errChan <- err
 			}
-		}(c)
+		}(c.ID)
 	}
 	wg.Wait()
 	close(errChan)

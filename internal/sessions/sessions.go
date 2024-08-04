@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/gofiber/fiber/v2"
 	"github.com/segmentio/ksuid"
 )
@@ -11,6 +12,8 @@ import (
 var ErrNotFound = errors.New("session not found")
 
 type Session struct {
+	db database.Client
+
 	ID   string
 	data SessionData
 }

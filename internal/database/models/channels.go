@@ -28,6 +28,7 @@ type Channel struct {
 	UpdatedAt   time.Time `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	Title       string    `boil:"title" json:"title" toml:"title" yaml:"title"`
 	Description string    `boil:"description" json:"description" toml:"description" yaml:"description"`
+	Thumbnail   string    `boil:"thumbnail" json:"thumbnail" toml:"thumbnail" yaml:"thumbnail"`
 
 	R *channelR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L channelL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,12 +40,14 @@ var ChannelColumns = struct {
 	UpdatedAt   string
 	Title       string
 	Description string
+	Thumbnail   string
 }{
 	ID:          "id",
 	CreatedAt:   "created_at",
 	UpdatedAt:   "updated_at",
 	Title:       "title",
 	Description: "description",
+	Thumbnail:   "thumbnail",
 }
 
 var ChannelTableColumns = struct {
@@ -53,12 +56,14 @@ var ChannelTableColumns = struct {
 	UpdatedAt   string
 	Title       string
 	Description string
+	Thumbnail   string
 }{
 	ID:          "channels.id",
 	CreatedAt:   "channels.created_at",
 	UpdatedAt:   "channels.updated_at",
 	Title:       "channels.title",
 	Description: "channels.description",
+	Thumbnail:   "channels.thumbnail",
 }
 
 // Generated where
@@ -69,12 +74,14 @@ var ChannelWhere = struct {
 	UpdatedAt   whereHelpertime_Time
 	Title       whereHelperstring
 	Description whereHelperstring
+	Thumbnail   whereHelperstring
 }{
 	ID:          whereHelperstring{field: "\"channels\".\"id\""},
 	CreatedAt:   whereHelpertime_Time{field: "\"channels\".\"created_at\""},
 	UpdatedAt:   whereHelpertime_Time{field: "\"channels\".\"updated_at\""},
 	Title:       whereHelperstring{field: "\"channels\".\"title\""},
 	Description: whereHelperstring{field: "\"channels\".\"description\""},
+	Thumbnail:   whereHelperstring{field: "\"channels\".\"thumbnail\""},
 }
 
 // ChannelRels is where relationship names are stored.
@@ -115,8 +122,8 @@ func (r *channelR) GetVideos() VideoSlice {
 type channelL struct{}
 
 var (
-	channelAllColumns            = []string{"id", "created_at", "updated_at", "title", "description"}
-	channelColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "title", "description"}
+	channelAllColumns            = []string{"id", "created_at", "updated_at", "title", "description", "thumbnail"}
+	channelColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "title", "description", "thumbnail"}
 	channelColumnsWithDefault    = []string{}
 	channelPrimaryKeyColumns     = []string{"id"}
 	channelGeneratedColumns      = []string{}

@@ -1,10 +1,19 @@
 package layouts
 
+import (
+	"github.com/cufee/feedlr-yt/internal/server/context"
+	"github.com/cufee/tpot/brewed"
+)
+
+var Blank brewed.Layout[*context.Ctx] = func(ctx *context.Ctx, body ...templ.Component) (templ.Component, error) {
+	return blank(body...), nil
+}
+
 /* This layout is required for how components are rendered */
-templ Blank(content ...templ.Component) {
+
+templ blank(content ...templ.Component) {
 	for _, c := range content {
 		@c
 	}
 	{ children... }
 }
-

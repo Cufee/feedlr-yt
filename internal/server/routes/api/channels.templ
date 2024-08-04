@@ -1,0 +1,79 @@
+package api
+
+import (
+	"fmt"
+	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/server/context"
+	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/tpot/brewed"
+	"net/http"
+)
+
+var SearchChannelsHandler brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) (templ.Component, error) {
+	session, ok := ctx.Session()
+	if !ok {
+		ctx.SetStatus(http.StatusUnauthorized)
+		return nil, nil
+	}
+
+	query := ctx.QueryValue("search")
+	if len(query) < 3 || len(query) > 32 {
+		if len(query) == 0 {
+			return nil, nil
+		}
+		return channelsSearchErrorMessage("Channel name must be between 3 and 32 characters long"), nil
+	}
+
+	channels, err := logic.SearchChannels(session.UserID, query, 4)
+	if err != nil {
+		return nil, err
+	}
+	if len(channels) == 0 {
+		return channelsSearchErrorMessage(fmt.Sprintf("Didn't find any channels named %s", query)), nil
+	}
+
+	return subscriptions.SearchResultChannels(channels), nil
+}
+
+templ channelsSearchErrorMessage(message string) {
+	<div class="m-auto text-2xl">{ message }</div>
+}
+
+var SubscribeHandler brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) (templ.Component, error) {
+	session, ok := ctx.Session()
+	if !ok {
+		ctx.SetStatus(http.StatusUnauthorized)
+		return nil, nil
+	}
+
+	channelId := ctx.PathValue("id")
+	props, err := logic.NewSubscription(session.UserID, channelId)
+	if err != nil {
+		return nil, err
+	}
+
+	if ctx.QueryValue("type") == "button" {
+		return subscriptions.UnsubscribeButtonSmall(props.ID), nil
+	}
+	return subscriptions.SubscribedChannelTile(*props), nil
+}
+
+var UnsubscribeHandler brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) (templ.Component, error) {
+	session, ok := ctx.Session()
+	if !ok {
+		ctx.SetStatus(http.StatusUnauthorized)
+		return nil, nil
+	}
+
+	channelId := ctx.PathValue("id")
+	err := logic.DeleteSubscription(session.UserID, channelId)
+	if err != nil {
+		return nil, err
+	}
+
+	if ctx.QueryValue("type") == "button" {
+		return subscriptions.SubscribeButtonSmall(channelId), nil
+	}
+	ctx.SetStatus(http.StatusOK)
+	return nil, nil
+}
