@@ -7,9 +7,10 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/database"
-	"github.com/cufee/feedlr-yt/internal/server/context"
-	appRoutes "github.com/cufee/feedlr-yt/internal/server/routes/app"
-	"github.com/cufee/feedlr-yt/internal/templates"
+	"github.com/cufee/feedlr-yt/internal/server/handler"
+	root "github.com/cufee/feedlr-yt/internal/server/routes"
+	rapi "github.com/cufee/feedlr-yt/internal/server/routes/api"
+	rapp "github.com/cufee/feedlr-yt/internal/server/routes/app"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/cufee/tpot"
 	"github.com/gofiber/fiber/v2"
@@ -26,15 +27,21 @@ func New(db database.Client, assets fs.FS, port ...int) func() error {
 		portString = utils.MustGetEnv("PORT")
 	}
 
-	return func() error {
-		newCtx := context.NewBuilder(db)
+	newCtx := handler.NewBuilder(db)
+	toFiber := func(s tpot.Servable[*handler.Context]) func(*fiber.Ctx) error {
+		return func(c *fiber.Ctx) error {
+			ctx, ok := c.Locals(handler.ContextKeyCustomCtx).(*handler.Context)
+			if !ok {
+				return adaptor.HTTPHandler(s.Handler(newCtx(c)))(c)
+			}
+			return adaptor.HTTPHandler(s.Handler(func(w http.ResponseWriter, r *http.Request) *handler.Context { return ctx }))(c)
+		}
+	}
 
-		server := fiber.New(fiber.Config{
-			Views:             templates.FiberEngine,
-			PassLocalsToViews: true,
-		})
+	return func() error {
+		server := fiber.New()
 		server.Use(logger.New())
-		server.Get("/ping", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
+		server.Get("/healthy", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 
 		// Static files
 		server.Use(favicon.New(favicon.Config{
@@ -52,35 +59,35 @@ func New(db database.Client, assets fs.FS, port ...int) func() error {
 		server.Use(cacheBusterMiddleware)
 
 		// Root/Error and etc
-		// server.Get("/", root.GerOrPosLanding).Post("/", root.GerOrPosLanding)
-		// server.All("/429", root.RateLimitedHandler)
-		// server.Get("/error", root.GetOrPostError).Post("/error", root.GetOrPostError)
+		server.All("/", toFiber(root.Landing))
+		server.All("/error", toFiber(root.Error))
+		server.All("/429", toFiber(root.RateLimited))
 		// Auth/Login
-		// server.Get("/login", root.GetLogin)
-		// server.Get("/login/start", auth.LoginStartHandler)
-		// server.Get("/login/callback", auth.LoginCallbackHandler)
+		server.Get("/login", toFiber(root.Login))
+		server.Get("/login/start", auth.LoginStartHandler)
+		server.Get("/login/callback", auth.LoginCallbackHandler)
 
 		// // Routes with unique auth handlers
-		// server.Get("/video/:id", video.VideoHandler)
-		// server.Get("/channel/:id", channel.ChannelHandler)
+		server.Get("/video/:id", toFiber(root.Video))
+		server.Get("/channel/:id", toFiber(root.Channel))
 
-		// api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
-		// api.Post("/videos/:id/progress", apiHandlers.PostSaveVideoProgress)
-		// api.Post("/videos/open", apiHandlers.PostVideoOpen)
+		api := server.Group("/api").Use(limiterMiddleware).Use(auth.Middleware)
+		api.Post("/videos/:id/progress", toFiber(rapi.SaveVideoProgress))
+		api.Post("/videos/open", toFiber(rapi.OpenVideo))
 
-		// api.Get("/channels/search", apiHandlers.SearchChannelsHandler)
-		// api.Post("/channels/:id/subscribe", apiHandlers.SubscribeHandler)
-		// api.Post("/channels/:id/unsubscribe", apiHandlers.UnsubscribeHandler)
+		api.Get("/channels/search", toFiber(rapi.SearchChannels))
+		api.Post("/channels/:id/subscribe", toFiber(rapi.CreateSubscription))
+		api.Post("/channels/:id/unsubscribe", toFiber(rapi.RemoveSubscription))
 
-		// api.Post("/settings/sponsorblock/category", apiHandlers.PostToggleSponsorBlockCategory)
-		// api.Post("/settings/sponsorblock", apiHandlers.PostToggleSponsorBlock)
+		api.Post("/settings/sponsorblock", toFiber(rapi.ToggleSponsorBlock))
+		api.Post("/settings/sponsorblock/category", toFiber(rapi.ToggleSponsorBlockCategory))
 
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(limiterMiddleware).Use(auth.Middleware)
-		app.Get("/", toFiber(newCtx, appRoutes.GetOrPostApp)).Post("/", toFiber(newCtx, appRoutes.GetOrPostApp))
-		// app.Get("/settings", appHandlers.GetOrPostAppSettings).Post("/settings", appHandlers.GetOrPostAppSettings)
-		// app.Get("/onboarding", appHandlers.GetOrPostAppOnboarding).Post("/onboarding", appHandlers.GetOrPostAppOnboarding)
-		// app.Get("/subscriptions", appHandlers.GetOrPostAppSubscriptions).Post("/subscriptions", appHandlers.GetOrPostAppSubscriptions)
+		app.All("/", toFiber(rapp.Home))
+		app.All("/settings", toFiber(rapp.Settings))
+		app.All("/onboarding", toFiber(rapp.Onboarding))
+		app.All("/subscriptions", toFiber(rapp.Subscriptions))
 
 		// This last handler is a catch-all for any routes that don't exist
 		server.Use(func(c *fiber.Ctx) error {
@@ -89,8 +96,4 @@ func New(db database.Client, assets fs.FS, port ...int) func() error {
 
 		return server.Listen(":" + portString)
 	}
-}
-
-func toFiber(newCtx tpot.ContextBuilder[*context.Ctx], s tpot.Servable[*context.Ctx]) func(*fiber.Ctx) error {
-	return adaptor.HTTPHandler(s.Handler(newCtx))
 }

@@ -6,7 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/a-h/templ v0.2.747
 	github.com/coreos/go-oidc/v3 v3.11.0
-	github.com/cufee/tpot v0.0.4
+	github.com/cufee/tpot v0.0.6
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-co-op/gocron v1.37.0
 	github.com/goccy/go-json v0.10.3

@@ -11,16 +11,19 @@ import (
 
 var ErrNotFound = errors.New("session not found")
 
-type Session struct {
+type SessionClient struct {
 	db database.Client
+}
 
-	ID   string
-	data SessionData
+type Session struct {
+	ID     string
+	data   SessionData
+	exists bool
 }
 type SessionData struct {
-	ID     string `json:"id"`
-	AuthId string `json:"auth_id"`
-	UserID string `json:"user_id"`
+	ID           string `json:"id"`
+	UserID       string `json:"user_id"`
+	ConnectionID string `json:"connection_id"`
 
 	ExpiresAt time.Time `json:"expires_at"`
 
@@ -29,7 +32,11 @@ type SessionData struct {
 	LastUsed  time.Time `json:"last_used"`
 }
 
-func New() (*Session, error) {
+func New() (*SessionClient, error) {
+	return nil, nil
+}
+
+func (c *SessionClient) New() (*Session, error) {
 	id, err := ksuid.NewRandom()
 	if err != nil {
 		return &Session{}, errors.Join(errors.New("sessions.New"), err)
@@ -40,40 +47,56 @@ func New() (*Session, error) {
 	data.CreatedAt = time.Now()
 	data.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
 
-	err = defaultClient.Set("sessions", data.ID, data)
-	if err != nil {
-		return &Session{}, errors.Join(errors.New("sessions.New"), err)
-	}
-	return &Session{data: data, ID: data.ID}, nil
+	// err = c.db.Set("sessions", data.ID, data)
+	// if err != nil {
+	// return &Session{}, errors.Join(errors.New("sessions.New"), err)
+	// }
+	// return &Session{data: data, ID: data.ID}, nil
+	return nil, nil
 }
 
-func FromID(id string) (*Session, error) {
+func (c *SessionClient) FromID(id string) (*Session, error) {
 	var data SessionData
-	err := defaultClient.Get("sessions", id, &data)
-	if err != nil {
-		return &Session{}, err
-	}
+	// err := db.Get("sessions", id, &data)
+	// if err != nil {
+	// return &Session{}, err
+	// }
 	return &Session{data: data}, nil
+}
+
+func (c *SessionClient) Update(s *Session) error {
+	s.data.UpdatedAt = time.Now()
+	// return c.db.Set("sessions", s.data.ID, s.data)
+	return nil
+}
+
+func (c *SessionClient) DeleteSession(id string) error {
+	// return defaultClient.Del("sessions", id)
+	return nil
 }
 
 /* Finds a valid session by ID and returns the user ID associated with it */
 func (s *Session) Valid() bool {
+	if !s.exists {
+		return false
+	}
+
 	if s.data.UserID != "" && s.data.ExpiresAt.After(time.Now()) {
-		s.data.LastUsed = time.Now()
-		go s.save()
 		return true
 	}
 	return false
 }
 
-/* Sets the session expiration time to 7 days from now */
-func (s *Session) Refresh() error {
-	s.data.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
-	return s.save()
+func (s *Session) Refresh() {
+	return
 }
 
 /* Finds a valid session by ID and returns the user ID associated with it */
 func (s *Session) UserID() (string, bool) {
+	if !s.exists {
+		return "", false
+	}
+
 	if ok := s.Valid(); ok {
 		return s.data.UserID, true
 	}
@@ -88,23 +111,4 @@ func (s *Session) Cookie() (*fiber.Cookie, error) {
 		HTTPOnly: true,
 		SameSite: "strict",
 	}, nil
-}
-
-func (s *Session) AddUserID(userId, authId string) error {
-	s.data.UserID = userId
-	s.data.AuthId = authId
-	return s.save()
-}
-
-func (s *Session) save() error {
-	s.data.UpdatedAt = time.Now()
-	return defaultClient.Set("sessions", s.data.ID, s.data)
-}
-
-func (s *Session) Delete() error {
-	return defaultClient.Del("sessions", s.ID)
-}
-
-func DeleteSession(id string) error {
-	return defaultClient.Del("sessions", id)
 }

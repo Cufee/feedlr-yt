@@ -11,20 +11,19 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 	"github.com/cufee/feedlr-yt/internal/logic"
-	"github.com/cufee/feedlr-yt/internal/server/context"
+	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
 	"github.com/cufee/tpot/brewed"
 	"net/http"
 )
 
-var SearchChannelsHandler brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) (templ.Component, error) {
-	session, ok := ctx.Session()
+var SearchChannels brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
 	if !ok {
-		ctx.SetStatus(http.StatusUnauthorized)
-		return nil, nil
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
-	query := ctx.QueryValue("search")
+	query := ctx.Query("search")
 	if len(query) < 3 || len(query) > 32 {
 		if len(query) == 0 {
 			return nil, nil
@@ -32,9 +31,9 @@ var SearchChannelsHandler brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) 
 		return channelsSearchErrorMessage("Channel name must be between 3 and 32 characters long"), nil
 	}
 
-	channels, err := logic.SearchChannels(session.UserID, query, 4)
+	channels, err := logic.SearchChannels(userID, query, 4)
 	if err != nil {
-		return nil, err
+		return nil, ctx.Err(err)
 	}
 	if len(channels) == 0 {
 		return channelsSearchErrorMessage(fmt.Sprintf("Didn't find any channels named %s", query)), nil
@@ -68,7 +67,7 @@ func channelsSearchErrorMessage(message string) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/server/routes/api/channels.templ`, Line: 39, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/server/routes/api/channels.templ`, Line: 38, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -82,41 +81,39 @@ func channelsSearchErrorMessage(message string) templ.Component {
 	})
 }
 
-var SubscribeHandler brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) (templ.Component, error) {
-	session, ok := ctx.Session()
+var CreateSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
 	if !ok {
-		ctx.SetStatus(http.StatusUnauthorized)
-		return nil, nil
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
-	channelId := ctx.PathValue("id")
-	props, err := logic.NewSubscription(session.UserID, channelId)
+	channelId := ctx.Params("id")
+	props, err := logic.NewSubscription(userID, channelId)
 	if err != nil {
 		return nil, err
 	}
 
-	if ctx.QueryValue("type") == "button" {
+	if ctx.Query("type") == "button" {
 		return subscriptions.UnsubscribeButtonSmall(props.ID), nil
 	}
 	return subscriptions.SubscribedChannelTile(*props), nil
 }
 
-var UnsubscribeHandler brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) (templ.Component, error) {
-	session, ok := ctx.Session()
+var RemoveSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
 	if !ok {
-		ctx.SetStatus(http.StatusUnauthorized)
-		return nil, nil
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
-	channelId := ctx.PathValue("id")
-	err := logic.DeleteSubscription(session.UserID, channelId)
+	channelId := ctx.Params("id")
+	err := logic.DeleteSubscription(userID, channelId)
 	if err != nil {
 		return nil, err
 	}
 
-	if ctx.QueryValue("type") == "button" {
+	if ctx.Query("type") == "button" {
 		return subscriptions.SubscribeButtonSmall(channelId), nil
 	}
-	ctx.SetStatus(http.StatusOK)
-	return nil, nil
+
+	return nil, ctx.SendStatus(http.StatusOK)
 }
