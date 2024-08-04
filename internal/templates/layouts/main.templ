@@ -1,13 +1,19 @@
 package layouts
 
 import (
-  "github.com/cufee/feedlr-yt/internal/templates/layouts/partials"
+	"github.com/cufee/feedlr-yt/internal/server/context"
+	"github.com/cufee/feedlr-yt/internal/templates/layouts/partials"
+	"github.com/cufee/tpot/brewed"
 )
 
-templ Main(content ...templ.Component) {
+var Main brewed.Layout[*context.Ctx] = func(ctx *context.Ctx, body ...templ.Component) (templ.Component, error) {
+	return main(body...), nil
+}
+
+templ main(content ...templ.Component) {
 	<html lang="en" class="h-full">
 		@partials.Head()
-		<body class="h-full" _="on htmx:beforeSend add @disabled=&#39;true&#39; to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
+		<body class="h-full" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
 			@partials.NavProgressAnimated()
 			<div id="main" class="flex flex-col flex-grow w-full h-full p-2 mx-auto max-w-7xl">
 				for _, c := range content {
@@ -15,8 +21,9 @@ templ Main(content ...templ.Component) {
 				}
 				{ children... }
 			</div>
-			<div class="w-full p-2 mx-auto max-w-7xl md:p-0">@partials.Footer()</div>
+			<div class="w-full p-2 mx-auto max-w-7xl md:p-0">
+				@partials.Footer()
+			</div>
 		</body>
 	</html>
 }
-

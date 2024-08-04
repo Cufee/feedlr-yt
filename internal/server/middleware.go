@@ -36,7 +36,6 @@ var limiterMiddleware = limiter.New(limiter.Config{
 		c.Set("HX-Redirect", "/429")
 		return c.Redirect("/429")
 	},
-	Storage: newRedisStore(),
 })
 
 var cacheBusterMiddleware = func(c *fiber.Ctx) error {
@@ -99,5 +98,5 @@ func outageMiddleware(c *fiber.Ctx) error {
 	if os.Getenv("MAINTENANCE_MODE") != "true" {
 		return c.Next()
 	}
-	return c.Render("layouts/HeadOnly", pages.Outage())
+	return pages.Outage().Render(c.Context(), c)
 }

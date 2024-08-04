@@ -65,6 +65,10 @@ table "channels" {
     null = false
     type = text
   }
+  column "thumbnail" {
+    null = false
+    type = text
+  }
 }
 
 table "videos" {

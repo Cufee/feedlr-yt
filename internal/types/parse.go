@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
@@ -18,11 +19,10 @@ func VideoModelToProps(video *models.Video, channel ChannelProps) VideoProps {
 	return VideoProps{
 		Video: youtube.Video{
 			Type:        youtube.VideoType(video.Type),
-			ID:          video.ExternalID,
-			URL:         video.URL,
+			ID:          video.ID,
 			Title:       video.Title,
-			Duration:    video.Duration,
-			Thumbnail:   video.Thumbnail,
+			Duration:    int(video.Duration),
+			Thumbnail:   fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", video.ID),
 			PublishedAt: video.PublishedAt.Format(time.RFC3339),
 			Description: video.Description,
 		},
@@ -33,12 +33,17 @@ func VideoModelToProps(video *models.Video, channel ChannelProps) VideoProps {
 func ChannelModelToProps(channel *models.Channel) ChannelProps {
 	return ChannelProps{
 		Channel: youtube.Channel{
-			ID:          channel.ExternalID,
-			URL:         channel.URL,
+			ID:          channel.ID,
 			Title:       channel.Title,
 			Thumbnail:   channel.Thumbnail,
 			Description: channel.Description,
 		},
-		Favorite: false, // This requires an additional query
+		Favorite: false, // This requires an additional query to subscriptions
 	}
+}
+
+func SubscriptionChannelModelToProps(sub *models.Subscription) ChannelProps {
+	c := ChannelModelToProps(sub.R.Channel)
+	c.Favorite = sub.Favorite
+	return c
 }

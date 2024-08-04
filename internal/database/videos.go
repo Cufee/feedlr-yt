@@ -12,6 +12,7 @@ import (
 type VideosClient interface {
 	GetVideoByID(ctx context.Context, id string, o ...VideoQuery) (*models.Video, error)
 	FindVideos(ctx context.Context, o ...VideoQuery) ([]*models.Video, error)
+	UpsertVideos(ctx context.Context, videos ...*models.Video) error
 }
 
 type VideoQuery func(o *videoQuery)

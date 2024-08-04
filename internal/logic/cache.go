@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"errors"
 	"log"
 	"time"
@@ -15,8 +16,8 @@ import (
 /*
 Saves last 3 videos for each channel to the database
 */
-func CacheChannelVideos(channelIds ...string) ([]*models.Video, error) {
-	var models []database.VideoCreateModel
+func CacheChannelVideos(ctx context.Context, db database.VideosClient, channelIds ...string) ([]*models.Video, error) {
+	var updates []*models.Video
 
 	for _, c := range channelIds {
 		newVideos, err := youtube.DefaultClient.GetChannelVideos(c, 3)
@@ -24,15 +25,18 @@ func CacheChannelVideos(channelIds ...string) ([]*models.Video, error) {
 			return nil, errors.Join(errors.New("CacheChannelVideos.youtube.C.GetChannelVideos"), err)
 		}
 
-		existingVideos, err := database.DefaultClient.GetVideosByChannelID(0, c)
+		ctx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+
+		existingVideos, err := db.FindVideos(ctx, database.Video{}.Channel(c))
 		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.GetVideosByChannelID"), err)
 		}
 		var existingIDs []string
 		for _, v := range existingVideos {
-			existingIDs = append(existingIDs, v.ExternalID)
-
+			existingIDs = append(existingIDs, v.ID)
 		}
+
 		for _, video := range newVideos {
 			if slice.Contains(existingIDs, video.ID) {
 				continue
@@ -41,57 +45,64 @@ func CacheChannelVideos(channelIds ...string) ([]*models.Video, error) {
 			if err != nil {
 				log.Printf("Error parsing publishedAt %v", err)
 			}
-			models = append(models, database.VideoCreateModel{
+			updates = append(updates, &models.Video{
 				ChannelID:   c,
-				Type:        string(video.Type),
 				ID:          video.ID,
-				URL:         video.URL,
+				Type:        string(video.Type),
 				Title:       video.Title,
-				Duration:    video.Duration,
-				Thumbnail:   video.Thumbnail,
+				Duration:    int64(video.Duration),
 				Description: video.Description,
 				PublishedAt: publishedAt,
+				Private:     video.Type == youtube.VideoTypePrivate,
 			})
 		}
 	}
 
-	if len(models) == 0 {
+	if len(updates) == 0 {
 		return nil, nil
 	}
-	inserted, err := database.DefaultClient.InsertChannelVideos(models...)
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	err := db.UpsertVideos(ctx, updates...)
 	if err != nil {
 		return nil, errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.InsertChannelVideos"), err)
 	}
-	return inserted, nil
+	return updates, nil
 }
 
 /*
 Saves the channel to the database if it doesn't exist already and returns the channel model
 */
-func CacheChannel(channelId string, opts ...database.ChannelGetOptions) (*models.Channel, bool, error) {
-	existing, err := database.DefaultClient.GetChannel(channelId, opts...)
+func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID string) (*models.Channel, bool, error) {
+	dctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	existing, err := db.GetChannel(dctx, channelID)
 	if err == nil {
 		return existing, true, nil
 	}
-	if !errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, false, errors.Join(errors.New("CacheChannel.database.DefaultClient.GetChannel"), err)
-	}
 
-	channel, err := youtube.DefaultClient.GetChannel(channelId)
+	channel, err := youtube.DefaultClient.GetChannel(channelID)
 	if err != nil {
 		return nil, false, errors.Join(errors.New("CacheChannel.youtube.C.GetChannel"), err)
 	}
 
-	created, err := database.DefaultClient.NewChannel(database.ChannelCreateModel{
+	record := &models.Channel{
 		ID:          channel.ID,
-		URL:         channel.URL,
 		Title:       channel.Title,
 		Description: channel.Description,
 		Thumbnail:   channel.Thumbnail,
-	})
+	}
+
+	uctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	err = db.UpsertChannel(uctx, record)
 	if err != nil {
 		return nil, false, errors.Join(errors.New("CacheChannel.database.DefaultClient.NewChannel"), err)
 	}
 
-	return created, false, nil
+	return record, false, nil
 }

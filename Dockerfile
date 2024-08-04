@@ -18,19 +18,26 @@ RUN task style:generate
 FROM golang:1.22-alpine as build
 
 WORKDIR /workspace
-COPY --from=assets /workspace/assets ./assets
-COPY . ./
-
-# add go modules lockfiles
-RUN go mod download
 
 # install templ
 RUN go install github.com/a-h/templ/cmd/templ@latest
 # install task
 RUN go install github.com/go-task/task/v3/cmd/task@latest
+# install sqlboiler
+RUN go install github.com/volatiletech/sqlboiler/v4@latest
+RUN go install github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-sqlite3@latest 
 
-# generate the Prisma Client Go client
-RUN task build:docker
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=$GOPATH/pkg/mod go mod download
+
+COPY --from=assets /workspace/assets ./assets
+COPY . ./
+
+# generate code
+RUN --mount=type=cache,target=$GOPATH/pkg/mod go generate ./internal/...
+
+# build the final binary
+RUN --mount=type=cache,target=$GOPATH/pkg/mod go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o app .
 
 FROM scratch as run
 

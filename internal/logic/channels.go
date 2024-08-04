@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"sync"
@@ -17,59 +18,48 @@ import (
 /*
 Returns a list of channel props for all user subscriptions
 */
-func GetUserSubscribedChannels(userId string) ([]types.ChannelProps, error) {
-	oid, err := primitive.ObjectIDFromHex(userId)
-	if err != nil {
-		return nil, errors.Join(errors.New("GetUserSubscribedChannels.primitive.ObjectIDFromHex failed to parse userId"), err)
-	}
-
-	subscriptions, err := database.DefaultClient.AllUserSubscriptions(oid, database.SubscriptionGetOptions{WithChannel: true})
+func GetUserSubscribedChannels(ctx context.Context, db database.SubscriptionsClient, userID string) ([]types.ChannelProps, error) {
+	subscriptions, err := db.UserSubscriptions(ctx, userID, database.Subscription{}.WithChannel())
 	if err != nil {
 		return nil, errors.Join(errors.New("GetUserSubscribedChannels.database.DefaultClient.AllUserSubscriptions failed to get subscriptions"), err)
 	}
 
 	var props []types.ChannelProps
 	for _, sub := range subscriptions {
-		channel := sub.Channel()
+		channel := sub.R.Channel
 		if channel == nil {
 			continue
 		}
-		c := types.ChannelProps{
-			Channel: youtube.Channel{
-				ID:          channel.ExternalID,
-				URL:         channel.URL,
-				Title:       channel.Title,
-				Thumbnail:   channel.Thumbnail,
-				Description: channel.Description,
-			},
-			Favorite: sub.IsFavorite,
-		}
-		props = append(props, c)
+		props = append(props, types.SubscriptionChannelModelToProps(sub))
 	}
-
 	return props, nil
 }
 
-func GetChannelPageProps(userId, channelId string) (*types.ChannelPageProps, error) {
-	channel, cached, err := CacheChannel(channelId)
+type channelPageClient interface {
+	database.ChannelsClient
+	database.VideosClient
+}
+
+func GetChannelPageProps(ctx context.Context, db channelPageClient, userID, channelID string) (*types.ChannelPageProps, error) {
+	channel, cached, err := CacheChannel(ctx, db, channelID)
 	if err != nil {
 		return nil, err
 	}
 	channelProps := types.ChannelModelToProps(channel)
 	props := types.ChannelPageProps{
-		Authenticated: userId != "",
+		Authenticated: userID != "",
 		Channel: types.ChannelWithVideosProps{
 			ChannelProps: channelProps,
 		},
 	}
 
-	videos, err := GetChannelVideos(24, channelId)
+	videos, err := GetChannelVideos(24, channelID)
 	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, err
 	}
 
 	if len(videos) == 0 && !cached {
-		inserted, err := CacheChannelVideos(channelId)
+		inserted, err := CacheChannelVideos(ctx, db, channelID)
 		if err != nil {
 			return nil, errors.Join(errors.New("GetChannelPageProps.CacheChannelVideos failed to cache channel videos"), err)
 		}
@@ -83,13 +73,13 @@ func GetChannelPageProps(userId, channelId string) (*types.ChannelPageProps, err
 
 	props.Channel.Videos = trimVideoList(24, 12, videos) // 12 can be divided by 1, 2, 3, 4 to get a nice grid
 
-	if userId != "" && len(props.Channel.Videos) > 0 {
+	if userID != "" && len(props.Channel.Videos) > 0 {
 		var videoIds []string
 		for _, v := range props.Channel.Videos {
 			videoIds = append(videoIds, v.ID)
 		}
 
-		progress, err := GetUserVideoProgress(userId, videoIds...)
+		progress, err := GetUserVideoProgress(userID, videoIds...)
 		if err != nil {
 			return nil, errors.Join(errors.New("GetChannelPageProps.GetUserVideoProgress failed to get user progress"), err)
 		}

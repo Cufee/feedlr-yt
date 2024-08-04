@@ -2,7 +2,9 @@ package main
 
 import (
 	"embed"
+	"os"
 
+	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic/background"
 	"github.com/cufee/feedlr-yt/internal/server"
 )
@@ -15,8 +17,13 @@ import (
 var assetsFs embed.FS
 
 func main() {
-	background.StartCronTasks()
+	db, err := database.NewSQLiteClient(os.Getenv("DATABASE_PATH"))
+	if err != nil {
+		panic(err)
+	}
 
-	start := server.New(assetsFs)
+	background.StartCronTasks(db)
+
+	start := server.New(db, assetsFs)
 	start()
 }
