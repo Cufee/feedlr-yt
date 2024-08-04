@@ -3,7 +3,6 @@ module github.com/cufee/feedlr-yt
 go 1.22.5
 
 require (
-	github.com/PuerkitoBio/goquery v1.9.2
 	github.com/a-h/templ v0.2.747
 	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/cufee/tpot v0.0.6
@@ -28,13 +27,12 @@ require (
 	modernc.org/sqlite v1.31.1
 )
 
-require github.com/gofiber/fiber/v2 v2.52.5 // indirect
+require github.com/gofiber/fiber/v2 v2.52.5
 
 require (
 	cloud.google.com/go/auth v0.7.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.3 // indirect
 	cloud.google.com/go/compute/metadata v0.5.0 // indirect
-	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
