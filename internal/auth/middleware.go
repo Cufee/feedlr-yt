@@ -1,24 +1,26 @@
 package auth
 
 import (
-	"log"
-
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/gofiber/fiber/v2"
 )
 
-func Middleware(c *fiber.Ctx) error {
-	session, err := sessions.FromID(c.Cookies("session_id"))
-	if err != nil {
-		log.Printf("sessions.FromID: %v\n", err)
+func Middleware(s *sessions.SessionClient) func(c *fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
+		session, err := s.FromID(c.Cookies("session_id"))
+		if err != nil {
+			return c.Redirect("/login")
+		}
+
+		if session.Valid() {
+			c.Locals("session", session)
+
+			session.Refresh()
+			go s.Update(session)
+
+			return c.Next()
+		}
+
 		return c.Redirect("/login")
 	}
-
-	if uid, valid := session.UserID(); valid {
-		c.Locals("userId", uid)
-		go session.Refresh()
-		return c.Next()
-	}
-
-	return c.Redirect("/login")
 }

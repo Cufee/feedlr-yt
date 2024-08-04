@@ -6,43 +6,41 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/cufee/feedlr-yt/internal/logic"
-	"github.com/cufee/feedlr-yt/internal/server/context"
+	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/tpot/brewed"
 	"github.com/houseme/mobiledetect/ua"
 )
 
-var PostSaveVideoProgress brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) (templ.Component, error) {
-	session, ok := ctx.Session()
+var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
 	if !ok {
-		ctx.SetStatus(http.StatusUnauthorized)
-		return nil, nil
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
-	video := ctx.PathValue("id")
-	volume, _ := strconv.Atoi(ctx.QueryValue("volume"))
-	progress, _ := strconv.Atoi(ctx.QueryValue("progress"))
+	video := ctx.Params("id")
+	volume, _ := strconv.Atoi(ctx.Query("volume"))
+	progress, _ := strconv.Atoi(ctx.Query("progress"))
 
-	err := logic.UpdateViewProgress(session.UserID, video, progress)
+	err := logic.UpdateViewProgress(userID, video, progress)
 	if err != nil {
 		return nil, err
 	}
 
-	if ua.New(ctx.GetHeader("User-Agent")).Desktop() {
+	if ua.New(ctx.Get("User-Agent")).Desktop() {
 		// Sound controls don't work on mobile, we always set the volume to 100 there
-		err = logic.UpdatePlayerVolume(session.UserID, volume)
+		err = logic.UpdatePlayerVolume(userID, volume)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if ctx.GetHeader("HX-Request") == "" {
-		ctx.SetStatus(http.StatusOK)
-		return nil, nil
+	if ctx.Get("HX-Request") == "" {
+		return nil, ctx.SendStatus(http.StatusOK)
 	}
 
-	props, err := logic.GetPlayerPropsWithOpts(session.UserID, video, logic.GetPlayerOptions{WithProgress: true})
+	props, err := logic.GetPlayerPropsWithOpts(userID, video, logic.GetPlayerOptions{WithProgress: true})
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +48,7 @@ var PostSaveVideoProgress brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) 
 	return feed.VideoCard(props.Video, true, true), nil
 }
 
-var PostVideoOpen brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) (templ.Component, error) {
+var OpenVideo brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
 	link, err := ctx.FormValue("link")
 	if err != nil {
 		return shared.OpenVideoInput("", true), nil
@@ -60,7 +58,6 @@ var PostVideoOpen brewed.Partial[*context.Ctx] = func(ctx *context.Ctx) (templ.C
 		return shared.OpenVideoInput(link, false), nil
 	}
 
-	ctx.SetHeader("HX-Reswap", "none")
-	ctx.Redirect("/video/"+id, http.StatusTemporaryRedirect)
-	return nil, nil
+	ctx.Set("HX-Reswap", "none")
+	return nil, ctx.Redirect("/video/"+id, http.StatusTemporaryRedirect)
 }

@@ -1,12 +1,12 @@
 package layouts
 
 import (
-	"github.com/cufee/feedlr-yt/internal/server/context"
+	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/templates/layouts/partials"
 	"github.com/cufee/tpot/brewed"
 )
 
-var Share brewed.Layout[*context.Ctx] = func(ctx *context.Ctx, body ...templ.Component) (templ.Component, error) {
+var Share brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...templ.Component) (templ.Component, error) {
 	return share(body...), nil
 }
 
