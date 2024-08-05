@@ -152,7 +152,7 @@ func SearchChannels(
 				defer cancel()
 				_, _, err := CacheChannel(ctx, db, id)
 				if err != nil {
-					log.Printf("failed to cache channel: %w\n", err)
+					log.Printf("failed to cache channel: %s\n", err)
 				}
 			}(db, c.ID)
 		}
