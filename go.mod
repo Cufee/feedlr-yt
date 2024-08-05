@@ -4,7 +4,6 @@ go 1.22.5
 
 require (
 	github.com/a-h/templ v0.2.747
-	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/cufee/tpot v0.0.6
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-co-op/gocron v1.37.0
@@ -23,7 +22,7 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.16.2
 	github.com/volatiletech/strmangle v0.0.6
 	go.mongodb.org/mongo-driver v1.16.0
-	golang.org/x/oauth2 v0.21.0
+	golang.org/x/oauth2 v0.21.0 // indirect
 	modernc.org/sqlite v1.31.1
 )
 
@@ -36,7 +35,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect

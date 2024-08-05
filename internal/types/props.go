@@ -5,6 +5,7 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/goccy/go-json"
 )
 
@@ -12,6 +13,13 @@ type SettingsPageProps struct {
 	FeedMode     string
 	PlayerVolume int
 	SponsorBlock SponsorBlockSettingsProps
+}
+
+func (s *SettingsPageProps) Decode(record *models.Setting) error {
+	return json.Unmarshal(record.Data, s)
+}
+func (s *SettingsPageProps) Encode() ([]byte, error) {
+	return json.Marshal(s)
 }
 
 type SponsorBlockSettingsProps struct {

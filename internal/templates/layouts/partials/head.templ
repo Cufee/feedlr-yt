@@ -1,18 +1,15 @@
 package partials
 
-import "github.com/cufee/feedlr-yt/internal/assets"
-
 templ Head(content ...templ.Component) {
 	<head>
+		<script src="/assets/js/tailwind.js"></script>
 		<script src="/assets/js/htmx.min.js"></script>
 		<script src="/assets/js/hyperscript.min.js"></script>
-
 		<title>Feedlr</title>
 		<link href="/assets/app.webmanifest" rel="manifest"/>
 		<link href="/assets/css/animate.min.css" rel="stylesheet"/>
 		<link href="/assets/favicon.ico" rel="icon" type="x-icon"/>
-		<link href={ assets.StylePath } rel="stylesheet" type="text/css"/>
-
+		<link href="/assets/css/daisyui.min.css" rel="stylesheet" type="text/css"/>
 		<meta charset="UTF-8"/>
 		<meta name="color-scheme" content="dark"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -21,11 +18,10 @@ templ Head(content ...templ.Component) {
 		<meta property="og:description" content="Feedlr.app is an open source YouTube subscriptions feed alternative free of distractions and ads!"/>
 		<meta property="og:image" content="https://feedlr.app/assets/og.jpg"/>
 		<meta name="twitter:card" content="summary_large_image"/>
-		<meta name="twitter:title" content="Feedlr.app - Ad free YouTube feed" />
-		<meta name="twitter:description" content="Feedlr.app is an open source YouTube subscriptions feed alternative free of distractions and ads!" />
-		<meta name="twitter:image" content="https://feedlr.app/assets/og.jpg" />
-		<meta name="twitter:image:alt" content="Feedlr.app" />
-
+		<meta name="twitter:title" content="Feedlr.app - Ad free YouTube feed"/>
+		<meta name="twitter:description" content="Feedlr.app is an open source YouTube subscriptions feed alternative free of distractions and ads!"/>
+		<meta name="twitter:image" content="https://feedlr.app/assets/og.jpg"/>
+		<meta name="twitter:image:alt" content="Feedlr.app"/>
 		for _, c := range content {
 			@c
 		}
@@ -33,3 +29,17 @@ templ Head(content ...templ.Component) {
 	</head>
 }
 
+script tailwindConfig() {
+	tailwind.config = {
+		theme: {
+			borderRadius: {
+				"none": "0px",
+				"sm": "10px",
+				"md": "15px",
+				"lg": "20px",
+				"xl": "25px",
+				'full': '9999px',
+			}
+		}
+	}
+}

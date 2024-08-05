@@ -31,7 +31,7 @@ var SearchChannels brewed.Partial[*handler.Context] = func(ctx *handler.Context)
 		return channelsSearchErrorMessage("Channel name must be between 3 and 32 characters long"), nil
 	}
 
-	channels, err := logic.SearchChannels(userID, query, 4)
+	channels, err := logic.SearchChannels(ctx.Context(), ctx.Database(), userID, query, 4)
 	if err != nil {
 		return nil, ctx.Err(err)
 	}
@@ -88,7 +88,7 @@ var CreateSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Cont
 	}
 
 	channelId := ctx.Params("id")
-	props, err := logic.NewSubscription(userID, channelId)
+	props, err := logic.NewSubscription(ctx.Context(), ctx.Database(), userID, channelId)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ var RemoveSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Cont
 	}
 
 	channelId := ctx.Params("id")
-	err := logic.DeleteSubscription(userID, channelId)
+	err := logic.DeleteSubscription(ctx.Context(), ctx.Database(), userID, channelId)
 	if err != nil {
 		return nil, err
 	}

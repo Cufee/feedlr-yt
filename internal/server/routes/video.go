@@ -1,9 +1,11 @@
 package root
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/cufee/feedlr-yt/internal/logic"
@@ -20,22 +22,33 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 	video := ctx.Params("id")
 	// Update cache in background
 	go func() {
-		err := logic.CacheVideo(video)
+		c, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		err := logic.CacheVideo(c, ctx.Database(), video)
 		if err != nil {
 			log.Printf("VideoHandler.UpdateVideoCache error: %v\n", err)
 		}
 	}()
 
 	if uid, valid := session.UserID(); valid {
-		// c.Locals("userId", uid)
-		// go session.Refresh()
+		err := ctx.SessionClient().Update(session)
+		if err != nil {
+			log.Printf("session update error: %s\n", err.Error())
+		}
 
-		settings, err := logic.GetUserSettings(uid)
+		sctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*250)
+		defer cancel()
+
+		settings, err := logic.GetUserSettings(sctx, ctx.Database(), uid)
 		if err != nil {
 			return nil, nil, ctx.Err(err)
 		}
 
-		props, err := logic.GetPlayerPropsWithOpts(uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: settings.SponsorBlock.SponsorBlockEnabled})
+		pctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+		defer cancel()
+
+		props, err := logic.GetPlayerPropsWithOpts(pctx, ctx.Database(), uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: settings.SponsorBlock.SponsorBlockEnabled})
 		if err != nil {
 			log.Printf("GetVideoByID: %v", err)
 			return nil, nil, ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&feedlr_error=failed to find video", video), http.StatusTemporaryRedirect)
@@ -55,7 +68,7 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 	}
 
 	// No auth, do not check progress
-	props, err := logic.GetPlayerPropsWithOpts("", video, logic.GetPlayerOptions{WithProgress: false, WithSegments: true})
+	props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), "", video, logic.GetPlayerOptions{WithProgress: false, WithSegments: true})
 	if err != nil {
 		log.Printf("GetVideoByID: %v", err)
 		return nil, nil, ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&feedlr_error=failed to find video", video), http.StatusTemporaryRedirect)

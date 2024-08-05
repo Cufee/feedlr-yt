@@ -18,7 +18,7 @@ var Settings brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.
 		return nil, nil, nil
 	}
 
-	settings, err := logic.GetUserSettings(userID)
+	settings, err := logic.GetUserSettings(ctx.Context(), ctx.Database(), userID)
 	if err != nil {
 		return nil, nil, ctx.Err(err)
 	}

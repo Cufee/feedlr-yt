@@ -23,14 +23,14 @@ var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 	volume, _ := strconv.Atoi(ctx.Query("volume"))
 	progress, _ := strconv.Atoi(ctx.Query("progress"))
 
-	err := logic.UpdateViewProgress(userID, video, progress)
+	err := logic.UpdateViewProgress(ctx.Context(), ctx.Database(), userID, video, progress)
 	if err != nil {
 		return nil, err
 	}
 
 	if ua.New(ctx.Get("User-Agent")).Desktop() {
 		// Sound controls don't work on mobile, we always set the volume to 100 there
-		err = logic.UpdatePlayerVolume(userID, volume)
+		err = logic.UpdatePlayerVolume(ctx.Context(), ctx.Database(), userID, volume)
 		if err != nil {
 			return nil, err
 		}
@@ -40,7 +40,7 @@ var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 		return nil, ctx.SendStatus(http.StatusOK)
 	}
 
-	props, err := logic.GetPlayerPropsWithOpts(userID, video, logic.GetPlayerOptions{WithProgress: true})
+	props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), userID, video, logic.GetPlayerOptions{WithProgress: true})
 	if err != nil {
 		return nil, err
 	}

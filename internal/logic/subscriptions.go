@@ -1,47 +1,42 @@
 package logic
 
 import (
-	"errors"
+	"context"
 
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/pkg/errors"
 )
 
-func FindSubscription(userId, channelId string) (bool, error) {
-	oid, err := primitive.ObjectIDFromHex(userId)
+func SubscriptionExists(ctx context.Context, db database.SubscriptionsClient, userId, channelId string) (bool, error) {
+	_, err := db.FindSubscription(ctx, userId, channelId)
 	if err != nil {
-		return false, errors.Join(err, errors.New("NewSubscription.primitive.ObjectIDFromHex failed to parse userId"))
-	}
-	_, err = database.DefaultClient.FindSubscription(oid, channelId)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if database.IsErrNotFound(err) {
 			return false, nil
 		}
-		return false, errors.Join(err, errors.New("NewSubscription.database.DefaultClient.NewSubscription failed to create subscription"))
+		return false, errors.Wrap(err, "failed to create subscription")
 	}
 	return true, nil
 }
 
-func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
-	channel, _, err := CacheChannel(channelId)
+func NewSubscription(ctx context.Context, db interface {
+	database.SubscriptionsClient
+	database.ChannelsClient
+	database.VideosClient
+}, userId, channelId string) (*types.ChannelProps, error) {
+	channel, _, err := CacheChannel(ctx, db, channelId)
 	if err != nil {
-		return nil, errors.Join(err, errors.New("NewSubscription.CacheChannel failed to cache channel"))
+		return nil, errors.Wrap(err, "failed to cache channel")
 	}
-	go CacheChannelVideos(channelId)
+	go CacheChannelVideos(ctx, db, channelId)
 
-	oid, err := primitive.ObjectIDFromHex(userId)
+	sub, err := db.NewSubscription(ctx, userId, channel.ID)
 	if err != nil {
-		return nil, errors.Join(err, errors.New("NewSubscription.primitive.ObjectIDFromHex failed to parse userId"))
-	}
-	sub, err := database.DefaultClient.NewSubscription(oid, channel.ExternalID)
-	if err != nil {
-		return nil, errors.Join(err, errors.New("NewSubscription.database.DefaultClient.NewSubscription failed to create subscription"))
+		return nil, errors.Wrap(err, "failed to create subscription")
 	}
 
 	var props types.ChannelProps
-	props.ID = sub.ChannelId
+	props.ID = sub.ChannelID
 	props.Title = channel.Title
 	props.Thumbnail = channel.Thumbnail
 	props.Description = channel.Description
@@ -50,16 +45,10 @@ func NewSubscription(userId, channelId string) (*types.ChannelProps, error) {
 	return &props, nil
 }
 
-func DeleteSubscription(userId, channelId string) error {
-	oid, err := primitive.ObjectIDFromHex(userId)
+func DeleteSubscription(ctx context.Context, db database.SubscriptionsClient, userId, channelId string) error {
+	err := db.DeleteSubscription(ctx, userId, channelId)
 	if err != nil {
 		return err
 	}
-
-	err = database.DefaultClient.DeleteSubscription(oid, channelId)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/go-co-op/gocron"
 )
 
-func StartCronTasks(db database.Client) *gocron.Scheduler {
+func StartCronTasks(db database.Client) (*gocron.Scheduler, error) {
 	s := gocron.NewScheduler(time.UTC)
 
 	_, err := s.Cron(utils.MustGetEnv("VIDEO_CACHE_UPDATE_CRON")).Do(func() {
@@ -21,9 +21,9 @@ func StartCronTasks(db database.Client) *gocron.Scheduler {
 		log.Print("Done caching all channels with videos")
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	s.StartAsync()
-	return s
+	return s, nil
 }

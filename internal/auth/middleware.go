@@ -5,9 +5,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func Middleware(s *sessions.SessionClient) func(c *fiber.Ctx) error {
+func Middleware(sessions *sessions.SessionClient) func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
-		session, err := s.FromID(c.Cookies("session_id"))
+		session, err := sessions.FromID(c.Cookies("session_id"))
 		if err != nil {
 			return c.Redirect("/login")
 		}
@@ -16,7 +16,7 @@ func Middleware(s *sessions.SessionClient) func(c *fiber.Ctx) error {
 			c.Locals("session", session)
 
 			session.Refresh()
-			go s.Update(session)
+			sessions.Update(session)
 
 			return c.Next()
 		}
