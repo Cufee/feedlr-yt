@@ -102,7 +102,7 @@ func GetVideoByID(ctx context.Context, db interface {
 	if err != nil && !database.IsErrNotFound(err) {
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
-	if vid != nil && vid.Channel != nil {
+	if vid != nil && vid.R.Channel != nil {
 		return types.VideoModelToProps(vid, types.ChannelModelToProps(vid.R.Channel)), nil
 	}
 
