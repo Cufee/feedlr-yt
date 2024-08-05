@@ -19,7 +19,7 @@ var ToggleSponsorBlockCategory brewed.Partial[*handler.Context] = func(ctx *hand
 
 	category := ctx.Query("category")
 
-	updated, err := logic.ToggleSponsorBlockCategory(userID, category)
+	updated, err := logic.ToggleSponsorBlockCategory(ctx.Context(), ctx.Database(), userID, category)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ var ToggleSponsorBlock brewed.Partial[*handler.Context] = func(ctx *handler.Cont
 		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
-	updated, err := logic.ToggleSponsorBlock(userID)
+	updated, err := logic.ToggleSponsorBlock(ctx.Context(), ctx.Database(), userID)
 	if err != nil {
 		return nil, err
 	}

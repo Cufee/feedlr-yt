@@ -19,7 +19,7 @@ var Home brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Layo
 		return nil, nil, nil
 	}
 
-	props, err := logic.GetUserVideosProps(userID)
+	props, err := logic.GetUserVideosProps(ctx.Context(), ctx.Database(), userID)
 	if err != nil {
 		ctx.Err(err)
 		return nil, nil, nil

@@ -25,8 +25,9 @@ var _ tpot.Context = &Context{}
 type Context struct {
 	*fiber.Ctx
 
-	c  context.Context
-	db database.Client
+	c   context.Context
+	db  database.Client
+	ses *sessions.SessionClient
 
 	w http.ResponseWriter
 	r *http.Request
@@ -44,13 +45,14 @@ func (ctx *Context) Context() context.Context {
 	return ctx.Ctx.Context()
 }
 
-func NewBuilder(db database.Client) func(*fiber.Ctx) tpot.ContextBuilder[*Context] {
+func NewBuilder(db database.Client, ses *sessions.SessionClient) func(*fiber.Ctx) tpot.ContextBuilder[*Context] {
 	return func(c *fiber.Ctx) tpot.ContextBuilder[*Context] {
 		return func(w http.ResponseWriter, r *http.Request) *Context {
 			return &Context{
 				Ctx: c,
 				c:   r.Context(),
 				db:  db,
+				ses: ses,
 				w:   w,
 				r:   r,
 			}
@@ -64,6 +66,10 @@ func (ctx *Context) Session() (*sessions.Session, bool) {
 		return &sessions.Session{}, false
 	}
 	return session, true
+}
+
+func (ctx *Context) SessionClient() *sessions.SessionClient {
+	return ctx.ses
 }
 
 func (ctx *Context) UserID() (string, bool) {

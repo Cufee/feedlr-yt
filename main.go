@@ -7,9 +7,8 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic/background"
 	"github.com/cufee/feedlr-yt/internal/server"
+	"github.com/cufee/feedlr-yt/internal/sessions"
 )
-
-//go:generate task style:generate
 
 // Embed assets
 //
@@ -22,8 +21,16 @@ func main() {
 		panic(err)
 	}
 
-	background.StartCronTasks(db)
+	_, err = background.StartCronTasks(db)
+	if err != nil {
+		panic(err)
+	}
 
-	start := server.New(db, assetsFs)
+	ses, err := sessions.New(db)
+	if err != nil {
+		panic(err)
+	}
+
+	start := server.New(db, ses, assetsFs)
 	start()
 }

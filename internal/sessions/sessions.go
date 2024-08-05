@@ -32,7 +32,7 @@ type SessionData struct {
 	LastUsed  time.Time `json:"last_used"`
 }
 
-func New() (*SessionClient, error) {
+func New(db database.SettingsClient) (*SessionClient, error) {
 	return nil, nil
 }
 

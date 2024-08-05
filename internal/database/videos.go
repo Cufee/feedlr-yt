@@ -115,8 +115,8 @@ func (c *sqliteClient) UpsertVideos(ctx context.Context, videos ...*models.Video
 }
 
 type ViewsClient interface {
-	GetVideoByID(ctx context.Context, id string, o ...VideoQuery) (*models.Video, error)
-	FindVideos(ctx context.Context, o ...VideoQuery) ([]*models.Video, error)
+	GetUserViews(ctx context.Context, userID string, videoID ...string) ([]*models.View, error)
+	UpsertView(ctx context.Context, view *models.View) error
 }
 
 func (c *sqliteClient) GetUserViews(ctx context.Context, userID string, videoID ...string) ([]*models.View, error) {

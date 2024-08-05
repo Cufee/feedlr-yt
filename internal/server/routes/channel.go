@@ -19,7 +19,7 @@ var Channel brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.L
 	}
 
 	if userID != "" {
-		subscribed, err := logic.FindSubscription(userID, props.Channel.ID)
+		subscribed, err := logic.SubscriptionExists(ctx.Context(), ctx.Database(), userID, props.Channel.ID)
 		if err != nil {
 			log.Printf("FindSubscription: %v\n", err)
 		}

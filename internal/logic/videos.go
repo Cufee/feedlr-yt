@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"errors"
 	"net/url"
 	"regexp"
@@ -12,18 +13,21 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/gofiber/fiber/v2/log"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 /*
 Returns a list of channel props with videos for all user subscriptions
 */
-func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
+func GetUserVideosProps(ctx context.Context, db interface {
+	database.SubscriptionsClient
+	database.ChannelsClient
+	database.ViewsClient
+}, userId string) (*types.UserVideoFeedProps, error) {
 	// Get channels and convert them to WithVideo props
-	channels, err := GetUserSubscribedChannels(userId)
+	channels, err := GetUserSubscribedChannels(ctx, db, userId)
 	if err != nil {
 		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetUserSubscribedChannels failed to get user subscribed channels"), err)
 	}
@@ -36,7 +40,7 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 		channelIds = append(channelIds, c.ID)
 	}
 
-	allVideos, err := GetChannelVideos(24, channelIds...)
+	allVideos, err := GetChannelVideos(ctx, db, 24, channelIds...)
 	if err != nil {
 		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos"), err)
 	}
@@ -46,7 +50,7 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 		videoIds[i] = v.ID
 	}
 
-	progress, err := GetUserVideoProgress(userId, videoIds...)
+	progress, err := GetUserVideoProgress(ctx, db, userId, videoIds...)
 	if err != nil {
 		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetCompleteUserProgress failed to get user progress"), err)
 	}
@@ -63,21 +67,21 @@ func GetUserVideosProps(userId string) (*types.UserVideoFeedProps, error) {
 /*
 Returns a list of video props for provided channels
 */
-func GetChannelVideos(limit int, channelIds ...string) ([]types.VideoProps, error) {
+func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int, channelIds ...string) ([]types.VideoProps, error) {
 	if len(channelIds) == 0 {
 		return nil, nil
 	}
 
-	channels, err := database.DefaultClient.GetChannelsByID(channelIds, database.ChannelGetOptions{WithVideos: true, VideosLimit: limit})
-	if err != nil && err != mongo.ErrNoDocuments {
+	channels, err := db.GetChannels(ctx, database.Channel{}.ID(channelIds...), database.Channel{}.WithVideos(limit))
+	if err != nil && !database.IsErrNotFound(err) {
 		return nil, errors.Join(errors.New("GetChannelVideos.database.DefaultClient.GetVideosByChannelID failed to get videos"), err)
 	}
 
 	var props []types.VideoProps
 	for _, channel := range channels {
-		c := types.ChannelModelToProps(&channel)
-		for _, video := range channel.Videos {
-			props = append(props, types.VideoModelToProps(&video, c))
+		c := types.ChannelModelToProps(channel)
+		for _, video := range channel.R.Videos {
+			props = append(props, types.VideoModelToProps(video, c))
 		}
 	}
 
@@ -90,13 +94,16 @@ func GetChannelVideos(limit int, channelIds ...string) ([]types.VideoProps, erro
 	return trimVideoList(limit, 12, props), nil
 }
 
-func GetVideoByID(id string) (types.VideoProps, error) {
-	vid, err := database.DefaultClient.GetVideoByID(id, database.GetVideoOptions{WithChannel: true})
-	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+func GetVideoByID(ctx context.Context, db interface {
+	database.VideosClient
+	database.ChannelsClient
+}, id string) (types.VideoProps, error) {
+	vid, err := db.GetVideoByID(ctx, id, database.Video{}.WithChannel())
+	if err != nil && !database.IsErrNotFound(err) {
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
 	}
 	if vid != nil && vid.Channel != nil {
-		return types.VideoModelToProps(vid, types.ChannelModelToProps(vid.Channel)), nil
+		return types.VideoModelToProps(vid, types.ChannelModelToProps(vid.R.Channel)), nil
 	}
 
 	details, err := youtube.DefaultClient.GetVideoDetailsByID(id)
@@ -104,34 +111,36 @@ func GetVideoByID(id string) (types.VideoProps, error) {
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
 	}
 
-	channel, _, err := CacheChannel(details.ChannelID)
+	channel, _, err := CacheChannel(ctx, db, details.ChannelID)
 	if err != nil {
 		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.CacheChannel failed to cache channel"), err)
 	}
 
-	go UpdateVideoCache(details.Video)
+	go UpdateVideoCache(ctx, db, details)
 	props := types.VideoProps{Video: details.Video, Channel: types.ChannelModelToProps(channel)}
 	return props, nil
 
 }
 
-func CacheVideo(video string) error {
+func CacheVideo(ctx context.Context, db database.VideosClient, video string) error {
 	details, err := youtube.DefaultClient.GetVideoDetailsByID(video)
 	if err != nil {
 		return errors.Join(errors.New("CacheVideo.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
 	}
-	return UpdateVideoCache(details.Video)
+	return UpdateVideoCache(ctx, db, details)
 }
 
-func UpdateVideoCache(video youtube.Video) error {
-	err := database.DefaultClient.UpdateVideos(true, database.VideoCreateModel{
-		Type:        string(video.Type),
+func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *youtube.VideoDetails) error {
+	published, _ := time.Parse(time.RFC3339, video.PublishedAt)
+	err := db.UpsertVideos(ctx, &models.Video{
 		ID:          video.ID,
-		URL:         video.URL,
+		ChannelID:   video.ChannelID,
+		Type:        string(video.Type),
+		PublishedAt: published,
 		Title:       video.Title,
-		Duration:    video.Duration,
-		Thumbnail:   video.Thumbnail,
 		Description: video.Description,
+		Duration:    int64(video.Duration),
+		Private:     video.Type == youtube.VideoTypePrivate,
 	})
 	return err
 }
@@ -141,13 +150,17 @@ type GetPlayerOptions struct {
 	WithSegments bool
 }
 
-func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (types.VideoPlayerProps, error) {
+func GetPlayerPropsWithOpts(ctx context.Context, db interface {
+	database.ViewsClient
+	database.VideosClient
+	database.ChannelsClient
+}, userId, videoId string, opts ...GetPlayerOptions) (types.VideoPlayerProps, error) {
 	var options GetPlayerOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	video, err := GetVideoByID(videoId)
+	video, err := GetVideoByID(ctx, db, videoId)
 	if err != nil {
 		return types.VideoPlayerProps{}, errors.Join(errors.New("GetPlayerPropsWithOpts.GetVideoByID failed to get video"), err)
 	}
@@ -158,8 +171,8 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 	}
 
 	if options.WithProgress {
-		progress, err := GetUserVideoProgress(userId, videoId)
-		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+		progress, err := GetUserVideoProgress(ctx, db, userId, videoId)
+		if err != nil && !database.IsErrNotFound(err) {
 			return types.VideoPlayerProps{}, errors.Join(errors.New("GetPlayerPropsWithOpts.database.DefaultClient.GetUserVideoView failed to get user video view"), err)
 		}
 		if progress != nil {
@@ -183,24 +196,19 @@ func GetPlayerPropsWithOpts(userId, videoId string, opts ...GetPlayerOptions) (t
 	return playerProps, nil
 }
 
-func UpdateViewProgress(userId, videoId string, progress int) error {
-	oid, err := primitive.ObjectIDFromHex(userId)
-	if err != nil {
-		return err
-	}
-	_, err = database.DefaultClient.UpsertView(oid, videoId, progress)
+func UpdateViewProgress(ctx context.Context, db database.ViewsClient, userId, videoId string, progress int) error {
+	err := db.UpsertView(ctx, &models.View{
+		UserID:   userId,
+		VideoID:  videoId,
+		Progress: int64(progress),
+	})
 	return err
 }
 
-func GetUserVideoProgress(userId string, videos ...string) (map[string]int, error) {
-	oid, err := primitive.ObjectIDFromHex(userId)
+func GetUserVideoProgress(ctx context.Context, db database.ViewsClient, userId string, videos ...string) (map[string]int, error) {
+	views, err := db.GetUserViews(ctx, userId, videos...)
 	if err != nil {
-		return nil, errors.Join(errors.New("GetCompleteUserProgress.primitive.ObjectIDFromHex failed to parse userId"), err)
-	}
-
-	views, err := database.DefaultClient.GetUserViews(oid, videos...)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if database.IsErrNotFound(err) {
 			return make(map[string]int), nil
 		}
 		return nil, errors.Join(errors.New("GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views"), err)
@@ -208,7 +216,7 @@ func GetUserVideoProgress(userId string, videos ...string) (map[string]int, erro
 
 	progress := make(map[string]int)
 	for _, v := range views {
-		progress[v.VideoId] = v.Progress
+		progress[v.ID] = int(v.Progress)
 	}
 
 	return progress, nil

@@ -7,8 +7,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-//go:generate sqlboiler sqlite3                                                                                                                                                                                                                                             ~/Documents/code/youtube-app
-
 type Client interface {
 	AuthNonceClient
 
