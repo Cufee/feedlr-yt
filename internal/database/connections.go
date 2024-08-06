@@ -93,7 +93,9 @@ func (c *sqliteClient) FindUserConnections(ctx context.Context, userID string, o
 		mods = append(mods, models.ConnectionWhere.Type.IN(opts.types))
 	}
 
-	connections, err := models.Connections(mods...).All(ctx, c.db)
+	var err error
+	var connections []*models.Connection
+	connections, err = models.Connections(mods...).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}

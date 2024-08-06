@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"os"
 
@@ -17,6 +18,11 @@ var assetsFs embed.FS
 
 func main() {
 	db, err := database.NewSQLiteClient(os.Getenv("DATABASE_PATH"))
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = db.GetOrCreateUser(context.Background(), "u1")
 	if err != nil {
 		panic(err)
 	}

@@ -63,7 +63,9 @@ func (c *sqliteClient) GetChannels(ctx context.Context, o ...ChannelQuery) ([]*m
 		mods = append(mods, models.ChannelWhere.ID.IN(opts.id))
 	}
 
-	channels, err := models.Channels(mods...).All(ctx, c.db)
+	var err error
+	var channels []*models.Channel
+	channels, err = models.Channels(mods...).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
@@ -123,13 +125,13 @@ func (c *sqliteClient) GetChannel(ctx context.Context, channelId string, o ...Ch
 		if opts.videosLimit > 0 {
 			mods = qm.Limit(opts.videosLimit)
 		}
-		err = models.Channel{}.L.LoadVideos(ctx, c.db, true, &channel, mods)
+		err = models.Channel{}.L.LoadVideos(ctx, c.db, true, channel, mods)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if opts.withSubscriptions {
-		err = models.Channel{}.L.LoadSubscriptions(ctx, c.db, true, &channel, nil)
+		err = models.Channel{}.L.LoadSubscriptions(ctx, c.db, true, channel, nil)
 		if err != nil {
 			return nil, err
 		}

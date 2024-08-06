@@ -65,7 +65,9 @@ func (c *sqliteClient) NewSubscription(ctx context.Context, userID, channelID st
 func (c *sqliteClient) UserSubscriptions(ctx context.Context, userID string, o ...SubscriptionQuery) ([]*models.Subscription, error) {
 	opts := subscriptionGetOptionSlice(o).opts()
 
-	subscriptions, err := models.Subscriptions(models.SubscriptionWhere.UserID.EQ(userID)).All(ctx, c.db)
+	var err error
+	var subscriptions []*models.Subscription // the type needs to be set for load functions to work
+	subscriptions, err = models.Subscriptions(models.SubscriptionWhere.UserID.EQ(userID)).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
@@ -95,13 +97,13 @@ func (c *sqliteClient) FindSubscription(ctx context.Context, userID, channelID s
 	}
 
 	if opts.withChannel {
-		err := models.Subscription{}.L.LoadChannel(ctx, c.db, true, &subscription, nil)
+		err := models.Subscription{}.L.LoadChannel(ctx, c.db, true, subscription, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load subscription channel")
 		}
 	}
 	if opts.withUser {
-		err := models.Subscription{}.L.LoadUser(ctx, c.db, true, &subscription, nil)
+		err := models.Subscription{}.L.LoadUser(ctx, c.db, true, subscription, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load subscription user")
 		}
@@ -120,13 +122,13 @@ func (c *sqliteClient) GetSubscription(ctx context.Context, id string, o ...Subs
 	}
 
 	if opts.withChannel {
-		err := models.Subscription{}.L.LoadChannel(ctx, c.db, true, &subscription, nil)
+		err := models.Subscription{}.L.LoadChannel(ctx, c.db, true, subscription, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load subscription channel")
 		}
 	}
 	if opts.withUser {
-		err := models.Subscription{}.L.LoadUser(ctx, c.db, true, &subscription, nil)
+		err := models.Subscription{}.L.LoadUser(ctx, c.db, true, subscription, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load subscription user")
 		}

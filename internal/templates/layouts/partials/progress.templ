@@ -2,9 +2,8 @@ package partials
 
 import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
 
-
 templ NavProgressAnimated(...templ.Component) {
-	<div class="w-full h-fit">
+	<div class="fixed top-0 w-full overflow-hidden h-fit rounded-b-box">
 		<div id="nav-progress" class="invisible h-1 transition-all bg-primary rounded-r-full duration-[50ms] ease-in" style="width: 0%"></div>
 	</div>
 	@shared.EmbedMinifiedScript(animateNavProgress())
@@ -68,4 +67,3 @@ script animateNavProgress() {
 		}, 50);
 	});
 }
-
