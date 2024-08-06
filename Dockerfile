@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=$GOPATH/pkg/mod go mod download
 COPY . ./
 
 # generate code
-RUN --mount=type=cache,target=$GOPATH/pkg/mod go generate ./... && templ generate
+RUN --mount=type=cache,target=$GOPATH/pkg/mod go generate ./...
 
 # build the final binary
 RUN --mount=type=cache,target=$GOPATH/pkg/mod CGO_ENABLED=1 GOOS=linux go build -ldflags='-s -w' -trimpath -o app .
