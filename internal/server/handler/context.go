@@ -67,7 +67,14 @@ func (ctx *Context) SetSession(s sessions.Session) bool {
 
 func (ctx *Context) Session() (sessions.Session, bool) {
 	session, ok := ctx.Locals("session").(sessions.Session)
-	if !ok || !session.Valid() {
+	if !ok {
+		var err error
+		session, err = ctx.ses.Get(ctx.Context(), ctx.Cookies("session_id"))
+		if err != nil {
+			return sessions.Session{}, false
+		}
+	}
+	if !session.Valid() {
 		return sessions.Session{}, false
 	}
 	return session, true

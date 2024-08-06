@@ -217,7 +217,7 @@ func GetUserVideoProgress(ctx context.Context, db database.ViewsClient, userId s
 
 	progress := make(map[string]int)
 	for _, v := range views {
-		progress[v.ID] = int(v.Progress)
+		progress[v.VideoID] = int(v.Progress)
 	}
 
 	return progress, nil
