@@ -1,0 +1,12 @@
+package shared
+
+templ RemoteContentPage(url string) {
+	<div id="page-content" class="px-4">
+		JavaScript is required to load this page.
+	</div>
+	@EmbedScript(loadContent(url), url)
+}
+
+script loadContent(url string) {
+	fetch(url).then(res=>res.text()).then(html=>document.getElementById('page-content').innerHTML=html);
+}
