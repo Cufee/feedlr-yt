@@ -1,8 +1,7 @@
 package auth
 
 import (
-	"os"
-	"time"
+	"log"
 
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/gofiber/fiber/v2"
@@ -10,16 +9,7 @@ import (
 
 func Middleware(sc *sessions.SessionClient) func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
-		if os.Getenv("SKIP_AUTH") == "true" {
-			c.Locals("session", sessions.Mock(sessions.SessionData{
-				UserID:       "clzir9ou400003ipx8kt2rmdq",
-				ConnectionID: "c1",
-				ExpiresAt:    time.Now().Add(time.Hour * 99999),
-			}))
-			return c.Next()
-		}
-
-		session, err := sc.FromID(c.Cookies("session_id"))
+		session, err := sc.Get(c.Context(), c.Cookies("session_id"))
 		if err != nil {
 			return c.Redirect("/login")
 		}
@@ -27,8 +17,10 @@ func Middleware(sc *sessions.SessionClient) func(c *fiber.Ctx) error {
 		if session.Valid() {
 			c.Locals("session", session)
 
-			session.Refresh()
-			sc.Update(session)
+			err := session.Refresh(c.Context())
+			if err != nil {
+				log.Printf("failed to refresh session: %s\n", err)
+			}
 
 			return c.Next()
 		}

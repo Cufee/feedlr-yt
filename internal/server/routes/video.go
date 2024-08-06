@@ -32,11 +32,6 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 	}()
 
 	if uid, valid := session.UserID(); valid {
-		err := ctx.SessionClient().Update(session)
-		if err != nil {
-			log.Printf("session update error: %s\n", err.Error())
-		}
-
 		sctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*250)
 		defer cancel()
 

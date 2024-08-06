@@ -1,16 +1,38 @@
 package pages
 
 import (
-  "github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/auth"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 )
 
 templ Login() {
 	<div class="flex flex-col items-center justify-center h-full gap-4" id="landing">
-		<div class="flex justify-center">@shared.Logo("128")</div>
-		<span class="loading loading-spinner loading-lg"></span>
+		<div class="flex justify-center">
+			@shared.Logo("128")
+		</div>
+		@GoogleLoginButton()
 	</div>
-	<script>
-    window.location.href = "/login/start"
-  </script>
 }
 
+templ GoogleLoginButton() {
+	<script src="https://accounts.google.com/gsi/client" async></script>
+	<div
+		id="g_id_onload"
+		data-client_id={ auth.GoogleAuthClientID }
+		data-context="signin"
+		data-ux_mode="popup"
+		data-login_uri={ auth.GoogleAuthRedirectURL }
+		data-nonce=""
+		data-auto_select="true"
+		data-itp_support="true"
+	></div>
+	<div
+		class="g_id_signin"
+		data-type="standard"
+		data-shape="pill"
+		data-theme="outline"
+		data-text="continue_with"
+		data-size="large"
+		data-logo_alignment="center"
+	></div>
+}

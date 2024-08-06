@@ -25,6 +25,15 @@ func init() {
 		an.ID = ensureID(an.ID)
 		return nil
 	})
+	// Sessions
+	models.AddSessionHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, an *models.Session) error {
+		an.ID = ensureID(an.ID)
+		return nil
+	})
+	models.AddSessionHook(boil.BeforeUpsertHook, func(ctx context.Context, ce boil.ContextExecutor, an *models.Session) error {
+		an.ID = ensureID(an.ID)
+		return nil
+	})
 	// Channels
 	models.AddChannelHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, c *models.Channel) error {
 		c.ID = ensureID(c.ID)

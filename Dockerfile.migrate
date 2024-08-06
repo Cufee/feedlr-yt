@@ -1,0 +1,3 @@
+FROM arigaio/atlas:latest
+
+COPY ./internal/database/migrations /migrations

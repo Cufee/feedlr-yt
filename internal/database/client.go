@@ -9,6 +9,7 @@ import (
 
 type Client interface {
 	AuthNonceClient
+	SessionsClient
 
 	ChannelsClient
 	VideosClient

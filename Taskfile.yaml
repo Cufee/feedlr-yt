@@ -4,8 +4,8 @@ version: 3
 interval: '500ms'
 
 dotenv: ['.env']
-
 vars:
+  DATABASE_PATH: $DATABASE_PATH
   COMMIT_ID:
     sh: git rev-parse --short HEAD || echo "unknown"
 
@@ -26,6 +26,16 @@ tasks:
     desc: Run go generate
     cmds:
       - go generate ./...
+
+  migrate:
+    desc: generate migrations
+    cmd: atlas migrate hash --dir "file://internal/database/migrations" && atlas migrate diff {{.CLI_ARGS}} --dir "file://internal/database/migrations" --to file://schema.hcl --dev-url "sqlite://file?mode=memory&_fk=1"
+  migrate-apply:
+    desc: apply migrations using atlas
+    cmds:
+      # variables will be pulled from global vars declaration unless overwritten in the task call
+      - echo "Applying migrations to {{.DATABASE_PATH}}"
+      - atlas migrate apply --allow-dirty --dir "file://internal/database/migrations" --tx-mode all --url "sqlite://{{.DATABASE_PATH}}?_fk=1"
 
   build:fast:
     desc: Build the application without go generate

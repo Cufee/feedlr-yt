@@ -1,120 +1,109 @@
 package sessions
 
 import (
+	"context"
 	"errors"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/segmentio/ksuid"
+	"github.com/volatiletech/null/v8"
 )
 
 var ErrNotFound = errors.New("session not found")
 
 type SessionClient struct {
-	db database.Client
+	db database.SessionsClient
 }
 
 type Session struct {
-	data   SessionData
+	db database.SessionsClient
+
+	data   *models.Session
 	exists bool
 }
-type SessionData struct {
-	ID           string `json:"id"`
-	UserID       string `json:"user_id"`
-	ConnectionID string `json:"connection_id"`
 
-	ExpiresAt time.Time `json:"expires_at"`
-
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	LastUsed  time.Time `json:"last_used"`
+func New(db database.SessionsClient) (*SessionClient, error) {
+	return &SessionClient{db: db}, nil
 }
 
-func New(db database.SettingsClient) (*SessionClient, error) {
-	return nil, nil
-}
-
-func Mock(data SessionData) *Session {
-	return &Session{
-		data:   data,
-		exists: true,
-	}
-}
-
-func (c *SessionClient) New() (*Session, error) {
+func (c *SessionClient) New(ctx context.Context) (Session, error) {
 	id, err := ksuid.NewRandom()
 	if err != nil {
-		return &Session{}, errors.Join(errors.New("sessions.New"), err)
+		return Session{exists: false}, err
 	}
 
-	var data SessionData
-	data.ID = id.String()
-	data.CreatedAt = time.Now()
-	data.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
+	var record models.Session
+	record.ID = id.String()
+	record.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
 
-	// err = c.db.Set("sessions", data.ID, data)
-	// if err != nil {
-	// return &Session{}, errors.Join(errors.New("sessions.New"), err)
-	// }
-	// return &Session{data: data, ID: data.ID}, nil
-	return nil, nil
+	session, err := c.db.CreateSession(ctx, &record)
+	if err != nil {
+		return Session{exists: false}, err
+	}
+	return Session{db: c.db, data: session, exists: true}, nil
 }
 
-func (c *SessionClient) FromID(id string) (*Session, error) {
-	var data SessionData
-	// err := db.Get("sessions", id, &data)
-	// if err != nil {
-	// return &Session{}, err
-	// }
-	return &Session{data: data}, nil
+func (c *SessionClient) Get(ctx context.Context, id string) (Session, error) {
+	session, err := c.db.GetSession(ctx, id)
+	if err != nil {
+		return Session{exists: false}, err
+	}
+	return Session{db: c.db, data: session, exists: true}, nil
 }
 
-func (c *SessionClient) Update(s *Session) error {
-	s.data.UpdatedAt = time.Now()
-	// return c.db.Set("sessions", s.data.ID, s.data)
+func (c *SessionClient) Delete(ctx context.Context, id string) error {
+	return c.db.DeleteSession(ctx, id)
+}
+
+func (c Session) Valid() bool {
+	return c.exists && c.data.ID != "" && c.db != nil
+}
+
+func (c Session) UpdateUser(ctx context.Context, userID null.String, connectionID null.String) (Session, error) {
+	if !c.Valid() {
+		return Session{exists: false}, errors.New("session does not exist")
+	}
+
+	err := c.db.UpdateSessionUser(ctx, c.data.ID, userID, connectionID)
+	if err != nil {
+		return Session{exists: false}, err
+	}
+	return c, nil
+}
+
+func (s Session) Refresh(ctx context.Context) error {
+	if !s.Valid() {
+		return errors.New("session does not exist")
+	}
+
+	_, err := s.db.SetSessionExpiration(ctx, s.data.ID, time.Now().Add(time.Hour*24*7))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (c *SessionClient) DeleteSession(id string) error {
-	// return defaultClient.Del("sessions", id)
-	return nil
-}
-
-/* Finds a valid session by ID and returns the user ID associated with it */
-func (s *Session) Valid() bool {
-	if !s.exists {
-		return false
-	}
-
-	if s.data.UserID != "" && s.data.ExpiresAt.After(time.Now()) {
-		return true
-	}
-	return false
-}
-
-func (s *Session) Refresh() {
-	return
-}
-
-/* Finds a valid session by ID and returns the user ID associated with it */
-func (s *Session) UserID() (string, bool) {
-	if !s.exists {
+/* Returns a session user ID and a bool indicating if a session is authenticated */
+func (s Session) UserID() (string, bool) {
+	if !s.Valid() {
 		return "", false
 	}
 
-	if ok := s.Valid(); ok {
-		return s.data.UserID, true
+	if s.data.UserID.Valid {
+		return s.data.UserID.String, true
 	}
 	return "", false
 }
 
-func (s *Session) Cookie() (*fiber.Cookie, error) {
+func (s Session) Cookie() (*fiber.Cookie, error) {
 	return &fiber.Cookie{
 		Name:     "session_id",
 		Value:    s.data.ID,
 		Expires:  s.data.ExpiresAt,
 		HTTPOnly: true,
-		SameSite: "strict",
+		SameSite: "lax",
 	}, nil
 }

@@ -1,96 +1,86 @@
 package auth
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"context"
+	"net/http"
+
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/server/handler"
+	"github.com/cufee/tpot/brewed"
+	"github.com/volatiletech/null/v8"
+	"google.golang.org/api/idtoken"
 )
 
-func LoginStartHandler(c *fiber.Ctx) error {
-	// sessionId := c.Cookies("session_id")
-	// if sessionId != "" {
-	// 	session, _ := sessions.FromID(sessionId)
-	// 	if session.Valid() {
-	// 		return c.Redirect("/app")
-	// 	}
-	// 	session.Delete()
-	// 	c.ClearCookie("session_id")
-	// }
+var GoogleAuthRedirect brewed.Endpoint[*handler.Context] = func(c *handler.Context) error {
+	cookieToken := c.Cookies("g_csrf_token")
+	bodyToken, err := c.FormValue("g_csrf_token")
+	if err != nil {
+		return c.Redirect("/error?message=Failed to log in with Google&context=missing credential", http.StatusTemporaryRedirect)
+	}
+	if bodyToken == "" || cookieToken == "" {
+		return c.Redirect("/error?message=Failed to log in with Google&context=missing credential", http.StatusTemporaryRedirect)
+	}
+	if bodyToken != cookieToken {
+		return c.Redirect("/error?message=Failed to log in with Google&context=missing credential", http.StatusTemporaryRedirect)
+	}
 
-	// id, err := ksuid.NewRandomWithTime(time.Now())
-	// if err != nil {
-	// 	log.Printf("ksuid.NewRandomWithTime: %v\n", err)
-	// 	return c.Redirect("/error?message=Something went wrong while logging in&context=creating session ID")
-	// }
+	credential, err := c.FormValue("credential")
+	if credential == "" || err != nil {
+		return c.Redirect("/error?message=Failed to log in with Google&context=missing credential", http.StatusTemporaryRedirect)
+	}
 
-	// nonce, err := database.DefaultClient.NewAuthNonce(time.Now().Add(time.Minute*5), id.String())
-	// if err != nil {
-	// 	log.Printf("database.DefaultClient.NewAuthNonce: %v\n", err)
-	// 	return c.Redirect("/error?message=Something went wrong while logging in&context=creating auth nonce")
-	// }
+	payload, err := idtoken.Validate(context.Background(), credential, GoogleAuthClientID)
+	if err != nil {
+		return c.Redirect("/error?message=Failed to log in with Google&context=missing credential", http.StatusTemporaryRedirect)
+	}
 
-	// meta := make(map[string]any)
-	// meta["nonce"] = nonce.Value
-	// meta["expires_at"] = nonce.ExpiresAt
+	googleUser, err := GoogleTokenInfo(credential)
+	if err != nil {
+		return c.Redirect("/error?message=Failed to log in with Google&context=missing credential", http.StatusTemporaryRedirect)
+	}
+	if payload.Audience != googleUser.Aud || payload.Issuer != googleUser.Issuer || payload.Subject != googleUser.Subject {
+		return c.Redirect("/error?message=Failed to log in with Google&context=bad user info received", http.StatusTemporaryRedirect)
+	}
 
-	// url := defaultAuthenticator.AuthCodeURL(nonce.Value)
-	// return c.Redirect(url, fiber.StatusTemporaryRedirect)
-	return c.Redirect("/", fiber.StatusTemporaryRedirect)
-}
+	if googleUser.EmailVerified != "true" {
+		return c.Redirect("/error?message=You need to verify your Google Account before using it to log in", http.StatusTemporaryRedirect)
+	}
+	if googleUser.Name == "" || googleUser.Email == "" {
+		return c.Redirect("/error?message=Your Google Account is incomplete&context=missing name or email", http.StatusTemporaryRedirect)
+	}
 
-func LoginCallbackHandler(c *fiber.Ctx) error {
-	// existingSession := c.Cookies("session_id")
-	// if existingSession != "" {
-	// 	err := sessions.DeleteSession(existingSession)
-	// 	if err != nil {
-	// 		log.Printf("sessions.DeleteSession: %v\n", err)
-	// 	}
-	// }
+	connection, err := c.Database().GetConnection(c.Context(), googleUser.Subject)
+	if err != nil && !database.IsErrNotFound(err) {
+		return c.Redirect("/error?message=Failed to log in with Google&context=failed to get a connection", http.StatusTemporaryRedirect)
+	}
+	if database.IsErrNotFound(err) {
+		user, err := c.Database().CreateUser(c.Context())
+		if err != nil {
+			return c.Redirect("/error?message=Failed to log in with Google&context=failed to create a user account", http.StatusTemporaryRedirect)
+		}
+		connection, err = c.Database().CreateConnection(c.Context(), user.ID, googleUser.Subject, database.ConnectionTypeGoogle)
+		if err != nil {
+			return c.Redirect("/error?message=Failed to log in with Google&context=failed to create a connection", http.StatusTemporaryRedirect)
+		}
+	}
 
-	// token, err := defaultAuthenticator.Exchange(c.Context(), c.Query("code"))
-	// if err != nil {
-	// 	log.Printf("defaultAuthenticator.Exchange: %v\n", err)
-	// 	return c.Redirect("/error?message=Something went wrong while logging in&context=invalid auth code")
-	// }
+	session, err := c.SessionClient().New(c.Context())
+	if err != nil {
+		return c.Redirect("/error?message=Failed to log in with Google&context=failed to create a session", http.StatusTemporaryRedirect)
+	}
 
-	// idToken, err := defaultAuthenticator.VerifyIDToken(c.Context(), token)
-	// if err != nil {
-	// 	log.Printf("defaultAuthenticator.VerifyIDToken: %v\n", err)
-	// 	return c.Redirect("/error?message=Something went wrong while logging in&context=invalid id token")
-	// }
+	session, err = session.UpdateUser(c.Context(), null.StringFrom(connection.UserID), null.StringFrom(connection.ID))
+	if err != nil {
+		return c.Redirect("/error?message=Failed to log in with Google&context=failed to update session", http.StatusTemporaryRedirect)
+	}
 
-	// if idToken.Subject != "" && idToken.Expiry.After(time.Now()) && token.Expiry.After(time.Now()) {
-	// 	user, err := database.DefaultClient.EnsureUserExists(idToken.Subject)
-	// 	if err != nil {
-	// 		log.Printf("EnsureUserExists: %v\n", err)
-	// 		return c.Redirect("/error?message=Something went wrong while logging in&context=invalid auth token")
-	// 	}
+	c.SetSession(session)
 
-	// 	session, err := sessions.New()
-	// 	if err != nil {
-	// 		session.Delete()
-	// 		c.ClearCookie("session_id")
-	// 		log.Printf("sessions.Delete: %v\n", err)
-	// 		return c.Redirect("/error?message=Something went wrong while logging in&context=creating session")
-	// 	}
+	sessionCookie, err := session.Cookie()
+	if err != nil {
+		return c.Redirect("/error?message=Failed to log in with Google&context=failed to create a cookie", http.StatusTemporaryRedirect)
+	}
+	c.Cookie(sessionCookie)
 
-	// 	err = session.AddUserID(user.ID.Hex(), idToken.Subject)
-	// 	if err != nil {
-	// 		session.Delete()
-	// 		c.ClearCookie("session_id")
-	// 		log.Printf("session.Update: %v\n", err)
-	// 		return c.Redirect("/error?message=Something went wrong while logging in&context=updating session")
-	// 	}
-
-	// 	cookie, err := session.Cookie()
-	// 	if err != nil {
-	// 		session.Delete()
-	// 		c.ClearCookie("session_id")
-	// 		log.Printf("session.Cookie: %v\n", err)
-	// 		return c.Redirect("/error?message=Something went wrong while logging in&context=missing session cookie")
-	// 	}
-
-	// 	c.Cookie(cookie)
-	// 	return c.Redirect("/app")
-	// }
-
-	return c.Redirect("/error?message=Something went wrong while logging in&context=missing auth token")
+	return c.Redirect("/app", http.StatusTemporaryRedirect)
 }
