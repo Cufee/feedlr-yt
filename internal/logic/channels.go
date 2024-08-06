@@ -2,8 +2,6 @@ package logic
 
 import (
 	"context"
-	"log"
-	"time"
 
 	"slices"
 	"sync"
@@ -105,7 +103,7 @@ func SearchChannels(
 	query string,
 	limit int,
 ) ([]types.ChannelSearchResultProps, error) {
-	// The search is typically a lot slower than the subscriptions query, so we run them in parallel
+	// The search is a lot slower than the subscriptions query, so we run them in parallel
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -126,36 +124,22 @@ func SearchChannels(
 		for _, c := range subscriptions {
 			subscribedChannels = append(subscribedChannels, c.ChannelID)
 		}
-
 	}(userID)
 
 	wg.Wait()
 	if remoteChannelsErr != nil {
 		return nil, errors.Wrap(remoteChannelsErr, "failed to search channels")
 	}
-	if subscribedChannels != nil {
+	if subscribedChannelsErr != nil {
 		return nil, errors.Wrap(subscribedChannelsErr, "failed to get user subscriptions")
 	}
 
 	var props []types.ChannelSearchResultProps
 	for _, c := range remoteChannels {
-		cached := slice.Contains(subscribedChannels, c.ID)
-
 		props = append(props, types.ChannelSearchResultProps{
-			Subscribed: cached,
+			Subscribed: slice.Contains(subscribedChannels, c.ID),
 			Channel:    c,
 		})
-
-		if !cached {
-			go func(db database.ChannelsClient, id string) {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-				defer cancel()
-				_, _, err := CacheChannel(ctx, db, id)
-				if err != nil {
-					log.Printf("failed to cache channel: %s\n", err)
-				}
-			}(db, c.ID)
-		}
 	}
 
 	return props, nil

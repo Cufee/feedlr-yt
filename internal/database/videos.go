@@ -66,7 +66,7 @@ func (c *sqliteClient) GetVideoByID(ctx context.Context, id string, o ...VideoQu
 	}
 
 	if opts.withChannel {
-		err := video.L.LoadChannel(ctx, c.db, true, &video, nil)
+		err := video.L.LoadChannel(ctx, c.db, true, video, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load video channel")
 		}
@@ -89,7 +89,9 @@ func (c *sqliteClient) FindVideos(ctx context.Context, o ...VideoQuery) ([]*mode
 		mods = append(mods, models.VideoWhere.Type.NIN(opts.typesNotIn))
 	}
 
-	videos, err := models.Videos(mods...).All(ctx, c.db)
+	var err error
+	var videos []*models.Video
+	videos, err = models.Videos(mods...).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}

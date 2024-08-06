@@ -16,7 +16,6 @@ type SessionClient struct {
 }
 
 type Session struct {
-	ID     string
 	data   SessionData
 	exists bool
 }
@@ -34,6 +33,13 @@ type SessionData struct {
 
 func New(db database.SettingsClient) (*SessionClient, error) {
 	return nil, nil
+}
+
+func Mock(data SessionData) *Session {
+	return &Session{
+		data:   data,
+		exists: true,
+	}
 }
 
 func (c *SessionClient) New() (*Session, error) {
@@ -106,7 +112,7 @@ func (s *Session) UserID() (string, bool) {
 func (s *Session) Cookie() (*fiber.Cookie, error) {
 	return &fiber.Cookie{
 		Name:     "session_id",
-		Value:    s.ID,
+		Value:    s.data.ID,
 		Expires:  s.data.ExpiresAt,
 		HTTPOnly: true,
 		SameSite: "strict",

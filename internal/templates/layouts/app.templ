@@ -18,12 +18,12 @@ templ app(content ...templ.Component) {
 			<div class="w-full p-2 pt-0 mx-auto max-w-7xl">
 				@partials.Navbar()
 			</div>
-			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 pt-0 mx-auto max-w-7xl">
+			<main class="flex flex-col flex-grow w-full gap-2 p-2 pt-0 mx-auto max-w-7xl">
 				for _, c := range content {
 					@c
 				}
 				{ children... }
-			</div>
+			</main>
 			<div class="w-full p-2 mx-auto max-w-7xl md:p-0">
 				@partials.Footer()
 			</div>
