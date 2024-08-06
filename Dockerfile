@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine as build
+FROM golang:1.22-bookworm as builder
 
 WORKDIR /workspace
 
@@ -26,9 +26,9 @@ FROM debian:stable-slim
 
 ENV TZ=Europe/Berlin
 ENV ZONEINFO=/zoneinfo.zip
-COPY --from=build /usr/local/go/lib/time/zoneinfo.zip /
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /usr/local/go/lib/time/zoneinfo.zip /
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-COPY --from=build /workspace/app /usr/bin/app
+COPY --from=builder /workspace/app /usr/bin/app
 
 ENTRYPOINT [ "app" ]
