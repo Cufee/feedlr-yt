@@ -68,8 +68,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, port ...
 		server.Get("/legal/terms-of-service", toFiber(root.TermsOfService))
 		// Auth/Login
 		server.Get("/login", toFiber(root.Login))
-		server.Get("/login/start", auth.LoginStartHandler)
-		server.Get("/login/callback", auth.LoginCallbackHandler)
+		server.Post("/login/google/redirect", toFiber(auth.GoogleAuthRedirect))
 
 		// // Routes with unique auth handlers
 		server.Get("/video/:id", toFiber(root.Video))

@@ -26,7 +26,10 @@ require (
 	modernc.org/sqlite v1.31.1
 )
 
-require github.com/gofiber/fiber/v2 v2.52.5
+require (
+	github.com/gofiber/fiber/v2 v2.52.5
+	github.com/volatiletech/null/v8 v8.1.2
+)
 
 require (
 	cloud.google.com/go/auth v0.7.3 // indirect

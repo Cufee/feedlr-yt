@@ -206,6 +206,58 @@ table "users" {
   }
 }
 
+table "sessions" {
+  schema = schema.main
+
+  column "id" {
+    null = false
+    type = text
+  }
+  column "created_at" {
+    null = false
+    type = date
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  } 
+  primary_key {
+    columns = [column.id]
+  }
+
+  column "user_id" {
+    null = true
+    type = text
+  }
+  column "connection_id" {
+    null = true
+    type = text
+  }
+  column "expires_at" {
+    null = false
+    type = date
+  } 
+  column "last_used" {
+    null = false
+    type = date
+  } 
+  column "deleted" {
+    null = false
+    type = boolean
+    default = false
+  }
+
+  index "idx_sessions_id_expires_at_deleted" {
+    columns = [  column.id, column.expires_at, column.deleted]
+  }
+  index "idx_sessions_user_id_expires_at_deleted" {
+    columns = [  column.user_id, column.expires_at, column.deleted]
+  }
+  index "idx_sessions_user_id_last_used_deleted" {
+    columns = [  column.user_id, column.last_used, column.deleted ]
+  }
+}
+
 table "connections" {
   schema = schema.main
 

@@ -7,6 +7,7 @@ var TableNames = struct {
 	AuthNonces    string
 	Channels      string
 	Connections   string
+	Sessions      string
 	Settings      string
 	Subscriptions string
 	Users         string
@@ -16,6 +17,7 @@ var TableNames = struct {
 	AuthNonces:    "auth_nonces",
 	Channels:      "channels",
 	Connections:   "connections",
+	Sessions:      "sessions",
 	Settings:      "settings",
 	Subscriptions: "subscriptions",
 	Users:         "users",

@@ -12,6 +12,7 @@ import (
 type ConnectionsClient interface {
 	CreateConnection(ctx context.Context, userID string, connectionID string, kind connectionType) (*models.Connection, error)
 	FindUserConnections(ctx context.Context, userID string, o ...ConnectionQuery) ([]*models.Connection, error)
+	GetConnection(ctx context.Context, id string, o ...ConnectionQuery) (*models.Connection, error)
 	GetUserFromConnection(ctx context.Context, connectionID string) (*models.User, error)
 	UpdateConnection(ctx context.Context, connection *models.Connection) error
 	DeleteConnection(ctx context.Context, connectionID string) error
@@ -83,6 +84,26 @@ func (c *sqliteClient) CreateConnection(ctx context.Context, userID string, conn
 	}
 
 	return &connection, nil
+}
+
+func (c *sqliteClient) GetConnection(ctx context.Context, id string, o ...ConnectionQuery) (*models.Connection, error) {
+	opts := connectionQuerySlice(o).opts()
+
+	mods := []qm.QueryMod{models.ConnectionWhere.ID.EQ(id)}
+
+	connection, err := models.Connections(mods...).One(ctx, c.db)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.withUser {
+		err := models.Connection{}.L.LoadUser(ctx, c.db, true, connection, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load user")
+		}
+	}
+
+	return connection, nil
 }
 
 func (c *sqliteClient) FindUserConnections(ctx context.Context, userID string, o ...ConnectionQuery) ([]*models.Connection, error) {

@@ -60,10 +60,15 @@ func NewBuilder(db database.Client, ses *sessions.SessionClient) func(*fiber.Ctx
 	}
 }
 
-func (ctx *Context) Session() (*sessions.Session, bool) {
-	session, ok := ctx.Locals("session").(*sessions.Session)
+func (ctx *Context) SetSession(s sessions.Session) bool {
+	_, ok := ctx.Locals("session", s).(sessions.Session)
+	return ok
+}
+
+func (ctx *Context) Session() (sessions.Session, bool) {
+	session, ok := ctx.Locals("session").(sessions.Session)
 	if !ok || !session.Valid() {
-		return &sessions.Session{}, false
+		return sessions.Session{}, false
 	}
 	return session, true
 }
