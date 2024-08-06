@@ -64,6 +64,8 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, port ...
 		server.All("/", toFiber(root.Landing))
 		server.All("/error", toFiber(root.Error))
 		server.All("/429", toFiber(root.RateLimited))
+		server.Get("/legal/privacy-policy", toFiber(root.PrivacyPolicy))
+		server.Get("/legal/terms-of-service", toFiber(root.TermsOfService))
 		// Auth/Login
 		server.Get("/login", toFiber(root.Login))
 		server.Get("/login/start", auth.LoginStartHandler)

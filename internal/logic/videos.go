@@ -2,7 +2,7 @@ package logic
 
 import (
 	"context"
-	"errors"
+
 	"net/url"
 	"regexp"
 	"slices"
@@ -15,6 +15,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/types"
+	"github.com/friendsofgo/errors"
 	"github.com/gofiber/fiber/v2/log"
 )
 
@@ -29,7 +30,7 @@ func GetUserVideosProps(ctx context.Context, db interface {
 	// Get channels and convert them to WithVideo props
 	channels, err := GetUserSubscribedChannels(ctx, db, userId)
 	if err != nil {
-		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetUserSubscribedChannels failed to get user subscribed channels"), err)
+		return nil, errors.Wrap(err, "GetUserSubscriptionsProps.GetUserSubscribedChannels failed to get user subscribed channels")
 	}
 
 	// Get videos for each channel and add them to the props
@@ -42,7 +43,7 @@ func GetUserVideosProps(ctx context.Context, db interface {
 
 	allVideos, err := GetChannelVideos(ctx, db, 24, channelIds...)
 	if err != nil {
-		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos"), err)
+		return nil, errors.Wrap(err, "GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos")
 	}
 
 	videoIds := make([]string, len(allVideos))
@@ -52,7 +53,7 @@ func GetUserVideosProps(ctx context.Context, db interface {
 
 	progress, err := GetUserVideoProgress(ctx, db, userId, videoIds...)
 	if err != nil {
-		return nil, errors.Join(errors.New("GetUserSubscriptionsProps.GetCompleteUserProgress failed to get user progress"), err)
+		return nil, errors.Wrap(err, "GetUserSubscriptionsProps.GetCompleteUserProgress failed to get user progress")
 	}
 
 	var feed types.UserVideoFeedProps
@@ -74,7 +75,7 @@ func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int
 
 	channels, err := db.GetChannels(ctx, database.Channel{}.ID(channelIds...), database.Channel{}.WithVideos(limit))
 	if err != nil && !database.IsErrNotFound(err) {
-		return nil, errors.Join(errors.New("GetChannelVideos.database.DefaultClient.GetVideosByChannelID failed to get videos"), err)
+		return nil, errors.Wrap(err, "GetChannelVideos.database.DefaultClient.GetVideosByChannelID failed to get videos")
 	}
 
 	var props []types.VideoProps
@@ -100,7 +101,7 @@ func GetVideoByID(ctx context.Context, db interface {
 }, id string) (types.VideoProps, error) {
 	vid, err := db.GetVideoByID(ctx, id, database.Video{}.WithChannel())
 	if err != nil && !database.IsErrNotFound(err) {
-		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.database.DefaultClient.GetVideoByID failed to get video"), err)
+		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.database.DefaultClient.GetVideoByID failed to get video")
 	}
 	if vid != nil && vid.R.Channel != nil {
 		return types.VideoModelToProps(vid, types.ChannelModelToProps(vid.R.Channel)), nil
@@ -108,12 +109,12 @@ func GetVideoByID(ctx context.Context, db interface {
 
 	details, err := youtube.DefaultClient.GetVideoDetailsByID(id)
 	if err != nil {
-		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
+		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details")
 	}
 
 	channel, _, err := CacheChannel(ctx, db, details.ChannelID)
 	if err != nil {
-		return types.VideoProps{}, errors.Join(errors.New("GetVideoByID.CacheChannel failed to cache channel"), err)
+		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.CacheChannel failed to cache channel")
 	}
 
 	go UpdateVideoCache(ctx, db, details)
@@ -125,7 +126,7 @@ func GetVideoByID(ctx context.Context, db interface {
 func CacheVideo(ctx context.Context, db database.VideosClient, video string) error {
 	details, err := youtube.DefaultClient.GetVideoDetailsByID(video)
 	if err != nil {
-		return errors.Join(errors.New("CacheVideo.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details"), err)
+		return errors.Wrap(err, "CacheVideo.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details")
 	}
 	return UpdateVideoCache(ctx, db, details)
 }
@@ -162,7 +163,7 @@ func GetPlayerPropsWithOpts(ctx context.Context, db interface {
 
 	video, err := GetVideoByID(ctx, db, videoId)
 	if err != nil {
-		return types.VideoPlayerProps{}, errors.Join(errors.New("GetPlayerPropsWithOpts.GetVideoByID failed to get video"), err)
+		return types.VideoPlayerProps{}, errors.Wrap(err, "GetPlayerPropsWithOpts.GetVideoByID failed to get video")
 	}
 
 	playerProps := types.VideoPlayerProps{
@@ -173,7 +174,7 @@ func GetPlayerPropsWithOpts(ctx context.Context, db interface {
 	if options.WithProgress {
 		progress, err := GetUserVideoProgress(ctx, db, userId, videoId)
 		if err != nil && !database.IsErrNotFound(err) {
-			return types.VideoPlayerProps{}, errors.Join(errors.New("GetPlayerPropsWithOpts.database.DefaultClient.GetUserVideoView failed to get user video view"), err)
+			return types.VideoPlayerProps{}, errors.Wrap(err, "GetPlayerPropsWithOpts.database.DefaultClient.GetUserVideoView failed to get user video view")
 		}
 		if progress != nil {
 			playerProps.Video.Progress = progress[videoId]
@@ -185,7 +186,7 @@ func GetPlayerPropsWithOpts(ctx context.Context, db interface {
 		if err == nil {
 			err := playerProps.AddSegments(segments...)
 			if err != nil {
-				return playerProps, errors.Join(errors.New("GetPlayerPropsWithOpts.playerProps.AddSegments failed to add segments"), err)
+				return playerProps, errors.Wrap(err, "GetPlayerPropsWithOpts.playerProps.AddSegments failed to add segments")
 			}
 			return playerProps, nil
 		}
@@ -211,7 +212,7 @@ func GetUserVideoProgress(ctx context.Context, db database.ViewsClient, userId s
 		if database.IsErrNotFound(err) {
 			return make(map[string]int), nil
 		}
-		return nil, errors.Join(errors.New("GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views"), err)
+		return nil, errors.Wrap(err, "GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views")
 	}
 
 	progress := make(map[string]int)

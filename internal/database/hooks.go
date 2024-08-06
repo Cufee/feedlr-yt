@@ -70,4 +70,13 @@ func init() {
 		c.ID = ensureID(c.ID)
 		return nil
 	})
+	models.AddViewHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, c *models.View) error {
+		c.ID = ensureID(c.ID)
+		return nil
+	})
+	models.AddViewHook(boil.BeforeUpsertHook, func(ctx context.Context, ce boil.ContextExecutor, c *models.View) error {
+		c.ID = ensureID(c.ID)
+		return nil
+	})
+
 }

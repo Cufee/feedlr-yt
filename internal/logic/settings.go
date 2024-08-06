@@ -7,6 +7,7 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
@@ -95,8 +96,13 @@ func GetUserSettings(ctx context.Context, db database.SettingsClient, id string)
 	if err != nil && !database.IsErrNotFound(err) {
 		return types.SettingsPageProps{}, err
 	}
-	if settings == nil {
-		return defaultSettings, nil
+	if settings == nil || database.IsErrNotFound(err) {
+		data, _ := defaultSettings.Encode()
+		settings := &models.Setting{
+			Data:   data,
+			UserID: id,
+		}
+		return defaultSettings, db.UpsertSettings(ctx, settings)
 	}
 
 	var props types.SettingsPageProps
