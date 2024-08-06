@@ -11,6 +11,8 @@ import (
 	"github.com/cufee/feedlr-yt/internal/sessions"
 )
 
+// go:generate templ generate
+
 // Embed assets
 //
 //go:embed assets/*
