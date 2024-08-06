@@ -15,7 +15,7 @@ templ Login(nonce string) {
 }
 
 templ GoogleLoginButton(nonce string) {
-	<script src="https://accounts.google.com/gsi/client" async></script>
+	<script src="https://accounts.google.com/gsi/client"></script>
 	<div
 		id="g_id_onload"
 		data-client_id={ auth.GoogleAuthClientID }
@@ -23,10 +23,10 @@ templ GoogleLoginButton(nonce string) {
 		data-ux_mode="popup"
 		data-login_uri={ auth.GoogleAuthRedirectURL }
 		data-nonce={ nonce }
-		data-auto_select="false"
-		data-itp_support="false"
 		auto_prompt="false"
-		data-use_fedcm_for_prompt="false"
+		data-auto_select="true"
+		data-itp_support="true"
+		data-use_fedcm_for_prompt="true"
 	></div>
 	<div
 		class="g_id_signin"
@@ -37,5 +37,5 @@ templ GoogleLoginButton(nonce string) {
 		data-nonce={ nonce }
 		data-size="large"
 		data-logo_alignment="center"
-	></div>
+	>Failed to a load Google Login button</div>
 }
