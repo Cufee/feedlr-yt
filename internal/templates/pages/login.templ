@@ -20,13 +20,13 @@ templ GoogleLoginButton(nonce string) {
 		id="g_id_onload"
 		data-client_id={ auth.GoogleAuthClientID }
 		data-context="signin"
-		data-ux_mode="redirect"
+		data-ux_mode="popup"
 		data-login_uri={ auth.GoogleAuthRedirectURL }
 		data-nonce={ nonce }
-		data-auto_select="true"
-		data-itp_support="true"
+		data-auto_select="false"
+		data-itp_support="false"
 		auto_prompt="false"
-		data-use_fedcm_for_prompt="true"
+		data-use_fedcm_for_prompt="false"
 	></div>
 	<div
 		class="g_id_signin"
