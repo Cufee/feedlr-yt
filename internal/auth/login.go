@@ -12,6 +12,11 @@ import (
 )
 
 var GoogleAuthRedirect brewed.Endpoint[*handler.Context] = func(c *handler.Context) error {
+	session, ok := c.Session()
+	if !ok {
+		return c.Redirect("/error?message=Failed to log in with Google&context=failed to create a session", http.StatusTemporaryRedirect)
+	}
+
 	cookieToken := c.Cookies("g_csrf_token")
 	bodyToken, err := c.FormValue("g_csrf_token")
 	if err != nil {
@@ -42,6 +47,15 @@ var GoogleAuthRedirect brewed.Endpoint[*handler.Context] = func(c *handler.Conte
 		return c.Redirect("/error?message=Failed to log in with Google&context=bad user info received", http.StatusTemporaryRedirect)
 	}
 
+	nonceValue, ok := payload.Claims["nonce"].(string)
+	if !ok {
+		return c.Redirect("/error?message=Failed to log in with Google&context=bad user info received", http.StatusTemporaryRedirect)
+	}
+	_, err = c.Database().FindNonce(c.Context(), nonceValue)
+	if err != nil || session.Meta["auth_nonce"] != nonceValue {
+		return c.Redirect("/error?message=Failed to log in with Google&context=bad user info received", http.StatusTemporaryRedirect)
+	}
+
 	if googleUser.EmailVerified != "true" {
 		return c.Redirect("/error?message=You need to verify your Google Account before using it to log in", http.StatusTemporaryRedirect)
 	}
@@ -62,11 +76,6 @@ var GoogleAuthRedirect brewed.Endpoint[*handler.Context] = func(c *handler.Conte
 		if err != nil {
 			return c.Redirect("/error?message=Failed to log in with Google&context=failed to create a connection", http.StatusTemporaryRedirect)
 		}
-	}
-
-	session, err := c.SessionClient().New(c.Context())
-	if err != nil {
-		return c.Redirect("/error?message=Failed to log in with Google&context=failed to create a session", http.StatusTemporaryRedirect)
 	}
 
 	session, err = session.UpdateUser(c.Context(), null.StringFrom(connection.UserID), null.StringFrom(connection.ID))

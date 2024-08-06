@@ -5,24 +5,24 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 )
 
-templ Login() {
+templ Login(nonce string) {
 	<div class="flex flex-col items-center justify-center h-full gap-4" id="landing">
 		<div class="flex justify-center">
 			@shared.Logo("128")
 		</div>
-		@GoogleLoginButton()
+		@GoogleLoginButton(nonce)
 	</div>
 }
 
-templ GoogleLoginButton() {
+templ GoogleLoginButton(nonce string) {
 	<script src="https://accounts.google.com/gsi/client" async></script>
 	<div
 		id="g_id_onload"
 		data-client_id={ auth.GoogleAuthClientID }
 		data-context="signin"
-		data-ux_mode="popup"
+		data-ux_mode="redirect"
 		data-login_uri={ auth.GoogleAuthRedirectURL }
-		data-nonce=""
+		data-nonce={ nonce }
 		data-auto_select="true"
 		data-itp_support="true"
 	></div>
@@ -30,8 +30,9 @@ templ GoogleLoginButton() {
 		class="g_id_signin"
 		data-type="standard"
 		data-shape="pill"
-		data-theme="outline"
-		data-text="continue_with"
+		data-theme="filled_black"
+		data-text="signin_with"
+		data-nonce={ nonce }
 		data-size="large"
 		data-logo_alignment="center"
 	></div>

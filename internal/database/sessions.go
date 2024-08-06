@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -14,6 +15,7 @@ type SessionsClient interface {
 	CreateSession(ctx context.Context, data *models.Session) (*models.Session, error)
 	GetSession(ctx context.Context, id string) (*models.Session, error)
 	UpdateSessionUser(ctx context.Context, id string, userID null.String, connectionID null.String) error
+	UpdateSessionMeta(ctx context.Context, id string, meta map[string]string) error
 	SetSessionExpiration(ctx context.Context, id string, expiresAt time.Time) (*models.Session, error)
 	DeleteSession(ctx context.Context, id string) error
 }
@@ -56,6 +58,26 @@ func (c *sqliteClient) UpdateSessionUser(ctx context.Context, id string, userID 
 	session.UserID = userID
 	session.ConnectionID = connectionID
 	_, err = session.Update(ctx, c.db, boil.Whitelist(models.SessionColumns.UserID, models.SessionColumns.ConnectionID))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *sqliteClient) UpdateSessionMeta(ctx context.Context, id string, meta map[string]string) error {
+	session, err := c.GetSession(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(meta)
+	if err != nil {
+		return err
+	}
+
+	session.Meta = data
+	_, err = session.Update(ctx, c.db, boil.Whitelist(models.SessionColumns.Meta))
 	if err != nil {
 		return err
 	}

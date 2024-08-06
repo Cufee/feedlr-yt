@@ -26,6 +26,7 @@ tasks:
     desc: Run go generate
     cmds:
       - go generate ./...
+      - sqlboiler sqlite3
 
   migrate:
     desc: generate migrations

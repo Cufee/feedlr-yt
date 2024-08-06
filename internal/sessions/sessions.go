@@ -2,7 +2,9 @@ package sessions
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database"
@@ -21,6 +23,7 @@ type SessionClient struct {
 type Session struct {
 	db database.SessionsClient
 
+	Meta   map[string]string
 	data   *models.Session
 	exists bool
 }
@@ -43,7 +46,7 @@ func (c *SessionClient) New(ctx context.Context) (Session, error) {
 	if err != nil {
 		return Session{exists: false}, err
 	}
-	return Session{db: c.db, data: session, exists: true}, nil
+	return Session{db: c.db, data: session, exists: true, Meta: make(map[string]string)}, nil
 }
 
 func (c *SessionClient) Get(ctx context.Context, id string) (Session, error) {
@@ -51,11 +54,25 @@ func (c *SessionClient) Get(ctx context.Context, id string) (Session, error) {
 	if err != nil {
 		return Session{exists: false}, err
 	}
-	return Session{db: c.db, data: session, exists: true}, nil
+
+	var meta map[string]string = make(map[string]string)
+	if session.Meta != nil {
+		err := json.Unmarshal(session.Meta, &meta)
+		if err != nil {
+			_ = c.Delete(ctx, id)
+			return Session{exists: false}, err
+		}
+	}
+
+	return Session{Meta: meta, db: c.db, data: session, exists: true}, nil
 }
 
 func (c *SessionClient) Delete(ctx context.Context, id string) error {
 	return c.db.DeleteSession(ctx, id)
+}
+
+func (c Session) ID() string {
+	return c.data.ID
 }
 
 func (c Session) Valid() bool {
@@ -68,6 +85,18 @@ func (c Session) UpdateUser(ctx context.Context, userID null.String, connectionI
 	}
 
 	err := c.db.UpdateSessionUser(ctx, c.data.ID, userID, connectionID)
+	if err != nil {
+		return Session{exists: false}, err
+	}
+	return c, nil
+}
+
+func (c Session) UpdateMeta(ctx context.Context, meta map[string]string) (Session, error) {
+	if !c.Valid() {
+		return Session{exists: false}, errors.New("session does not exist")
+	}
+
+	err := c.db.UpdateSessionMeta(ctx, c.data.ID, meta)
 	if err != nil {
 		return Session{exists: false}, err
 	}
@@ -98,12 +127,18 @@ func (s Session) UserID() (string, bool) {
 	return "", false
 }
 
+var cookieDomain = os.Getenv("COOKIE_DOMAIN")
+
 func (s Session) Cookie() (*fiber.Cookie, error) {
 	return &fiber.Cookie{
-		Name:     "session_id",
-		Value:    s.data.ID,
-		Expires:  s.data.ExpiresAt,
+		Name:    "session_id",
+		Value:   s.data.ID,
+		Expires: s.data.ExpiresAt,
+
+		Secure:   true,
 		HTTPOnly: true,
-		SameSite: "lax",
+		Path:     "/",
+		Domain:   cookieDomain,
+		SameSite: "none",
 	}, nil
 }
