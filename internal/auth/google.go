@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -46,4 +47,8 @@ func GoogleTokenInfo(token string) (GoogleUserInfo, error) {
 	}
 
 	return user, nil
+}
+
+func BuildGoogleRedirectURL(session string, nonce string) string {
+	return fmt.Sprintf("https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=%s&scope=openid&redirect_uri=%s&state=%s&nonce=%s", GoogleAuthClientID, GoogleAuthRedirectURL, session, nonce)
 }

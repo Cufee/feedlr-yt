@@ -29,9 +29,17 @@ func (c *sqliteClient) NewAuthNonce(ctx context.Context, expiration time.Time, v
 }
 
 func (c *sqliteClient) FindNonce(ctx context.Context, value string) (*models.AuthNonce, error) {
-	nonce, err := models.AuthNonces(models.AuthNonceWhere.Value.EQ(value)).One(ctx, c.db)
+	nonce, err := models.AuthNonces(models.AuthNonceWhere.Value.EQ(value), models.AuthNonceWhere.Used.EQ(false)).One(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
+
+	nonce.Used = true
+	_, err = nonce.Update(ctx, c.db, boil.Whitelist(models.AuthNonceColumns.Used))
+	if err != nil {
+		return nil, err
+	}
+
+	nonce.Used = false // set used to false in case of some check down the line
 	return nonce, nil
 }

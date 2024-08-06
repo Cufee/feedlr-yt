@@ -32,6 +32,7 @@ type Session struct {
 	ExpiresAt    time.Time   `boil:"expires_at" json:"expires_at" toml:"expires_at" yaml:"expires_at"`
 	LastUsed     time.Time   `boil:"last_used" json:"last_used" toml:"last_used" yaml:"last_used"`
 	Deleted      bool        `boil:"deleted" json:"deleted" toml:"deleted" yaml:"deleted"`
+	Meta         []byte      `boil:"meta" json:"meta" toml:"meta" yaml:"meta"`
 
 	R *sessionR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L sessionL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,6 +47,7 @@ var SessionColumns = struct {
 	ExpiresAt    string
 	LastUsed     string
 	Deleted      string
+	Meta         string
 }{
 	ID:           "id",
 	CreatedAt:    "created_at",
@@ -55,6 +57,7 @@ var SessionColumns = struct {
 	ExpiresAt:    "expires_at",
 	LastUsed:     "last_used",
 	Deleted:      "deleted",
+	Meta:         "meta",
 }
 
 var SessionTableColumns = struct {
@@ -66,6 +69,7 @@ var SessionTableColumns = struct {
 	ExpiresAt    string
 	LastUsed     string
 	Deleted      string
+	Meta         string
 }{
 	ID:           "sessions.id",
 	CreatedAt:    "sessions.created_at",
@@ -75,6 +79,7 @@ var SessionTableColumns = struct {
 	ExpiresAt:    "sessions.expires_at",
 	LastUsed:     "sessions.last_used",
 	Deleted:      "sessions.deleted",
+	Meta:         "sessions.meta",
 }
 
 // Generated where
@@ -123,6 +128,15 @@ func (w whereHelpernull_String) NIN(slice []string) qm.QueryMod {
 func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
+type whereHelper__byte struct{ field string }
+
+func (w whereHelper__byte) EQ(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelper__byte) NEQ(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelper__byte) LT(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelper__byte) LTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelper__byte) GT(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelper__byte) GTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+
 var SessionWhere = struct {
 	ID           whereHelperstring
 	CreatedAt    whereHelpertime_Time
@@ -132,6 +146,7 @@ var SessionWhere = struct {
 	ExpiresAt    whereHelpertime_Time
 	LastUsed     whereHelpertime_Time
 	Deleted      whereHelperbool
+	Meta         whereHelper__byte
 }{
 	ID:           whereHelperstring{field: "\"sessions\".\"id\""},
 	CreatedAt:    whereHelpertime_Time{field: "\"sessions\".\"created_at\""},
@@ -141,6 +156,7 @@ var SessionWhere = struct {
 	ExpiresAt:    whereHelpertime_Time{field: "\"sessions\".\"expires_at\""},
 	LastUsed:     whereHelpertime_Time{field: "\"sessions\".\"last_used\""},
 	Deleted:      whereHelperbool{field: "\"sessions\".\"deleted\""},
+	Meta:         whereHelper__byte{field: "\"sessions\".\"meta\""},
 }
 
 // SessionRels is where relationship names are stored.
@@ -160,9 +176,9 @@ func (*sessionR) NewStruct() *sessionR {
 type sessionL struct{}
 
 var (
-	sessionAllColumns            = []string{"id", "created_at", "updated_at", "user_id", "connection_id", "expires_at", "last_used", "deleted"}
+	sessionAllColumns            = []string{"id", "created_at", "updated_at", "user_id", "connection_id", "expires_at", "last_used", "deleted", "meta"}
 	sessionColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "expires_at", "last_used"}
-	sessionColumnsWithDefault    = []string{"user_id", "connection_id", "deleted"}
+	sessionColumnsWithDefault    = []string{"user_id", "connection_id", "deleted", "meta"}
 	sessionPrimaryKeyColumns     = []string{"id"}
 	sessionGeneratedColumns      = []string{}
 )

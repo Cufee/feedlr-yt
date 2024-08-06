@@ -247,6 +247,12 @@ table "sessions" {
     default = false
   }
 
+  column "meta" {
+    null = false
+    type = blob
+    default = ""
+  }
+
   index "idx_sessions_id_expires_at_deleted" {
     columns = [  column.id, column.expires_at, column.deleted]
   }

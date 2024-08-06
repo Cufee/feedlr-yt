@@ -30,9 +30,9 @@ type Video struct {
 	Description string    `boil:"description" json:"description" toml:"description" yaml:"description"`
 	Duration    int64     `boil:"duration" json:"duration" toml:"duration" yaml:"duration"`
 	PublishedAt time.Time `boil:"published_at" json:"published_at" toml:"published_at" yaml:"published_at"`
-	ChannelID   string    `boil:"channel_id" json:"channel_id" toml:"channel_id" yaml:"channel_id"`
 	Private     bool      `boil:"private" json:"private" toml:"private" yaml:"private"`
 	Type        string    `boil:"type" json:"type" toml:"type" yaml:"type"`
+	ChannelID   string    `boil:"channel_id" json:"channel_id" toml:"channel_id" yaml:"channel_id"`
 
 	R *videoR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L videoL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,9 +46,9 @@ var VideoColumns = struct {
 	Description string
 	Duration    string
 	PublishedAt string
-	ChannelID   string
 	Private     string
 	Type        string
+	ChannelID   string
 }{
 	ID:          "id",
 	CreatedAt:   "created_at",
@@ -57,9 +57,9 @@ var VideoColumns = struct {
 	Description: "description",
 	Duration:    "duration",
 	PublishedAt: "published_at",
-	ChannelID:   "channel_id",
 	Private:     "private",
 	Type:        "type",
+	ChannelID:   "channel_id",
 }
 
 var VideoTableColumns = struct {
@@ -70,9 +70,9 @@ var VideoTableColumns = struct {
 	Description string
 	Duration    string
 	PublishedAt string
-	ChannelID   string
 	Private     string
 	Type        string
+	ChannelID   string
 }{
 	ID:          "videos.id",
 	CreatedAt:   "videos.created_at",
@@ -81,9 +81,9 @@ var VideoTableColumns = struct {
 	Description: "videos.description",
 	Duration:    "videos.duration",
 	PublishedAt: "videos.published_at",
-	ChannelID:   "videos.channel_id",
 	Private:     "videos.private",
 	Type:        "videos.type",
+	ChannelID:   "videos.channel_id",
 }
 
 // Generated where
@@ -119,9 +119,9 @@ var VideoWhere = struct {
 	Description whereHelperstring
 	Duration    whereHelperint64
 	PublishedAt whereHelpertime_Time
-	ChannelID   whereHelperstring
 	Private     whereHelperbool
 	Type        whereHelperstring
+	ChannelID   whereHelperstring
 }{
 	ID:          whereHelperstring{field: "\"videos\".\"id\""},
 	CreatedAt:   whereHelpertime_Time{field: "\"videos\".\"created_at\""},
@@ -130,9 +130,9 @@ var VideoWhere = struct {
 	Description: whereHelperstring{field: "\"videos\".\"description\""},
 	Duration:    whereHelperint64{field: "\"videos\".\"duration\""},
 	PublishedAt: whereHelpertime_Time{field: "\"videos\".\"published_at\""},
-	ChannelID:   whereHelperstring{field: "\"videos\".\"channel_id\""},
 	Private:     whereHelperbool{field: "\"videos\".\"private\""},
 	Type:        whereHelperstring{field: "\"videos\".\"type\""},
+	ChannelID:   whereHelperstring{field: "\"videos\".\"channel_id\""},
 }
 
 // VideoRels is where relationship names are stored.
@@ -173,8 +173,8 @@ func (r *videoR) GetViews() ViewSlice {
 type videoL struct{}
 
 var (
-	videoAllColumns            = []string{"id", "created_at", "updated_at", "title", "description", "duration", "published_at", "channel_id", "private", "type"}
-	videoColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "title", "description", "duration", "published_at", "channel_id", "private", "type"}
+	videoAllColumns            = []string{"id", "created_at", "updated_at", "title", "description", "duration", "published_at", "private", "type", "channel_id"}
+	videoColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "title", "description", "duration", "published_at", "private", "type", "channel_id"}
 	videoColumnsWithDefault    = []string{}
 	videoPrimaryKeyColumns     = []string{"id"}
 	videoGeneratedColumns      = []string{}

@@ -840,7 +840,7 @@ func testVideosSelect(t *testing.T) {
 }
 
 var (
-	videoDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `Title`: `TEXT`, `Description`: `TEXT`, `Duration`: `INTEGER`, `PublishedAt`: `DATE`, `ChannelID`: `TEXT`, `Private`: `BOOLEAN`, `Type`: `TEXT`}
+	videoDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `Title`: `TEXT`, `Description`: `TEXT`, `Duration`: `INTEGER`, `PublishedAt`: `DATE`, `Private`: `BOOLEAN`, `Type`: `TEXT`, `ChannelID`: `TEXT`}
 	_            = bytes.MinRead
 )
 
