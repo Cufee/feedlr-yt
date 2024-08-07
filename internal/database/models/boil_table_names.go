@@ -4,7 +4,6 @@
 package models
 
 var TableNames = struct {
-	AuthNonces    string
 	Channels      string
 	Connections   string
 	Passkeys      string
@@ -15,7 +14,6 @@ var TableNames = struct {
 	Videos        string
 	Views         string
 }{
-	AuthNonces:    "auth_nonces",
 	Channels:      "channels",
 	Connections:   "connections",
 	Passkeys:      "passkeys",

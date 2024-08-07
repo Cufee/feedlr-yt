@@ -9,22 +9,16 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+var ErrUsernameNotAvailable = errors.New("username taken")
+
 type UsersClient interface {
-	CreateUser(ctx context.Context) (*models.User, error)
-	GetOrCreateUser(ctx context.Context, id string) (*models.User, error)
+	CreateUser(ctx context.Context, userID string, username string) (*models.User, error)
 	GetUser(ctx context.Context, id string) (*models.User, error)
+	FindUser(ctx context.Context, username string) (*models.User, error)
 	UpdateUser(ctx context.Context, user *models.User) error
 
 	GetUserPasskeys(ctx context.Context, userID string) ([]*models.Passkey, error)
 	SaveUserPasskey(ctx context.Context, key *models.Passkey) error
-}
-
-func (c *sqliteClient) GetOrCreateUser(ctx context.Context, id string) (*models.User, error) {
-	user, err := c.GetUser(ctx, id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return c.CreateUser(ctx)
-	}
-	return user, err
 }
 
 func (c *sqliteClient) GetUser(ctx context.Context, id string) (*models.User, error) {
@@ -35,9 +29,28 @@ func (c *sqliteClient) GetUser(ctx context.Context, id string) (*models.User, er
 	return user, nil
 }
 
-func (c *sqliteClient) CreateUser(ctx context.Context) (*models.User, error) {
-	user := models.User{}
-	err := user.Insert(ctx, c.db, boil.Infer())
+func (c *sqliteClient) FindUser(ctx context.Context, username string) (*models.User, error) {
+	users, err := models.Users(models.UserWhere.Username.EQ(username)).All(ctx, c.db)
+	if err != nil {
+		return nil, err
+	}
+	if len(users) == 0 {
+		return nil, sql.ErrNoRows
+	}
+	if len(users) > 1 {
+		return nil, errors.New("multiple users found")
+	}
+	return users[0], nil
+}
+
+func (c *sqliteClient) CreateUser(ctx context.Context, userID string, username string) (*models.User, error) {
+	_, err := c.FindUser(ctx, username)
+	if !IsErrNotFound(err) {
+		return nil, ErrUsernameNotAvailable
+	}
+
+	user := models.User{Username: username, ID: userID}
+	err = user.Insert(ctx, c.db, boil.Infer())
 	if err != nil {
 		return nil, err
 	}

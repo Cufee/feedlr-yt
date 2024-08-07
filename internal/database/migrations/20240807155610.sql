@@ -1,7 +1,3 @@
--- Create "auth_nonces" table
-CREATE TABLE `auth_nonces` (`id` text NOT NULL, `created_at` date NOT NULL, `updated_at` date NOT NULL, `used` boolean NOT NULL, `expires_at` date NOT NULL, `value` text NOT NULL, PRIMARY KEY (`id`));
--- Create index "idx_auth_nonces_expires_at_used" to table: "auth_nonces"
-CREATE INDEX `idx_auth_nonces_expires_at_used` ON `auth_nonces` (`id`, `expires_at`, `used`);
 -- Create "channels" table
 CREATE TABLE `channels` (`id` text NOT NULL, `created_at` date NOT NULL, `updated_at` date NOT NULL, `title` text NOT NULL, `description` text NOT NULL, `thumbnail` text NOT NULL, PRIMARY KEY (`id`));
 -- Create "videos" table
@@ -19,9 +15,15 @@ CREATE INDEX `idx_viewsuser_id` ON `views` (`user_id`);
 -- Create index "idx_views_video_id_user_id" to table: "views"
 CREATE INDEX `idx_views_video_id_user_id` ON `views` (`video_id`, `user_id`);
 -- Create "users" table
-CREATE TABLE `users` (`id` text NOT NULL, `created_at` date NOT NULL, `updated_at` date NOT NULL, PRIMARY KEY (`id`));
+CREATE TABLE `users` (`id` text NOT NULL, `created_at` date NOT NULL, `updated_at` date NOT NULL, `username` text NOT NULL, PRIMARY KEY (`id`));
+-- Create index "idx_users_username" to table: "users"
+CREATE UNIQUE INDEX `idx_users_username` ON `users` (`username`);
+-- Create "passkeys" table
+CREATE TABLE `passkeys` (`id` text NOT NULL, `created_at` date NOT NULL, `updated_at` date NOT NULL, `data` blob NOT NULL, `user_id` text NOT NULL, PRIMARY KEY (`id`));
+-- Create index "idx_passkeys_user_id" to table: "passkeys"
+CREATE INDEX `idx_passkeys_user_id` ON `passkeys` (`user_id`);
 -- Create "sessions" table
-CREATE TABLE `sessions` (`id` text NOT NULL, `created_at` date NOT NULL, `updated_at` date NOT NULL, `user_id` text NULL, `connection_id` text NULL, `expires_at` date NOT NULL, `last_used` date NOT NULL, `deleted` boolean NOT NULL DEFAULT false, PRIMARY KEY (`id`));
+CREATE TABLE `sessions` (`id` text NOT NULL, `created_at` date NOT NULL, `updated_at` date NOT NULL, `user_id` text NULL, `connection_id` text NULL, `expires_at` date NOT NULL, `last_used` date NOT NULL, `deleted` boolean NOT NULL DEFAULT false, `meta` blob NOT NULL DEFAULT '', PRIMARY KEY (`id`));
 -- Create index "idx_sessions_id_expires_at_deleted" to table: "sessions"
 CREATE INDEX `idx_sessions_id_expires_at_deleted` ON `sessions` (`id`, `expires_at`, `deleted`);
 -- Create index "idx_sessions_user_id_expires_at_deleted" to table: "sessions"

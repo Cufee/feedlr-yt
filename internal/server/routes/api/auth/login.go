@@ -1,94 +1,139 @@
 package auth
 
 import (
-	"crypto/sha256"
-	"fmt"
+	"encoding/json"
+	"log"
 	"net/http"
-	"slices"
+	"strings"
 
-	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
-	"github.com/cufee/feedlr-yt/internal/templates/components/settings"
 	"github.com/cufee/tpot/brewed"
+	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/volatiletech/null/v8"
 )
-
-func usernameToID(username string) string {
-	hash := sha256.New()
-	hash.Write([]byte(username))
-	sum := hash.Sum(nil)
-	return fmt.Sprintf("%x", sum)
-}
 
 type authForm struct {
 	Username string `json:"username"`
 }
 
 var LoginBegin brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
+	_, ok := ctx.UserID()
+	if ok {
+		return ctx.Redirect("/app", http.StatusTemporaryRedirect)
+	}
+
 	var form authForm
 	err := ctx.BodyParser(&form)
 	if err != nil {
-		ctx.Status(http.StatusBadRequest)
-		return ctx.SendString("Invalid username")
+		return ctx.Status(http.StatusBadRequest).SendString("Invalid username")
 	}
 
-	username := ctx.Sanitize(form.Username)
-	if username == "" || username != form.Username {
-		ctx.Status(http.StatusBadRequest)
-		return ctx.SendString("Invalid username")
+	username := strings.TrimSpace(ctx.Sanitize(form.Username))
+	if username == "" || len(username) < 5 || len(username) > 18 || username != form.Username {
+		return ctx.Status(http.StatusBadRequest).SendString("Invalid username")
 	}
 
-	userID := usernameToID(username)
-	user, err := ctx.Database().GetUser(ctx.Context(), userID)
+	userStore := auth.NewStore(ctx.Database())
+	user, err := userStore.FindUser(ctx.Context(), username)
 	if err != nil {
-		ctx.Status(http.StatusInternalServerError)
-		return ctx.SendString("Invalid username")
+		return ctx.Status(http.StatusInternalServerError).SendString("Account not found")
 	}
 
 	session, err := ctx.SessionClient().New(ctx.Context())
 	if err != nil {
-		ctx.Status(http.StatusInternalServerError)
-		return ctx.SendString("Failed to log in")
+		ctx.ClearCookie("session_id")
+		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
 	}
 
-	session, err = session.UpdateMeta(ctx.Context(), map[string]string{"pending_user_id": user.ID, "type": "passkey"})
+	waoptions, wasession, err := ctx.WebAuthn().BeginLogin(user)
 	if err != nil {
-		ctx.Status(http.StatusInternalServerError)
-		return ctx.SendString("Failed to log in")
+		ctx.ClearCookie("session_id")
+		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
 	}
 
-	options, session, err := ctx.WebAuthn().BeginLogin()
+	encodedSes, err := json.Marshal(wasession)
 	if err != nil {
-		msg := fmt.Sprintf("can't begin login: %s", err.Error())
-		p.l.Errorf(msg)
-		JSONResponse(w, msg, http.StatusBadRequest)
-		p.deleteSessionCookie(w)
+		ctx.ClearCookie("session_id")
+		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
+	}
 
-		return
+	session, err = session.UpdateMeta(ctx.Context(), map[string]string{"user_id": user.ID, "type": "passkey", "data": string(encodedSes)})
+	if err != nil {
+		ctx.ClearCookie("session_id")
+		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
 	}
 
 	cookie, err := session.Cookie()
 	if err != nil {
-		ctx.Status(http.StatusInternalServerError)
-		return ctx.SendString("Failed to log in")
+		ctx.ClearCookie("session_id")
+		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
 	}
 	ctx.Cookie(cookie)
-
-	return nil
+	return ctx.JSON(waoptions)
 }
 
 var LoginFinish brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
-	userID, ok := ctx.UserID()
-	if !ok {
-		return nil, ctx.SendStatus(http.StatusUnauthorized)
+	session, ok := ctx.Session()
+	if !ok || session.Meta["type"] != "passkey" || session.Meta["user_id"] == "" || session.Meta["data"] == "" {
+		return ctx.Status(http.StatusBadRequest).SendString("Missing credentials")
 	}
 
-	category := ctx.Query("category")
-
-	updated, err := logic.ToggleSponsorBlockCategory(ctx.Context(), ctx.Database(), userID, category)
+	var wasession webauthn.SessionData
+	err := json.Unmarshal([]byte(session.Meta["data"]), &wasession)
 	if err != nil {
-		return nil, err
+		ctx.ClearCookie("session_id")
+		log.Println("json#Unmarshal failed", err.Error())
+		return ctx.Status(http.StatusInternalServerError).SendString("Invalid credentials")
 	}
 
-	enabled := slices.Contains(updated.SponsorBlock.SelectedSponsorBlockCategories, category)
-	return settings.CategoryToggleButton(category, enabled, false), nil
+	userStore := auth.NewStore(ctx.Database())
+	user, err := userStore.GetUser(ctx.Context(), session.Meta["user_id"])
+	if err != nil {
+		ctx.ClearCookie("session_id")
+		log.Println("userStore#GetOrCreateUser failed", err.Error())
+		return ctx.Status(http.StatusInternalServerError).SendString("Invalid credentials")
+	}
+
+	credential, err := ctx.WebAuthn().FinishLogin(user, wasession, ctx.Request())
+	if err != nil {
+		ctx.ClearCookie("session_id")
+		log.Println("WebAuthn#FinishLogin failed", err.Error())
+		return ctx.Status(http.StatusInternalServerError).SendString("Invalid credentials")
+	}
+
+	// Handle credential.Authenticator.CloneWarning
+	if credential.Authenticator.CloneWarning {
+		log.Printf("the authenticator may be cloned\n")
+	}
+
+	err = user.UpdateCredential(*credential)
+	if err != nil {
+		ctx.ClearCookie("session_id")
+		log.Println("user#UpdateCredential failed", err.Error())
+		return ctx.Status(http.StatusInternalServerError).SendString("Invalid credentials")
+	}
+
+	err = userStore.SaveUser(ctx.Context(), user)
+	if err != nil {
+		ctx.ClearCookie("session_id")
+		log.Println("userStore#SaveUser failed", err.Error())
+		return ctx.Status(http.StatusInternalServerError).SendString("Invalid credentials")
+	}
+
+	session, err = session.UpdateUser(ctx.Context(), null.StringFrom(user.ID), null.String{})
+	if err != nil {
+		ctx.ClearCookie("session_id")
+		log.Println("session#UpdateUser failed", err.Error())
+		return ctx.Status(http.StatusInternalServerError).SendString("Invalid credentials")
+	}
+
+	cookie, err := session.Cookie()
+	if err != nil {
+		ctx.ClearCookie("session_id")
+		log.Println("session#Cookie failed", err.Error())
+		return ctx.Status(http.StatusInternalServerError).SendString("Invalid credentials")
+	}
+	ctx.Cookie(cookie)
+	return ctx.SendStatus(http.StatusOK)
 }

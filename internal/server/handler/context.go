@@ -50,6 +50,12 @@ func (ctx *Context) Context() context.Context {
 	return ctx.Ctx.Context()
 }
 
+func (c *Context) Status(status int) *Context {
+	c.Response().SetStatusCode(status)
+	c.w.WriteHeader(status)
+	return c
+}
+
 func NewBuilder(db database.Client, ses *sessions.SessionClient, policy *bluemonday.Policy, wa *webauthn.WebAuthn) func(*fiber.Ctx) tpot.ContextBuilder[*Context] {
 	return func(c *fiber.Ctx) tpot.ContextBuilder[*Context] {
 		return func(w http.ResponseWriter, r *http.Request) *Context {
