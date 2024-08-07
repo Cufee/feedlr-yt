@@ -8,8 +8,6 @@ import "testing"
 func TestUpsert(t *testing.T) {
 	t.Run("Channels", testChannelsUpsert)
 
-	t.Run("Connections", testConnectionsUpsert)
-
 	t.Run("Passkeys", testPasskeysUpsert)
 
 	t.Run("Sessions", testSessionsUpsert)

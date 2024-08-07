@@ -68,6 +68,9 @@ func UpdatePlayerVolume(ctx context.Context, db database.SettingsClient, user st
 	if err != nil && !database.IsErrNotFound(err) {
 		return err
 	}
+	if volume == settings.PlayerVolume {
+		return nil
+	}
 
 	settings.PlayerVolume = volume
 	return UpdateUserSettings(ctx, db, user, settings)
