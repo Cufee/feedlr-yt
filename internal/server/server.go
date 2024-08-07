@@ -10,6 +10,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	root "github.com/cufee/feedlr-yt/internal/server/routes"
 	rapi "github.com/cufee/feedlr-yt/internal/server/routes/api"
+	login "github.com/cufee/feedlr-yt/internal/server/routes/api/auth"
 	rapp "github.com/cufee/feedlr-yt/internal/server/routes/app"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/feedlr-yt/internal/utils"
@@ -70,7 +71,10 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		server.Get("/legal/terms-of-service", toFiber(root.TermsOfService))
 		// Auth/Login
 		server.Get("/login", toFiber(root.Login))
-		server.Post("/login/google/redirect", toFiber(auth.GoogleAuthRedirect))
+		server.Post("/login/begin", toFiber(login.LoginBegin))
+		server.Post("/login/finish", toFiber(login.LoginFinish))
+		server.Post("/register/begin", toFiber(login.RegistrationBegin))
+		server.Post("/register/finish", toFiber(login.RegistrationFinish))
 
 		// // Routes with unique auth handlers
 		server.Get("/video/:id", toFiber(root.Video))

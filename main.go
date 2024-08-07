@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"fmt"
 	"os"
@@ -29,11 +28,6 @@ func main() {
 		panic(err)
 	}
 
-	_, err = db.GetOrCreateUser(context.Background(), "u1")
-	if err != nil {
-		panic(err)
-	}
-
 	_, err = background.StartCronTasks(db)
 	if err != nil {
 		panic(err)
@@ -52,18 +46,18 @@ func main() {
 
 	wa, err := webauthn.New(&webauthn.Config{
 		RPDisplayName: "Feedlr",
-		RPID:          host,
+		RPID:          strings.Split(host, ":")[0],
 		RPOrigins:     []string{origin},
 		Timeouts: webauthn.TimeoutsConfig{
 			Login: webauthn.TimeoutConfig{
 				Enforce:    true,
-				Timeout:    time.Second * 60,
-				TimeoutUVD: time.Second * 60,
+				Timeout:    time.Minute * 1,
+				TimeoutUVD: time.Minute * 1,
 			},
 			Registration: webauthn.TimeoutConfig{
 				Enforce:    true,
-				Timeout:    time.Second * 60,
-				TimeoutUVD: time.Second * 60,
+				Timeout:    time.Minute * 5,
+				TimeoutUVD: time.Minute * 5,
 			},
 		},
 	})
@@ -71,6 +65,6 @@ func main() {
 		panic(err)
 	}
 
-	start := server.New(db, ses, assetsFs, bluemonday.StrictPolicy(wa))
+	start := server.New(db, ses, assetsFs, bluemonday.StrictPolicy(), wa)
 	start()
 }

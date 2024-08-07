@@ -16,15 +16,6 @@ func ensureID(value string) string {
 }
 
 func init() {
-	// AuthNonce
-	models.AddAuthNonceHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, an *models.AuthNonce) error {
-		an.ID = ensureID(an.ID)
-		return nil
-	})
-	models.AddAuthNonceHook(boil.BeforeUpsertHook, func(ctx context.Context, ce boil.ContextExecutor, an *models.AuthNonce) error {
-		an.ID = ensureID(an.ID)
-		return nil
-	})
 	// Sessions
 	models.AddSessionHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, an *models.Session) error {
 		an.ID = ensureID(an.ID)

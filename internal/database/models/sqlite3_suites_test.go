@@ -6,8 +6,6 @@ package models
 import "testing"
 
 func TestUpsert(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesUpsert)
-
 	t.Run("Channels", testChannelsUpsert)
 
 	t.Run("Connections", testConnectionsUpsert)

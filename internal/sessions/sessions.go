@@ -39,6 +39,7 @@ func (c *SessionClient) New(ctx context.Context) (Session, error) {
 	}
 
 	var record models.Session
+	record.Deleted = false
 	record.ID = id.String()
 	record.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
 
@@ -139,6 +140,6 @@ func (s Session) Cookie() (*fiber.Cookie, error) {
 		HTTPOnly: true,
 		Path:     "/",
 		Domain:   cookieDomain,
-		SameSite: "none",
+		SameSite: "lax",
 	}, nil
 }

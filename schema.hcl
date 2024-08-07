@@ -1,43 +1,6 @@
 schema "main" {
 }
 
-table "auth_nonces" {
-  schema = schema.main
-
-  column "id" {
-    null = false
-    type = text
-  }
-  column "created_at" {
-    null = false
-    type = date
-  }
-  column "updated_at" {
-    null = false
-    type = date
-  }
-  primary_key {
-    columns = [column.id]
-  }
-
-  column "used" {
-    null = false
-    type = boolean
-  }
-  column "expires_at" {
-    null = false
-    type = date
-  }
-  column "value" {
-    null = false
-    type = text
-  }
-  
-  index "idx_auth_nonces_expires_at_used" {
-    columns = [ column.id, column.expires_at, column.used ]
-  }
-}
-
 table "channels" {
   schema = schema.main
 
@@ -206,12 +169,12 @@ table "users" {
   }
 
   column "username" {
-    default = ""
     null = false
     type = text
   }
   index "idx_users_username" {
     columns = [ column.username ]
+    unique = true
   }
 }
 

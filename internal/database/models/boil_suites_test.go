@@ -12,7 +12,6 @@ import "testing"
 // It does NOT run each operation group in parallel.
 // Separating the tests thusly grants avoidance of Postgres deadlocks.
 func TestParent(t *testing.T) {
-	t.Run("AuthNonces", testAuthNonces)
 	t.Run("Channels", testChannels)
 	t.Run("Connections", testConnections)
 	t.Run("Passkeys", testPasskeys)
@@ -25,7 +24,6 @@ func TestParent(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesDelete)
 	t.Run("Channels", testChannelsDelete)
 	t.Run("Connections", testConnectionsDelete)
 	t.Run("Passkeys", testPasskeysDelete)
@@ -38,7 +36,6 @@ func TestDelete(t *testing.T) {
 }
 
 func TestQueryDeleteAll(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesQueryDeleteAll)
 	t.Run("Channels", testChannelsQueryDeleteAll)
 	t.Run("Connections", testConnectionsQueryDeleteAll)
 	t.Run("Passkeys", testPasskeysQueryDeleteAll)
@@ -51,7 +48,6 @@ func TestQueryDeleteAll(t *testing.T) {
 }
 
 func TestSliceDeleteAll(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesSliceDeleteAll)
 	t.Run("Channels", testChannelsSliceDeleteAll)
 	t.Run("Connections", testConnectionsSliceDeleteAll)
 	t.Run("Passkeys", testPasskeysSliceDeleteAll)
@@ -64,7 +60,6 @@ func TestSliceDeleteAll(t *testing.T) {
 }
 
 func TestExists(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesExists)
 	t.Run("Channels", testChannelsExists)
 	t.Run("Connections", testConnectionsExists)
 	t.Run("Passkeys", testPasskeysExists)
@@ -77,7 +72,6 @@ func TestExists(t *testing.T) {
 }
 
 func TestFind(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesFind)
 	t.Run("Channels", testChannelsFind)
 	t.Run("Connections", testConnectionsFind)
 	t.Run("Passkeys", testPasskeysFind)
@@ -90,7 +84,6 @@ func TestFind(t *testing.T) {
 }
 
 func TestBind(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesBind)
 	t.Run("Channels", testChannelsBind)
 	t.Run("Connections", testConnectionsBind)
 	t.Run("Passkeys", testPasskeysBind)
@@ -103,7 +96,6 @@ func TestBind(t *testing.T) {
 }
 
 func TestOne(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesOne)
 	t.Run("Channels", testChannelsOne)
 	t.Run("Connections", testConnectionsOne)
 	t.Run("Passkeys", testPasskeysOne)
@@ -116,7 +108,6 @@ func TestOne(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesAll)
 	t.Run("Channels", testChannelsAll)
 	t.Run("Connections", testConnectionsAll)
 	t.Run("Passkeys", testPasskeysAll)
@@ -129,7 +120,6 @@ func TestAll(t *testing.T) {
 }
 
 func TestCount(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesCount)
 	t.Run("Channels", testChannelsCount)
 	t.Run("Connections", testConnectionsCount)
 	t.Run("Passkeys", testPasskeysCount)
@@ -142,7 +132,6 @@ func TestCount(t *testing.T) {
 }
 
 func TestHooks(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesHooks)
 	t.Run("Channels", testChannelsHooks)
 	t.Run("Connections", testConnectionsHooks)
 	t.Run("Passkeys", testPasskeysHooks)
@@ -155,8 +144,6 @@ func TestHooks(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesInsert)
-	t.Run("AuthNonces", testAuthNoncesInsertWhitelist)
 	t.Run("Channels", testChannelsInsert)
 	t.Run("Channels", testChannelsInsertWhitelist)
 	t.Run("Connections", testConnectionsInsert)
@@ -178,7 +165,6 @@ func TestInsert(t *testing.T) {
 }
 
 func TestReload(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesReload)
 	t.Run("Channels", testChannelsReload)
 	t.Run("Connections", testConnectionsReload)
 	t.Run("Passkeys", testPasskeysReload)
@@ -191,7 +177,6 @@ func TestReload(t *testing.T) {
 }
 
 func TestReloadAll(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesReloadAll)
 	t.Run("Channels", testChannelsReloadAll)
 	t.Run("Connections", testConnectionsReloadAll)
 	t.Run("Passkeys", testPasskeysReloadAll)
@@ -204,7 +189,6 @@ func TestReloadAll(t *testing.T) {
 }
 
 func TestSelect(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesSelect)
 	t.Run("Channels", testChannelsSelect)
 	t.Run("Connections", testConnectionsSelect)
 	t.Run("Passkeys", testPasskeysSelect)
@@ -217,7 +201,6 @@ func TestSelect(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesUpdate)
 	t.Run("Channels", testChannelsUpdate)
 	t.Run("Connections", testConnectionsUpdate)
 	t.Run("Passkeys", testPasskeysUpdate)
@@ -230,7 +213,6 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestSliceUpdateAll(t *testing.T) {
-	t.Run("AuthNonces", testAuthNoncesSliceUpdateAll)
 	t.Run("Channels", testChannelsSliceUpdateAll)
 	t.Run("Connections", testConnectionsSliceUpdateAll)
 	t.Run("Passkeys", testPasskeysSliceUpdateAll)
