@@ -2,7 +2,6 @@ package types
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database/models"
@@ -26,10 +25,10 @@ func VideoModelToProps(video *models.Video, channel ChannelProps) VideoProps {
 			Title:       policy.Sanitize(video.Title),
 			Duration:    int(video.Duration),
 			Thumbnail:   fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", video.ID),
-			PublishedAt: video.PublishedAt.Format(time.RFC3339),
 			Description: policy.Sanitize(video.Description),
 		},
-		Channel: channel,
+		PublishedAt: video.PublishedAt,
+		Channel:     channel,
 	}
 }
 

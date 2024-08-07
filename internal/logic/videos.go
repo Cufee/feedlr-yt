@@ -87,9 +87,7 @@ func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int
 	}
 
 	slices.SortFunc(props, func(a, b types.VideoProps) int {
-		aT, _ := time.Parse(time.RFC3339, a.PublishedAt)
-		bT, _ := time.Parse(time.RFC3339, b.PublishedAt)
-		return int(bT.Unix() - aT.Unix())
+		return b.PublishedAt.Compare(a.PublishedAt)
 	})
 
 	return trimVideoList(limit, 12, props), nil

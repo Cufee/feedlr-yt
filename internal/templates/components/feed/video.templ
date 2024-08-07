@@ -118,18 +118,9 @@ func secondsToDurationString(seconds int) string {
 	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
 }
 
-func formatTimestamp(timestamp string) string {
-	if timestamp == "" {
-		return ""
-	}
-
-	published, err := time.Parse(time.RFC3339, timestamp)
-	if err != nil {
-		return ""
-	}
-
+func formatTimestamp(timestamp time.Time) string {
 	now := time.Now()
-	diff := now.Sub(published)
+	diff := now.Sub(timestamp)
 
 	if diff < time.Minute {
 		return "Just now"
