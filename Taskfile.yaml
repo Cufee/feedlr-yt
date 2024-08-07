@@ -37,6 +37,7 @@ tasks:
       # variables will be pulled from global vars declaration unless overwritten in the task call
       - echo "Applying migrations to {{.DATABASE_PATH}}"
       - atlas migrate apply --allow-dirty --dir "file://internal/database/migrations" --tx-mode all --url "sqlite://{{.DATABASE_PATH}}?_fk=1"
+      - task: generate
 
   build:fast:
     desc: Build the application without go generate

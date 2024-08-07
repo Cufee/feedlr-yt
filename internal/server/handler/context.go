@@ -10,7 +10,9 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/tpot"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gofiber/fiber/v2"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/pkg/errors"
 )
 
@@ -33,6 +35,9 @@ type Context struct {
 	r *http.Request
 
 	formParsed bool
+
+	wa     *webauthn.WebAuthn
+	policy *bluemonday.Policy
 }
 
 func (ctx *Context) Writer() http.ResponseWriter {
@@ -45,16 +50,18 @@ func (ctx *Context) Context() context.Context {
 	return ctx.Ctx.Context()
 }
 
-func NewBuilder(db database.Client, ses *sessions.SessionClient) func(*fiber.Ctx) tpot.ContextBuilder[*Context] {
+func NewBuilder(db database.Client, ses *sessions.SessionClient, policy *bluemonday.Policy, wa *webauthn.WebAuthn) func(*fiber.Ctx) tpot.ContextBuilder[*Context] {
 	return func(c *fiber.Ctx) tpot.ContextBuilder[*Context] {
 		return func(w http.ResponseWriter, r *http.Request) *Context {
 			return &Context{
-				Ctx: c,
-				c:   r.Context(),
-				db:  db,
-				ses: ses,
-				w:   w,
-				r:   r,
+				Ctx:    c,
+				c:      r.Context(),
+				db:     db,
+				ses:    ses,
+				w:      w,
+				r:      r,
+				policy: policy,
+				wa:     wa,
 			}
 		}
 	}
@@ -80,6 +87,10 @@ func (ctx *Context) Session() (sessions.Session, bool) {
 	return session, true
 }
 
+func (ctx *Context) WebAuthn() *webauthn.WebAuthn {
+	return ctx.wa
+}
+
 func (ctx *Context) SessionClient() *sessions.SessionClient {
 	return ctx.ses
 }
@@ -100,6 +111,10 @@ func (ctx *Context) Database() database.Client {
 	return ctx.db
 }
 
+func (ctx *Context) Sanitize(input string) string {
+	return ctx.policy.Sanitize(input)
+}
+
 func (ctx *Context) FormValue(key string) (string, error) {
 	if ctx.formParsed {
 		return ctx.r.Form.Get(key), nil
@@ -108,15 +123,19 @@ func (ctx *Context) FormValue(key string) (string, error) {
 		return "", err
 	}
 	ctx.formParsed = true
-	return ctx.r.Form.Get(key), nil
+	return ctx.Sanitize(ctx.r.Form.Get(key)), nil
+}
+
+func (ctx *Context) Query(key string, fallback ...string) string {
+	return ctx.Sanitize(ctx.Ctx.Query(key, fallback...))
 }
 
 func (ctx *Context) RealIP() (string, bool) {
 	if ip := ctx.r.Header.Get("X-Forwarded-For"); ip != "" {
-		return ip, true
+		return ctx.Sanitize(ip), true
 	}
 	if ip := ctx.r.RemoteAddr; ip != "" {
-		return ip, true
+		return ctx.Sanitize(ip), true
 	}
 	return "", false
 }

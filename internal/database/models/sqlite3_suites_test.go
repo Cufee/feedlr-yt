@@ -12,6 +12,8 @@ func TestUpsert(t *testing.T) {
 
 	t.Run("Connections", testConnectionsUpsert)
 
+	t.Run("Passkeys", testPasskeysUpsert)
+
 	t.Run("Sessions", testSessionsUpsert)
 
 	t.Run("Settings", testSettingsUpsert)

@@ -3,12 +3,17 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic/background"
 	"github.com/cufee/feedlr-yt/internal/server"
 	"github.com/cufee/feedlr-yt/internal/sessions"
+	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 //go:generate templ generate
@@ -39,6 +44,33 @@ func main() {
 		panic(err)
 	}
 
-	start := server.New(db, ses, assetsFs)
+	host := os.Getenv("TRAEFIK_HOST")
+	origin := fmt.Sprintf("https://%s", host)
+	if strings.Contains(origin, "localhost:") {
+		origin = fmt.Sprintf("http://%s", host)
+	}
+
+	wa, err := webauthn.New(&webauthn.Config{
+		RPDisplayName: "Feedlr",
+		RPID:          host,
+		RPOrigins:     []string{origin},
+		Timeouts: webauthn.TimeoutsConfig{
+			Login: webauthn.TimeoutConfig{
+				Enforce:    true,
+				Timeout:    time.Second * 60,
+				TimeoutUVD: time.Second * 60,
+			},
+			Registration: webauthn.TimeoutConfig{
+				Enforce:    true,
+				Timeout:    time.Second * 60,
+				TimeoutUVD: time.Second * 60,
+			},
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	start := server.New(db, ses, assetsFs, bluemonday.StrictPolicy(wa))
 	start()
 }

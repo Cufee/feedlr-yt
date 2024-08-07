@@ -26,6 +26,7 @@ type User struct {
 	ID        string    `boil:"id" json:"id" toml:"id" yaml:"id"`
 	CreatedAt time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt time.Time `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	Username  string    `boil:"username" json:"username" toml:"username" yaml:"username"`
 
 	R *userR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -35,20 +36,24 @@ var UserColumns = struct {
 	ID        string
 	CreatedAt string
 	UpdatedAt string
+	Username  string
 }{
 	ID:        "id",
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
+	Username:  "username",
 }
 
 var UserTableColumns = struct {
 	ID        string
 	CreatedAt string
 	UpdatedAt string
+	Username  string
 }{
 	ID:        "users.id",
 	CreatedAt: "users.created_at",
 	UpdatedAt: "users.updated_at",
+	Username:  "users.username",
 }
 
 // Generated where
@@ -57,10 +62,12 @@ var UserWhere = struct {
 	ID        whereHelperstring
 	CreatedAt whereHelpertime_Time
 	UpdatedAt whereHelpertime_Time
+	Username  whereHelperstring
 }{
 	ID:        whereHelperstring{field: "\"users\".\"id\""},
 	CreatedAt: whereHelpertime_Time{field: "\"users\".\"created_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"users\".\"updated_at\""},
+	Username:  whereHelperstring{field: "\"users\".\"username\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -121,9 +128,9 @@ func (r *userR) GetViews() ViewSlice {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "created_at", "updated_at"}
+	userAllColumns            = []string{"id", "created_at", "updated_at", "username"}
 	userColumnsWithoutDefault = []string{"id", "created_at", "updated_at"}
-	userColumnsWithDefault    = []string{}
+	userColumnsWithDefault    = []string{"username"}
 	userPrimaryKeyColumns     = []string{"id"}
 	userGeneratedColumns      = []string{}
 )
