@@ -2,11 +2,11 @@ package pages
 
 import (
 	"fmt"
-	"time"
-	"github.com/sosodev/duration"
-	"github.com/cufee/feedlr-yt/internal/types"
-	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/types"
+	"github.com/sosodev/duration"
+	"time"
 )
 
 func durationToString(videoDuration int) string {
@@ -24,16 +24,16 @@ templ Video(props types.VideoPlayerProps) {
 		<meta property="og:title" content={ props.Video.Title }/>
 		<meta property="og:type" content="video.episode"/>
 		<meta property="og:description" content={ props.Video.Description }/>
-		<meta property="og:video:duration" content={ fmt.Sprint(props.Video.Duration) } />
+		<meta property="og:video:duration" content={ fmt.Sprint(props.Video.Duration) }/>
 		<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
-		<meta itemprop="duration" content={ durationToString(props.Video.Duration) } />
+		<meta itemprop="duration" content={ durationToString(props.Video.Duration) }/>
 		<meta name="twitter:card" content="summary_large_image"/>
 		<meta name="twitter:title" content={ props.Video.Title }/>
 		<meta name="twitter:description" content={ props.Video.Description }/>
 		<meta name="twitter:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
 		<meta name="twitter:image:alt" content={ props.Video.Title }/>
 	</head>
-	<div class="relative flex items-center justify-start w-full h-full">
+	<div class="relative flex items-center justify-start w-screen h-screen">
 		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 		@videoPlayer(props)
 		<div class="absolute flex gap-2 top-2 right-2">
@@ -46,7 +46,9 @@ templ Video(props types.VideoPlayerProps) {
 				@buttonLogin()
 			}
 		</div>
-		<div id="notification-toast" class="opacity-0 transition-all duration-[500ms] ease-out pointer-events-none">@notificationToast("SponsorBlock skipped a video segment")</div>
+		<div id="notification-toast" class="opacity-0 transition-all duration-[500ms] ease-out pointer-events-none">
+			@notificationToast("SponsorBlock skipped a video segment")
+		</div>
 	</div>
 	@shared.EmbedMinifiedScript(hotkeyScript(props.ReturnURL), props.ReturnURL)
 }
@@ -59,13 +61,18 @@ templ videoPlayer(player types.VideoPlayerProps) {
 }
 
 templ buttonChannel(id string) {
-	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="opacity-75 md:opacity-50 hover:opacity-100 btn btn-square">@icons.Profile()</a>
+	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="opacity-75 md:opacity-50 hover:opacity-100 btn btn-square">
+		@icons.Profile()
+	</a>
 }
 
 templ buttonShare(id string) {
-	<button id="share-video-link-btn" class="opacity-75 md:opacity-50 hover:opacity-100 btn btn-square">@icons.Share()</button>
+	<button id="share-video-link-btn" class="opacity-75 md:opacity-50 hover:opacity-100 btn btn-square">
+		@icons.Share()
+	</button>
 	@shared.EmbedMinifiedScript(shareButtonScript(id), id)
 }
+
 script shareButtonScript(id string) {
 	const link = window.location.origin + "/video/" + id
 	document.getElementById("share-video-link-btn").addEventListener("click", () => {
@@ -85,7 +92,9 @@ templ buttonLogin() {
 }
 
 templ buttonBack(url string) {
-	<a class="opacity-75 md:opacity-50 close-button hover:opacity-100 btn btn-primary btn-square" href={ templ.URL(url) } id="close-button">@icons.Cross()</a>
+	<a class="opacity-75 md:opacity-50 close-button hover:opacity-100 btn btn-primary btn-square" href={ templ.URL(url) } id="close-button">
+		@icons.Cross()
+	</a>
 }
 
 templ notificationToast(message string) {
@@ -222,4 +231,3 @@ script sponsorBlockInit(segments []types.SegmentProps) {
 		}, 1000)
 	}
 }
-
