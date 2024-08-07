@@ -83,7 +83,8 @@ func (c *sqliteClient) GetChannels(ctx context.Context, o ...ChannelQuery) ([]*m
 		sql = sql.Where(
 			sql.And(
 				sql.In(models.VideoColumns.ChannelID, ids...),
-				sql.NotIn(models.VideoColumns.Type, "private", "short"),
+				// sql.NotIn(models.VideoColumns.Type, "private", "short"),
+				sql.NotIn(models.VideoColumns.Type, "short"),
 			),
 		)
 		if opts.videosLimit > 0 {
@@ -145,7 +146,8 @@ func (c *sqliteClient) GetChannel(ctx context.Context, channelId string, o ...Ch
 		sql = sql.Where(
 			sql.And(
 				sql.EQ(models.VideoColumns.ChannelID, channel.ID),
-				sql.NotIn(models.VideoColumns.Type, "private", "short"),
+				// sql.NotIn(models.VideoColumns.Type, "private", "short"),
+				sql.NotIn(models.VideoColumns.Type, "short"),
 			),
 		)
 		if opts.videosLimit > 0 {
