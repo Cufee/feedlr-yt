@@ -16,6 +16,15 @@ func ensureID(value string) string {
 }
 
 func init() {
+	// Passkeys
+	models.AddPasskeyHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, an *models.Passkey) error {
+		an.ID = ensureID(an.ID)
+		return nil
+	})
+	models.AddPasskeyHook(boil.BeforeUpsertHook, func(ctx context.Context, ce boil.ContextExecutor, an *models.Passkey) error {
+		an.ID = ensureID(an.ID)
+		return nil
+	})
 	// Sessions
 	models.AddSessionHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, an *models.Session) error {
 		an.ID = ensureID(an.ID)

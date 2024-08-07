@@ -46,9 +46,9 @@ templ VideoCarousel(videos []types.VideoProps) {
 }
 
 templ VideoThumbnail(videoID, alt string) {
-	<div class="relative overflow-hidden">
-		<object tabindex="-1" class="z-10 object-cover w-full h-full transition-all duration-500 group-hover:scale-110" data={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", videoID) } type="image/jpeg">
-			<img class="z-10 object-cover w-full h-full transition-all duration-500 group-hover:scale-110" src={ fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", videoID) } alt={ alt }/>
+	<div class="relative z-10 overflow-hidden">
+		<object tabindex="-1" class="object-cover w-full h-full transition-all duration-500 group-hover:scale-110" data={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", videoID) } type="image/jpeg">
+			<img class="object-cover w-full h-full transition-all duration-500 group-hover:scale-110" src={ fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", videoID) } alt={ alt }/>
 		</object>
 		<div class="absolute w-full h-full bg-base-100 animate-pulse"></div>
 	</div>

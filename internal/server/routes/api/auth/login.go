@@ -114,7 +114,7 @@ var LoginFinish brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) e
 		return ctx.Status(http.StatusInternalServerError).SendString("Invalid credentials")
 	}
 
-	err = userStore.SaveUser(ctx.Context(), user)
+	err = userStore.SaveUser(ctx.Context(), &user)
 	if err != nil {
 		ctx.ClearCookie("session_id")
 		log.Println("userStore#SaveUser failed", err.Error())

@@ -81,6 +81,9 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		server.Get("/channel/:id", toFiber(root.Channel))
 
 		api := server.Group("/api").Use(limiterMiddleware).Use(authMiddleware)
+		api.Post("/passkeys/add/begin", toFiber(login.AdditionalPasskeyBegin))
+		api.Post("/passkeys/add/finish", toFiber(login.AdditionalPasskeyFinish))
+
 		api.Post("/videos/:id/progress", toFiber(rapi.SaveVideoProgress))
 		api.Post("/videos/open", toFiber(rapi.OpenVideo))
 

@@ -161,7 +161,7 @@ func (s *userStore) CreateUser(ctx context.Context, user *User) error {
 	return nil
 }
 
-func (s *userStore) SaveUser(ctx context.Context, user User) error {
+func (s *userStore) SaveUser(ctx context.Context, user *User) error {
 	err := s.db.UpdateUser(ctx, user.User)
 	if err != nil {
 		return err
@@ -187,6 +187,8 @@ func (s *userStore) SaveUser(ctx context.Context, user User) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to encode credential")
 		}
+
+		c.updated = false
 	}
 
 	return nil
