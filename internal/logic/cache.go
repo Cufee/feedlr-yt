@@ -111,6 +111,14 @@ func UpdateChannelVideoCache(ctx context.Context, db interface {
 	database.VideosClient
 	database.ChannelsClient
 }, videoID string) error {
+	current, err := db.GetVideoByID(ctx, videoID)
+	if err != nil && !database.IsErrNotFound(err) {
+		return err
+	}
+	if time.Since(current.UpdatedAt) < time.Hour {
+		return nil
+	}
+
 	video, err := youtube.DefaultClient.GetVideoDetailsByID(videoID)
 	if err != nil {
 		return err
