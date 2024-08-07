@@ -181,7 +181,6 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 	transport := &http.Transport{}
 	if playerProxyURL != nil {
 		transport.Proxy = http.ProxyURL(playerProxyURL)
-		println("added proxy")
 	}
 
 	client := &http.Client{
