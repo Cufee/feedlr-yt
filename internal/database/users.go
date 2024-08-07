@@ -4,9 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 var ErrUsernameNotAvailable = errors.New("username taken")
@@ -30,7 +33,7 @@ func (c *sqliteClient) GetUser(ctx context.Context, id string) (*models.User, er
 }
 
 func (c *sqliteClient) FindUser(ctx context.Context, username string) (*models.User, error) {
-	users, err := models.Users(models.UserWhere.Username.EQ(username)).All(ctx, c.db)
+	users, err := models.Users(qm.Where(fmt.Sprintf("LOWER(%s) = ?", models.UserColumns.Username), strings.ToLower(username))).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
