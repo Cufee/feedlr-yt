@@ -20,17 +20,6 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 	session, _ := ctx.Session()
 
 	video := ctx.Params("id")
-	// Update cache in background
-	go func() {
-		c, cancel := context.WithTimeout(context.Background(), time.Second*5)
-		defer cancel()
-
-		err := logic.CacheVideo(c, ctx.Database(), video)
-		if err != nil {
-			log.Printf("VideoHandler.UpdateVideoCache error: %v\n", err)
-		}
-	}()
-
 	if uid, valid := session.UserID(); valid {
 		sctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*250)
 		defer cancel()
