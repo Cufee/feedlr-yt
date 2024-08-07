@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"log"
 	"testing"
-
-	"github.com/cufee/feedlr-yt/internal/utils"
 )
 
 func TestGetVideoPlayerDetails(t *testing.T) {
-	client := NewClient(utils.MustGetEnv("YOUTUBE_API_KEY"))
+	client := NewClient("<none>")
 	{
 		video, err := client.GetVideoPlayerDetails("JpW1KrK6Xjk")
 		if err != nil {
