@@ -22,6 +22,7 @@ services:
       - .env
     volumes:
       - ${DATABASE_DIR}:/data
+    restart: always
     depends_on:
       feedlr-migrate:
         condition: service_completed_successfully
