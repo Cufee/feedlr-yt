@@ -9,7 +9,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-var policy = bluemonday.StrictPolicy()
+var policy = bluemonday.UGCPolicy()
 
 func VideoToProps(video youtube.Video, channel ChannelProps) VideoProps {
 	return VideoProps{
