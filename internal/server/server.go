@@ -14,13 +14,15 @@ import (
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/cufee/tpot"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/microcosm-cc/bluemonday"
 )
 
-func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, port ...int) func() error {
+func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, port ...int) func() error {
 	var portString string
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
@@ -28,7 +30,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, port ...
 		portString = utils.MustGetEnv("PORT")
 	}
 
-	newCtx := handler.NewBuilder(db, ses)
+	newCtx := handler.NewBuilder(db, ses, policy, wa)
 	toFiber := func(s tpot.Servable[*handler.Context]) func(*fiber.Ctx) error {
 		return func(c *fiber.Ctx) error {
 			ctx, ok := c.Locals(handler.ContextKeyCustomCtx).(*handler.Context)

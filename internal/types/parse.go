@@ -6,7 +6,10 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/microcosm-cc/bluemonday"
 )
+
+var policy = bluemonday.StrictPolicy()
 
 func VideoToProps(video youtube.Video, channel ChannelProps) VideoProps {
 	return VideoProps{
@@ -20,11 +23,11 @@ func VideoModelToProps(video *models.Video, channel ChannelProps) VideoProps {
 		Video: youtube.Video{
 			Type:        youtube.VideoType(video.Type),
 			ID:          video.ID,
-			Title:       video.Title,
+			Title:       policy.Sanitize(video.Title),
 			Duration:    int(video.Duration),
-			Thumbnail:   fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", video.ID),
+			Thumbnail:   fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", video.ID),
 			PublishedAt: video.PublishedAt.Format(time.RFC3339),
-			Description: video.Description,
+			Description: policy.Sanitize(video.Description),
 		},
 		Channel: channel,
 	}
@@ -34,9 +37,9 @@ func ChannelModelToProps(channel *models.Channel) ChannelProps {
 	return ChannelProps{
 		Channel: youtube.Channel{
 			ID:          channel.ID,
-			Title:       channel.Title,
+			Title:       policy.Sanitize(channel.Title),
 			Thumbnail:   channel.Thumbnail,
-			Description: channel.Description,
+			Description: policy.Sanitize(channel.Description),
 		},
 		Favorite: false, // This requires an additional query to subscriptions
 	}

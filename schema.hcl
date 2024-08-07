@@ -204,6 +204,48 @@ table "users" {
   primary_key {
     columns = [column.id]
   }
+
+  column "username" {
+    default = ""
+    null = false
+    type = text
+  }
+  index "idx_users_username" {
+    columns = [ column.username ]
+  }
+}
+
+table "passkeys" {
+  schema = schema.main
+
+  column "id" {
+    null = false
+    type = text
+  }
+  column "created_at" {
+    null = false
+    type = date
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  } 
+  primary_key {
+    columns = [column.id]
+  }
+
+  column "data" {
+    null = false
+    type = blob
+  }
+  column "user_id" {
+    null = false
+    type = text
+  }
+
+  index "idx_passkeys_user_id" {
+    columns = [ column.user_id ]
+  }
 }
 
 table "sessions" {
