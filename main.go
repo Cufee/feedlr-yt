@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic/background"
 	"github.com/cufee/feedlr-yt/internal/server"
@@ -23,6 +24,8 @@ import (
 var assetsFs embed.FS
 
 func main() {
+	youtube.DefaultClient = youtube.NewClient(os.Getenv("YOUTUBE_API_KEY"))
+
 	db, err := database.NewSQLiteClient(os.Getenv("DATABASE_PATH"))
 	if err != nil {
 		panic(err)

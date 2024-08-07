@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"time"
@@ -142,6 +144,8 @@ type PlayerVideoDetails struct {
 	IsUpcoming        bool      `json:"isUpcoming"`
 }
 
+var playerURL, _ = url.Parse("https://www.youtube.com/youtubei/v1/player")
+var playerProxyURL *url.URL
 var defaultClientBodyString = `{"videoId":"","contentCheckOk":true,"racyCheckOk":true,"context":{"client":{"clientName":"WEB","clientVersion":"1.20210616.1.0","platform":"DESKTOP","clientScreen":"EMBED","clientFormFactor":"UNKNOWN_FORM_FACTOR","browserName":"Chrome"},"user":{"lockedSafetyMode":"false"},"request":{"useSsl":"true"}}}`
 var defaultClientBody map[string]any
 
@@ -150,6 +154,13 @@ func init() {
 	err := json.Unmarshal([]byte(defaultClientBodyString), &defaultClientBody)
 	if err != nil {
 		panic(err)
+	}
+
+	if u := os.Getenv("YOUTUBE_PLAYER_PROXY"); u != "" {
+		playerProxyURL, err = url.Parse(u)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -167,7 +178,18 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		return nil, errors.Join(errors.New("GetVideoPlayerDetails.json.Marshal"), err)
 	}
 
-	res, err := http.Post("https://www.youtube.com/youtubei/v1/player", "application/json", bytes.NewReader(encoded))
+	transport := &http.Transport{}
+	if playerProxyURL != nil {
+		transport.Proxy = http.ProxyURL(playerProxyURL)
+		println("added proxy")
+	}
+
+	client := &http.Client{
+		Timeout:   time.Second * 10,
+		Transport: transport,
+	}
+
+	res, err := client.Post(playerURL.String(), "application/json", bytes.NewReader(encoded))
 	if err != nil {
 		return nil, errors.Join(errors.New("GetVideoPlayerDetails.http.Post"), err)
 	}

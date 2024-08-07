@@ -3,13 +3,12 @@ package youtube
 import (
 	"encoding/json"
 	"log"
+	"os"
 	"testing"
-
-	"github.com/cufee/feedlr-yt/internal/utils"
 )
 
 func TestGetPlaylistVideos(t *testing.T) {
-	client := NewClient(utils.MustGetEnv("YOUTUBE_API_KEY"))
+	client := NewClient(os.Getenv("YOUTUBE_API_KEY"))
 	playlist, err := client.GetChannelUploadPlaylistID("UCUyeluBRhGPCW4rPe_UvBZQ")
 	if err != nil {
 		t.Error(err)
