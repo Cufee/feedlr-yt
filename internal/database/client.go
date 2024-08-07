@@ -3,8 +3,10 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type Client interface {
@@ -23,6 +25,8 @@ type Client interface {
 }
 
 func NewSQLiteClient(path string) (Client, error) {
+	boil.DebugMode = os.Getenv("DEBUG_SQL") == "true"
+
 	sqldb, err := sql.Open("sqlite3", fmt.Sprintf("file://%s?_fk=1&_auto_vacuum=2&_synchronous=1&_journal_mode=WAL", path)) // _mutex
 	if err != nil {
 		return nil, err

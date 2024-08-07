@@ -3,7 +3,6 @@ wipe = true
 no-tests = false
 add-enum-types = true
 
-
 [sqlite3]
 blacklist = ["atlas_schema_revisions"]
 

@@ -2,6 +2,7 @@ package types
 
 import (
 	"log"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
@@ -68,8 +69,9 @@ type ChannelWithVideosProps struct {
 
 type VideoProps struct {
 	youtube.Video
-	Progress int
-	Channel  ChannelProps
+	Progress    int
+	Channel     ChannelProps
+	PublishedAt time.Time
 }
 
 type SegmentProps struct {

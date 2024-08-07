@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/huandu/go-sqlbuilder"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -71,14 +71,31 @@ func (c *sqliteClient) GetChannels(ctx context.Context, o ...ChannelQuery) ([]*m
 	}
 
 	if opts.withVideos {
-		var mods queries.Applicator
-		if opts.videosLimit > 0 {
-			mods = qm.Limit(opts.videosLimit)
+		var ids []any
+		for _, c := range channels {
+			ids = append(ids, c.ID)
 		}
-		err = models.Channel{}.L.LoadVideos(ctx, c.db, false, &channels, mods)
+
+		sql := sqlbuilder.
+			Select("*").
+			From(models.TableNames.Videos).
+			Desc().OrderBy(models.VideoColumns.PublishedAt)
+		sql = sql.Where(
+			sql.And(
+				sql.In(models.VideoColumns.ChannelID, ids...),
+				sql.NotIn(models.VideoColumns.Type, "private", "short"),
+			),
+		)
+		if opts.videosLimit > 0 {
+			sql = sql.Limit(opts.videosLimit)
+		}
+
+		q, a := sql.Build()
+		err = models.Channel{}.L.LoadVideos(ctx, c.db, false, &channels, qm.SQL(q, a...))
 		if err != nil {
 			return nil, err
 		}
+
 	}
 	if opts.withSubscriptions {
 		err = models.Channel{}.L.LoadSubscriptions(ctx, c.db, false, &channels, nil)
@@ -121,11 +138,22 @@ func (c *sqliteClient) GetChannel(ctx context.Context, channelId string, o ...Ch
 	}
 
 	if opts.withVideos {
-		var mods queries.Applicator
+		sql := sqlbuilder.
+			Select("*").
+			From(models.TableNames.Videos).
+			Desc().OrderBy(models.VideoColumns.PublishedAt)
+		sql = sql.Where(
+			sql.And(
+				sql.EQ(models.VideoColumns.ChannelID, channel.ID),
+				sql.NotIn(models.VideoColumns.Type, "private", "short"),
+			),
+		)
 		if opts.videosLimit > 0 {
-			mods = qm.Limit(opts.videosLimit)
+			sql = sql.Limit(opts.videosLimit)
 		}
-		err = models.Channel{}.L.LoadVideos(ctx, c.db, true, channel, mods)
+
+		q, a := sql.Build()
+		err = models.Channel{}.L.LoadVideos(ctx, c.db, true, channel, qm.SQL(q, a...))
 		if err != nil {
 			return nil, err
 		}
