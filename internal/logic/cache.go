@@ -115,7 +115,7 @@ func UpdateChannelVideoCache(ctx context.Context, db interface {
 	if err != nil && !database.IsErrNotFound(err) {
 		return err
 	}
-	if time.Since(current.UpdatedAt) < time.Hour {
+	if current != nil && time.Since(current.UpdatedAt) < time.Hour {
 		return nil
 	}
 
