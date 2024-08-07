@@ -230,6 +230,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		return &fullDetails, nil
 	} else if details.PlayabilityStatus.Status != "OK" || details.PlayerVideoDetails.IsPrivate {
 		fullDetails.Type = VideoTypePrivate
+		return &fullDetails, nil
 	}
 
 	// Check if this video is a Short and get duration if needed
@@ -258,8 +259,7 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		}
 	}
 
-	// Shorts keep creeping in somehow, going to increase this to 100 seconds for now
-	if duration > 0 && fullDetails.Duration <= 100 {
+	if fullDetails.Duration > 0 && fullDetails.Duration <= 60 {
 		fullDetails.Type = VideoTypeShort
 	}
 

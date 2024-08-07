@@ -53,10 +53,6 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 				errChan <- errors.Join(errors.New("GetPlaylistVideos.youtube.GetVideoPlayerDetails"), err)
 				return
 			}
-			if details.Type == VideoTypeShort {
-				// This app doesn't support shorts at all by design
-				return
-			}
 			details.Title = item.Snippet.Title
 			details.ChannelID = item.Snippet.ChannelId
 			details.Description = item.Snippet.Description
