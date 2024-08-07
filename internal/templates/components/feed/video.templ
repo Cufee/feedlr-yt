@@ -1,15 +1,17 @@
 package feed
 
-import "fmt"
-import "github.com/cufee/feedlr-yt/internal/types"
-import "github.com/cufee/feedlr-yt/internal/utils"
-import "github.com/cufee/feedlr-yt/internal/templates/components/icons"
-import "time"
+import (
+	"fmt"
+	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/types"
+	"github.com/cufee/feedlr-yt/internal/utils"
+	"time"
+)
 
 templ VideoFeed(videos []types.VideoProps, returnUrl string, withProgressActions, withChannelName bool) {
 	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3" id="components-video-feed">
 		for _, video := range videos {
-			<div class="flex flex-col gap-1">				
+			<div class="flex flex-col gap-1">
 				<a href={ templ.URL(fmt.Sprintf("/video/%s?return=%s", video.ID, returnUrl)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full cursor-pointer h-fit rounded-box group">
 					@VideoCard(video, true, withProgressActions)
 				</a>
@@ -43,10 +45,12 @@ templ VideoCarousel(videos []types.VideoProps) {
 	</div>
 }
 
-templ VideoThumbnail(image, alt string) {
+templ VideoThumbnail(videoID, alt string) {
 	<div class="relative overflow-hidden">
-		<img class="z-10 hidden object-cover w-full h-full transition-all duration-500 group-hover:scale-110" src={ image } alt={ alt } onload="this.style.display=&#39;block&#39;" />
-		<div class="absolute w-full h-full bg-base-100 animate-pulse" />
+		<object tabindex="-1" class="z-10 object-cover w-full h-full transition-all duration-500 group-hover:scale-110" data={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", videoID) } type="image/jpeg">
+			<img class="z-10 object-cover w-full h-full transition-all duration-500 group-hover:scale-110" src={ fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", videoID) } alt={ alt }/>
+		</object>
+		<div class="absolute w-full h-full bg-base-100 animate-pulse"></div>
 	</div>
 }
 
@@ -79,12 +83,12 @@ templ VideoCard(video types.VideoProps, showProgress, progressActions bool) {
 				{ secondsToDurationString(video.Duration) }
 			}
 		</div>
-		@VideoThumbnail(video.Thumbnail, video.Title)
+		@VideoThumbnail(video.ID, video.Title)
 	</div>
 }
 
 templ VideoTile(video types.VideoProps) {
-	<div class="relative overflow-hidden video-tile rounded-xl"  >
+	<div class="relative overflow-hidden video-tile rounded-xl">
 		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative group">
 			@VideoCard(video, true, true)
 		</a>
@@ -92,7 +96,7 @@ templ VideoTile(video types.VideoProps) {
 }
 
 templ VideoTileWithTitle(video types.VideoProps) {
-	<div class="relative overflow-hidden shadow-md group carousel-item rounded-xl w-fit" id={ fmt.Sprintf("video-tile-%s", video.ID) } >
+	<div class="relative overflow-hidden shadow-md group carousel-item rounded-xl w-fit" id={ fmt.Sprintf("video-tile-%s", video.ID) }>
 		@VideoTile(video)
 		<div class="absolute bottom-0 left-0 z-10 flex flex-col w-full gap-1 bg-black md:hidden group-hover:inline-block animate__faster bg-opacity-60 animate__animated animate__slideInUp">
 			<div class="px-2 py-1 font-bold text-center text-white truncate">
