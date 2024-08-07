@@ -269,47 +269,6 @@ table "sessions" {
   }
 }
 
-table "connections" {
-  schema = schema.main
-
-  column "id" {
-    null = false
-    type = text
-  }
-  column "created_at" {
-    null = false
-    type = date
-  }
-  column "updated_at" {
-    null = false
-    type = date
-  } 
-  primary_key {
-    columns = [column.id]
-  }
-
-  column "type" {
-    null = false
-    type = text
-  }
-  column "user_id" {
-    null = false
-    type = text
-  }
-  foreign_key "connections_user_id_fkey" {
-    columns = [ column.user_id ]
-    ref_columns = [ table.users.column.id ]
-    on_delete   = CASCADE
-  }
-
-  index "idx_connections_user_id" {
-    columns = [ column.user_id ]
-  }
-  index "idx_connections_user_id_type" {
-    columns = [ column.user_id, column.type ]
-  }
-}
-
 table "settings" {
   schema = schema.main
 

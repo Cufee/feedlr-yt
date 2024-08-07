@@ -18,7 +18,6 @@ type Client interface {
 
 	UsersClient
 	SettingsClient
-	ConnectionsClient
 	SubscriptionsClient
 
 	Close() error
@@ -44,4 +43,12 @@ type sqliteClient struct {
 
 func (c *sqliteClient) Close() error {
 	return c.db.Close()
+}
+
+func toAny[T any](v []T) []any {
+	var s []any
+	for _, v := range v {
+		s = append(s, v)
+	}
+	return s
 }

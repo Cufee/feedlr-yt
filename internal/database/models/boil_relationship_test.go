@@ -8,7 +8,6 @@ import "testing"
 // TestToOne tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToOne(t *testing.T) {
-	t.Run("ConnectionToUserUsingUser", testConnectionToOneUserUsingUser)
 	t.Run("SettingToUserUsingUser", testSettingToOneUserUsingUser)
 	t.Run("SubscriptionToUserUsingUser", testSubscriptionToOneUserUsingUser)
 	t.Run("SubscriptionToChannelUsingChannel", testSubscriptionToOneChannelUsingChannel)
@@ -26,7 +25,6 @@ func TestOneToOne(t *testing.T) {}
 func TestToMany(t *testing.T) {
 	t.Run("ChannelToSubscriptions", testChannelToManySubscriptions)
 	t.Run("ChannelToVideos", testChannelToManyVideos)
-	t.Run("UserToConnections", testUserToManyConnections)
 	t.Run("UserToSettings", testUserToManySettings)
 	t.Run("UserToSubscriptions", testUserToManySubscriptions)
 	t.Run("UserToViews", testUserToManyViews)
@@ -36,7 +34,6 @@ func TestToMany(t *testing.T) {
 // TestToOneSet tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToOneSet(t *testing.T) {
-	t.Run("ConnectionToUserUsingConnections", testConnectionToOneSetOpUserUsingUser)
 	t.Run("SettingToUserUsingSettings", testSettingToOneSetOpUserUsingUser)
 	t.Run("SubscriptionToUserUsingSubscriptions", testSubscriptionToOneSetOpUserUsingUser)
 	t.Run("SubscriptionToChannelUsingSubscriptions", testSubscriptionToOneSetOpChannelUsingChannel)
@@ -62,7 +59,6 @@ func TestOneToOneRemove(t *testing.T) {}
 func TestToManyAdd(t *testing.T) {
 	t.Run("ChannelToSubscriptions", testChannelToManyAddOpSubscriptions)
 	t.Run("ChannelToVideos", testChannelToManyAddOpVideos)
-	t.Run("UserToConnections", testUserToManyAddOpConnections)
 	t.Run("UserToSettings", testUserToManyAddOpSettings)
 	t.Run("UserToSubscriptions", testUserToManyAddOpSubscriptions)
 	t.Run("UserToViews", testUserToManyAddOpViews)

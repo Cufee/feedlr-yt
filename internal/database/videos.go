@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -19,9 +20,9 @@ type VideoQuery func(o *videoQuery)
 
 type videoQuery struct {
 	withChannel bool
-	channels    []string
-	typesIn     []string
-	typesNotIn  []string
+	channels    []any
+	typesIn     []any
+	typesNotIn  []any
 }
 
 type videoQuerySlice []VideoQuery
@@ -43,17 +44,17 @@ func (Video) WithChannel() VideoQuery {
 }
 func (Video) Channel(id ...string) VideoQuery {
 	return func(o *videoQuery) {
-		o.channels = append(o.channels, id...)
+		o.channels = append(o.channels, toAny(id)...)
 	}
 }
 func (Video) TypeEq(types ...string) VideoQuery {
 	return func(o *videoQuery) {
-		o.typesIn = append(o.typesIn, types...)
+		o.typesIn = append(o.typesIn, toAny(types)...)
 	}
 }
 func (Video) TypeNot(types ...string) VideoQuery {
 	return func(o *videoQuery) {
-		o.typesNotIn = append(o.typesNotIn, types...)
+		o.typesNotIn = append(o.typesNotIn, toAny(types)...)
 	}
 }
 
@@ -78,20 +79,28 @@ func (c *sqliteClient) GetVideoByID(ctx context.Context, id string, o ...VideoQu
 func (c *sqliteClient) FindVideos(ctx context.Context, o ...VideoQuery) ([]*models.Video, error) {
 	opts := videoQuerySlice(o).opts()
 
-	mods := []qm.QueryMod{}
+	sql := sqlbuilder.
+		Select("*").
+		From(models.TableNames.Videos)
+
+	var where []string
 	if opts.channels != nil {
-		mods = append(mods, models.VideoWhere.ChannelID.IN(opts.channels))
+		where = append(where, sql.In(models.VideoColumns.ChannelID, opts.channels...))
 	}
 	if opts.typesIn != nil {
-		mods = append(mods, models.VideoWhere.Type.IN(opts.typesIn))
+		where = append(where, sql.In(models.VideoColumns.Type, opts.typesIn...))
 	}
 	if opts.typesNotIn != nil {
-		mods = append(mods, models.VideoWhere.Type.NIN(opts.typesNotIn))
+		where = append(where, sql.NotIn(models.VideoColumns.Type, opts.typesNotIn...))
+	}
+	if where != nil {
+		sql = sql.Where(sql.And(where...))
 	}
 
 	var err error
 	var videos []*models.Video
-	videos, err = models.Videos(mods...).All(ctx, c.db)
+	q, a := sql.Build()
+	videos, err = models.Videos(qm.SQL(q, a...)).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
@@ -122,12 +131,18 @@ type ViewsClient interface {
 }
 
 func (c *sqliteClient) GetUserViews(ctx context.Context, userID string, videoID ...string) ([]*models.View, error) {
-	mods := []qm.QueryMod{models.ViewWhere.UserID.EQ(userID)}
-	if videoID != nil {
-		mods = append(mods, models.ViewWhere.VideoID.IN(videoID))
-	}
+	sql := sqlbuilder.
+		Select("*").
+		From(models.TableNames.Views)
 
-	views, err := models.Views(mods...).All(ctx, c.db)
+	where := []string{sql.EQ(models.ViewColumns.UserID, userID)}
+	if videoID != nil {
+		sql = sql.Where(sql.In(models.ViewColumns.VideoID, toAny(videoID)...))
+	}
+	sql = sql.Where(sql.And(where...))
+
+	q, a := sql.Build()
+	views, err := models.Views(qm.SQL(q, a...)).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
