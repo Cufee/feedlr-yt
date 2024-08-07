@@ -117,18 +117,15 @@ func GetVideoByID(ctx context.Context, db interface {
 		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.CacheChannel failed to cache channel")
 	}
 
-	go UpdateVideoCache(ctx, db, details)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+		defer cancel()
+		_ = UpdateVideoCache(ctx, db, details)
+	}()
+
 	props := types.VideoProps{Video: details.Video, Channel: types.ChannelModelToProps(channel)}
 	return props, nil
 
-}
-
-func CacheVideo(ctx context.Context, db database.VideosClient, video string) error {
-	details, err := youtube.DefaultClient.GetVideoDetailsByID(video)
-	if err != nil {
-		return errors.Wrap(err, "CacheVideo.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details")
-	}
-	return UpdateVideoCache(ctx, db, details)
 }
 
 func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *youtube.VideoDetails) error {
