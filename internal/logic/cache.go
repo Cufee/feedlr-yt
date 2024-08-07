@@ -106,3 +106,35 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 
 	return record, false, nil
 }
+
+func UpdateChannelVideoCache(ctx context.Context, db interface {
+	database.VideosClient
+	database.ChannelsClient
+}, videoID string) error {
+	video, err := youtube.DefaultClient.GetVideoDetailsByID(videoID)
+	if err != nil {
+		return err
+	}
+	_, _, err = CacheChannel(ctx, db, video.ChannelID)
+	if err != nil {
+		return err
+	}
+
+	publishedAt, _ := time.Parse(time.RFC3339, video.PublishedAt)
+	update := &models.Video{
+		ChannelID:   video.ChannelID,
+		ID:          video.ID,
+		Type:        string(video.Type),
+		Title:       video.Title,
+		Duration:    int64(video.Duration),
+		Description: video.Description,
+		PublishedAt: publishedAt,
+		Private:     video.Type == youtube.VideoTypePrivate,
+	}
+
+	err = db.UpsertVideos(ctx, update)
+	if err != nil {
+		return err
+	}
+	return nil
+}
