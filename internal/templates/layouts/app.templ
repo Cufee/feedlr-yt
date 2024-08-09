@@ -15,14 +15,14 @@ templ app(content ...templ.Component) {
 		@partials.Head()
 		<body class="flex flex-col items-center min-h-screen" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
 			@partials.NavProgressAnimated()
-			<main class="flex flex-col flex-grow w-full gap-2 p-2 pt-0">
+			<main class="flex flex-col flex-grow w-full gap-2 p-2 pt-0 max-w-7xl mx-auto">
 				@partials.Navbar()
 				for _, c := range content {
 					@c
 				}
 				{ children... }
 			</main>
-			<div class="w-full p-2 md:p-0">
+			<div class="w-full p-2 md:p-0 max-w-7xl mx-auto">
 				@partials.Footer()
 			</div>
 		</body>

@@ -12,13 +12,7 @@ import (
 templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
 	<div class="flex flex-col items-center w-full gap-4 p-3 shadow-inner md:gap-4 md:p-6 bg-base-300 rounded-xl" id="sponsorblock-settings">
 		<div class="flex flex-row items-center justify-between w-full gap-2 px-4">
-			<div class="invisible">
-				@GlobalToggleButton(true)
-			</div>
 			<div class="flex flex-row items-center gap-2">
-				<div class="invisible">
-					@icons.Info()
-				</div>
 				<span class="self-center text-xl font-bold">SponsorBlock</span>
 				<a href="https://sponsor.ajay.app/" target="_blank">
 					@icons.Info()
