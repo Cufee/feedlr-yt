@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-templ VideoFeed(videos []types.VideoProps, returnUrl string, withProgressActions, withChannelName bool) {
+templ VideoFeed(videos []types.VideoProps, returnUrl string, showProgress, withProgressActions, withChannelName bool) {
 	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3" id="components-video-feed">
 		for _, video := range videos {
 			<div class="flex flex-col gap-1">
 				<a href={ templ.URL(fmt.Sprintf("/video/%s?return=%s", video.ID, returnUrl)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full cursor-pointer rounded-box group">
-					@VideoCard(video, true, withProgressActions)
+					@VideoCard(video, showProgress, withProgressActions)
 				</a>
 				<div class="flex flex-col">
 					<span class="overflow-hidden text-lg leading-tight truncate whitespace-normal line-clamp-2" style="overflow-wrap: anywhere;" title={ video.Title }>

@@ -1,15 +1,16 @@
 package app
 
-import "github.com/cufee/feedlr-yt/internal/types"
-import "github.com/cufee/feedlr-yt/internal/templates/components/feed"
-import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
+import (
+	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/types"
+)
 
 templ VideosFeed(props types.UserVideoFeedProps) {
 	<head><title>Feedlr</title></head>
-
 	<div id="app-index" class="flex flex-col gap-4">
 		@shared.OpenVideoButton()
-		@feed.VideoFeed(props.Videos, "/app", true, true)
+		@feed.VideoFeed(props.Videos, "/app", true, true, true)
 	</div>
 }
 

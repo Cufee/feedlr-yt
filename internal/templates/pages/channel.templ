@@ -2,10 +2,10 @@ package pages
 
 import (
 	"fmt"
-	"github.com/cufee/feedlr-yt/internal/types"
-	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/channel"
+	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/types"
 )
 
 templ Channel(props types.ChannelPageProps) {
@@ -27,15 +27,14 @@ templ Channel(props types.ChannelPageProps) {
 				@channel.ChannelTile(props.Channel.Channel, subscribeButton(props.Channel.ID, props.Authenticated, props.Subscribed))
 			</div>
 		</div>
-
-		@feed.VideoFeed(props.Channel.Videos, fmt.Sprintf("/channel/%s", props.Channel.ID), props.Authenticated && props.Subscribed, false)
+		@feed.VideoFeed(props.Channel.Videos, fmt.Sprintf("/channel/%s", props.Channel.ID), props.Authenticated, props.Authenticated && props.Subscribed, false)
 	</div>
 }
 
 templ subscribeButton(id string, authenticated, subscribed bool) {
-		if authenticated && subscribed {
-			@subscriptions.UnsubscribeButtonSmall(id)
-		} else if authenticated {
-			@subscriptions.SubscribeButtonSmall(id)
-		}
+	if authenticated && subscribed {
+		@subscriptions.UnsubscribeButtonSmall(id)
+	} else if authenticated {
+		@subscriptions.SubscribeButtonSmall(id)
+	}
 }

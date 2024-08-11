@@ -93,6 +93,9 @@ func GetRecentVideosProps(ctx context.Context, db interface {
 	for _, video := range videos {
 		v := types.VideoModelToProps(video, types.ChannelModelToProps(video.R.Channel))
 		v.Progress = int(progress[video.ID].Progress)
+		if v.Progress == 0 {
+			v.Progress = 1
+		}
 		feed.Videos = append(feed.Videos, v)
 	}
 	slices.SortFunc(feed.Videos, func(a, b types.VideoProps) int {

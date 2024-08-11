@@ -13,6 +13,6 @@ templ History(props types.UserVideoFeedProps) {
 		if len(props.Videos) == 0 {
 			<span class="self-center text-xl font-bold">No recent videos yet</span>
 		}
-		@feed.VideoFeed(props.Videos, "/app/recent", true, true)
+		@feed.VideoFeed(props.Videos, "/app/recent", false, false, true)
 	</div>
 }
