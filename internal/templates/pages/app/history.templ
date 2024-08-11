@@ -1,0 +1,18 @@
+package app
+
+import (
+	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
+	"github.com/cufee/feedlr-yt/internal/types"
+)
+
+templ History(props types.UserVideoFeedProps) {
+	<head>
+		<title>Feedlr - Recent</title>
+	</head>
+	<div id="app-index" class="flex flex-col gap-4">
+		if len(props.Videos) == 0 {
+			<span class="self-center text-xl font-bold">No recent videos yet</span>
+		}
+		@feed.VideoFeed(props.Videos, "/app/recent", true, true)
+	</div>
+}

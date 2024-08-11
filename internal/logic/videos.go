@@ -66,6 +66,43 @@ func GetUserVideosProps(ctx context.Context, db interface {
 }
 
 /*
+Returns a list of channel props with videos for all user subscriptions
+*/
+func GetRecentVideosProps(ctx context.Context, db interface {
+	database.VideosClient
+	database.ViewsClient
+}, userId string) (*types.UserVideoFeedProps, error) {
+	views, err := db.GetRecentUserViews(ctx, userId, 24)
+	if err != nil && !database.IsErrNotFound(err) {
+		return nil, errors.Wrap(err, "GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views")
+	}
+
+	var videoIDs []string
+	progress := make(map[string]*models.View)
+	for _, v := range views {
+		videoIDs = append(videoIDs, v.VideoID)
+		progress[v.VideoID] = v
+	}
+
+	videos, err := db.FindVideos(ctx, database.Video{}.ID(videoIDs...), database.Video{}.WithChannel())
+	if err != nil {
+		return nil, errors.Wrap(err, "db#FindVideos")
+	}
+
+	var feed types.UserVideoFeedProps
+	for _, video := range videos {
+		v := types.VideoModelToProps(video, types.ChannelModelToProps(video.R.Channel))
+		v.Progress = int(progress[video.ID].Progress)
+		feed.Videos = append(feed.Videos, v)
+	}
+	slices.SortFunc(feed.Videos, func(a, b types.VideoProps) int {
+		return progress[b.ID].UpdatedAt.Compare(progress[a.ID].UpdatedAt)
+	})
+
+	return &feed, nil
+}
+
+/*
 Returns a list of video props for provided channels
 */
 func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int, channelIds ...string) ([]types.VideoProps, error) {

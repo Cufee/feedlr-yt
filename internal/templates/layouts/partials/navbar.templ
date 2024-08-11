@@ -14,7 +14,12 @@ templ Navbar(...templ.Component) {
 				</a>
 			</div>
 			<div class="flex flex-row items-center gap-2">
-				<a class="btn btn-neutral nav-btn no-animation" href="/app/subscriptions" title="Manage Subscriptions">Subscriptions</a>
+				<a class="btn btn-neutral nav-btn no-animation" href="/app/recent" title="Recent Views">
+					@icons.Clock()
+				</a>
+				<a class="btn btn-neutral nav-btn no-animation" href="/app/subscriptions" title="Manage Subscriptions">
+					@icons.Bookmark()
+				</a>
 				<a class="btn btn-neutral btn-square nav-btn no-animation" href="/app/settings" title="App Settings">
 					@icons.Settings()
 				</a>

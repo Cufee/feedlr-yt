@@ -20,6 +20,7 @@ type VideoQuery func(o *videoQuery)
 
 type videoQuery struct {
 	withChannel bool
+	id          []any
 	channels    []any
 	typesIn     []any
 	typesNotIn  []any
@@ -55,6 +56,11 @@ func (Video) TypeEq(types ...string) VideoQuery {
 func (Video) TypeNot(types ...string) VideoQuery {
 	return func(o *videoQuery) {
 		o.typesNotIn = append(o.typesNotIn, toAny(types)...)
+	}
+}
+func (Video) ID(id ...string) VideoQuery {
+	return func(o *videoQuery) {
+		o.id = append(o.id, toAny(id)...)
 	}
 }
 
@@ -93,6 +99,9 @@ func (c *sqliteClient) FindVideos(ctx context.Context, o ...VideoQuery) ([]*mode
 	if opts.typesNotIn != nil {
 		where = append(where, sql.NotIn(models.VideoColumns.Type, opts.typesNotIn...))
 	}
+	if opts.id != nil {
+		where = append(where, sql.In(models.VideoColumns.ID, opts.id...))
+	}
 	if where != nil {
 		sql = sql.Where(sql.And(where...))
 	}
@@ -127,6 +136,7 @@ func (c *sqliteClient) UpsertVideos(ctx context.Context, videos ...*models.Video
 
 type ViewsClient interface {
 	GetUserViews(ctx context.Context, userID string, videoID ...string) ([]*models.View, error)
+	GetRecentUserViews(ctx context.Context, userID string, limit int) ([]*models.View, error)
 	UpsertView(ctx context.Context, view *models.View) error
 }
 
@@ -140,6 +150,27 @@ func (c *sqliteClient) GetUserViews(ctx context.Context, userID string, videoID 
 		sql = sql.Where(sql.In(models.ViewColumns.VideoID, toAny(videoID)...))
 	}
 	sql = sql.Where(sql.And(where...))
+	sql = sql.Desc().OrderBy(models.ViewColumns.UpdatedAt)
+
+	q, a := sql.Build()
+	views, err := models.Views(qm.SQL(q, a...)).All(ctx, c.db)
+	if err != nil {
+		return nil, err
+	}
+
+	return views, nil
+}
+
+func (c *sqliteClient) GetRecentUserViews(ctx context.Context, userID string, limit int) ([]*models.View, error) {
+	sql := sqlbuilder.
+		Select("*").
+		From(models.TableNames.Views)
+
+	sql = sql.Where(sql.EQ(models.ViewColumns.UserID, userID))
+	sql = sql.Desc().OrderBy(models.ViewColumns.UpdatedAt)
+	if limit > 0 {
+		sql = sql.Limit(limit)
+	}
 
 	q, a := sql.Build()
 	views, err := models.Views(qm.SQL(q, a...)).All(ctx, c.db)
@@ -151,5 +182,21 @@ func (c *sqliteClient) GetUserViews(ctx context.Context, userID string, videoID 
 }
 
 func (c *sqliteClient) UpsertView(ctx context.Context, view *models.View) error {
-	return view.Upsert(ctx, c.db, true, []string{models.ViewColumns.ID}, boil.Infer(), boil.Infer())
+	views, err := c.GetUserViews(ctx, view.UserID, view.VideoID)
+	if IsErrNotFound(err) || len(views) == 0 {
+		return view.Insert(ctx, c.db, boil.Infer())
+	}
+	if err != nil {
+		return err
+	}
+
+	for _, v := range views {
+		v.Progress = view.Progress
+		_, err := v.Update(ctx, c.db, boil.Whitelist(models.ViewColumns.Progress, models.ViewColumns.UpdatedAt))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

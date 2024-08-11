@@ -97,6 +97,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(limiterMiddleware).Use(authMiddleware)
 		app.All("/", toFiber(rapp.Home))
+		app.All("/recent", toFiber(rapp.Recent))
 		app.All("/settings", toFiber(rapp.Settings))
 		app.All("/onboarding", toFiber(rapp.Onboarding))
 		app.All("/subscriptions", toFiber(rapp.Subscriptions))

@@ -145,7 +145,8 @@ table "views" {
     columns = [ column.user_id]
   }
   index "idx_views_video_id_user_id" {
-    columns = [  column.video_id, column.user_id]
+    columns = [  column.video_id, column.user_id ]
+    unique = true
   }
 }
 
