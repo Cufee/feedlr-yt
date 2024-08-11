@@ -7,15 +7,15 @@ import (
 )
 
 var Share brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...templ.Component) (templ.Component, error) {
-	return share(body...), nil
+	return share(ctx.Request().URL.Path, body...), nil
 }
 
-templ share(content ...templ.Component) {
+templ share(path string, content ...templ.Component) {
 	<html lang="en" class="h-full">
 		@partials.Head()
 		<body class="flex flex-col h-full" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
 			<div class="w-full p-2 pt-0 mx-auto max-w-7xl">
-				@partials.NavbarWithLogin()
+				@partials.NavbarWithLogin(path)
 			</div>
 			<div id="main" class="flex flex-col flex-grow w-full gap-2 p-2 mx-auto max-w-7xl">
 				for _, c := range content {

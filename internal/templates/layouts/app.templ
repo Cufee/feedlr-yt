@@ -7,22 +7,22 @@ import (
 )
 
 var App brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...templ.Component) (templ.Component, error) {
-	return app(body...), nil
+	return app(ctx.Request().URL.Path, body...), nil
 }
 
-templ app(content ...templ.Component) {
+templ app(path string, content ...templ.Component) {
 	<html lang="en" class="h-full">
 		@partials.Head()
-		<body class="flex flex-col items-center min-h-screen" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
+		<body class="flex flex-col items-center min-h-screen">
 			@partials.NavProgressAnimated()
-			<main class="flex flex-col flex-grow w-full gap-2 p-2 pt-0 max-w-7xl mx-auto">
-				@partials.Navbar()
+			<main class="flex flex-col flex-grow w-full gap-2 p-2 pt-0 mx-auto max-w-7xl">
+				@partials.Navbar(path)
 				for _, c := range content {
 					@c
 				}
 				{ children... }
 			</main>
-			<div class="w-full p-2 md:p-0 max-w-7xl mx-auto">
+			<div class="w-full p-2 mx-auto md:p-0 max-w-7xl">
 				@partials.Footer()
 			</div>
 		</body>

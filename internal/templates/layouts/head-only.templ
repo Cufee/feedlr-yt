@@ -13,7 +13,7 @@ var HeadOnly brewed.Layout[*handler.Context] = func(ctx *handler.Context, body .
 templ headOnly(content ...templ.Component) {
 	<html lang="en" class="h-full">
 		@partials.Head()
-		<body class="h-full" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
+		<body class="h-full">
 			@partials.NavProgressAnimated()
 			<div id="main" class="w-full h-full">
 				for _, c := range content {

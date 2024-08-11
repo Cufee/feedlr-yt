@@ -13,7 +13,7 @@ var Main brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...te
 templ main(content ...templ.Component) {
 	<html lang="en" class="h-full">
 		@partials.Head()
-		<body class="h-full" _="on htmx:beforeSend add @disabled='true' to .nav-btn then on htmx:afterRequest remove @disabled from .nav-btn">
+		<body class="h-full">
 			@partials.NavProgressAnimated()
 			<div id="main" class="flex flex-col flex-grow w-full h-full p-2 mx-auto max-w-7xl">
 				for _, c := range content {
@@ -21,7 +21,7 @@ templ main(content ...templ.Component) {
 				}
 				{ children... }
 			</div>
-			<div class="w-full max-w-7xl mx-auto p-2 md:p-0">
+			<div class="w-full p-2 mx-auto max-w-7xl md:p-0">
 				@partials.Footer()
 			</div>
 		</body>

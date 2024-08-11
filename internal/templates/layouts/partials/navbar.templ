@@ -5,7 +5,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 )
 
-templ Navbar(...templ.Component) {
+templ Navbar(path string) {
 	<div id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator" hx-swap="innerHTML show:window:top">
 		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 group">
 			<div class="flex flex-row gap-2">
@@ -14,13 +14,13 @@ templ Navbar(...templ.Component) {
 				</a>
 			</div>
 			<div class="flex flex-row items-center gap-2">
-				<a class="btn btn-neutral nav-btn no-animation" href="/app/recent" title="Recent Views">
+				<a class={ "btn", "btn-neutral", "nav-btn", "no-animation", templ.KV("btn-active", path=="/app/recent") } href="/app/recent" title="Recent Views">
 					@icons.Clock()
 				</a>
-				<a class="btn btn-neutral nav-btn no-animation" href="/app/subscriptions" title="Manage Subscriptions">
+				<a class={ "btn", "btn-neutral", "nav-btn", "no-animation", templ.KV("btn-active", path=="/app/subscriptions") } href="/app/subscriptions" title="Manage Subscriptions">
 					@icons.Bookmark()
 				</a>
-				<a class="btn btn-neutral btn-square nav-btn no-animation" href="/app/settings" title="App Settings">
+				<a class={ "btn", "btn-neutral", "nav-btn", "no-animation", templ.KV("btn-active", path=="/app/settings") } href="/app/settings" title="App Settings">
 					@icons.Settings()
 				</a>
 			</div>
@@ -28,18 +28,22 @@ templ Navbar(...templ.Component) {
 	</div>
 }
 
-templ NavbarWithLogin(...templ.Component) {
+templ NavbarWithLogin(path string) {
 	<div id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator" hx-target="#main" hx-swap="innerHTML show:window:top">
 		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 group">
 			<div class="absolute top-0 left-0 w-full">
 				<progress id="nav-progress" class="invisible h-1 rounded-none opacity-75 progress progress-info" value="0" max="100"></progress>
 			</div>
 			<div class="flex flex-row gap-2">
-				<a href="/" class="relative -mx-3">
+				<a href="/" class={ "relative", "-mx-3" }>
 					@shared.Logo("64")
 				</a>
 			</div>
-			<div class="flex flex-row items-center gap-2"><a class="btn btn-primary nav-btn" href="/login" title="Login">Login</a></div>
+			<div class="flex flex-row items-center gap-2">
+				<a class={ "no-animation", "btn", "btn-primary", "nav-btn", templ.KV("btn-active", path=="/login") } href="/login" title="Login">
+					Login
+				</a>
+			</div>
 		</div>
 	</div>
 }
