@@ -198,6 +198,11 @@ table "passkeys" {
     columns = [column.id]
   }
 
+  column "label" {
+    null = false
+    type = text
+    default = ""
+  }
   column "data" {
     null = false
     type = blob

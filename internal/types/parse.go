@@ -49,3 +49,11 @@ func SubscriptionChannelModelToProps(sub *models.Subscription) ChannelProps {
 	c.Favorite = sub.Favorite
 	return c
 }
+
+func PasskeyToProps(record *models.Passkey) PasskeyProps {
+	return PasskeyProps{
+		ID:        record.ID,
+		Label:     record.Label,
+		CreatedAt: record.CreatedAt,
+	}
+}

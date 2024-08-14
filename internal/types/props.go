@@ -14,6 +14,7 @@ type SettingsPageProps struct {
 	FeedMode     string
 	PlayerVolume int
 	SponsorBlock SponsorBlockSettingsProps
+	Passkeys     []PasskeyProps
 }
 
 func (s *SettingsPageProps) Decode(record *models.Setting) error {
@@ -21,6 +22,12 @@ func (s *SettingsPageProps) Decode(record *models.Setting) error {
 }
 func (s *SettingsPageProps) Encode() ([]byte, error) {
 	return json.Marshal(s)
+}
+
+type PasskeyProps struct {
+	ID        string
+	Label     string
+	CreatedAt time.Time
 }
 
 type SponsorBlockSettingsProps struct {

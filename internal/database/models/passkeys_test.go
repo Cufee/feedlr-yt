@@ -568,7 +568,7 @@ func testPasskeysSelect(t *testing.T) {
 }
 
 var (
-	passkeyDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `Data`: `BLOB`, `UserID`: `TEXT`}
+	passkeyDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `Label`: `TEXT`, `Data`: `BLOB`, `UserID`: `TEXT`}
 	_              = bytes.MinRead
 )
 

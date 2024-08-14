@@ -1,0 +1,108 @@
+
+package settings
+
+import (
+	"fmt"
+	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/types"
+	"time"
+)
+
+templ ManageAccount(passkeys []types.PasskeyProps) {
+	<div class="flex flex-col w-full gap-4 p-3 shadow-inner md:gap-4 md:p-6 bg-base-300 rounded-xl" id="manage-account">
+		<div class="flex flex-row items-center w-full gap-2 px-4">
+			<span class="self-center text-xl font-bold">Account</span>
+		</div>
+		<div class="flex flex-col flex-grow w-full gap-2 p-4 rounded-lg bg-base-100">
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<span class="font-bold">Passkeys</span>
+				<div class="flex flex-row items-center gap-1 grow">
+					<span id="error" class="invisible text-error tooltip" data-tip="">
+						@icons.Info()
+					</span>
+					<button id="addPasskey" type="button" class="btn btn-sm btn-primary">Add a new passkey</button>
+				</div>
+			</div>
+			<div class="flex flex-col gap-2">
+				for _, pk := range passkeys {
+					<div class="flex flex-row flex-wrap items-center gap-2 p-2 rounded-lg bg-base-200" id={ fmt.Sprintf("pk-%s", pk.ID) }>
+						<div class="flex flex-row flex-wrap items-center justify-between gap-1 grow">
+							<span>
+								{ pk.CreatedAt.Format(time.RFC822) }
+							</span>
+							<span>
+								if pk.Label != "" {
+									{ pk.Label }
+								} else {
+									{ logic.Substring(logic.HashString(pk.ID), 16) }
+								}
+							</span>
+						</div>
+						<button type="button" class="btn btn-sm btn-square btn-error" hx-delete={ fmt.Sprintf("/api/passkeys/%s", pk.ID) } hx-target={ fmt.Sprintf("#pk-%s", pk.ID) } hx-swap="delete" hx-confirm="Are you sure you wish to delete a passkey? This cannot be undone.">
+							@icons.Cross()
+						</button>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+	<script>
+		document.getElementById('addPasskey').addEventListener('click', register);
+
+		function showMessage(message, isError = false) {
+      const errorSpan = document.getElementById('error');
+      if (!isError) {
+        errorSpan.classList.add("invisible");
+        errorSpan.dataset.tip = "";
+        return;
+      }
+      errorSpan.classList.remove("invisible");
+      errorSpan.dataset.tip = message;
+		}
+
+		async function register() {
+        showMessage("", false);
+				try {
+						// Get registration options from your server. Here, we also receive the challenge.
+						const response = await fetch('/api/passkeys/add/begin', { method: 'POST' });
+
+						// Check if the registration options are ok.
+						if (!response.ok) {
+								const msg = await response.text();
+								throw new Error(msg);
+						}
+
+						// Convert the registration options to JSON.
+						const options = await response.json();
+
+						// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
+						// A new attestation is created. This also means a new public-private-key pair is created.
+						const attestationResponse = await SimpleWebAuthnBrowser.startRegistration(options.publicKey);
+
+						// Send attestationResponse back to server for verification and storage.
+						const verificationResponse = await fetch('/api/passkeys/add/finish', {
+								method: 'POST',
+								credentials: 'same-origin',
+								headers: {
+										'Content-Type': 'application/json',
+								},
+								body: JSON.stringify(attestationResponse)
+						});
+
+
+						const msg = await verificationResponse.text();
+						if (verificationResponse.ok) {
+								showMessage("Passkey registered", false);
+                window.location.reload();
+						} else {
+								showMessage(msg, true);
+						}
+				} catch
+						(error) {
+						showMessage(error.message, true);
+				}
+		}
+	</script>
+	<script src="/assets/js/index.es5.umd.min.js" async></script>
+}

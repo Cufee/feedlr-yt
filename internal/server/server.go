@@ -83,6 +83,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		api := server.Group("/api").Use(limiterMiddleware).Use(authMiddleware)
 		api.Post("/passkeys/add/begin", toFiber(login.AdditionalPasskeyBegin))
 		api.Post("/passkeys/add/finish", toFiber(login.AdditionalPasskeyFinish))
+		api.Delete("/passkeys/:passkeyId", toFiber(login.DeletePasskey))
 
 		api.Post("/videos/:id/progress", toFiber(rapi.SaveVideoProgress))
 		api.Post("/videos/open", toFiber(rapi.OpenVideo))

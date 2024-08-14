@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -22,6 +23,7 @@ type UsersClient interface {
 
 	GetUserPasskeys(ctx context.Context, userID string) ([]*models.Passkey, error)
 	SaveUserPasskey(ctx context.Context, key *models.Passkey) error
+	DeleteUserPasskey(ctx context.Context, userID string, id string) error
 }
 
 func (c *sqliteClient) GetUser(ctx context.Context, id string) (*models.User, error) {
@@ -77,6 +79,22 @@ func (c *sqliteClient) SaveUserPasskey(ctx context.Context, key *models.Passkey)
 	err := key.Insert(ctx, c.db, boil.Infer())
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (c *sqliteClient) DeleteUserPasskey(ctx context.Context, userID, id string) error {
+	query := sqlbuilder.
+		DeleteFrom(models.TableNames.Passkeys)
+	query = query.Where(query.EQ(models.PasskeyColumns.ID, id), query.EQ(models.PasskeyColumns.UserID, userID))
+
+	q, a := query.Build()
+	deleted, err := models.Passkeys(qm.SQL(q, a...)).Exec(c.db)
+	if err != nil {
+		return err
+	}
+	if n, _ := deleted.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
 	}
 	return nil
 }

@@ -26,6 +26,7 @@ type Passkey struct {
 	ID        string    `boil:"id" json:"id" toml:"id" yaml:"id"`
 	CreatedAt time.Time `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt time.Time `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	Label     string    `boil:"label" json:"label" toml:"label" yaml:"label"`
 	Data      []byte    `boil:"data" json:"data" toml:"data" yaml:"data"`
 	UserID    string    `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
 
@@ -37,12 +38,14 @@ var PasskeyColumns = struct {
 	ID        string
 	CreatedAt string
 	UpdatedAt string
+	Label     string
 	Data      string
 	UserID    string
 }{
 	ID:        "id",
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
+	Label:     "label",
 	Data:      "data",
 	UserID:    "user_id",
 }
@@ -51,12 +54,14 @@ var PasskeyTableColumns = struct {
 	ID        string
 	CreatedAt string
 	UpdatedAt string
+	Label     string
 	Data      string
 	UserID    string
 }{
 	ID:        "passkeys.id",
 	CreatedAt: "passkeys.created_at",
 	UpdatedAt: "passkeys.updated_at",
+	Label:     "passkeys.label",
 	Data:      "passkeys.data",
 	UserID:    "passkeys.user_id",
 }
@@ -76,12 +81,14 @@ var PasskeyWhere = struct {
 	ID        whereHelperstring
 	CreatedAt whereHelpertime_Time
 	UpdatedAt whereHelpertime_Time
+	Label     whereHelperstring
 	Data      whereHelper__byte
 	UserID    whereHelperstring
 }{
 	ID:        whereHelperstring{field: "\"passkeys\".\"id\""},
 	CreatedAt: whereHelpertime_Time{field: "\"passkeys\".\"created_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"passkeys\".\"updated_at\""},
+	Label:     whereHelperstring{field: "\"passkeys\".\"label\""},
 	Data:      whereHelper__byte{field: "\"passkeys\".\"data\""},
 	UserID:    whereHelperstring{field: "\"passkeys\".\"user_id\""},
 }
@@ -103,9 +110,9 @@ func (*passkeyR) NewStruct() *passkeyR {
 type passkeyL struct{}
 
 var (
-	passkeyAllColumns            = []string{"id", "created_at", "updated_at", "data", "user_id"}
+	passkeyAllColumns            = []string{"id", "created_at", "updated_at", "label", "data", "user_id"}
 	passkeyColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "data", "user_id"}
-	passkeyColumnsWithDefault    = []string{}
+	passkeyColumnsWithDefault    = []string{"label"}
 	passkeyPrimaryKeyColumns     = []string{"id"}
 	passkeyGeneratedColumns      = []string{}
 )

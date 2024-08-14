@@ -5,11 +5,36 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/a-h/templ"
 	"github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/tpot/brewed"
 	"github.com/go-webauthn/webauthn/webauthn"
 )
+
+var DeletePasskey brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	session, ok := ctx.Session()
+	if !ok {
+		return nil, ctx.Redirect("/login", http.StatusTemporaryRedirect)
+	}
+	userID, ok := session.UserID()
+	if !ok {
+		return nil, ctx.Redirect("/login", http.StatusTemporaryRedirect)
+	}
+
+	keyID := ctx.Sanitize(ctx.Params("passkeyId"))
+	if keyID == "" {
+		return nil, ctx.Error("missing passkey id")
+	}
+
+	err := ctx.Database().DeleteUserPasskey(ctx.Context(), userID, keyID)
+	if err != nil {
+		return nil, ctx.Err(err)
+	}
+
+	return shared.DeletedElement("pk-" + keyID), nil
+}
 
 var AdditionalPasskeyBegin brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
 	session, ok := ctx.Session()
