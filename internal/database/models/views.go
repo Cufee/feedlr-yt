@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -29,6 +30,7 @@ type View struct {
 	UserID    string    `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
 	VideoID   string    `boil:"video_id" json:"video_id" toml:"video_id" yaml:"video_id"`
 	Progress  int64     `boil:"progress" json:"progress" toml:"progress" yaml:"progress"`
+	Hidden    null.Bool `boil:"hidden" json:"hidden,omitempty" toml:"hidden" yaml:"hidden,omitempty"`
 
 	R *viewR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L viewL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,6 +43,7 @@ var ViewColumns = struct {
 	UserID    string
 	VideoID   string
 	Progress  string
+	Hidden    string
 }{
 	ID:        "id",
 	CreatedAt: "created_at",
@@ -48,6 +51,7 @@ var ViewColumns = struct {
 	UserID:    "user_id",
 	VideoID:   "video_id",
 	Progress:  "progress",
+	Hidden:    "hidden",
 }
 
 var ViewTableColumns = struct {
@@ -57,6 +61,7 @@ var ViewTableColumns = struct {
 	UserID    string
 	VideoID   string
 	Progress  string
+	Hidden    string
 }{
 	ID:        "views.id",
 	CreatedAt: "views.created_at",
@@ -64,9 +69,34 @@ var ViewTableColumns = struct {
 	UserID:    "views.user_id",
 	VideoID:   "views.video_id",
 	Progress:  "views.progress",
+	Hidden:    "views.hidden",
 }
 
 // Generated where
+
+type whereHelpernull_Bool struct{ field string }
+
+func (w whereHelpernull_Bool) EQ(x null.Bool) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Bool) NEQ(x null.Bool) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Bool) LT(x null.Bool) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Bool) LTE(x null.Bool) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Bool) GT(x null.Bool) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Bool) GTE(x null.Bool) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_Bool) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Bool) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var ViewWhere = struct {
 	ID        whereHelperstring
@@ -75,6 +105,7 @@ var ViewWhere = struct {
 	UserID    whereHelperstring
 	VideoID   whereHelperstring
 	Progress  whereHelperint64
+	Hidden    whereHelpernull_Bool
 }{
 	ID:        whereHelperstring{field: "\"views\".\"id\""},
 	CreatedAt: whereHelpertime_Time{field: "\"views\".\"created_at\""},
@@ -82,6 +113,7 @@ var ViewWhere = struct {
 	UserID:    whereHelperstring{field: "\"views\".\"user_id\""},
 	VideoID:   whereHelperstring{field: "\"views\".\"video_id\""},
 	Progress:  whereHelperint64{field: "\"views\".\"progress\""},
+	Hidden:    whereHelpernull_Bool{field: "\"views\".\"hidden\""},
 }
 
 // ViewRels is where relationship names are stored.
@@ -122,9 +154,9 @@ func (r *viewR) GetUser() *User {
 type viewL struct{}
 
 var (
-	viewAllColumns            = []string{"id", "created_at", "updated_at", "user_id", "video_id", "progress"}
+	viewAllColumns            = []string{"id", "created_at", "updated_at", "user_id", "video_id", "progress", "hidden"}
 	viewColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "user_id", "video_id", "progress"}
-	viewColumnsWithDefault    = []string{}
+	viewColumnsWithDefault    = []string{"hidden"}
 	viewPrimaryKeyColumns     = []string{"id"}
 	viewGeneratedColumns      = []string{}
 )

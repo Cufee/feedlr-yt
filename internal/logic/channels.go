@@ -79,13 +79,16 @@ func GetChannelPageProps(ctx context.Context, db channelPageClient, userID, chan
 			videoIds = append(videoIds, v.ID)
 		}
 
-		progress, err := GetUserVideoProgress(ctx, db, userID, videoIds...)
+		views, err := GetUserViews(ctx, db, userID, videoIds...)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get user progress")
 		}
 
 		for i, v := range props.Channel.Videos {
-			v.Progress = progress[v.ID]
+			if view, ok := views[v.ID]; ok {
+				v.Hidden = view.Hidden.Bool
+				v.Progress = int(view.Progress)
+			}
 			props.Channel.Videos[i] = v
 		}
 	}

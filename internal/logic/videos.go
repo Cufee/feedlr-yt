@@ -17,16 +17,13 @@ import (
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/friendsofgo/errors"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/volatiletech/null/v8"
 )
 
 /*
 Returns a list of channel props with videos for all user subscriptions
 */
-func GetUserVideosProps(ctx context.Context, db interface {
-	database.SubscriptionsClient
-	database.ChannelsClient
-	database.ViewsClient
-}, userId string) (*types.UserVideoFeedProps, error) {
+func GetUserVideosProps(ctx context.Context, db database.Client, userId string) (*types.UserVideoFeedProps, error) {
 	// Get channels and convert them to WithVideo props
 	channels, err := GetUserSubscribedChannels(ctx, db, userId)
 	if err != nil {
@@ -51,14 +48,19 @@ func GetUserVideosProps(ctx context.Context, db interface {
 		videoIds[i] = v.ID
 	}
 
-	progress, err := GetUserVideoProgress(ctx, db, userId, videoIds...)
+	views, err := GetUserViews(ctx, db, userId, videoIds...)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetUserSubscriptionsProps.GetCompleteUserProgress failed to get user progress")
 	}
 
 	var feed types.UserVideoFeedProps
 	for _, video := range allVideos {
-		video.Progress = progress[video.ID]
+		if v, ok := views[video.ID]; ok {
+			if v.Hidden.Bool {
+				continue
+			}
+			video.Progress = int(v.Progress)
+		}
 		feed.Videos = append(feed.Videos, video)
 	}
 
@@ -186,11 +188,7 @@ type GetPlayerOptions struct {
 	WithSegments bool
 }
 
-func GetPlayerPropsWithOpts(ctx context.Context, db interface {
-	database.ViewsClient
-	database.VideosClient
-	database.ChannelsClient
-}, userId, videoId string, opts ...GetPlayerOptions) (types.VideoPlayerProps, error) {
+func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, videoId string, opts ...GetPlayerOptions) (types.VideoPlayerProps, error) {
 	var options GetPlayerOptions
 	if len(opts) > 0 {
 		options = opts[0]
@@ -207,12 +205,17 @@ func GetPlayerPropsWithOpts(ctx context.Context, db interface {
 	}
 
 	if options.WithProgress {
-		progress, err := GetUserVideoProgress(ctx, db, userId, videoId)
+		views, err := GetUserViews(ctx, db, userId, videoId)
 		if err != nil && !database.IsErrNotFound(err) {
 			return types.VideoPlayerProps{}, errors.Wrap(err, "GetPlayerPropsWithOpts.database.DefaultClient.GetUserVideoView failed to get user video view")
 		}
-		if progress != nil {
-			playerProps.Video.Progress = progress[videoId]
+
+		for _, view := range views {
+			if view.VideoID == videoId {
+				playerProps.Video.Hidden = view.Hidden.Bool
+				playerProps.Video.Progress = int(view.Progress)
+				break
+			}
 		}
 	}
 
@@ -232,22 +235,33 @@ func GetPlayerPropsWithOpts(ctx context.Context, db interface {
 	return playerProps, nil
 }
 
-func UpdateViewProgress(ctx context.Context, db database.ViewsClient, userId, videoId string, progress int) error {
+func UpdateView(ctx context.Context, db database.ViewsClient, userId, videoId string, progress int, hidden bool) error {
 	err := db.UpsertView(ctx, &models.View{
-		UserID:   userId,
 		VideoID:  videoId,
+		UserID:   userId,
 		Progress: int64(progress),
+		Hidden:   null.BoolFrom(hidden),
 	})
 	return err
 }
 
-func GetUserVideoProgress(ctx context.Context, db database.ViewsClient, userId string, videos ...string) (map[string]int, error) {
+func GetUserViews(ctx context.Context, db database.ViewsClient, userId string, videos ...string) (map[string]*models.View, error) {
 	views, err := db.GetUserViews(ctx, userId, videos...)
 	if err != nil {
-		if database.IsErrNotFound(err) {
-			return make(map[string]int), nil
-		}
 		return nil, errors.Wrap(err, "GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views")
+	}
+
+	viewsMap := make(map[string]*models.View)
+	for _, v := range views {
+		viewsMap[v.VideoID] = v
+	}
+	return viewsMap, nil
+}
+
+func GetUserVideoProgress(ctx context.Context, db database.ViewsClient, userId string, videos ...string) (map[string]int, error) {
+	views, err := GetUserViews(ctx, db, userId, videos...)
+	if err != nil {
+		return nil, err
 	}
 
 	progress := make(map[string]int)

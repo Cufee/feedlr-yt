@@ -20,10 +20,11 @@ var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 	}
 
 	video := ctx.Params("id")
+	hidden := ctx.Query("hidden") == "true"
 	volume, _ := strconv.Atoi(ctx.Query("volume"))
 	progress, _ := strconv.Atoi(ctx.Query("progress"))
 
-	err := logic.UpdateViewProgress(ctx.Context(), ctx.Database(), userID, video, progress)
+	err := logic.UpdateView(ctx.Context(), ctx.Database(), userID, video, progress, hidden)
 	if err != nil {
 		return nil, err
 	}

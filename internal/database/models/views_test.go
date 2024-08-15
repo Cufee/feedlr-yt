@@ -805,7 +805,7 @@ func testViewsSelect(t *testing.T) {
 }
 
 var (
-	viewDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `UserID`: `TEXT`, `VideoID`: `TEXT`, `Progress`: `INTEGER`}
+	viewDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `UserID`: `TEXT`, `VideoID`: `TEXT`, `Progress`: `INTEGER`, `Hidden`: `BOOLEAN`}
 	_           = bytes.MinRead
 )
 

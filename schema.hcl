@@ -15,7 +15,7 @@ table "channels" {
   column "updated_at" {
     null = false
     type = date
-  } 
+  }
   primary_key {
     columns = [column.id]
   }
@@ -48,7 +48,7 @@ table "videos" {
   column "updated_at" {
     null = false
     type = date
-  } 
+  }
   primary_key {
     columns = [column.id]
   }
@@ -113,7 +113,7 @@ table "views" {
   column "updated_at" {
     null = false
     type = date
-  } 
+  }
   primary_key {
     columns = [column.id]
   }
@@ -130,6 +130,11 @@ table "views" {
     null = false
     type = integer
   }
+  column "hidden" {
+    null = true
+    type = boolean
+    default = false
+  }
 
   foreign_key "views_user_id_fkey" {
     columns = [ column.user_id ]
@@ -141,12 +146,18 @@ table "views" {
     ref_columns = [ table.videos.column.id ]
   }
 
-  index "idx_viewsuser_id" {
+  index "idx_views_user_id" {
     columns = [ column.user_id]
+  }
+  index "idx_views_user_id_hidden" {
+    columns = [ column.user_id, column.hidden]
   }
   index "idx_views_video_id_user_id" {
     columns = [  column.video_id, column.user_id ]
     unique = true
+  }
+  index "idx_views_video_id_user_id_hidden" {
+    columns = [  column.video_id, column.user_id, column.hidden ]
   }
 }
 
@@ -164,7 +175,7 @@ table "users" {
   column "updated_at" {
     null = false
     type = date
-  } 
+  }
   primary_key {
     columns = [column.id]
   }
@@ -193,7 +204,7 @@ table "passkeys" {
   column "updated_at" {
     null = false
     type = date
-  } 
+  }
   primary_key {
     columns = [column.id]
   }
@@ -231,7 +242,7 @@ table "sessions" {
   column "updated_at" {
     null = false
     type = date
-  } 
+  }
   primary_key {
     columns = [column.id]
   }
@@ -247,11 +258,11 @@ table "sessions" {
   column "expires_at" {
     null = false
     type = date
-  } 
+  }
   column "last_used" {
     null = false
     type = date
-  } 
+  }
   column "deleted" {
     null = false
     type = boolean
@@ -289,7 +300,7 @@ table "settings" {
   column "updated_at" {
     null = false
     type = date
-  } 
+  }
   primary_key {
     columns = [column.id]
   }
@@ -332,7 +343,7 @@ table "subscriptions" {
   column "updated_at" {
     null = false
     type = date
-  } 
+  }
   primary_key {
     columns = [column.id]
   }

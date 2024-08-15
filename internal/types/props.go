@@ -77,6 +77,7 @@ type ChannelWithVideosProps struct {
 type VideoProps struct {
 	youtube.Video
 	Progress    int
+	Hidden      bool
 	Channel     ChannelProps
 	PublishedAt time.Time
 }
