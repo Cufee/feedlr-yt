@@ -42,6 +42,7 @@ func CacheChannelVideos(ctx context.Context, db database.VideosClient, channelId
 			if slice.Contains(existingIDs, video.ID) {
 				continue
 			}
+
 			publishedAt, err := time.Parse(time.RFC3339, video.PublishedAt)
 			if err != nil {
 				log.Printf("Error parsing publishedAt %v", err)

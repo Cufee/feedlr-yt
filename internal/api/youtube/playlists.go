@@ -41,12 +41,12 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 	group.SetLimit(3)
 
 	var videoDetails = make(chan *VideoDetails, 50)
-	defer close(videoDetails)
 
 	for _, item := range res.Items {
 		if slices.Contains(skipVideoIds, item.Snippet.ResourceId.VideoId) {
 			continue
 		}
+
 		group.Go(func() error {
 			if len(videoDetails) > limit+1 { // +1 just in case
 				return nil
@@ -60,17 +60,21 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 				return nil
 			}
 
+			println("good")
 			details.Title = item.Snippet.Title
 			details.ChannelID = item.Snippet.ChannelId
 			details.Description = item.Snippet.Description
 			details.PublishedAt = item.Snippet.PublishedAt
 			videoDetails <- details
+			println("return")
 			return nil
 		})
 	}
+
 	if err := group.Wait(); err != nil {
 		return nil, err
 	}
+	close(videoDetails)
 
 	var videos []Video
 	for item := range videoDetails {
