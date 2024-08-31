@@ -5,10 +5,7 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"github.com/microcosm-cc/bluemonday"
 )
-
-var policy = bluemonday.UGCPolicy()
 
 func VideoToProps(video youtube.Video, channel ChannelProps) VideoProps {
 	return VideoProps{
@@ -22,10 +19,10 @@ func VideoModelToProps(video *models.Video, channel ChannelProps) VideoProps {
 		Video: youtube.Video{
 			Type:        youtube.VideoType(video.Type),
 			ID:          video.ID,
-			Title:       policy.Sanitize(video.Title),
+			Title:       video.Title,
 			Duration:    int(video.Duration),
 			Thumbnail:   fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", video.ID),
-			Description: policy.Sanitize(video.Description),
+			Description: video.Description,
 		},
 		PublishedAt: video.PublishedAt,
 		Channel:     channel,
@@ -36,9 +33,9 @@ func ChannelModelToProps(channel *models.Channel) ChannelProps {
 	return ChannelProps{
 		Channel: youtube.Channel{
 			ID:          channel.ID,
-			Title:       policy.Sanitize(channel.Title),
+			Title:       channel.Title,
 			Thumbnail:   channel.Thumbnail,
-			Description: policy.Sanitize(channel.Description),
+			Description: channel.Description,
 		},
 		Favorite: false, // This requires an additional query to subscriptions
 	}
