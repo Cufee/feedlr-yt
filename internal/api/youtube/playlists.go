@@ -3,9 +3,9 @@ package youtube
 import (
 	"errors"
 	"sort"
-	"sync"
 
 	"golang.org/x/exp/slices"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/youtube/v3"
 )
 
@@ -32,40 +32,42 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 		limit = 3
 	}
 
-	res, err := c.service.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistId).MaxResults(50).Do()
+	res, err := c.service.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistId).MaxResults(50).Do() // https://developers.google.com/youtube/v3/docs/playlists/list#parameters
 	if err != nil {
 		return nil, errors.Join(errors.New("GetPlaylistVideos.youtube.service.PlaylistItems.List"), err)
 	}
 
-	var wg sync.WaitGroup
-	var errChan = make(chan error, len(res.Items))
-	var videoDetails = make(chan *VideoDetails, len(res.Items))
+	var group errgroup.Group
+	group.SetLimit(3)
 
+	var videoDetails = make(chan *VideoDetails, len(res.Items))
 	for _, item := range res.Items {
 		if slices.Contains(skipVideoIds, item.Snippet.ResourceId.VideoId) {
 			continue
 		}
-		wg.Add(1)
-		go func(item *youtube.PlaylistItem) {
-			defer wg.Done()
+		group.Go(func() error {
+			if len(videoDetails) > limit+1 { // +1 just in case
+				return nil
+			}
+
 			details, err := c.GetVideoPlayerDetails(item.Snippet.ResourceId.VideoId)
 			if err != nil {
-				errChan <- errors.Join(errors.New("GetPlaylistVideos.youtube.GetVideoPlayerDetails"), err)
-				return
+				return err
 			}
+			if details == nil || details.Type == VideoTypeShort {
+				return nil
+			}
+
 			details.Title = item.Snippet.Title
 			details.ChannelID = item.Snippet.ChannelId
 			details.Description = item.Snippet.Description
 			details.PublishedAt = item.Snippet.PublishedAt
 			videoDetails <- details
-		}(item)
+			return nil
+		})
 	}
-	wg.Wait()
-	close(errChan)
-	close(videoDetails)
-
-	if len(errChan) > 0 {
-		return nil, <-errChan
+	if err := group.Wait(); err != nil {
+		return nil, err
 	}
 
 	var videos []Video
