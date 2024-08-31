@@ -105,7 +105,6 @@ func GetRecentVideosProps(ctx context.Context, db database.Client, ppd *piped.Cl
 		if v, ok := progress[b.ID]; ok {
 			bupd = v.UpdatedAt
 		}
-
 		return bupd.Compare(aupd)
 	})
 
