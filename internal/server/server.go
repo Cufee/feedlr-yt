@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/cufee/feedlr-yt/internal/api/piped"
 	"github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
@@ -23,7 +24,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, port ...int) func() error {
+func New(db database.Client, piped *piped.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, port ...int) func() error {
 	var portString string
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
@@ -31,7 +32,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		portString = utils.MustGetEnv("PORT")
 	}
 
-	newCtx := handler.NewBuilder(db, ses, policy, wa)
+	newCtx := handler.NewBuilder(db, piped, ses, policy, wa)
 	toFiber := func(s tpot.Servable[*handler.Context]) func(*fiber.Ctx) error {
 		return func(c *fiber.Ctx) error {
 			ctx, ok := c.Locals(handler.ContextKeyCustomCtx).(*handler.Context)

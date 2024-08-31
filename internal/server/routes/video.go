@@ -25,7 +25,7 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 		c, cancel := context.WithTimeout(context.Background(), time.Second*15)
 		defer cancel()
 
-		err := logic.UpdateChannelVideoCache(c, ctx.Database(), id)
+		err := logic.UpdateChannelVideoCache(c, ctx.Database(), ctx.Piped, id)
 		if err != nil {
 			log.Printf("VideoHandler.UpdateVideoCache error: %v\n", err)
 		}
@@ -43,7 +43,7 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 		pctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
 		defer cancel()
 
-		props, err := logic.GetPlayerPropsWithOpts(pctx, ctx.Database(), uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: settings.SponsorBlock.SponsorBlockEnabled})
+		props, err := logic.GetPlayerPropsWithOpts(pctx, ctx.Database(), ctx.Piped, uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: settings.SponsorBlock.SponsorBlockEnabled})
 		if err != nil {
 			log.Printf("GetVideoByID: %v", err)
 			return nil, nil, ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&feedlr_error=failed to find video", video), http.StatusTemporaryRedirect)
@@ -63,7 +63,7 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 	}
 
 	// No auth, do not check progress
-	props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), "", video, logic.GetPlayerOptions{WithProgress: false, WithSegments: true})
+	props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), ctx.Piped, "", video, logic.GetPlayerOptions{WithProgress: false, WithSegments: true})
 	if err != nil {
 		log.Printf("GetVideoByID: %v", err)
 		return nil, nil, ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&feedlr_error=failed to find video", video), http.StatusTemporaryRedirect)

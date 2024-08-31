@@ -10,8 +10,9 @@ import (
 
 	"strings"
 
+	"github.com/cufee/feedlr-yt/internal/api/piped"
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
-	"github.com/cufee/feedlr-yt/internal/api/youtube"
+
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/types"
@@ -70,10 +71,7 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 /*
 Returns a list of channel props with videos for all user subscriptions
 */
-func GetRecentVideosProps(ctx context.Context, db interface {
-	database.VideosClient
-	database.ViewsClient
-}, userId string) (*types.UserVideoFeedProps, error) {
+func GetRecentVideosProps(ctx context.Context, db database.Client, ppd *piped.Client, userId string) (*types.UserVideoFeedProps, error) {
 	views, err := db.GetRecentUserViews(ctx, userId, 24)
 	if err != nil && !database.IsErrNotFound(err) {
 		return nil, errors.Wrap(err, "GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views")
@@ -94,14 +92,21 @@ func GetRecentVideosProps(ctx context.Context, db interface {
 	var feed types.UserVideoFeedProps
 	for _, video := range videos {
 		v := types.VideoModelToProps(video, types.ChannelModelToProps(video.R.Channel))
-		v.Progress = int(progress[video.ID].Progress)
-		if v.Progress == 0 {
-			v.Progress = 1
+		if view, ok := progress[video.ID]; ok {
+			v.Progress = int(view.Progress)
 		}
 		feed.Videos = append(feed.Videos, v)
 	}
 	slices.SortFunc(feed.Videos, func(a, b types.VideoProps) int {
-		return progress[b.ID].UpdatedAt.Compare(progress[a.ID].UpdatedAt)
+		var aupd, bupd time.Time
+		if v, ok := progress[a.ID]; ok {
+			aupd = v.UpdatedAt
+		}
+		if v, ok := progress[b.ID]; ok {
+			bupd = v.UpdatedAt
+		}
+
+		return bupd.Compare(aupd)
 	})
 
 	return &feed, nil
@@ -135,10 +140,7 @@ func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int
 	return trimVideoList(limit, 12, props), nil
 }
 
-func GetVideoByID(ctx context.Context, db interface {
-	database.VideosClient
-	database.ChannelsClient
-}, id string) (types.VideoProps, error) {
+func GetVideoByID(ctx context.Context, db database.Client, ppd *piped.Client, id string) (types.VideoProps, error) {
 	vid, err := db.GetVideoByID(ctx, id, database.Video{}.WithChannel())
 	if err != nil && !database.IsErrNotFound(err) {
 		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.database.DefaultClient.GetVideoByID failed to get video")
@@ -147,12 +149,12 @@ func GetVideoByID(ctx context.Context, db interface {
 		return types.VideoModelToProps(vid, types.ChannelModelToProps(vid.R.Channel)), nil
 	}
 
-	details, err := youtube.DefaultClient.GetVideoDetailsByID(id)
+	details, err := ppd.Video(ctx, id)
 	if err != nil {
 		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details")
 	}
 
-	channel, _, err := CacheChannel(ctx, db, details.ChannelID)
+	channel, _, err := CacheChannel(ctx, db, ppd, details.ChannelID())
 	if err != nil {
 		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.CacheChannel failed to cache channel")
 	}
@@ -163,22 +165,31 @@ func GetVideoByID(ctx context.Context, db interface {
 		_ = UpdateVideoCache(ctx, db, details)
 	}()
 
-	props := types.VideoProps{Video: details.Video, Channel: types.ChannelModelToProps(channel)}
+	props := types.VideoProps{
+		ID:          details.ID,
+		Title:       details.Title,
+		Description: details.Description,
+		Thumbnail:   details.Thumbnail,
+		LiveStream:  details.LiveStream,
+		Type:        details.Type,
+		Duration:    details.Duration,
+		PublishedAt: details.PublishDate(),
+		Channel:     types.ChannelModelToProps(channel),
+	}
 	return props, nil
 
 }
 
-func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *youtube.VideoDetails) error {
-	published, _ := time.Parse(time.RFC3339, video.PublishedAt)
+func UpdateVideoCache(ctx context.Context, db database.VideosClient, video piped.Video) error {
 	err := db.UpsertVideos(ctx, &models.Video{
 		ID:          video.ID,
-		ChannelID:   video.ChannelID,
+		ChannelID:   video.ChannelID(),
 		Type:        string(video.Type),
-		PublishedAt: published,
+		PublishedAt: video.PublishDate(),
 		Title:       video.Title,
 		Description: video.Description,
 		Duration:    int64(video.Duration),
-		Private:     video.Type == youtube.VideoTypePrivate,
+		Private:     video.Visibility == "private",
 	})
 	return err
 }
@@ -188,13 +199,13 @@ type GetPlayerOptions struct {
 	WithSegments bool
 }
 
-func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, videoId string, opts ...GetPlayerOptions) (types.VideoPlayerProps, error) {
+func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, ppd *piped.Client, userId, videoId string, opts ...GetPlayerOptions) (types.VideoPlayerProps, error) {
 	var options GetPlayerOptions
 	if len(opts) > 0 {
 		options = opts[0]
 	}
 
-	video, err := GetVideoByID(ctx, db, videoId)
+	video, err := GetVideoByID(ctx, db, ppd, videoId)
 	if err != nil {
 		return types.VideoPlayerProps{}, errors.Wrap(err, "GetPlayerPropsWithOpts.GetVideoByID failed to get video")
 	}

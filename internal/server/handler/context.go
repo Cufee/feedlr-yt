@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/cufee/feedlr-yt/internal/api/piped"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/tpot"
@@ -27,9 +28,10 @@ var _ tpot.Context = &Context{}
 type Context struct {
 	*fiber.Ctx
 
-	c   context.Context
-	db  database.Client
-	ses *sessions.SessionClient
+	c     context.Context
+	db    database.Client
+	Piped *piped.Client
+	ses   *sessions.SessionClient
 
 	w http.ResponseWriter
 	r *http.Request
@@ -56,10 +58,11 @@ func (c *Context) Status(status int) *Context {
 	return c
 }
 
-func NewBuilder(db database.Client, ses *sessions.SessionClient, policy *bluemonday.Policy, wa *webauthn.WebAuthn) func(*fiber.Ctx) tpot.ContextBuilder[*Context] {
+func NewBuilder(db database.Client, piped *piped.Client, ses *sessions.SessionClient, policy *bluemonday.Policy, wa *webauthn.WebAuthn) func(*fiber.Ctx) tpot.ContextBuilder[*Context] {
 	return func(c *fiber.Ctx) tpot.ContextBuilder[*Context] {
 		return func(w http.ResponseWriter, r *http.Request) *Context {
 			return &Context{
+				Piped:  piped,
 				Ctx:    c,
 				c:      r.Context(),
 				db:     db,

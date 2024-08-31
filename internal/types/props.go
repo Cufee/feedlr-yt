@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
-	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/goccy/go-json"
 )
@@ -43,12 +42,16 @@ type NavbarProps struct {
 }
 
 type ChannelProps struct {
-	youtube.Channel
+	ID          string
+	Name        string
+	Description string
+	Thumbnail   string
+
 	Favorite bool
 }
 
 type ChannelSearchResultProps struct {
-	youtube.Channel
+	ChannelProps
 	Subscribed bool
 }
 
@@ -75,11 +78,18 @@ type ChannelWithVideosProps struct {
 }
 
 type VideoProps struct {
-	youtube.Video
-	Progress    int
-	Hidden      bool
-	Channel     ChannelProps
+	ID          string
+	Title       string
+	Description string
+	Thumbnail   string
+	LiveStream  bool
+	Type        string
+	Duration    int
 	PublishedAt time.Time
+
+	Progress int
+	Hidden   bool
+	Channel  ChannelProps
 }
 
 type SegmentProps struct {

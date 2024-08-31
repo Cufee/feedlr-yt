@@ -4,14 +4,14 @@ import (
 	"context"
 
 	"slices"
-	"sync"
 
-	"github.com/cufee/feedlr-yt/internal/api/youtube"
+	"github.com/cufee/feedlr-yt/internal/api/piped"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/pkg/errors"
 	"github.com/ssoroka/slice"
+	"golang.org/x/sync/errgroup"
 )
 
 /*
@@ -34,14 +34,8 @@ func GetUserSubscribedChannels(ctx context.Context, db database.SubscriptionsCli
 	return props, nil
 }
 
-type channelPageClient interface {
-	database.ChannelsClient
-	database.VideosClient
-	database.ViewsClient
-}
-
-func GetChannelPageProps(ctx context.Context, db channelPageClient, userID, channelID string) (*types.ChannelPageProps, error) {
-	channel, cached, err := CacheChannel(ctx, db, channelID)
+func GetChannelPageProps(ctx context.Context, db database.Client, ppd *piped.Client, userID, channelID string) (*types.ChannelPageProps, error) {
+	channel, cached, err := CacheChannel(ctx, db, ppd, channelID)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +53,7 @@ func GetChannelPageProps(ctx context.Context, db channelPageClient, userID, chan
 	}
 
 	if len(videos) == 0 && !cached {
-		inserted, err := CacheChannelVideos(ctx, db, channelID)
+		inserted, err := CacheChannelVideos(ctx, db, ppd, channelID)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to cache channel videos")
 		}
@@ -98,50 +92,53 @@ func GetChannelPageProps(ctx context.Context, db channelPageClient, userID, chan
 
 func SearchChannels(
 	ctx context.Context,
-	db interface {
-		database.ChannelsClient
-		database.SubscriptionsClient
-	},
+	db database.Client,
+	ppd *piped.Client,
 	userID string,
 	query string,
 	limit int,
 ) ([]types.ChannelSearchResultProps, error) {
-	// The search is a lot slower than the subscriptions query, so we run them in parallel
-	var wg sync.WaitGroup
+	var group errgroup.Group
 
-	wg.Add(1)
-	var remoteChannels []youtube.Channel
-	var remoteChannelsErr error
-	go func(query string, limit int) {
-		defer wg.Done()
-		remoteChannels, remoteChannelsErr = youtube.DefaultClient.SearchChannels(query, limit)
-	}(query, limit)
-
-	wg.Add(1)
+	var remoteChannels []piped.SearchItem
 	var subscribedChannels []string
-	var subscribedChannelsErr error
-	go func(userID string) {
-		defer wg.Done()
+
+	group.Go(func() error {
+		channels, err := ppd.SearchChannels(ctx, query)
+		if err != nil {
+			return err
+		}
+		remoteChannels = channels
+		return nil
+
+	})
+
+	group.Go(func() error {
 		subscriptions, err := db.UserSubscriptions(ctx, userID)
-		subscribedChannelsErr = err
+		if err != nil {
+			return err
+		}
 		for _, c := range subscriptions {
 			subscribedChannels = append(subscribedChannels, c.ChannelID)
 		}
-	}(userID)
+		return nil
+	})
 
-	wg.Wait()
-	if remoteChannelsErr != nil {
-		return nil, errors.Wrap(remoteChannelsErr, "failed to search channels")
-	}
-	if subscribedChannelsErr != nil {
-		return nil, errors.Wrap(subscribedChannelsErr, "failed to get user subscriptions")
+	err := group.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	var props []types.ChannelSearchResultProps
 	for _, c := range remoteChannels {
 		props = append(props, types.ChannelSearchResultProps{
-			Subscribed: slice.Contains(subscribedChannels, c.ID),
-			Channel:    c,
+			ChannelProps: types.ChannelProps{
+				ID:          c.ChannelID(),
+				Name:        c.Name,
+				Description: c.Description,
+				Thumbnail:   c.Thumbnail,
+			},
+			Subscribed: slice.Contains(subscribedChannels, c.ChannelID()),
 		})
 	}
 

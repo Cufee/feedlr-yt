@@ -15,7 +15,7 @@ type Playlist struct {
 	RelatedStreams []Stream `json:"relatedStreams"`
 }
 
-func (pl Playlist) NextPage(ctx context.Context, client *client) (Playlist, error) {
+func (pl Playlist) NextPage(ctx context.Context, client *Client) (Playlist, error) {
 	if pl.NextPageSlug == "" {
 		return Playlist{}, errors.New("nextpage is blank")
 	}
@@ -40,7 +40,7 @@ func (pl Playlist) NextPage(ctx context.Context, client *client) (Playlist, erro
 	return data, nil
 }
 
-func (c *client) Playlist(ctx context.Context, id string) (Playlist, error) {
+func (c *Client) Playlist(ctx context.Context, id string) (Playlist, error) {
 	req, err := http.NewRequest("GET", c.apiURL.JoinPath(fmt.Sprintf("/playlists/%s", id)).String(), nil)
 	if err != nil {
 		return Playlist{}, err

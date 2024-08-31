@@ -19,7 +19,7 @@ type Channel struct {
 	Verified       bool     `json:"verified"`
 }
 
-func (ch Channel) NextPage(ctx context.Context, client *client) (Channel, error) {
+func (ch Channel) NextPage(ctx context.Context, client *Client) (Channel, error) {
 	if ch.NextPageSlug == "" {
 		return Channel{}, errors.New("nextpage is blank")
 	}
@@ -44,7 +44,7 @@ func (ch Channel) NextPage(ctx context.Context, client *client) (Channel, error)
 	return data, nil
 }
 
-func (c *client) Channel(ctx context.Context, id string) (Channel, error) {
+func (c *Client) Channel(ctx context.Context, id string) (Channel, error) {
 	req, err := http.NewRequest("GET", c.apiURL.JoinPath(fmt.Sprintf("/channel/%s", id)).String(), nil)
 	if err != nil {
 		return Channel{}, err

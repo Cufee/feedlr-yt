@@ -38,9 +38,12 @@ var RegistrationBegin brewed.Endpoint[*handler.Context] = func(ctx *handler.Cont
 	}
 
 	userStore := auth.NewStore(ctx.Database())
-	_, err = userStore.FindUser(ctx.Context(), username)
-	if !database.IsErrNotFound(err) {
-		return ctx.Status(http.StatusBadRequest).SendString("Username already taken")
+	existingUser, err := userStore.FindUser(ctx.Context(), username)
+	if err != nil && !database.IsErrNotFound(err) {
+		return ctx.Status(http.StatusInternalServerError).SendString("Failed to register")
+	}
+	if existingUser.User != nil {
+		return ctx.Status(http.StatusBadRequest).SendString("Username not available")
 	}
 
 	user, err := userStore.NewUser(ctx.Context(), cuid.New(), username)

@@ -41,7 +41,7 @@ var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 		return nil, ctx.SendStatus(http.StatusOK)
 	}
 
-	props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), userID, video, logic.GetPlayerOptions{WithProgress: true})
+	props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), ctx.Piped, userID, video, logic.GetPlayerOptions{WithProgress: true})
 	if err != nil {
 		return nil, err
 	}

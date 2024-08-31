@@ -2,11 +2,12 @@ package background
 
 import (
 	"context"
-	"sync"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/api/piped"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic"
+	"golang.org/x/sync/errgroup"
 )
 
 type databaseClient interface {
@@ -14,7 +15,7 @@ type databaseClient interface {
 	database.VideosClient
 }
 
-func CacheAllChannelsWithVideos(db databaseClient) error {
+func CacheAllChannelsWithVideos(db databaseClient, piped *piped.Client) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
@@ -23,28 +24,16 @@ func CacheAllChannelsWithVideos(db databaseClient) error {
 		return err
 	}
 
-	var wg sync.WaitGroup
-	var limiter = make(chan int, 3)
-	var errChan = make(chan error, len(channels))
+	var group errgroup.Group
+	group.SetLimit(10)
+
 	for _, c := range channels {
-		wg.Add(1)
-		go func(id string) {
-			defer wg.Done()
-
-			limiter <- 1
-			defer func() { <-limiter }()
-
-			_, err := logic.CacheChannelVideos(context.Background(), db, id)
-			if err != nil {
-				errChan <- err
-			}
-		}(c.ID)
+		id := c.ID
+		group.Go(func() error {
+			_, err := logic.CacheChannelVideos(context.Background(), db, piped, id)
+			return err
+		})
 	}
-	wg.Wait()
-	close(errChan)
 
-	if len(errChan) > 0 {
-		return <-errChan
-	}
-	return nil
+	return group.Wait()
 }

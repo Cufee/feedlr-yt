@@ -20,7 +20,7 @@ func durationToString(videoDuration int) string {
 templ Video(props types.VideoPlayerProps) {
 	<head>
 		<title>Feedlr - { props.Video.Title }</title>
-		<meta name="author" content={ props.Video.Channel.Title }/>
+		<meta name="author" content={ props.Video.Channel.Name }/>
 		<meta property="og:title" content={ props.Video.Title }/>
 		<meta property="og:type" content="video.episode"/>
 		<meta property="og:description" content={ props.Video.Description }/>

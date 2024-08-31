@@ -2,6 +2,7 @@ package feed
 
 import (
 	"fmt"
+	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
@@ -21,8 +22,8 @@ templ VideoFeed(videos []types.VideoProps, returnUrl string, showProgress, withP
 					</span>
 					<div class="flex flex-col">
 						if withChannelName {
-							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="overflow-hidden text-gray-500 truncate text-md w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Title }>
-								{ video.Channel.Title }
+							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="overflow-hidden text-gray-500 truncate text-md w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Name }>
+								{ video.Channel.Name }
 							</a>
 						}
 						<span class="text-sm text-gray-500 w-fit">
@@ -45,10 +46,10 @@ templ VideoCarousel(videos []types.VideoProps) {
 	</div>
 }
 
-templ VideoThumbnail(videoID, alt string, hidden bool) {
-	<div class={ "relative", "z-0", "w-full", "h-full", "overflow-hidden", "pointer-events-none", templ.KV("blur-xl", hidden) }>
-		<object tabindex="-1" class="absolute object-cover w-full h-full transition-all duration-500 pointer-events-none bg-base-100 -z-10 group-hover:scale-110" data={ fmt.Sprintf("https://i.ytimg.com/vi/%s/sddefault.jpg", videoID) } type="image/jpeg">
-			<img class="object-cover w-full h-full transition-all duration-500 pointer-events-none bg-base-100 -z-10 group-hover:scale-110" src={ fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", videoID) } alt={ alt }/>
+templ VideoThumbnail(video types.VideoProps) {
+	<div class={ "relative", "z-0", "w-full", "h-full", "overflow-hidden", "pointer-events-none", templ.KV("blur-xl", video.Hidden) }>
+		<object tabindex="-1" class="absolute object-cover w-full h-full transition-all duration-500 pointer-events-none bg-base-100 -z-10 group-hover:scale-110" data={ logic.FirstString(video.Thumbnail, fmt.Sprintf("https://i.ytimg.com/vi/%s/sddefault.jpg", video.ID)) } type="image/jpeg">
+			<img class="object-cover w-full h-full transition-all duration-500 pointer-events-none bg-base-100 -z-10 group-hover:scale-110" src={ logic.FirstString(video.Thumbnail, fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", video.ID)) } alt={ video.Title }/>
 		</object>
 	</div>
 }
@@ -98,7 +99,7 @@ templ VideoCard(video types.VideoProps, showProgress, progressActions bool) {
 				{ secondsToDurationString(video.Duration) }
 			}
 		</div>
-		@VideoThumbnail(video.ID, video.Title, video.Hidden)
+		@VideoThumbnail(video)
 	</div>
 }
 

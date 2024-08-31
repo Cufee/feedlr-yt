@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cufee/feedlr-yt/internal/api/youtube"
+	"github.com/cufee/feedlr-yt/internal/api/piped"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic/background"
 	"github.com/cufee/feedlr-yt/internal/server"
@@ -24,14 +24,17 @@ import (
 var assetsFs embed.FS
 
 func main() {
-	youtube.DefaultClient = youtube.NewClient(os.Getenv("YOUTUBE_API_KEY"))
+	pipedClient, err := piped.NewClient(os.Getenv("PIPED_API_URL"))
+	if err != nil {
+		panic(err)
+	}
 
 	db, err := database.NewSQLiteClient(os.Getenv("DATABASE_PATH"))
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = background.StartCronTasks(db)
+	_, err = background.StartCronTasks(db, pipedClient)
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +44,7 @@ func main() {
 		panic(err)
 	}
 
-	host := os.Getenv("TRAEFIK_HOST")
+	host := os.Getenv("COOKIE_DOMAIN")
 	origin := fmt.Sprintf("https://%s", host)
 	if strings.Contains(origin, "localhost:") {
 		origin = fmt.Sprintf("http://%s", host)
@@ -68,6 +71,6 @@ func main() {
 		panic(err)
 	}
 
-	start := server.New(db, ses, assetsFs, bluemonday.StrictPolicy(), wa)
+	start := server.New(db, pipedClient, ses, assetsFs, bluemonday.StrictPolicy(), wa)
 	start()
 }

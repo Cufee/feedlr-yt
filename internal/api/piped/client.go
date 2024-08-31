@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-type client struct {
+type Client struct {
 	apiURL *url.URL
 	http   *http.Client
 }
 
-func NewClient(apiURL string) (*client, error) {
+func NewClient(apiURL string) (*Client, error) {
 	c := &http.Client{
 		Timeout: time.Second * 5,
 	}
@@ -20,7 +20,7 @@ func NewClient(apiURL string) (*client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &client{
+	return &Client{
 		apiURL: u,
 		http:   c,
 	}, nil

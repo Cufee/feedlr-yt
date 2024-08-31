@@ -77,6 +77,11 @@ table "videos" {
     null = false
     type = text
   }
+  column "thumbnail" {
+    null = false
+    type = text
+    default = ""
+  }
 
   column "channel_id" {
     null = false

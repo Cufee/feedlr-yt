@@ -19,7 +19,7 @@ var Recent brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.La
 		return nil, nil, nil
 	}
 
-	props, err := logic.GetRecentVideosProps(ctx.Context(), ctx.Database(), userID)
+	props, err := logic.GetRecentVideosProps(ctx.Context(), ctx.Database(), ctx.Piped, userID)
 	if err != nil {
 		ctx.Err(err)
 		return nil, nil, nil
