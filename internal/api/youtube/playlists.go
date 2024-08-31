@@ -32,7 +32,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 		limit = 3
 	}
 
-	res, err := c.service.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistId).MaxResults(min(50, int64(limit*10))).Do()
+	res, err := c.service.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistId).MaxResults(36).Do()
 	if err != nil {
 		return nil, errors.Join(errors.New("GetPlaylistVideos.youtube.service.PlaylistItems.List"), err)
 	}
