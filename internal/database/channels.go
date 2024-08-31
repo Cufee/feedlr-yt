@@ -36,20 +36,22 @@ func (s channelQuerySlice) opts() channelQuery {
 	return o
 }
 
-type Channel struct{}
+var Channel channel
 
-func (Channel) WithVideos(limit int) ChannelQuery {
+type channel struct{}
+
+func (channel) WithVideos(limit int) ChannelQuery {
 	return func(o *channelQuery) {
 		o.videosLimit = limit
 		o.withVideos = true
 	}
 }
-func (Channel) WithSubscriptions() ChannelQuery {
+func (channel) WithSubscriptions() ChannelQuery {
 	return func(o *channelQuery) {
 		o.withSubscriptions = true
 	}
 }
-func (Channel) ID(ids ...string) ChannelQuery {
+func (channel) ID(ids ...string) ChannelQuery {
 	return func(o *channelQuery) {
 		o.id = append(o.id, ids...)
 	}

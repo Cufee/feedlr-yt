@@ -86,7 +86,7 @@ func GetRecentVideosProps(ctx context.Context, db interface {
 		progress[v.VideoID] = v
 	}
 
-	videos, err := db.FindVideos(ctx, database.Video{}.ID(videoIDs...), database.Video{}.WithChannel())
+	videos, err := db.FindVideos(ctx, database.Video.ID(videoIDs...), database.Video.WithChannel())
 	if err != nil {
 		return nil, errors.Wrap(err, "db#FindVideos")
 	}
@@ -115,7 +115,7 @@ func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int
 		return nil, nil
 	}
 
-	channels, err := db.GetChannels(ctx, database.Channel{}.ID(channelIds...), database.Channel{}.WithVideos(limit))
+	channels, err := db.GetChannels(ctx, database.Channel.ID(channelIds...), database.Channel.WithVideos(limit))
 	if err != nil && !database.IsErrNotFound(err) {
 		return nil, errors.Wrap(err, "GetChannelVideos.database.DefaultClient.GetVideosByChannelID failed to get videos")
 	}
@@ -139,7 +139,7 @@ func GetVideoByID(ctx context.Context, db interface {
 	database.VideosClient
 	database.ChannelsClient
 }, id string) (types.VideoProps, error) {
-	vid, err := db.GetVideoByID(ctx, id, database.Video{}.WithChannel())
+	vid, err := db.GetVideoByID(ctx, id, database.Video.WithChannel())
 	if err != nil && !database.IsErrNotFound(err) {
 		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.database.DefaultClient.GetVideoByID failed to get video")
 	}

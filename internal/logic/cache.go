@@ -28,10 +28,11 @@ func CacheChannelVideos(ctx context.Context, db database.VideosClient, channelId
 		ctx, cancel := context.WithTimeout(ctx, time.Second)
 		defer cancel()
 
-		existingVideos, err := db.FindVideos(ctx, database.Video{}.Channel(c))
+		existingVideos, err := db.FindVideos(ctx, database.Video.Channel(c))
 		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.GetVideosByChannelID"), err)
 		}
+
 		var existingIDs []string
 		for _, v := range existingVideos {
 			existingIDs = append(existingIDs, v.ID)

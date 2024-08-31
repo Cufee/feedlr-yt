@@ -40,7 +40,9 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 	var group errgroup.Group
 	group.SetLimit(3)
 
-	var videoDetails = make(chan *VideoDetails, len(res.Items))
+	var videoDetails = make(chan *VideoDetails, 50)
+	defer close(videoDetails)
+
 	for _, item := range res.Items {
 		if slices.Contains(skipVideoIds, item.Snippet.ResourceId.VideoId) {
 			continue

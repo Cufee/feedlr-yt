@@ -36,29 +36,31 @@ func (s videoQuerySlice) opts() videoQuery {
 	return q
 }
 
-type Video struct{}
+var Video video
 
-func (Video) WithChannel() VideoQuery {
+type video struct{}
+
+func (video) WithChannel() VideoQuery {
 	return func(o *videoQuery) {
 		o.withChannel = true
 	}
 }
-func (Video) Channel(id ...string) VideoQuery {
+func (video) Channel(id ...string) VideoQuery {
 	return func(o *videoQuery) {
 		o.channels = append(o.channels, toAny(id)...)
 	}
 }
-func (Video) TypeEq(types ...string) VideoQuery {
+func (video) TypeEq(types ...string) VideoQuery {
 	return func(o *videoQuery) {
 		o.typesIn = append(o.typesIn, toAny(types)...)
 	}
 }
-func (Video) TypeNot(types ...string) VideoQuery {
+func (video) TypeNot(types ...string) VideoQuery {
 	return func(o *videoQuery) {
 		o.typesNotIn = append(o.typesNotIn, toAny(types)...)
 	}
 }
-func (Video) ID(id ...string) VideoQuery {
+func (video) ID(id ...string) VideoQuery {
 	return func(o *videoQuery) {
 		o.id = append(o.id, toAny(id)...)
 	}
