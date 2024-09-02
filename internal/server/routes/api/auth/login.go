@@ -26,6 +26,7 @@ var LoginBegin brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) er
 	var form authForm
 	err := ctx.BodyParser(&form)
 	if err != nil {
+		log.Print("ctx#BodyParser error", err)
 		return ctx.Status(http.StatusBadRequest).SendString("Invalid username")
 	}
 
@@ -37,36 +38,42 @@ var LoginBegin brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) er
 	userStore := auth.NewStore(ctx.Database())
 	user, err := userStore.FindUser(ctx.Context(), username)
 	if err != nil {
+		log.Print("userStore#FindUser error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Account not found")
 	}
 
 	session, err := ctx.SessionClient().New(ctx.Context())
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("ctx#SessionClient#New error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
 	}
 
 	waoptions, wasession, err := ctx.WebAuthn().BeginLogin(user)
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("ctx#WebAuthn#BeginLogin error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
 	}
 
 	encodedSes, err := json.Marshal(wasession)
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("json#Marshal error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
 	}
 
 	session, err = session.UpdateMeta(ctx.Context(), map[string]string{"user_id": user.ID, "type": "passkey", "data": string(encodedSes)})
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("session#UpdateMeta error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
 	}
 
 	cookie, err := session.Cookie()
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("session#Cookie error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to log in")
 	}
 	ctx.Cookie(cookie)

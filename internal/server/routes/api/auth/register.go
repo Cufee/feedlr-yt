@@ -23,6 +23,7 @@ var RegistrationBegin brewed.Endpoint[*handler.Context] = func(ctx *handler.Cont
 	var form authForm
 	err := ctx.BodyParser(&form)
 	if err != nil {
+		log.Print("ctx#BodyParser error", err)
 		return ctx.Status(http.StatusBadRequest).SendString("Invalid username")
 	}
 
@@ -45,36 +46,42 @@ var RegistrationBegin brewed.Endpoint[*handler.Context] = func(ctx *handler.Cont
 
 	user, err := userStore.NewUser(ctx.Context(), cuid.New(), username)
 	if err != nil {
+		log.Print("userStore#NewUser error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to register")
 	}
 
 	session, err := ctx.SessionClient().New(ctx.Context())
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("ctx#SessionClient#New error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to register")
 	}
 
 	waoptions, wasession, err := ctx.WebAuthn().BeginRegistration(user)
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("ctx#WebAuth#BeginRegistration error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to register")
 	}
 
 	encodedSes, err := json.Marshal(wasession)
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("json$Marshal error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to register")
 	}
 
 	session, err = session.UpdateMeta(ctx.Context(), map[string]string{"user_id": user.ID, "type": "passkey", "data": string(encodedSes), "username": user.Username})
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("session#UpdateMeta error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to register")
 	}
 
 	cookie, err := session.Cookie()
 	if err != nil {
 		ctx.ClearCookie("session_id")
+		log.Print("session#Cookie error", err)
 		return ctx.Status(http.StatusInternalServerError).SendString("Failed to register")
 	}
 	ctx.Cookie(cookie)

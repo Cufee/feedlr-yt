@@ -41,7 +41,7 @@ func main() {
 		panic(err)
 	}
 
-	host := os.Getenv("TRAEFIK_HOST")
+	host := os.Getenv("COOKIE_DOMAIN")
 	origin := fmt.Sprintf("https://%s", host)
 	if strings.Contains(origin, "localhost:") {
 		origin = fmt.Sprintf("http://%s", host)
