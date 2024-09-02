@@ -108,7 +108,10 @@ func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...s
 			if details == nil || details.Type == VideoTypeShort {
 				return nil
 			}
-			videos <- details.Video
+
+			video.Type = details.Type
+			video.Duration = details.Duration
+			videos <- video
 			return nil
 		})
 	}
