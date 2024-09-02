@@ -94,7 +94,9 @@ func GetRecentVideosProps(ctx context.Context, db interface {
 	var feed types.UserVideoFeedProps
 	for _, video := range videos {
 		v := types.VideoModelToProps(video, types.ChannelModelToProps(video.R.Channel))
-		v.Progress = int(progress[video.ID].Progress)
+		if view, ok := progress[video.ID]; ok {
+			v.Progress = int(view.Progress)
+		}
 		if v.Progress == 0 {
 			v.Progress = 1
 		}
