@@ -14,13 +14,13 @@ import (
 )
 
 /*
-Saves last 3 videos for each channel to the database
+Cache last 12 videos for each channel to the database
 */
 func CacheChannelVideos(ctx context.Context, db database.VideosClient, channelIds ...string) ([]*models.Video, error) {
 	var updates []*models.Video
 
 	for _, c := range channelIds {
-		newVideos, err := youtube.DefaultClient.GetChannelVideos(c, 3)
+		recentVideos, err := youtube.DefaultClient.GetChannelVideos(c, 12)
 		if err != nil {
 			return nil, errors.Join(errors.New("CacheChannelVideos.youtube.C.GetChannelVideos"), err)
 		}
@@ -38,7 +38,7 @@ func CacheChannelVideos(ctx context.Context, db database.VideosClient, channelId
 			existingIDs = append(existingIDs, v.ID)
 		}
 
-		for _, video := range newVideos {
+		for _, video := range recentVideos {
 			if slice.Contains(existingIDs, video.ID) {
 				continue
 			}

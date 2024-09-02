@@ -94,7 +94,7 @@ func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...s
 				Thumbnail:   c.BuildVideoThumbnailURL(item.Id.VideoId),
 			}
 
-			if len(videos) > limit {
+			if limit > 0 && len(videos) > limit {
 				return nil
 			}
 
