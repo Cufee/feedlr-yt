@@ -22,5 +22,6 @@ func TestGetChannelVideos(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
 	log.Print(string(e))
 }
