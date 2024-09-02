@@ -97,13 +97,17 @@ func GetRecentVideosProps(ctx context.Context, db interface {
 		if view, ok := progress[video.ID]; ok {
 			v.Progress = int(view.Progress)
 		}
-		if v.Progress == 0 {
-			v.Progress = 1
-		}
 		feed.Videos = append(feed.Videos, v)
 	}
 	slices.SortFunc(feed.Videos, func(a, b types.VideoProps) int {
-		return progress[b.ID].UpdatedAt.Compare(progress[a.ID].UpdatedAt)
+		var au, bu time.Time
+		if v, ok := progress[a.ID]; ok {
+			au = v.UpdatedAt
+		}
+		if v, ok := progress[b.ID]; ok {
+			bu = v.UpdatedAt
+		}
+		return bu.Compare(au)
 	})
 
 	return &feed, nil
