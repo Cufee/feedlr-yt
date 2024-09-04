@@ -2,6 +2,7 @@ package background
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database"
@@ -22,6 +23,10 @@ func CacheAllChannelsWithVideos(db databaseClient) error {
 	if err != nil {
 		return err
 	}
+	if len(channels) == 0 {
+		return nil
+	}
+	log.Printf("Updating %v channels\n", len(channels))
 
 	var group errgroup.Group
 	group.SetLimit(3)
