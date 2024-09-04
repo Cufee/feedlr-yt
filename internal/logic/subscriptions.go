@@ -19,11 +19,7 @@ func SubscriptionExists(ctx context.Context, db database.SubscriptionsClient, us
 	return true, nil
 }
 
-func NewSubscription(ctx context.Context, db interface {
-	database.SubscriptionsClient
-	database.ChannelsClient
-	database.VideosClient
-}, userId, channelId string) (*types.ChannelProps, error) {
+func NewSubscription(ctx context.Context, db database.Client, userId, channelId string) (*types.ChannelProps, error) {
 	channel, _, err := CacheChannel(ctx, db, channelId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to cache channel")

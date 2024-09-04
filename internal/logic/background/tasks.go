@@ -10,12 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type databaseClient interface {
-	database.ChannelsClient
-	database.VideosClient
-}
-
-func CacheAllChannelsWithVideos(db databaseClient) error {
+func CacheAllChannelsWithVideos(db database.Client) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 

@@ -28,6 +28,9 @@ func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
 }
 
 func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ...string) ([]Video, error) {
+	if playlistId == "" {
+		return nil, errors.New("playlist id cannot be blank")
+	}
 	if limit < 1 {
 		limit = 3
 	}

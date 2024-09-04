@@ -34,13 +34,7 @@ func GetUserSubscribedChannels(ctx context.Context, db database.SubscriptionsCli
 	return props, nil
 }
 
-type channelPageClient interface {
-	database.ChannelsClient
-	database.VideosClient
-	database.ViewsClient
-}
-
-func GetChannelPageProps(ctx context.Context, db channelPageClient, userID, channelID string) (*types.ChannelPageProps, error) {
+func GetChannelPageProps(ctx context.Context, db database.Client, userID, channelID string) (*types.ChannelPageProps, error) {
 	channel, cached, err := CacheChannel(ctx, db, channelID)
 	if err != nil {
 		return nil, err
@@ -98,10 +92,7 @@ func GetChannelPageProps(ctx context.Context, db channelPageClient, userID, chan
 
 func SearchChannels(
 	ctx context.Context,
-	db interface {
-		database.ChannelsClient
-		database.SubscriptionsClient
-	},
+	db database.Client,
 	userID string,
 	query string,
 	limit int,
