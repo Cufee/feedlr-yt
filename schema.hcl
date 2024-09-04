@@ -31,6 +31,7 @@ table "channels" {
   column "thumbnail" {
     null = false
     type = text
+    default = ""
   }
 
   column "uploads_playlist_id" {
