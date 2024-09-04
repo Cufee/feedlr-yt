@@ -2,7 +2,6 @@ package youtube
 
 import (
 	"errors"
-	"sort"
 )
 
 type Channel struct {
@@ -75,12 +74,6 @@ func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...s
 	if err != nil {
 		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetPlaylistVideos"), err)
 	}
-
-	// Reverse slice to get videos in descending order
-	sort.Slice(videos, func(i, j int) bool {
-		return true
-	})
-
 	return videos, nil
 }
 

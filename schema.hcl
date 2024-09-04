@@ -32,6 +32,12 @@ table "channels" {
     null = false
     type = text
   }
+
+  column "uploads_playlist_id" {
+    null = false
+    type = text
+    default = ""
+  }
 }
 
 table "videos" {

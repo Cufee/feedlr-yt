@@ -18,7 +18,7 @@ func CacheAllChannelsWithVideos(db databaseClient) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	channels, err := db.GetChannelsWithSubscriptions(ctx)
+	channels, err := db.GetChannelsForUpdate(ctx)
 	if err != nil {
 		return err
 	}
@@ -27,7 +27,7 @@ func CacheAllChannelsWithVideos(db databaseClient) error {
 	group.SetLimit(3)
 
 	for _, c := range channels {
-		id := c.ID
+		id := c
 		group.Go(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 			defer cancel()

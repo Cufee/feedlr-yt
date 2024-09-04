@@ -91,11 +91,17 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 		return nil, false, errors.Join(errors.New("CacheChannel.youtube.C.GetChannel"), err)
 	}
 
+	uploadsPlaylist, err := youtube.DefaultClient.GetChannelUploadPlaylistID(channelID)
+	if err != nil {
+		return nil, false, errors.Join(errors.New("youtube#GetChannelUploadPlaylistID"), err)
+	}
+
 	record := &models.Channel{
-		ID:          channel.ID,
-		Title:       channel.Title,
-		Description: channel.Description,
-		Thumbnail:   channel.Thumbnail,
+		ID:                channel.ID,
+		Title:             channel.Title,
+		Description:       channel.Description,
+		Thumbnail:         channel.Thumbnail,
+		UploadsPlaylistID: uploadsPlaylist,
 	}
 
 	uctx, cancel := context.WithTimeout(ctx, time.Second)

@@ -2,8 +2,10 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/doug-martin/goqu/v9"
 	"github.com/huandu/go-sqlbuilder"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -13,7 +15,7 @@ import (
 type ChannelsClient interface {
 	GetChannel(ctx context.Context, channelId string, opts ...ChannelQuery) (*models.Channel, error)
 	GetChannels(ctx context.Context, opts ...ChannelQuery) ([]*models.Channel, error)
-	GetChannelsWithSubscriptions(ctx context.Context) ([]*models.Channel, error)
+	GetChannelsForUpdate(ctx context.Context) ([]string, error)
 	UpsertChannel(ctx context.Context, data *models.Channel) error
 }
 
@@ -109,26 +111,76 @@ func (c *sqliteClient) GetChannels(ctx context.Context, o ...ChannelQuery) ([]*m
 	return channels, nil
 }
 
-func (c *sqliteClient) GetChannelsWithSubscriptions(ctx context.Context) ([]*models.Channel, error) {
-	var subscriptions []struct {
-		ChannelID string `boil:"channel_id"`
-	}
-
-	err := models.Subscriptions(qm.GroupBy(models.SubscriptionColumns.ChannelID), qm.Select(models.SubscriptionColumns.ChannelID)).Bind(ctx, c.db, &subscriptions)
+func (c *sqliteClient) GetChannelsForUpdate(ctx context.Context) ([]string, error) {
+	subscriptions, err := models.Subscriptions(qm.GroupBy(models.SubscriptionColumns.ChannelID), qm.Select(models.SubscriptionColumns.ChannelID)).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
 
-	var ids []string
+	var channelIDs []string
 	for _, s := range subscriptions {
-		ids = append(ids, s.ChannelID)
+		channelIDs = append(channelIDs, s.ChannelID)
+	}
+	if len(channelIDs) == 0 {
+		return nil, nil
 	}
 
-	channels, err := models.Channels(models.ChannelWhere.ID.IN(ids)).All(ctx, c.db)
+	const maxVideosPerChannel uint = 5
+
+	// Define a window function to assign a row number partitioned by ChannelID and ordered by PublishedAt
+	rowNumber := goqu.L("ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ? DESC)", goqu.I(models.VideoColumns.ChannelID), goqu.I(models.VideoColumns.PublishedAt))
+
+	// Subquery to get row numbers for each video
+	subQuery := goqu.From(models.TableNames.Videos).
+		Select(
+			models.VideoColumns.ChannelID,
+			models.VideoColumns.PublishedAt,
+			rowNumber.As("row_num"),
+		).
+		Where(goqu.I(models.VideoColumns.ChannelID).In(toAny(channelIDs)...))
+
+	// Main query to filter out only the last 5 videos per ChannelID
+	query, args, err := goqu.From(subQuery.As("sub")).
+		Select(models.VideoColumns.ChannelID, models.VideoColumns.PublishedAt).
+		Where(goqu.I("row_num").Lte(maxVideosPerChannel)).
+		Order(goqu.I(models.VideoColumns.PublishedAt).Desc()).
+		ToSQL()
 	if err != nil {
 		return nil, err
 	}
-	return channels, nil
+
+	videos, err := models.Videos(qm.SQL(query, args...)).All(ctx, c.db)
+	if err != nil {
+		return nil, err
+	}
+
+	channelUploads := make(map[string][]time.Time)
+	for _, r := range videos {
+		channelUploads[r.ChannelID] = append(channelUploads[r.ChannelID], r.PublishedAt)
+	}
+
+	var toUpdate []string
+	for _, id := range channelIDs {
+		uploads := channelUploads[id]
+		if len(uploads) < 3 {
+			toUpdate = append(toUpdate, id)
+			continue
+		}
+
+		// Calculate the average frequency of uploads
+		var total float64
+		for i := 0; i < len(uploads)-1; i++ {
+			total += uploads[i].Sub(uploads[i+1]).Seconds()
+		}
+		averageFreq := total / float64(len(uploads)-1)
+
+		// Determine if the channel should be updated
+		if time.Since(uploads[0]).Seconds() < (averageFreq * 0.6) {
+			continue
+		}
+		toUpdate = append(toUpdate, id)
+	}
+	return toUpdate, nil
 }
 
 func (c *sqliteClient) GetChannel(ctx context.Context, channelId string, o ...ChannelQuery) (*models.Channel, error) {

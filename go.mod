@@ -27,6 +27,7 @@ require (
 )
 
 require (
+	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-webauthn/webauthn v0.11.0
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/huandu/go-sqlbuilder v1.28.1

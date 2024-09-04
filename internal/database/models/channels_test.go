@@ -875,7 +875,7 @@ func testChannelsSelect(t *testing.T) {
 }
 
 var (
-	channelDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `Title`: `TEXT`, `Description`: `TEXT`, `Thumbnail`: `TEXT`}
+	channelDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `Title`: `TEXT`, `Description`: `TEXT`, `Thumbnail`: `TEXT`, `UploadsPlaylistID`: `TEXT`}
 	_              = bytes.MinRead
 )
 

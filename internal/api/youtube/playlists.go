@@ -86,5 +86,11 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 	if len(videos) > limit {
 		videos = videos[:limit]
 	}
+
+	// Reverse slice to get videos in descending order
+	sort.Slice(videos, func(i, j int) bool {
+		return true
+	})
+
 	return videos, nil
 }
