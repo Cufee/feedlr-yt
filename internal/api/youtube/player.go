@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"os"
 	"slices"
 	"strconv"
 	"time"
@@ -145,7 +144,6 @@ type PlayerVideoDetails struct {
 }
 
 var playerURL, _ = url.Parse("https://www.youtube.com/youtubei/v1/player")
-var playerProxyURL *url.URL
 var defaultClientBodyString = `{"videoId":"","contentCheckOk":true,"racyCheckOk":true,"context":{"client":{"clientName":"WEB","clientVersion":"1.20210616.1.0","platform":"DESKTOP","clientScreen":"EMBED","clientFormFactor":"UNKNOWN_FORM_FACTOR","browserName":"Chrome"},"user":{"lockedSafetyMode":"false"},"request":{"useSsl":"true"}}}`
 var defaultClientBody map[string]any
 
@@ -155,18 +153,11 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-
-	if u := os.Getenv("YOUTUBE_PLAYER_PROXY"); u != "" {
-		playerProxyURL, err = url.Parse(u)
-		if err != nil {
-			panic(err)
-		}
-	}
 }
 
 var playerLimiter = time.NewTicker(time.Second / 15)
 
-func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
+func (c *client) GetVideoPlayerDetails(videoId string, tries ...int) (*VideoDetails, error) {
 	<-playerLimiter.C
 
 	body := make(map[string]any)
@@ -179,8 +170,9 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 	}
 
 	transport := &http.Transport{}
-	if playerProxyURL != nil {
-		transport.Proxy = http.ProxyURL(playerProxyURL)
+	proxy, hasProxy := getPlayerProxy()
+	if hasProxy {
+		transport.Proxy = http.ProxyURL(proxy.url)
 	}
 
 	client := &http.Client{
@@ -190,16 +182,36 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 
 	res, err := client.Post(playerURL.String(), "application/json", bytes.NewReader(encoded))
 	if err != nil {
-		return nil, errors.Join(errors.New("GetVideoPlayerDetails.http.Post"), err)
+		if hasProxy {
+			proxy.disableFor(time.Minute * 5)
+		}
+		if len(tries) < 1 || tries[0] < 2 {
+			return nil, errors.Join(errors.New("GetVideoPlayerDetails.http.Post"), err)
+		}
+		return c.GetVideoPlayerDetails(videoId, tries[0]-1)
 	}
 	if res == nil || res.StatusCode != 200 {
-		return nil, errors.New("GetVideoPlayerDetails.http.Post: invalid response")
+		if hasProxy {
+			proxy.disableFor(time.Minute * 5)
+		}
+		if len(tries) < 1 || tries[0] < 2 {
+			return nil, errors.New("GetVideoPlayerDetails.http.Post: invalid response")
+		}
+		return c.GetVideoPlayerDetails(videoId, tries[0]-1)
 	}
 
 	var details PlayerResponse
 	err = json.NewDecoder(res.Body).Decode(&details)
 	if err != nil {
 		return nil, errors.Join(errors.New("GetVideoPlayerDetails.json.NewDecoder.Decode"), err)
+	}
+
+	if details.PlayabilityStatus.Status == "LOGIN_REQUIRED" {
+		if !hasProxy || len(tries) < 1 || tries[0] < 1 {
+			return nil, errors.New("youtube player error: login required")
+		}
+		proxy.disableFor(time.Hour)
+		return c.GetVideoPlayerDetails(videoId, tries[0]-1)
 	}
 
 	duration, _ := strconv.Atoi(details.PlayerVideoDetails.LengthSeconds)

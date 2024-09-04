@@ -52,7 +52,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 				return nil
 			}
 
-			details, err := c.GetVideoPlayerDetails(item.Snippet.ResourceId.VideoId)
+			details, err := c.GetVideoPlayerDetails(item.Snippet.ResourceId.VideoId, 2)
 			if err != nil {
 				return err
 			}
