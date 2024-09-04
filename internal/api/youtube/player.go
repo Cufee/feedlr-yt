@@ -155,7 +155,7 @@ func init() {
 	}
 }
 
-var playerLimiter = time.NewTicker(time.Second / 15)
+var playerLimiter = time.NewTicker(time.Second / 5)
 
 func (c *client) GetVideoPlayerDetails(videoId string, tries ...int) (*VideoDetails, error) {
 	<-playerLimiter.C
