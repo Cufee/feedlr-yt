@@ -175,7 +175,7 @@ func (c *sqliteClient) GetChannelsForUpdate(ctx context.Context) ([]string, erro
 		averageFreq := total / float64(len(uploads)-1)
 
 		// Determine if the channel should be updated
-		if time.Since(uploads[0]).Seconds() < (averageFreq * 0.6) {
+		if time.Since(uploads[0]).Seconds() < (averageFreq * 0.85) {
 			continue
 		}
 		toUpdate = append(toUpdate, id)

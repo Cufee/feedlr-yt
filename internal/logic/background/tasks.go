@@ -32,7 +32,8 @@ func CacheAllChannelsWithVideos(db database.Client) error {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 			defer cancel()
 
-			_, err := logic.CacheChannelVideos(ctx, db, id)
+			videos, err := logic.CacheChannelVideos(ctx, db, id)
+			log.Printf("Updated %v videos for %s\n", len(videos), id)
 			return err
 		})
 	}
