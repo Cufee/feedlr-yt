@@ -29,6 +29,7 @@ type Channel struct {
 	Title             string    `boil:"title" json:"title" toml:"title" yaml:"title"`
 	Description       string    `boil:"description" json:"description" toml:"description" yaml:"description"`
 	Thumbnail         string    `boil:"thumbnail" json:"thumbnail" toml:"thumbnail" yaml:"thumbnail"`
+	FeedUpdatedAt     time.Time `boil:"feed_updated_at" json:"feed_updated_at" toml:"feed_updated_at" yaml:"feed_updated_at"`
 	UploadsPlaylistID string    `boil:"uploads_playlist_id" json:"uploads_playlist_id" toml:"uploads_playlist_id" yaml:"uploads_playlist_id"`
 
 	R *channelR `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -42,6 +43,7 @@ var ChannelColumns = struct {
 	Title             string
 	Description       string
 	Thumbnail         string
+	FeedUpdatedAt     string
 	UploadsPlaylistID string
 }{
 	ID:                "id",
@@ -50,6 +52,7 @@ var ChannelColumns = struct {
 	Title:             "title",
 	Description:       "description",
 	Thumbnail:         "thumbnail",
+	FeedUpdatedAt:     "feed_updated_at",
 	UploadsPlaylistID: "uploads_playlist_id",
 }
 
@@ -60,6 +63,7 @@ var ChannelTableColumns = struct {
 	Title             string
 	Description       string
 	Thumbnail         string
+	FeedUpdatedAt     string
 	UploadsPlaylistID string
 }{
 	ID:                "channels.id",
@@ -68,6 +72,7 @@ var ChannelTableColumns = struct {
 	Title:             "channels.title",
 	Description:       "channels.description",
 	Thumbnail:         "channels.thumbnail",
+	FeedUpdatedAt:     "channels.feed_updated_at",
 	UploadsPlaylistID: "channels.uploads_playlist_id",
 }
 
@@ -126,6 +131,7 @@ var ChannelWhere = struct {
 	Title             whereHelperstring
 	Description       whereHelperstring
 	Thumbnail         whereHelperstring
+	FeedUpdatedAt     whereHelpertime_Time
 	UploadsPlaylistID whereHelperstring
 }{
 	ID:                whereHelperstring{field: "\"channels\".\"id\""},
@@ -134,6 +140,7 @@ var ChannelWhere = struct {
 	Title:             whereHelperstring{field: "\"channels\".\"title\""},
 	Description:       whereHelperstring{field: "\"channels\".\"description\""},
 	Thumbnail:         whereHelperstring{field: "\"channels\".\"thumbnail\""},
+	FeedUpdatedAt:     whereHelpertime_Time{field: "\"channels\".\"feed_updated_at\""},
 	UploadsPlaylistID: whereHelperstring{field: "\"channels\".\"uploads_playlist_id\""},
 }
 
@@ -175,9 +182,9 @@ func (r *channelR) GetVideos() VideoSlice {
 type channelL struct{}
 
 var (
-	channelAllColumns            = []string{"id", "created_at", "updated_at", "title", "description", "thumbnail", "uploads_playlist_id"}
+	channelAllColumns            = []string{"id", "created_at", "updated_at", "title", "description", "thumbnail", "feed_updated_at", "uploads_playlist_id"}
 	channelColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "title", "description"}
-	channelColumnsWithDefault    = []string{"thumbnail", "uploads_playlist_id"}
+	channelColumnsWithDefault    = []string{"thumbnail", "feed_updated_at", "uploads_playlist_id"}
 	channelPrimaryKeyColumns     = []string{"id"}
 	channelGeneratedColumns      = []string{}
 )

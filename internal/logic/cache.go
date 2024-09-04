@@ -48,6 +48,7 @@ func CacheChannelVideos(ctx context.Context, db database.Client, channelIds ...s
 				existingIDs = append(existingIDs, v.ID)
 			}
 
+			updated := false
 			for _, video := range recentVideos {
 				if slice.Contains(existingIDs, video.ID) {
 					continue
@@ -67,6 +68,11 @@ func CacheChannelVideos(ctx context.Context, db database.Client, channelIds ...s
 					PublishedAt: publishedAt,
 					Private:     video.Type == youtube.VideoTypePrivate,
 				})
+				updated = true
+			}
+
+			if updated {
+				return db.SetChannelFeedUpdatedAt(ctx, channel.ID, time.Now())
 			}
 			return nil
 		})

@@ -30,8 +30,12 @@ func CacheAllChannelsWithVideos(db database.Client) error {
 		id := c
 		group.Go(func() error {
 			videos, err := logic.CacheChannelVideos(ctx, db, id)
+			if err != nil {
+				return err
+			}
+
 			log.Printf("Updated %v videos for %s\n", len(videos), id)
-			return err
+			return nil
 		})
 	}
 

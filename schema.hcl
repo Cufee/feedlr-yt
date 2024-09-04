@@ -34,6 +34,11 @@ table "channels" {
     default = ""
   }
 
+  column "feed_updated_at" {
+    null = false
+    type = date
+    default = 0
+  }
   column "uploads_playlist_id" {
     null = false
     type = text

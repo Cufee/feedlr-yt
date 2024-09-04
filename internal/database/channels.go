@@ -17,6 +17,7 @@ type ChannelsClient interface {
 	GetChannels(ctx context.Context, opts ...ChannelQuery) ([]*models.Channel, error)
 	GetChannelsForUpdate(ctx context.Context) ([]string, error)
 	UpsertChannel(ctx context.Context, data *models.Channel) error
+	SetChannelFeedUpdatedAt(ctx context.Context, channelID string, updatedAt time.Time) error
 }
 
 type ChannelQuery func(*channelQuery)
@@ -224,4 +225,9 @@ func (c *sqliteClient) GetChannel(ctx context.Context, channelId string, o ...Ch
 
 func (c *sqliteClient) UpsertChannel(ctx context.Context, data *models.Channel) error {
 	return data.Upsert(ctx, c.db, true, []string{models.ChannelColumns.ID}, boil.Infer(), boil.Infer())
+}
+
+func (c *sqliteClient) SetChannelFeedUpdatedAt(ctx context.Context, channelID string, updatedAt time.Time) error {
+	_, err := models.Channels(models.ChannelWhere.ID.EQ(channelID)).UpdateAll(ctx, c.db, models.M{models.ChannelColumns.FeedUpdatedAt: updatedAt})
+	return err
 }
