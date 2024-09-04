@@ -130,10 +130,7 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 	return record, false, nil
 }
 
-func UpdateChannelVideoCache(ctx context.Context, db interface {
-	database.VideosClient
-	database.ChannelsClient
-}, videoID string) error {
+func UpdateChannelVideoCache(ctx context.Context, db database.Client, videoID string) error {
 	current, err := db.GetVideoByID(ctx, videoID)
 	if err != nil && !database.IsErrNotFound(err) {
 		return err

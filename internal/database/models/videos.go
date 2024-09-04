@@ -32,7 +32,6 @@ type Video struct {
 	PublishedAt time.Time `boil:"published_at" json:"published_at" toml:"published_at" yaml:"published_at"`
 	Private     bool      `boil:"private" json:"private" toml:"private" yaml:"private"`
 	Type        string    `boil:"type" json:"type" toml:"type" yaml:"type"`
-	Thumbnail   string    `boil:"thumbnail" json:"thumbnail" toml:"thumbnail" yaml:"thumbnail"`
 	ChannelID   string    `boil:"channel_id" json:"channel_id" toml:"channel_id" yaml:"channel_id"`
 
 	R *videoR `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -49,7 +48,6 @@ var VideoColumns = struct {
 	PublishedAt string
 	Private     string
 	Type        string
-	Thumbnail   string
 	ChannelID   string
 }{
 	ID:          "id",
@@ -61,7 +59,6 @@ var VideoColumns = struct {
 	PublishedAt: "published_at",
 	Private:     "private",
 	Type:        "type",
-	Thumbnail:   "thumbnail",
 	ChannelID:   "channel_id",
 }
 
@@ -75,7 +72,6 @@ var VideoTableColumns = struct {
 	PublishedAt string
 	Private     string
 	Type        string
-	Thumbnail   string
 	ChannelID   string
 }{
 	ID:          "videos.id",
@@ -87,7 +83,6 @@ var VideoTableColumns = struct {
 	PublishedAt: "videos.published_at",
 	Private:     "videos.private",
 	Type:        "videos.type",
-	Thumbnail:   "videos.thumbnail",
 	ChannelID:   "videos.channel_id",
 }
 
@@ -126,7 +121,6 @@ var VideoWhere = struct {
 	PublishedAt whereHelpertime_Time
 	Private     whereHelperbool
 	Type        whereHelperstring
-	Thumbnail   whereHelperstring
 	ChannelID   whereHelperstring
 }{
 	ID:          whereHelperstring{field: "\"videos\".\"id\""},
@@ -138,7 +132,6 @@ var VideoWhere = struct {
 	PublishedAt: whereHelpertime_Time{field: "\"videos\".\"published_at\""},
 	Private:     whereHelperbool{field: "\"videos\".\"private\""},
 	Type:        whereHelperstring{field: "\"videos\".\"type\""},
-	Thumbnail:   whereHelperstring{field: "\"videos\".\"thumbnail\""},
 	ChannelID:   whereHelperstring{field: "\"videos\".\"channel_id\""},
 }
 
@@ -180,9 +173,9 @@ func (r *videoR) GetViews() ViewSlice {
 type videoL struct{}
 
 var (
-	videoAllColumns            = []string{"id", "created_at", "updated_at", "title", "description", "duration", "published_at", "private", "type", "thumbnail", "channel_id"}
+	videoAllColumns            = []string{"id", "created_at", "updated_at", "title", "description", "duration", "published_at", "private", "type", "channel_id"}
 	videoColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "title", "description", "duration", "published_at", "private", "type", "channel_id"}
-	videoColumnsWithDefault    = []string{"thumbnail"}
+	videoColumnsWithDefault    = []string{}
 	videoPrimaryKeyColumns     = []string{"id"}
 	videoGeneratedColumns      = []string{}
 )
