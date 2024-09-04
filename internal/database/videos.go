@@ -195,7 +195,7 @@ func (c *sqliteClient) UpsertView(ctx context.Context, view *models.View) error 
 	for _, v := range views {
 		v.Hidden = view.Hidden
 		v.Progress = view.Progress
-		_, err := v.Update(ctx, c.db, boil.Whitelist(models.ViewColumns.Progress, models.ViewColumns.UpdatedAt, models.ViewColumns.Hidden, models.VideoColumns.Thumbnail))
+		_, err := v.Update(ctx, c.db, boil.Whitelist(models.ViewColumns.Progress, models.ViewColumns.UpdatedAt, models.ViewColumns.Hidden))
 		if err != nil {
 			return err
 		}
