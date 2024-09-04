@@ -2,11 +2,7 @@ package youtube
 
 import (
 	"errors"
-	"log"
-	"slices"
-	"strings"
-
-	"golang.org/x/sync/errgroup"
+	"sort"
 )
 
 type Channel struct {
@@ -70,66 +66,85 @@ func (c *client) GetChannel(channelID string) (*Channel, error) {
 }
 
 func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...string) ([]Video, error) {
-	res, err := c.service.Search.List([]string{"snippet", "id"}).ChannelId(channelID).Order("date").MaxResults(50).Do()
+	uploadsId, err := c.GetChannelUploadPlaylistID(channelID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetChannelUploadPlaylistID"), err)
 	}
 
-	var group errgroup.Group
-	group.SetLimit(1) // this is required for the limit take work
-
-	videos := make(chan Video, len(res.Items))
-	for _, item := range res.Items {
-		if slices.Contains(skipVideoIds, item.Id.VideoId) {
-			continue
-		}
-
-		group.Go(func() error {
-			video := Video{
-				ID:          item.Id.VideoId,
-				URL:         c.BuildVideoEmbedURL(item.Id.VideoId),
-				Title:       item.Snippet.Title,
-				Description: item.Snippet.Description,
-				PublishedAt: item.Snippet.PublishedAt,
-				Thumbnail:   c.BuildVideoThumbnailURL(item.Id.VideoId),
-			}
-
-			if limit > 0 && len(videos) > limit {
-				return nil
-			}
-
-			details, err := c.GetVideoPlayerDetails(video.ID)
-			if err != nil {
-				videos <- video
-				log.Printf("Failed to get video details for %s\n", video.ID)
-				return nil
-			}
-
-			if details == nil || details.Type == VideoTypeShort {
-				return nil
-			}
-
-			video.Type = details.Type
-			video.Duration = details.Duration
-			videos <- video
-			return nil
-		})
-	}
-	if err := group.Wait(); err != nil {
-		return nil, err
-	}
-	close(videos)
-
-	var videosSlice []Video
-	for v := range videos {
-		if len(videosSlice) >= limit {
-			break
-		}
-		videosSlice = append(videosSlice, v)
+	videos, err := c.GetPlaylistVideos(uploadsId, limit, skipVideoIds...)
+	if err != nil {
+		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetPlaylistVideos"), err)
 	}
 
-	slices.SortFunc(videosSlice, func(a, b Video) int {
-		return strings.Compare(b.PublishedAt, a.PublishedAt)
+	// Reverse slice to get videos in descending order
+	sort.Slice(videos, func(i, j int) bool {
+		return true
 	})
-	return videosSlice, nil
+
+	return videos, nil
 }
+
+// func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...string) ([]Video, error) {
+// 	res, err := c.service.Search.List([]string{"snippet", "id"}).ChannelId(channelID).Order("date").MaxResults(50).Do()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	var group errgroup.Group
+// 	group.SetLimit(1) // this is required for the limit take work
+
+// 	videos := make(chan Video, len(res.Items))
+// 	for _, item := range res.Items {
+// 		if slices.Contains(skipVideoIds, item.Id.VideoId) {
+// 			continue
+// 		}
+
+// 		group.Go(func() error {
+// 			video := Video{
+// 				ID:          item.Id.VideoId,
+// 				URL:         c.BuildVideoEmbedURL(item.Id.VideoId),
+// 				Title:       item.Snippet.Title,
+// 				Description: item.Snippet.Description,
+// 				PublishedAt: item.Snippet.PublishedAt,
+// 				Thumbnail:   c.BuildVideoThumbnailURL(item.Id.VideoId),
+// 			}
+
+// 			if limit > 0 && len(videos) > limit {
+// 				return nil
+// 			}
+
+// 			details, err := c.GetVideoPlayerDetails(video.ID)
+// 			if err != nil {
+// 				videos <- video
+// 				log.Printf("Failed to get video details for %s\n", video.ID)
+// 				return nil
+// 			}
+
+// 			if details == nil || details.Type == VideoTypeShort {
+// 				return nil
+// 			}
+
+// 			video.Type = details.Type
+// 			video.Duration = details.Duration
+// 			videos <- video
+// 			return nil
+// 		})
+// 	}
+// 	if err := group.Wait(); err != nil {
+// 		return nil, err
+// 	}
+// 	close(videos)
+
+// 	var videosSlice []Video
+// 	for v := range videos {
+// 		if len(videosSlice) >= limit {
+// 			break
+// 		}
+// 		videosSlice = append(videosSlice, v)
+// 	}
+
+// 	slices.SortFunc(videosSlice, func(a, b Video) int {
+// 		return strings.Compare(b.PublishedAt, a.PublishedAt)
+// 	})
+// 	return videosSlice, nil
+// }
