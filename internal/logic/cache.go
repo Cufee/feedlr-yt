@@ -25,6 +25,9 @@ func CacheChannelVideos(ctx context.Context, db database.Client, channelIds ...s
 
 	for _, c := range channelIds {
 		group.Go(func() error {
+			ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+			defer cancel()
+
 			channel, _, err := CacheChannel(ctx, db, c)
 			if err != nil {
 				return err
@@ -34,9 +37,6 @@ func CacheChannelVideos(ctx context.Context, db database.Client, channelIds ...s
 			if err != nil {
 				return errors.Join(errors.New("CacheChannelVideos.youtube.C.GetChannelVideos"), err)
 			}
-
-			ctx, cancel := context.WithTimeout(ctx, time.Second)
-			defer cancel()
 
 			existingVideos, err := db.FindVideos(ctx, database.Video.Channel(c))
 			if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {

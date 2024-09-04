@@ -11,7 +11,7 @@ import (
 )
 
 func CacheAllChannelsWithVideos(db database.Client) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 
 	channels, err := db.GetChannelsForUpdate(ctx)
@@ -29,9 +29,6 @@ func CacheAllChannelsWithVideos(db database.Client) error {
 	for _, c := range channels {
 		id := c
 		group.Go(func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-			defer cancel()
-
 			videos, err := logic.CacheChannelVideos(ctx, db, id)
 			log.Printf("Updated %v videos for %s\n", len(videos), id)
 			return err
