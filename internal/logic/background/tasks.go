@@ -29,7 +29,7 @@ func CacheAllChannelsWithVideos(db database.Client) error {
 	for _, c := range channels {
 		id := c
 		group.Go(func() error {
-			videos, err := logic.CacheChannelVideos(ctx, db, id)
+			videos, err := logic.CacheChannelVideos(ctx, db, 12)
 			if err != nil {
 				return err
 			}

@@ -24,7 +24,7 @@ func NewSubscription(ctx context.Context, db database.Client, userId, channelId 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to cache channel")
 	}
-	go CacheChannelVideos(ctx, db, channelId)
+	go CacheChannelVideos(ctx, db, 3, channelId)
 
 	sub, err := db.NewSubscription(ctx, userId, channel.ID)
 	if err != nil {

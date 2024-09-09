@@ -53,7 +53,7 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 	}
 
 	if len(videos) == 0 && !cached {
-		inserted, err := CacheChannelVideos(ctx, db, channelID)
+		inserted, err := CacheChannelVideos(ctx, db, 3, channelID)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to cache channel videos")
 		}

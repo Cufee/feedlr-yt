@@ -16,9 +16,9 @@ import (
 )
 
 /*
-Cache last 12 videos for each channel to the database
+Cache recent videos for each channel to the database
 */
-func CacheChannelVideos(ctx context.Context, db database.Client, channelIds ...string) ([]*models.Video, error) {
+func CacheChannelVideos(ctx context.Context, db database.Client, limit int, channelIds ...string) ([]*models.Video, error) {
 	var updates []*models.Video
 
 	var group errgroup.Group
@@ -34,7 +34,7 @@ func CacheChannelVideos(ctx context.Context, db database.Client, channelIds ...s
 				return err
 			}
 
-			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, 12)
+			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, limit)
 			if err != nil {
 				return errors.Join(errors.New("CacheChannelVideos.youtube.C.GetChannelVideos"), err)
 			}
