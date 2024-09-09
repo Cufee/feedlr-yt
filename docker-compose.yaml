@@ -28,12 +28,6 @@ services:
         condition: service_completed_successfully
     networks:
       - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.feedlr-compose-{$ENVIRONMENT}.rule=Host(`${TRAEFIK_HOST}`)"
-      - "traefik.http.routers.feedlr-compose-{$ENVIRONMENT}.entrypoints=websecure"
-      - "traefik.http.routers.feedlr-compose-{$ENVIRONMENT}.tls.certResolver=letsencrypt"
-      - "traefik.http.services.feedlr-compose-{$ENVIRONMENT}.loadbalancer.server.port=3000"
 
 networks:
   dokploy-network:
