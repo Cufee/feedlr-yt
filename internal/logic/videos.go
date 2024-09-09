@@ -135,12 +135,6 @@ func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int
 	}
 
 	slices.SortFunc(props, func(a, b types.VideoProps) int {
-		if b.CreatedAt.After(a.CreatedAt) && b.CreatedAt.Sub(a.CreatedAt).Minutes() < 5 {
-			return b.PublishedAt.Compare(a.PublishedAt)
-		}
-		if a.CreatedAt.After(b.CreatedAt) && a.CreatedAt.Sub(b.CreatedAt).Minutes() < 5 {
-			return b.PublishedAt.Compare(a.PublishedAt)
-		}
 		return b.CreatedAt.Compare(a.CreatedAt)
 	})
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"slices"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
@@ -88,10 +89,14 @@ func CacheChannelVideos(ctx context.Context, db database.Client, channelIds ...s
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
+	slices.SortFunc(updates, func(a, b *models.Video) int {
+		return a.PublishedAt.Compare(b.PublishedAt)
+	})
 	err := db.UpsertVideos(ctx, updates...)
 	if err != nil {
 		return nil, errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.InsertChannelVideos"), err)
 	}
+
 	return updates, nil
 }
 
