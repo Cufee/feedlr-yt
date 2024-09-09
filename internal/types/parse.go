@@ -25,6 +25,7 @@ func VideoModelToProps(video *models.Video, channel ChannelProps) VideoProps {
 			Description: video.Description,
 		},
 		PublishedAt: video.PublishedAt,
+		CreatedAt:   video.CreatedAt,
 		Channel:     channel,
 	}
 }

@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"math"
 
 	"net/url"
 	"regexp"
@@ -135,7 +136,10 @@ func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int
 	}
 
 	slices.SortFunc(props, func(a, b types.VideoProps) int {
-		return b.PublishedAt.Compare(a.PublishedAt)
+		if math.Abs(float64(b.CreatedAt.Sub(a.CreatedAt).Minutes())) < 5 {
+			return b.PublishedAt.Compare(a.PublishedAt)
+		}
+		return b.CreatedAt.Compare(a.CreatedAt)
 	})
 
 	return trimVideoList(limit, 12, props), nil

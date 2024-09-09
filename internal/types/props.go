@@ -80,6 +80,7 @@ type VideoProps struct {
 	Hidden      bool
 	Channel     ChannelProps
 	PublishedAt time.Time
+	CreatedAt   time.Time
 }
 
 type SegmentProps struct {
