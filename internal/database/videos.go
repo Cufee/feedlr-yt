@@ -128,7 +128,7 @@ func (c *sqliteClient) FindVideos(ctx context.Context, o ...VideoQuery) ([]*mode
 
 func (c *sqliteClient) UpsertVideos(ctx context.Context, videos ...*models.Video) error {
 	for _, v := range videos {
-		err := v.Upsert(ctx, c.db, true, []string{models.VideoColumns.ID}, boil.Infer(), boil.Infer())
+		err := v.Upsert(ctx, c.db, true, []string{models.VideoColumns.ID}, boil.Blacklist(models.VideoColumns.CreatedAt), boil.Infer())
 		if err != nil {
 			return err
 		}
