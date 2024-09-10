@@ -10,7 +10,8 @@ templ VideosFeed(props types.UserVideoFeedProps) {
 	<head><title>Feedlr</title></head>
 	<div id="app-index" class="flex flex-col gap-4">
 		@shared.OpenVideoButton()
-		@feed.VideoFeed(props.Videos, "/app", true, true, true)
+		@feed.VideoFeed(props.New, "/app", true, true, true)
+		@feed.VideoFeed(props.Watched, "/app", true, true, true)
 	</div>
 }
 

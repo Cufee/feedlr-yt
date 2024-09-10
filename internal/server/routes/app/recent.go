@@ -25,6 +25,6 @@ var Recent brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.La
 		return nil, nil, nil
 	}
 
-	return layouts.App, app.History(*props), nil
+	return layouts.App, app.History(props), nil
 
 }

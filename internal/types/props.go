@@ -60,7 +60,8 @@ func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
 }
 
 type UserVideoFeedProps struct {
-	Videos []VideoProps
+	New     []VideoProps
+	Watched []VideoProps
 }
 
 type ChannelPageProps struct {

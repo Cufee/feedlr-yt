@@ -5,14 +5,14 @@ import (
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
-templ History(props types.UserVideoFeedProps) {
+templ History(props []types.VideoProps) {
 	<head>
 		<title>Feedlr - Recent</title>
 	</head>
 	<div id="app-index" class="flex flex-col gap-4">
-		if len(props.Videos) == 0 {
+		if len(props) == 0 {
 			<span class="self-center text-xl font-bold">No recent videos yet</span>
 		}
-		@feed.VideoFeed(props.Videos, "/app/recent", false, false, true)
+		@feed.VideoFeed(props, "/app/recent", false, false, true)
 	</div>
 }

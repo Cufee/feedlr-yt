@@ -60,8 +60,11 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 				continue
 			}
 			video.Progress = int(v.Progress)
+			feed.Watched = append(feed.Watched, video)
+		} else {
+
+			feed.New = append(feed.New, video)
 		}
-		feed.Videos = append(feed.Videos, video)
 	}
 
 	return &feed, nil
@@ -73,7 +76,7 @@ Returns a list of channel props with videos for all user subscriptions
 func GetRecentVideosProps(ctx context.Context, db interface {
 	database.VideosClient
 	database.ViewsClient
-}, userId string) (*types.UserVideoFeedProps, error) {
+}, userId string) ([]types.VideoProps, error) {
 	views, err := db.GetRecentUserViews(ctx, userId, 24)
 	if err != nil && !database.IsErrNotFound(err) {
 		return nil, errors.Wrap(err, "GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views")
@@ -91,15 +94,15 @@ func GetRecentVideosProps(ctx context.Context, db interface {
 		return nil, errors.Wrap(err, "db#FindVideos")
 	}
 
-	var feed types.UserVideoFeedProps
+	var feed []types.VideoProps
 	for _, video := range videos {
 		v := types.VideoModelToProps(video, types.ChannelModelToProps(video.R.Channel))
 		if view, ok := progress[video.ID]; ok {
 			v.Progress = int(view.Progress)
 		}
-		feed.Videos = append(feed.Videos, v)
+		feed = append(feed, v)
 	}
-	slices.SortFunc(feed.Videos, func(a, b types.VideoProps) int {
+	slices.SortFunc(feed, func(a, b types.VideoProps) int {
 		var au, bu time.Time
 		if v, ok := progress[a.ID]; ok {
 			au = v.UpdatedAt
@@ -110,7 +113,7 @@ func GetRecentVideosProps(ctx context.Context, db interface {
 		return bu.Compare(au)
 	})
 
-	return &feed, nil
+	return feed, nil
 }
 
 /*

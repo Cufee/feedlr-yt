@@ -24,7 +24,7 @@ var Home brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Layo
 		ctx.Err(err)
 		return nil, nil, nil
 	}
-	if len(props.Videos) == 0 {
+	if len(props.New) == 0 && len(props.Watched) == 0 {
 		ctx.Redirect("/app/onboarding", http.StatusTemporaryRedirect)
 		return nil, nil, nil
 	}
