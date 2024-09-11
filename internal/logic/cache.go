@@ -2,7 +2,7 @@ package logic
 
 import (
 	"context"
-	"errors"
+
 	"log"
 	"slices"
 	"time"
@@ -10,6 +10,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/friendsofgo/errors"
 	"github.com/ssoroka/slice"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
@@ -25,23 +26,24 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 	group.SetLimit(1)
 
 	for _, c := range channelIds {
+		channelID := c
 		group.Go(func() error {
 			ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 			defer cancel()
 
-			channel, _, err := CacheChannel(ctx, db, c)
+			playlist, err := youtube.DefaultClient.GetChannelUploadPlaylistID(channelID)
 			if err != nil {
 				return err
 			}
 
-			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, limit)
+			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(playlist, limit)
 			if err != nil {
-				return errors.Join(errors.New("CacheChannelVideos.youtube.C.GetChannelVideos"), err)
+				return errors.Wrap(err, "youtube#GetPlaylistVideos")
 			}
 
-			existingVideos, err := db.FindVideos(ctx, database.Video.Channel(c))
+			existingVideos, err := db.FindVideos(ctx, database.Video.Channel(channelID))
 			if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-				return errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.GetVideosByChannelID"), err)
+				return errors.Wrap(err, "db#FindVideos")
 			}
 
 			var existingIDs []string
@@ -73,7 +75,7 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 			}
 
 			if updated {
-				return db.SetChannelFeedUpdatedAt(ctx, channel.ID, time.Now())
+				return db.SetChannelFeedUpdatedAt(ctx, channelID, time.Now())
 			}
 			return nil
 		})
@@ -94,7 +96,7 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 	})
 	err := db.UpsertVideos(ctx, updates...)
 	if err != nil {
-		return nil, errors.Join(errors.New("CacheChannelVideos.database.DefaultClient.InsertChannelVideos"), err)
+		return nil, errors.Wrap(err, "db#UpsertVideos")
 	}
 
 	return updates, nil
@@ -114,12 +116,12 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 
 	channel, err := youtube.DefaultClient.GetChannel(channelID)
 	if err != nil {
-		return nil, false, errors.Join(errors.New("CacheChannel.youtube.C.GetChannel"), err)
+		return nil, false, errors.Wrap(err, "youtube#GetChannel")
 	}
 
 	uploadsPlaylist, err := youtube.DefaultClient.GetChannelUploadPlaylistID(channelID)
 	if err != nil {
-		return nil, false, errors.Join(errors.New("youtube#GetChannelUploadPlaylistID"), err)
+		return nil, false, errors.Wrap(err, "youtube#GetChannelUploadPlaylistID")
 	}
 
 	record := &models.Channel{
@@ -135,7 +137,7 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 
 	err = db.UpsertChannel(uctx, record)
 	if err != nil {
-		return nil, false, errors.Join(errors.New("CacheChannel.database.DefaultClient.NewChannel"), err)
+		return nil, false, errors.Wrap(err, "db#UpsertChannel")
 	}
 
 	return record, false, nil
