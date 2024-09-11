@@ -33,12 +33,12 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 			ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 			defer cancel()
 
-			playlist, err := youtube.DefaultClient.GetChannelUploadPlaylistID(channelID)
+			channel, _, err := CacheChannel(ctx, db, channelID)
 			if err != nil {
 				return err
 			}
 
-			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(playlist, limit)
+			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, limit)
 			if err != nil {
 				return errors.Wrap(err, "youtube#GetPlaylistVideos")
 			}
