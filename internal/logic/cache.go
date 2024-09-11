@@ -40,7 +40,7 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				return errors.Wrap(err, "youtube#GetPlaylistVideos")
 			}
 
-			existingVideos, err := db.FindVideos(ctx, database.Video.Channel(channelID))
+			existingVideos, err := db.FindVideos(ctx, database.Video.Channel(channelID), database.Video.TypeNot("private"))
 			if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 				return errors.Wrap(err, "db#FindVideos")
 			}
@@ -50,7 +50,7 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				existingIDs = append(existingIDs, v.ID)
 			}
 
-			updated := false
+			var updated bool
 			for _, video := range recentVideos {
 				if slice.Contains(existingIDs, video.ID) {
 					continue
@@ -72,7 +72,6 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				})
 				updated = true
 			}
-
 			if updated {
 				return db.SetChannelFeedUpdatedAt(ctx, channelID, time.Now())
 			}
