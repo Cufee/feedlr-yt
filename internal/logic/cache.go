@@ -19,8 +19,11 @@ import (
 Cache recent videos for each channel to the database
 */
 func CacheChannelVideos(ctx context.Context, db database.Client, limit int, channelIds ...string) ([]*models.Video, error) {
-	var updates []*models.Video
+	if len(channelIds) < 1 {
+		return nil, errors.New("at least 1 channel id is required")
+	}
 
+	var updates []*models.Video
 	var group errgroup.Group
 	group.SetLimit(1)
 
