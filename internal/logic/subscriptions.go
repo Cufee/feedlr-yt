@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/types"
@@ -24,7 +25,12 @@ func NewSubscription(ctx context.Context, db database.Client, userId, channelId 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to cache channel")
 	}
-	go CacheChannelVideos(ctx, db, 3, channelId)
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+		defer cancel()
+		CacheChannelVideos(ctx, db, 3, channelId)
+	}()
 
 	sub, err := db.NewSubscription(ctx, userId, channel.ID)
 	if err != nil {
