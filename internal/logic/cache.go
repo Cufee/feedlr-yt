@@ -30,10 +30,10 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 	for _, c := range channelIds {
 		channelID := c
 		group.Go(func() error {
-			ctx, cancel := context.WithTimeout(ctx, time.Second*30)
-			defer cancel()
+			cctx, ccancel := context.WithTimeout(ctx, time.Second*30)
+			defer ccancel()
 
-			channel, _, err := CacheChannel(ctx, db, channelID)
+			channel, _, err := CacheChannel(cctx, db, channelID)
 			if err != nil {
 				return err
 			}
@@ -43,7 +43,10 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				return errors.Wrap(err, "youtube#GetPlaylistVideos")
 			}
 
-			existingVideos, err := db.FindVideos(ctx, database.Video.Channel(channelID), database.Video.TypeNot("private"))
+			dctx, dcancel := context.WithTimeout(ctx, time.Second*5)
+			defer dcancel()
+
+			existingVideos, err := db.FindVideos(dctx, database.Video.Channel(channelID), database.Video.TypeNot("private"))
 			if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 				return errors.Wrap(err, "db#FindVideos")
 			}
@@ -76,7 +79,9 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				updated = true
 			}
 			if updated {
-				return db.SetChannelFeedUpdatedAt(ctx, channelID, time.Now())
+				uctx, ucancel := context.WithTimeout(ctx, time.Second)
+				defer ucancel()
+				return db.SetChannelFeedUpdatedAt(uctx, channelID, time.Now())
 			}
 			return nil
 		})
