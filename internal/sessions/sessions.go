@@ -41,7 +41,7 @@ func (c *SessionClient) New(ctx context.Context) (Session, error) {
 	var record models.Session
 	record.Deleted = false
 	record.ID = id.String()
-	record.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
+	record.ExpiresAt = time.Now().Add(time.Hour * 24 * 30)
 
 	session, err := c.db.CreateSession(ctx, &record)
 	if err != nil {
@@ -109,7 +109,7 @@ func (s Session) Refresh(ctx context.Context) error {
 		return errors.New("session does not exist")
 	}
 
-	_, err := s.db.SetSessionExpiration(ctx, s.data.ID, time.Now().Add(time.Hour*24*7))
+	_, err := s.db.SetSessionExpiration(ctx, s.data.ID, time.Now().Add(time.Hour*24*30))
 	if err != nil {
 		return err
 	}

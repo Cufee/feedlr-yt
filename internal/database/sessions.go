@@ -92,7 +92,7 @@ func (c *sqliteClient) SetSessionExpiration(ctx context.Context, id string, expi
 	}
 
 	session.ExpiresAt = expiresAt
-	_, err = session.Update(ctx, c.db, boil.Whitelist(models.SessionColumns.ExpiresAt))
+	_, err = session.Update(ctx, c.db, boil.Infer())
 	if err != nil {
 		return nil, err
 	}
