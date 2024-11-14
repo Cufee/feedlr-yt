@@ -11,9 +11,9 @@ var HeadOnly brewed.Layout[*handler.Context] = func(ctx *handler.Context, body .
 }
 
 templ headOnly(content ...templ.Component) {
-	<html lang="en" class="h-full">
+	<html lang="en">
 		@partials.Head()
-		<body class="h-full">
+		<body class="h-dvh">
 			@partials.NavProgressAnimated()
 			<div id="main" class="w-full h-full">
 				for _, c := range content {

@@ -11,9 +11,9 @@ var Main brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...te
 }
 
 templ main(content ...templ.Component) {
-	<html lang="en" class="h-full">
+	<html lang="en">
 		@partials.Head()
-		<body class="h-full">
+		<body class="h-dvh">
 			@partials.NavProgressAnimated()
 			<div id="main" class="flex flex-col flex-grow w-full h-full p-2 mx-auto max-w-7xl">
 				for _, c := range content {
