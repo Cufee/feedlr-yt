@@ -59,7 +59,7 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 		}
 
 		props.ReturnURL = ctx.Query("return", "/app")
-		return layouts.HeadOnly, pages.Video(props), nil
+		return layouts.Video(props.Video), pages.Video(props), nil
 	}
 
 	// No auth, do not check progress
@@ -70,5 +70,5 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 	}
 
 	props.ReturnURL = ctx.Query("return", "/app")
-	return layouts.HeadOnly, pages.Video(props), nil
+	return layouts.Video(props.Video), pages.Video(props), nil
 }

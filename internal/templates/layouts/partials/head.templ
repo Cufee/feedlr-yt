@@ -10,24 +10,27 @@ templ HeadlessManifest() {
 	<link href="/assets/app-headless.webmanifest" rel="manifest"/>
 }
 
-templ Head(content ...templ.Component) {
+templ GenericOgMetadata() {
+	<title>Feedlr</title>
+	<meta property="og:title" content="Feedlr.app - Ad free YouTube feed"/>
+	<meta property="og:type" content="website"/>
+	<meta property="og:description" content="Feedlr.app is an open source YouTube subscriptions feed alternative free of distractions and ads!"/>
+	<meta property="og:image" content="https://feedlr.app/assets/og.jpg"/>
+	<meta name="twitter:card" content="summary_large_image"/>
+	<meta name="twitter:title" content="Feedlr.app - Ad free YouTube feed"/>
+	<meta name="twitter:description" content="Feedlr.app is an open source YouTube subscriptions feed alternative free of distractions and ads!"/>
+	<meta name="twitter:image" content="https://feedlr.app/assets/og.jpg"/>
+	<meta name="twitter:image:alt" content="Feedlr.app"/>
+}
+
+templ Head(htmxReplace bool, content ...templ.Component) {
 	<head>
-		<title>Feedlr</title>
 		<link href="/assets/css/animate.min.css" rel="stylesheet"/>
 		<link href="/assets/css/daisyui.min.css" rel="stylesheet" type="text/css"/>
 		<link href="/assets/favicon.ico" rel="icon" type="x-icon"/>
 		<meta charset="UTF-8"/>
 		<meta name="color-scheme" content="dark"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"/>
-		<meta property="og:title" content="Feedlr.app - Ad free YouTube feed"/>
-		<meta property="og:type" content="website"/>
-		<meta property="og:description" content="Feedlr.app is an open source YouTube subscriptions feed alternative free of distractions and ads!"/>
-		<meta property="og:image" content="https://feedlr.app/assets/og.jpg"/>
-		<meta name="twitter:card" content="summary_large_image"/>
-		<meta name="twitter:title" content="Feedlr.app - Ad free YouTube feed"/>
-		<meta name="twitter:description" content="Feedlr.app is an open source YouTube subscriptions feed alternative free of distractions and ads!"/>
-		<meta name="twitter:image" content="https://feedlr.app/assets/og.jpg"/>
-		<meta name="twitter:image:alt" content="Feedlr.app"/>
 		for _, c := range content {
 			@c
 		}

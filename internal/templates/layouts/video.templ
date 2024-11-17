@@ -1,0 +1,54 @@
+package layouts
+
+import (
+	"fmt"
+	"github.com/cufee/feedlr-yt/internal/server/handler"
+	"github.com/cufee/feedlr-yt/internal/templates/layouts/partials"
+	"github.com/cufee/feedlr-yt/internal/types"
+	"github.com/cufee/tpot/brewed"
+	"github.com/sosodev/duration"
+	"time"
+)
+
+func Video(video types.VideoProps) brewed.Layout[*handler.Context] {
+	return func(ctx *handler.Context, body ...templ.Component) (templ.Component, error) {
+		return videoLayout(video, body...), nil
+	}
+}
+
+func durationToString(videoDuration int) string {
+	d := duration.FromTimeDuration(time.Duration(videoDuration))
+	if d == nil {
+		return ""
+	}
+	return d.String()
+}
+
+templ videoLayout(video types.VideoProps, content ...templ.Component) {
+	<html lang="en">
+		@partials.Head(false, partials.HeadlessManifest()) {
+			<title>Feedlr - { video.Title }</title>
+			<meta name="author" content={ video.Channel.Title }/>
+			<meta property="og:title" content={ video.Title }/>
+			<meta property="og:type" content="video.episode"/>
+			<meta property="og:description" content={ video.Description }/>
+			<meta property="og:video:duration" content={ fmt.Sprint(video.Duration) }/>
+			<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", video.ID) }/>
+			<meta itemprop="duration" content={ durationToString(video.Duration) }/>
+			<meta name="twitter:card" content="summary_large_image"/>
+			<meta name="twitter:title" content={ video.Title }/>
+			<meta name="twitter:description" content={ video.Description }/>
+			<meta name="twitter:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", video.ID) }/>
+			<meta name="twitter:image:alt" content={ video.Title }/>
+		}
+		<body class="h-svh" hx-ext="head-support">
+			@partials.NavProgressAnimated()
+			<div id="main" class="w-full h-full">
+				for _, c := range content {
+					@c
+				}
+				{ children... }
+			</div>
+		</body>
+	</html>
+}

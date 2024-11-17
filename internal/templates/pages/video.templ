@@ -18,21 +18,6 @@ func durationToString(videoDuration int) string {
 }
 
 templ Video(props types.VideoPlayerProps) {
-	<head>
-		<title>Feedlr - { props.Video.Title }</title>
-		<meta name="author" content={ props.Video.Channel.Title }/>
-		<meta property="og:title" content={ props.Video.Title }/>
-		<meta property="og:type" content="video.episode"/>
-		<meta property="og:description" content={ props.Video.Description }/>
-		<meta property="og:video:duration" content={ fmt.Sprint(props.Video.Duration) }/>
-		<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
-		<meta itemprop="duration" content={ durationToString(props.Video.Duration) }/>
-		<meta name="twitter:card" content="summary_large_image"/>
-		<meta name="twitter:title" content={ props.Video.Title }/>
-		<meta name="twitter:description" content={ props.Video.Description }/>
-		<meta name="twitter:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", props.Video.ID) }/>
-		<meta name="twitter:image:alt" content={ props.Video.Title }/>
-	</head>
 	<div class="relative flex items-center justify-start w-screen h-screen">
 		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 		@videoPlayer(props)

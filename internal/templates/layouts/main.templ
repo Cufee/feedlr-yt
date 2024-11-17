@@ -12,7 +12,7 @@ var Main brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...te
 
 templ main(content ...templ.Component) {
 	<html lang="en">
-		@partials.Head(partials.AppManifest())
+		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
 		<body class="h-dvh" hx-ext="head-support">
 			@partials.NavProgressAnimated()
 			<div id="main" class="flex flex-col flex-grow w-full h-full p-2 mx-auto max-w-7xl">
