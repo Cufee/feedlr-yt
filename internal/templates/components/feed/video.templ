@@ -127,15 +127,15 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 					}
 				}
 			</div>
-			if video.Hidden {
-				<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-4xl">Hidden</div>
-			} else if video.Progress > 0 {
-				if opts.showProgressOverlay {
-					<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-4xl">Watched</div>
-				}
-				if opts.showProgressBar {
-					<progress class="absolute bottom-0 left-0 z-10 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(utils.MaxInt(video.Duration, video.Progress)) }></progress>
-				}
+		}
+		if video.Hidden {
+			<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-4xl">Hidden</div>
+		} else if video.Progress > 0 {
+			if opts.showProgressOverlay {
+				<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-4xl">Watched</div>
+			}
+			if opts.showProgressBar {
+				<progress class="absolute bottom-0 left-0 z-10 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(utils.MaxInt(video.Duration, video.Progress)) }></progress>
 			}
 		}
 		<div class="absolute z-30 flex items-center justify-center gap-1 px-1 text-sm bg-black bg-opacity-50 rounded-md bottom-2 right-2">
