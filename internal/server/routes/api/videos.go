@@ -46,7 +46,7 @@ var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 		return nil, err
 	}
 
-	return feed.VideoCard(props.Video, true, true), nil
+	return feed.VideoCard(props.Video, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay), nil
 }
 
 var OpenVideo brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {

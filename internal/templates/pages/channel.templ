@@ -8,6 +8,17 @@ import (
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
+func propsToOptions(props types.ChannelPageProps) []feed.FeedOption {
+	var o []feed.FeedOption
+	if props.Authenticated {
+		o = append(o, feed.WithProgressBar, feed.WithProgressOverlay)
+	}
+	if props.Authenticated && props.Subscribed {
+		o = append(o, feed.WithProgressActions)
+	}
+	return o
+}
+
 templ Channel(props types.ChannelPageProps) {
 	<head>
 		<title>Feedlr - { props.Channel.Title }</title>
@@ -27,7 +38,7 @@ templ Channel(props types.ChannelPageProps) {
 				@channel.ChannelTile(props.Channel.Channel, subscribeButton(props.Channel.ID, props.Authenticated, props.Subscribed))
 			</div>
 		</div>
-		@feed.VideoFeed(props.Channel.Videos, fmt.Sprintf("/channel/%s", props.Channel.ID), props.Authenticated, props.Authenticated && props.Subscribed, false)
+		@feed.VideoFeed(props.Channel.Videos, fmt.Sprintf("/channel/%s", props.Channel.ID), propsToOptions(props)...)
 	</div>
 }
 

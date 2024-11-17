@@ -13,11 +13,11 @@ templ VideosFeed(props types.UserVideoFeedProps) {
 		if len(props.New) > 0 {
 			<div class="divider uppercase text-xs font-bold">new</div>
 		}
-		@feed.VideoFeed(props.New, "/app", true, true, true)
+		@feed.VideoFeed(props.New, "/app", feed.WithChannelName, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay)
 		if len(props.New) > 0 && len(props.Watched) > 0 {
 			<div class="divider uppercase text-xs font-bold">watched</div>
 		}
-		@feed.VideoFeed(props.Watched, "/app", true, true, true)
+		@feed.VideoFeed(props.Watched, "/app", feed.WithChannelName, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay)
 	</div>
 }
 

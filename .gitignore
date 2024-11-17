@@ -6,3 +6,4 @@ tmp
 .env
 
 **/*_gen.go
+**/*_templ.go
