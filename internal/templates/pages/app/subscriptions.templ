@@ -1,8 +1,10 @@
 package app
 
-import	"github.com/cufee/feedlr-yt/internal/types"
-import 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
-import 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+import (
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/types"
+)
 
 templ Subscriptions(channels []types.ChannelProps) {
 	<head><title>Feedlr - Subscriptions</title></head>
@@ -13,12 +15,12 @@ templ Subscriptions(channels []types.ChannelProps) {
 		</div>
 		<div id="subscriptions" class="flex flex-col items-center gap-4">
 			<span class="self-center text-xl font-bold">Your Subscriptions</span>
-			if len(channels) > 10 {
+			if len(channels) > 6 {
 				<div class="flex w-full max-w-full md:max-w-xs">
 					@shared.FuseSearch("subscriptions-list", "Filter Subscriptions", 1)
 				</div>
 			}
-			<div class="flex flex-row flex-wrap gap-2" id="subscriptions-list">
+			<div class="flex flex-row flex-wrap gap-2 w-full" id="subscriptions-list">
 				for _, channel := range channels {
 					@subscriptions.SubscribedChannelTile(channel)
 				}

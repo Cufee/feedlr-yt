@@ -13,6 +13,10 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+var (
+	ErrLoginRequired = errors.New("login required")
+)
+
 type VideoType string
 
 // Not sure why, but some videos end up with the duration values below every now and then
@@ -208,7 +212,7 @@ func (c *client) GetVideoPlayerDetails(videoId string, tries ...int) (*VideoDeta
 
 	if details.PlayabilityStatus.Status == "LOGIN_REQUIRED" {
 		if !hasProxy || len(tries) < 1 || tries[0] < 1 {
-			return nil, errors.New("youtube player error: login required")
+			return nil, ErrLoginRequired
 		}
 		proxy.disableFor(time.Hour)
 		return c.GetVideoPlayerDetails(videoId, tries[0]-1)

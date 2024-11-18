@@ -3,10 +3,9 @@ package shared
 import "fmt"
 
 templ FuseSearch(id string, label string, minLength int) {
-	<div class="flex items-center justify-center w-full" id={ fmt.Sprintf("fuse-search-%s",id) }>
-		<input id={ fmt.Sprintf("search-input-%s",id) } type="text" placeholder={ label } class="w-full input input-bordered placeholder:text-center bg-base-200"/>
-		<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
-		@EmbedMinifiedScript(fuseSearch(fmt.Sprintf("search-input-%s",id), id, id, minLength), fmt.Sprintf("search-input-%s",id), id, id, minLength)
+	<div class="flex items-center justify-center w-full" id={ fmt.Sprintf("fuse-search-%s", id) }>
+		<input id={ fmt.Sprintf("search-input-%s", id) } type="text" placeholder={ label } class="w-full input input-bordered placeholder:text-center bg-base-200"/>
+		<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2" onload={ fuseSearch(fmt.Sprintf("search-input-%s", id), id, id, minLength) }></script>
 	</div>
 }
 
@@ -61,4 +60,3 @@ script fuseSearch(searchInputId, targetId, parentId string, minLength int) {
 		document.getElementById(parentId) && initSearch() && clearTimeout(waitForParent)
 	}, 100)
 }
-

@@ -48,13 +48,13 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 	}
 
 	videos, err := GetChannelVideos(ctx, db, 24, channelID)
-	if err != nil && !database.IsErrNotFound(err) {
+	if err != nil && !database.IsErrNotFound(err) && !errors.Is(err, youtube.ErrLoginRequired) {
 		return nil, err
 	}
 
 	if len(videos) == 0 && !cached {
 		inserted, err := CacheChannelVideos(ctx, db, 3, channelID)
-		if err != nil {
+		if err != nil && !errors.Is(err, youtube.ErrLoginRequired) {
 			return nil, errors.Wrap(err, "failed to cache channel videos")
 		}
 		slices.SortFunc(inserted, func(i, j *models.Video) int {
