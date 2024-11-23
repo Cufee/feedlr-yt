@@ -47,7 +47,7 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 		},
 	}
 
-	videos, err := GetChannelVideos(ctx, db, 12, channelID)
+	videos, err := GetChannelVideos(ctx, db, 24, channelID)
 	if err != nil && !database.IsErrNotFound(err) && !errors.Is(err, youtube.ErrLoginRequired) {
 		return nil, err
 	}

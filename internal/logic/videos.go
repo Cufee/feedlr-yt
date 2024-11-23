@@ -38,7 +38,7 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 		channelIds = append(channelIds, c.ID)
 	}
 
-	allVideos, err := GetChannelVideos(ctx, db, 24, channelIds...)
+	allVideos, err := GetChannelVideos(ctx, db, 36, channelIds...)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos")
 	}
