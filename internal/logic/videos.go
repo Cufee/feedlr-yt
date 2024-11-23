@@ -141,7 +141,7 @@ func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int
 		return b.PublishedAt.Compare(a.PublishedAt)
 	})
 
-	return trimVideoList(limit, 12, props), nil
+	return trimVideoList(limit, 3, props), nil
 }
 
 func GetVideoByID(ctx context.Context, db interface {

@@ -47,7 +47,7 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 		},
 	}
 
-	videos, err := GetChannelVideos(ctx, db, 24, channelID)
+	videos, err := GetChannelVideos(ctx, db, 12, channelID)
 	if err != nil && !database.IsErrNotFound(err) && !errors.Is(err, youtube.ErrLoginRequired) {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 		}
 	}
 
-	props.Channel.Videos = trimVideoList(24, 12, videos) // 12 can be divided by 1, 2, 3, 4 to get a nice grid
+	props.Channel.Videos = trimVideoList(12, 3, videos)
 
 	if userID != "" && len(props.Channel.Videos) > 0 {
 		var videoIds []string
