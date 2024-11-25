@@ -3,7 +3,6 @@ package settings
 
 import (
 	"fmt"
-	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"time"
@@ -15,10 +14,10 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 			<span class="self-center text-xl font-bold">Account</span>
 		</div>
 		<div class="flex flex-col flex-grow w-full gap-2 p-4 rounded-lg bg-base-100">
-			<div class="flex flex-wrap items-center justify-between gap-2">
-				<span class="font-bold">Passkeys</span>
-				<div class="flex flex-row items-center gap-1 grow justify-end">
-					<span id="error" class="invisible text-error tooltip" data-tip="">
+			<div class="flex flex-wrap items-center justify-center gap-2">
+				<span class="font-bold grow">Passkeys</span>
+				<div class="flex flex-row items-center gap-1 justify-start">
+					<span id="error" class="hidden text-error tooltip" data-tip="">
 						@icons.Info()
 					</span>
 					<button id="addPasskey" type="button" class="btn btn-sm btn-primary">Add a new passkey</button>
@@ -26,17 +25,10 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 			</div>
 			<div class="flex flex-col gap-2">
 				for _, pk := range passkeys {
-					<div class="flex flex-row flex-wrap items-center gap-2 p-2 rounded-lg bg-base-200" id={ fmt.Sprintf("pk-%s", pk.ID) }>
-						<div class="flex flex-row flex-wrap items-center justify-between gap-1 grow">
-							<span>
-								{ pk.CreatedAt.Format(time.RFC822) }
-							</span>
-							<span>
-								if pk.Label != "" {
-									{ pk.Label }
-								} else {
-									{ logic.Substring(logic.HashString(pk.ID), 16) }
-								}
+					<div class="flex flex-row items-center gap-2 p-2 rounded-lg bg-base-200 overflow-hidden" id={ fmt.Sprintf("pk-%s", pk.ID) }>
+						<div class="flex flex-row items-center justify-between gap-2 grow overflow-hidden">
+							<span class="text-nowrap">
+								{ pk.CreatedAt.Format(time.Stamp) }
 							</span>
 						</div>
 						<button type="button" class="btn btn-sm btn-square btn-error" hx-delete={ fmt.Sprintf("/api/passkeys/%s", pk.ID) } hx-target={ fmt.Sprintf("#pk-%s", pk.ID) } hx-swap="delete" hx-confirm="Are you sure you wish to delete a passkey? This cannot be undone.">
@@ -53,11 +45,11 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 		function showMessage(message, isError = false) {
       const errorSpan = document.getElementById('error');
       if (!isError) {
-        errorSpan.classList.add("invisible");
+        errorSpan.classList.add("hidden");
         errorSpan.dataset.tip = "";
         return;
       }
-      errorSpan.classList.remove("invisible");
+      errorSpan.classList.remove("hidden");
       errorSpan.dataset.tip = message;
 		}
 
