@@ -3,6 +3,7 @@ package youtube
 import (
 	"errors"
 	"sort"
+	"time"
 
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
@@ -66,7 +67,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 			details.Title = item.Snippet.Title
 			details.ChannelID = item.Snippet.ChannelId
 			details.Description = item.Snippet.Description
-			details.PublishedAt = item.Snippet.PublishedAt
+			details.PublishedAt, _ = time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			videoDetails <- details
 			return nil
 		})
@@ -83,7 +84,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 	}
 
 	sort.Slice(videos, func(i, j int) bool {
-		return videos[i].PublishedAt > videos[j].PublishedAt
+		return videos[i].PublishedAt.After(videos[j].PublishedAt)
 	})
 
 	if len(videos) > limit {

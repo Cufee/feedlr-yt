@@ -192,6 +192,11 @@ table "users" {
     columns = [column.id]
   }
 
+  column "permissions" {
+    null = false
+    type = text
+    default = ""
+  }
   column "username" {
     null = false
     type = text

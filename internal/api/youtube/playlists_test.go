@@ -8,7 +8,11 @@ import (
 )
 
 func TestGetPlaylistVideos(t *testing.T) {
-	client := NewClient(os.Getenv("YOUTUBE_API_KEY"))
+	client, err := NewClient(os.Getenv("YOUTUBE_API_KEY"), false)
+	if err != nil {
+		t.Error(err)
+	}
+
 	playlist, err := client.GetChannelUploadPlaylistID("UCUyeluBRhGPCW4rPe_UvBZQ")
 	if err != nil {
 		t.Error(err)

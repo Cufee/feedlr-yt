@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"errors"
+	"time"
 )
 
 type Channel struct {
@@ -18,7 +19,7 @@ type Video struct {
 	Title       string
 	Duration    int
 	Thumbnail   string
-	PublishedAt string
+	PublishedAt time.Time
 	Description string
 }
 

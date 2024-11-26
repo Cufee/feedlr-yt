@@ -7,7 +7,10 @@ import (
 )
 
 func TestGetVideoPlayerDetails(t *testing.T) {
-	client := NewClient("<none>")
+	client, err := NewClient("<none>", true)
+	if err != nil {
+		t.Error(err)
+	}
 	{
 		video, err := client.GetVideoPlayerDetails("JpW1KrK6Xjk")
 		if err != nil {
@@ -44,7 +47,7 @@ func TestGetVideoPlayerDetails(t *testing.T) {
 		log.Print(string(e))
 	}
 	{
-		video, err := client.GetVideoPlayerDetails("OQ03BRT_u8E")
+		video, err := client.GetVideoPlayerDetails("OSd9935ltj8")
 		if err != nil {
 			t.Error(err)
 		}

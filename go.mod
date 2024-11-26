@@ -1,6 +1,8 @@
 module github.com/cufee/feedlr-yt
 
-go 1.22.5
+go 1.23
+
+toolchain go1.23.0
 
 require (
 	github.com/a-h/templ v0.2.747
@@ -27,19 +29,22 @@ require (
 )
 
 require (
+	github.com/PuerkitoBio/goquery v1.10.0
 	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-webauthn/webauthn v0.11.0
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/huandu/go-sqlbuilder v1.28.1
 	github.com/microcosm-cc/bluemonday v1.0.27
+	github.com/rs/zerolog v1.33.0
 	github.com/volatiletech/null/v8 v8.1.2
-	golang.org/x/sync v0.7.0
+	golang.org/x/sync v0.8.0
 )
 
 require (
 	cloud.google.com/go/auth v0.7.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.3 // indirect
 	cloud.google.com/go/compute/metadata v0.5.0 // indirect
+	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -91,9 +96,9 @@ require (
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.25.0 // indirect
-	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/crypto v0.27.0 // indirect
+	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/text v0.18.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240730163845-b1a4ccb954bf // indirect
 	google.golang.org/grpc v1.65.0 // indirect
@@ -121,6 +126,6 @@ require (
 	github.com/valyala/fasthttp v1.55.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
-	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
 	google.golang.org/api v0.190.0
 )

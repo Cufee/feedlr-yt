@@ -3,7 +3,6 @@ package logic
 import (
 	"context"
 
-	"log"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
@@ -62,10 +61,6 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 					continue
 				}
 
-				publishedAt, err := time.Parse(time.RFC3339, video.PublishedAt)
-				if err != nil {
-					log.Printf("Error parsing publishedAt %v", err)
-				}
 				updates = append(updates, &models.Video{
 					ChannelID:   c,
 					ID:          video.ID,
@@ -73,7 +68,7 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 					Title:       video.Title,
 					Duration:    int64(video.Duration),
 					Description: video.Description,
-					PublishedAt: publishedAt,
+					PublishedAt: video.PublishedAt,
 					Private:     video.Type == youtube.VideoTypePrivate,
 				})
 				updated = true
@@ -164,7 +159,6 @@ func UpdateChannelVideoCache(ctx context.Context, db database.Client, videoID st
 		return err
 	}
 
-	publishedAt, _ := time.Parse(time.RFC3339, video.PublishedAt)
 	update := &models.Video{
 		ChannelID:   video.ChannelID,
 		ID:          video.ID,
@@ -172,7 +166,7 @@ func UpdateChannelVideoCache(ctx context.Context, db database.Client, videoID st
 		Title:       video.Title,
 		Duration:    int64(video.Duration),
 		Description: video.Description,
-		PublishedAt: publishedAt,
+		PublishedAt: video.PublishedAt,
 		Private:     video.Type == youtube.VideoTypePrivate,
 	}
 

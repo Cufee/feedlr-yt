@@ -1,16 +1,9 @@
 package youtube
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"net/http"
 	"net/url"
-	"slices"
-	"strconv"
 	"time"
-
-	"golang.org/x/exp/maps"
 )
 
 var (
@@ -34,19 +27,6 @@ type VideoDetails struct {
 	Video
 	ChannelID string `json:"channelId"`
 	Duration  int    `json:"duration"`
-}
-
-type PlayerResponse struct {
-	StreamingData      StreamingData      `json:"streamingData"`
-	PlayabilityStatus  PlayabilityStatus  `json:"playabilityStatus"`
-	PlayerVideoDetails PlayerVideoDetails `json:"videoDetails"`
-	Microformat        Microformat        `json:"microformat"`
-}
-
-type PlayabilityStatus struct {
-	Status          string `json:"status"`
-	Reason          string `json:"reason"`
-	PlayableInEmbed bool   `json:"playableInEmbed"`
 }
 
 type Microformat struct {
@@ -148,136 +128,10 @@ type PlayerVideoDetails struct {
 }
 
 var playerURL, _ = url.Parse("https://www.youtube.com/youtubei/v1/player")
-var defaultClientBodyString = `{"videoId":"","contentCheckOk":true,"racyCheckOk":true,"context":{"client":{"clientName":"WEB","clientVersion":"1.20210616.1.0","platform":"DESKTOP","clientScreen":"EMBED","clientFormFactor":"UNKNOWN_FORM_FACTOR","browserName":"Chrome"},"user":{"lockedSafetyMode":"false"},"request":{"useSsl":"true"}}}`
-var defaultClientBody map[string]any
-
-func init() {
-	defaultClientBody = make(map[string]any)
-	err := json.Unmarshal([]byte(defaultClientBodyString), &defaultClientBody)
-	if err != nil {
-		panic(err)
-	}
-}
 
 var playerLimiter = time.NewTicker(time.Second / 5)
 
 func (c *client) GetVideoPlayerDetails(videoId string, tries ...int) (*VideoDetails, error) {
 	<-playerLimiter.C
-
-	body := make(map[string]any)
-	maps.Copy(body, defaultClientBody)
-
-	body["videoId"] = videoId
-	encoded, err := json.Marshal(body)
-	if err != nil {
-		return nil, errors.Join(errors.New("GetVideoPlayerDetails.json.Marshal"), err)
-	}
-
-	transport := &http.Transport{}
-	proxy, hasProxy := getPlayerProxy()
-	if hasProxy {
-		transport.Proxy = http.ProxyURL(proxy.url)
-	}
-
-	client := &http.Client{
-		Timeout:   time.Second * 10,
-		Transport: transport,
-	}
-
-	res, err := client.Post(playerURL.String(), "application/json", bytes.NewReader(encoded))
-	if err != nil {
-		if hasProxy {
-			proxy.disableFor(time.Minute * 5)
-		}
-		if len(tries) < 1 || tries[0] < 2 {
-			return nil, errors.Join(errors.New("GetVideoPlayerDetails.http.Post"), err)
-		}
-		return c.GetVideoPlayerDetails(videoId, tries[0]-1)
-	}
-	if res == nil || res.StatusCode != 200 {
-		if hasProxy {
-			proxy.disableFor(time.Minute * 5)
-		}
-		if len(tries) < 1 || tries[0] < 2 {
-			return nil, errors.New("GetVideoPlayerDetails.http.Post: invalid response")
-		}
-		return c.GetVideoPlayerDetails(videoId, tries[0]-1)
-	}
-
-	var details PlayerResponse
-	err = json.NewDecoder(res.Body).Decode(&details)
-	if err != nil {
-		return nil, errors.Join(errors.New("GetVideoPlayerDetails.json.NewDecoder.Decode"), err)
-	}
-
-	if details.PlayabilityStatus.Status == "LOGIN_REQUIRED" {
-		if !hasProxy || len(tries) < 1 || tries[0] < 1 {
-			return nil, ErrLoginRequired
-		}
-		proxy.disableFor(time.Hour)
-		return c.GetVideoPlayerDetails(videoId, tries[0]-1)
-	}
-
-	duration, _ := strconv.Atoi(details.PlayerVideoDetails.LengthSeconds)
-	fullDetails := VideoDetails{
-		ChannelID: details.PlayerVideoDetails.ChannelID,
-		Video: Video{
-			Type:        VideoTypeVideo,
-			ID:          videoId,
-			Title:       details.PlayerVideoDetails.Title,
-			Duration:    duration,
-			Description: details.PlayerVideoDetails.ShortDescription,
-			Thumbnail:   c.BuildVideoThumbnailURL(videoId),
-			URL:         c.BuildVideoEmbedURL(videoId),
-		},
-	}
-	if details.Microformat.PlayerMicroformatRenderer.PublishDate != "" {
-		fullDetails.Video.PublishedAt = details.Microformat.PlayerMicroformatRenderer.PublishDate
-	}
-
-	// Check if a video is a live stream
-	// Status will not be OK if a video is an upcoming stream
-	if details.PlayerVideoDetails.IsLiveContent && duration == 0 {
-		if details.PlayerVideoDetails.IsLive {
-			fullDetails.Type = VideoTypeLiveStream
-		} else {
-			fullDetails.Type = VideoTypeUpcomingStream
-		}
-		return &fullDetails, nil
-	} else if details.PlayabilityStatus.Status != "OK" || details.PlayerVideoDetails.IsPrivate {
-		fullDetails.Type = VideoTypePrivate
-		return &fullDetails, nil
-	}
-
-	// Check if this video is a Short and get duration if needed
-	for _, format := range details.StreamingData.Formats {
-		if fullDetails.Duration == 0 {
-			duration, _ := strconv.Atoi(format.ApproxDurationMs)
-			if !slices.Contains(invalidVideoDurations, duration) {
-				fullDetails.Duration = duration / 1000
-			}
-		}
-		if format.Width < format.Height {
-			fullDetails.Type = VideoTypeShort
-			return &fullDetails, nil
-		}
-	}
-	for _, format := range details.StreamingData.AdaptiveFormats {
-		if fullDetails.Duration == 0 {
-			duration, _ := strconv.Atoi(format.ApproxDurationMs)
-			if !slices.Contains(invalidVideoDurations, duration) {
-				fullDetails.Duration = duration / 1000
-			}
-		}
-		if format.Width < format.Height {
-			fullDetails.Type = VideoTypeShort
-			return &fullDetails, nil
-		}
-	}
-
-	if fullDetails.Duration > 0 && fullDetails.Duration <= 60 {
-		fullDetails.Type = VideoTypeShort
-	}
-
-	return &fullDetails, nil
+	return c.getTVPlayerDetails(videoId, tries...)
 }

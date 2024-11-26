@@ -178,12 +178,11 @@ func GetVideoByID(ctx context.Context, db interface {
 }
 
 func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *youtube.VideoDetails) error {
-	published, _ := time.Parse(time.RFC3339, video.PublishedAt)
 	err := db.UpsertVideos(ctx, &models.Video{
 		ID:          video.ID,
 		ChannelID:   video.ChannelID,
 		Type:        string(video.Type),
-		PublishedAt: published,
+		PublishedAt: video.PublishedAt,
 		Title:       video.Title,
 		Description: video.Description,
 		Duration:    int64(video.Duration),

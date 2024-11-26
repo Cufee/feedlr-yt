@@ -24,7 +24,11 @@ import (
 var assetsFs embed.FS
 
 func main() {
-	youtube.DefaultClient = youtube.NewClient(os.Getenv("YOUTUBE_API_KEY"))
+	yt, err := youtube.NewClient(os.Getenv("YOUTUBE_API_KEY"), true)
+	if err != nil {
+		panic(err)
+	}
+	youtube.DefaultClient = yt
 
 	db, err := database.NewSQLiteClient(os.Getenv("DATABASE_PATH"))
 	if err != nil {

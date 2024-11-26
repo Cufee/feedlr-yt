@@ -8,7 +8,11 @@ import (
 )
 
 func TestGetChannelVideos(t *testing.T) {
-	client := NewClient(os.Getenv("YOUTUBE_API_KEY"))
+	client, err := NewClient(os.Getenv("YOUTUBE_API_KEY"), false)
+	if err != nil {
+		t.Error(err)
+	}
+
 	videos, err := client.GetChannelVideos("UCXuqSBlHAE6Xw-yeJA0Tunw", 3)
 	if err != nil {
 		t.Error(err)
