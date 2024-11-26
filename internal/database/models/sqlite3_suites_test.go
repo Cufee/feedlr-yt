@@ -6,6 +6,8 @@ package models
 import "testing"
 
 func TestUpsert(t *testing.T) {
+	t.Run("AppConfigurations", testAppConfigurationsUpsert)
+
 	t.Run("Channels", testChannelsUpsert)
 
 	t.Run("Passkeys", testPasskeysUpsert)

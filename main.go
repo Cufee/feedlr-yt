@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/server"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -24,16 +26,29 @@ import (
 var assetsFs embed.FS
 
 func main() {
-	yt, err := youtube.NewClient(os.Getenv("YOUTUBE_API_KEY"), true)
-	if err != nil {
-		panic(err)
-	}
-	youtube.DefaultClient = yt
-
 	db, err := database.NewSQLiteClient(os.Getenv("DATABASE_PATH"))
 	if err != nil {
 		panic(err)
 	}
+
+	authClient := youtube.NewOAuthClient(db)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	done, err := authClient.Authenticate(ctx)
+	if err != nil {
+		cancel()
+		panic(err)
+	}
+	go func() {
+		defer cancel()
+		<-done
+		log.Info("Youtube API Authenticated")
+	}()
+
+	yt, err := youtube.NewClient(os.Getenv("YOUTUBE_API_KEY"), authClient)
+	if err != nil {
+		panic(err)
+	}
+	youtube.DefaultClient = yt
 
 	_, err = background.StartCronTasks(db)
 	if err != nil {

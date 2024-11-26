@@ -1,6 +1,36 @@
 schema "main" {
 }
 
+
+table "app_configuration" {
+  schema = schema.main
+
+  column "id" {
+    null = false
+    type = text
+  }
+  column "created_at" {
+    null = false
+    type = date
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+
+  column "version" {
+    null = false
+    type = integer
+  }
+  column "data" {
+    null = false
+    type = blob
+  }
+}
+
 table "channels" {
   schema = schema.main
 

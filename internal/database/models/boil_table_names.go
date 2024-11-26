@@ -4,21 +4,23 @@
 package models
 
 var TableNames = struct {
-	Channels      string
-	Passkeys      string
-	Sessions      string
-	Settings      string
-	Subscriptions string
-	Users         string
-	Videos        string
-	Views         string
+	AppConfiguration string
+	Channels         string
+	Passkeys         string
+	Sessions         string
+	Settings         string
+	Subscriptions    string
+	Users            string
+	Videos           string
+	Views            string
 }{
-	Channels:      "channels",
-	Passkeys:      "passkeys",
-	Sessions:      "sessions",
-	Settings:      "settings",
-	Subscriptions: "subscriptions",
-	Users:         "users",
-	Videos:        "videos",
-	Views:         "views",
+	AppConfiguration: "app_configuration",
+	Channels:         "channels",
+	Passkeys:         "passkeys",
+	Sessions:         "sessions",
+	Settings:         "settings",
+	Subscriptions:    "subscriptions",
+	Users:            "users",
+	Videos:           "videos",
+	Views:            "views",
 }

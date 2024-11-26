@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -12,14 +11,21 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
 type clientID struct {
-	ID     string
-	Secret string
+	ID     string `json:"id"`
+	Secret string `json:"secret"`
+}
+
+type authData struct {
+	Token  AuthToken `json:"token"`
+	Client clientID  `json:"client"`
 }
 
 type authStatus int
@@ -40,11 +46,12 @@ type OAuth2Client struct {
 	http          *http.Client
 	authenticated bool
 
-	clientID       clientID
-	oauthToken     AuthToken
+	authData       authData
 	deviceUserCode devideAndUserCode
 
 	taskTicker *time.Ticker
+
+	store database.ConfigurationClient
 }
 
 type AuthToken struct {
@@ -84,16 +91,19 @@ const (
 	authServerCodeURL        = youtubeBaseURL + "/o/oauth2/device/code"
 	authServerTokenURL       = youtubeBaseURL + "/o/oauth2/token"
 	authServerRevokeTokenURL = youtubeBaseURL + "/o/oauth2/revoke"
+
+	constStoreKey = "youtube-oauth-store"
 )
 
 var (
 	regexClientIdentity = regexp.MustCompile(`clientId:"(?<client_id>[^"]+)",[^"]*?:"(?<client_secret>[^"]+)"`)
 )
 
-func NewOAuthClient() *OAuth2Client {
+func NewOAuthClient(store database.ConfigurationClient) *OAuth2Client {
 	return &OAuth2Client{
 		http:   http.DefaultClient,
 		authMx: &sync.Mutex{},
+		store:  store,
 	}
 }
 
@@ -105,16 +115,16 @@ func (c OAuth2Client) Close() error {
 }
 
 func (c *OAuth2Client) Token(ctx context.Context) (string, error) {
-	if c.authStatus != AuthStatusAuthenticated || c.oauthToken.Access == "" {
+	if c.authStatus != AuthStatusAuthenticated || c.authData.Token.Access == "" {
 		return "", errors.New("not authenticated")
 	}
-	if c.oauthToken.Expiration.Before(time.Now()) {
+	if c.authData.Token.Expiration.Before(time.Now()) {
 		err := c.RefreshToken(ctx)
 		if err != nil {
 			return "", err
 		}
 	}
-	return c.oauthToken.Access, nil
+	return c.authData.Token.Access, nil
 }
 
 func (c *OAuth2Client) AuthStatus() authStatus {
@@ -131,57 +141,124 @@ func (c *OAuth2Client) RefreshToken(ctx context.Context) error {
 	defer c.authMx.Unlock()
 
 	c.authStatus = AuthStatusRefreshing
-	newToken, err := c.refreshAccessToken(ctx, c.clientID, c.oauthToken)
+	newToken, err := c.refreshAccessToken(ctx, c.authData.Client, c.authData.Token)
 	if err != nil {
 		c.authStatus = AuthStatusExpired
 		return err
 	}
-	c.oauthToken.Access = newToken.Access
-	c.oauthToken.Expiration = newToken.Expiration
+	c.authData.Token.Access = newToken.Access
+	c.authData.Token.Expiration = newToken.Expiration
 	c.authStatus = AuthStatusAuthenticated
 	return nil
 }
 
-func (c *OAuth2Client) Authenticate(ctx context.Context) (string, string, error) {
+func (c *OAuth2Client) Authenticate(ctx context.Context) (<-chan struct{}, error) {
+	cache, err := c.getAuthCache(ctx)
+	if err != nil && !database.IsErrNotFound(err) {
+		return nil, err
+	}
+	if err == nil {
+		log.Debug().Msg("found a token cache")
+
+		done := make(chan struct{})
+		close(done)
+
+		c.authData = cache
+		c.authStatus = AuthStatusAuthenticated
+
+		err := c.RefreshToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return done, nil
+	}
+
+	log.Debug().Msg("requesting a new client ID")
+	url, code, done, err := c.authenticateNewClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Str("url", url).Str("code", code).Msg("Waiting for authenctication")
+
+	return done, nil
+}
+
+func (c *OAuth2Client) authenticateNewClient(ctx context.Context) (string, string, <-chan struct{}, error) {
 	if !c.authMx.TryLock() {
-		return "", "", errors.New("auth already in progress")
+		return "", "", nil, errors.New("auth already in progress")
 	}
 
 	var err error
 
+	c.authData = authData{}
 	c.authStatus = AuthStatusStarted
-	c.clientID = clientID{}
-	c.oauthToken = AuthToken{}
 	c.deviceUserCode = devideAndUserCode{}
 
-	c.clientID, err = c.getClientID(ctx)
+	c.authData.Client, err = c.getClientID(ctx)
 	if err != nil {
 		c.authStatus = AuthStatusExpired
-		return "", "", err
+		return "", "", nil, err
 	}
 
-	c.deviceUserCode, err = c.getDeviceAndUsercode(ctx, c.clientID.ID)
+	c.deviceUserCode, err = c.getDeviceAndUsercode(ctx, c.authData.Client.ID)
 	if err != nil {
 		c.authStatus = AuthStatusExpired
-		return "", "", err
+		return "", "", nil, err
 	}
 
+	done := make(chan struct{})
 	go func() {
 		defer c.authMx.Unlock()
+		defer func() {
+			done <- struct{}{}
+		}()
 
 		ctx, cancel := context.WithDeadline(context.Background(), c.deviceUserCode.ExpiresAt)
 		defer cancel()
 
-		c.oauthToken, err = c.getAccessTokens(ctx, c.deviceUserCode, c.clientID)
+		c.authData.Token, err = c.getAccessTokens(ctx, c.deviceUserCode, c.authData.Client)
 		if err != nil {
 			c.authStatus = AuthStatusExpired
 			log.Err(err).Msg("failed to get access tokens")
 			return
 		}
 		c.authStatus = AuthStatusAuthenticated
+
+		err := c.saveAuthCache(ctx, c.authData)
+		if err != nil {
+			log.Err(err).Msg("failed to save auth cache")
+		}
 	}()
 
-	return c.deviceUserCode.VerificationURL, c.deviceUserCode.UserCode, nil
+	return c.deviceUserCode.VerificationURL, c.deviceUserCode.UserCode, done, nil
+}
+
+func (c *OAuth2Client) getAuthCache(ctx context.Context) (authData, error) {
+	config, err := c.store.GetConfiguration(ctx, constStoreKey)
+	if err != nil {
+		return authData{}, err
+	}
+
+	var data authData
+	err = json.Unmarshal(config.Data, &data)
+	if err != nil {
+		return authData{}, err
+	}
+
+	return data, nil
+}
+
+func (c *OAuth2Client) saveAuthCache(ctx context.Context, data authData) error {
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.store.UpsertConfiguration(ctx, &models.AppConfiguration{ID: constStoreKey, Data: encoded, Version: 1})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c OAuth2Client) getAccessTokens(ctx context.Context, deviceAndUserCode devideAndUserCode, clientID clientID) (AuthToken, error) {
@@ -386,8 +463,6 @@ func (c OAuth2Client) refreshAccessToken(ctx context.Context, client clientID, t
 	if err != nil {
 		return AuthToken{}, errors.Wrap(err, "failed to decode token response")
 	}
-
-	fmt.Printf("%#v", data)
 
 	return AuthToken{
 		Type:       data.Type,

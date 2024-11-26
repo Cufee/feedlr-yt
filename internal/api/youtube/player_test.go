@@ -2,64 +2,49 @@ package youtube
 
 import (
 	"encoding/json"
-	"log"
 	"testing"
+
+	"github.com/matryer/is"
+	"github.com/rs/zerolog/log"
 )
 
 func TestGetVideoPlayerDetails(t *testing.T) {
-	client, err := NewClient("<none>", true)
-	if err != nil {
-		t.Error(err)
-	}
+	is := is.New(t)
+
+	authClient, err := testAuthClient()
+	is.NoErr(err)
+
+	client, err := NewClient("<none>", authClient)
+	is.NoErr(err)
 	{
 		video, err := client.GetVideoPlayerDetails("JpW1KrK6Xjk")
-		if err != nil {
-			t.Error(err)
-		}
+		is.NoErr(err)
 
 		e, err := json.MarshalIndent(video, "", "  ")
-		if err != nil {
-			t.Error(err)
-		}
+		is.NoErr(err)
 
-		if video.Type != VideoTypePrivate {
-			t.Error("expected private video")
-		}
+		is.True(video.Type == VideoTypePrivate)
 		log.Print(string(e))
 	}
 	{
 		video, err := client.GetVideoPlayerDetails("LaRKIwpGPTU")
-		if err != nil {
-			t.Error(err)
-		}
+		is.NoErr(err)
 
 		e, err := json.MarshalIndent(video, "", "  ")
-		if err != nil {
-			t.Error(err)
-		}
+		is.NoErr(err)
 
-		if video.Type != VideoTypeVideo {
-			t.Error("expected regular video")
-		}
-		if video.Duration <= 200 {
-			t.Error("invalid video duration")
-		}
+		is.True(video.Type == VideoTypeVideo)
+		is.True(video.Duration > 200)
 		log.Print(string(e))
 	}
 	{
 		video, err := client.GetVideoPlayerDetails("OSd9935ltj8")
-		if err != nil {
-			t.Error(err)
-		}
+		is.NoErr(err)
 
 		e, err := json.MarshalIndent(video, "", "  ")
-		if err != nil {
-			t.Error(err)
-		}
+		is.NoErr(err)
 
-		if video.Type != VideoTypeShort {
-			t.Error("expected short video")
-		}
+		is.True(video.Type == VideoTypeShort)
 		log.Print(string(e))
 	}
 }

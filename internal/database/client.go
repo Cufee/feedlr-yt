@@ -20,6 +20,8 @@ type Client interface {
 	SettingsClient
 	SubscriptionsClient
 
+	ConfigurationClient
+
 	Close() error
 }
 
