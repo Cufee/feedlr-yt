@@ -14,7 +14,8 @@ import (
 	"github.com/cufee/feedlr-yt/internal/server"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/gofiber/fiber/v2/log"
+	"github.com/rs/zerolog/log"
+
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -41,9 +42,8 @@ func main() {
 	go func() {
 		defer cancel()
 		<-done
-		log.Info("Youtube API Authenticated")
+		log.Info().Msg("Youtube API Authenticated")
 	}()
-
 	yt, err := youtube.NewClient(os.Getenv("YOUTUBE_API_KEY"), authClient)
 	if err != nil {
 		panic(err)
