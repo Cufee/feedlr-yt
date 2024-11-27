@@ -21,6 +21,9 @@ templ Video(props types.VideoPlayerProps) {
 	<div class="relative flex items-center justify-start w-screen h-screen">
 		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 		@videoPlayer(props)
+		<div class="absolute flex gap-2 top-2 left-2">
+			@buttonViewOnYoutube(props.Video.ID)
+		</div>
 		<div class="absolute flex gap-2 top-2 right-2">
 			if (props.Authenticated) {
 				@buttonChannel(props.Video.Channel.ID)
@@ -46,16 +49,24 @@ templ videoPlayer(player types.VideoPlayerProps) {
 }
 
 templ buttonChannel(id string) {
-	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="opacity-75 md:opacity-50 hover:opacity-100 btn btn-square">
+	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="opacity-75 hover:opacity-100 btn btn-square">
 		@icons.Profile()
 	</a>
 }
 
 templ buttonShare(id string) {
-	<button id="share-video-link-btn" class="opacity-75 md:opacity-50 hover:opacity-100 btn btn-square">
+	<button id="share-video-link-btn" class="opacity-75 hover:opacity-100 btn btn-square">
 		@icons.Share()
 	</button>
 	@shared.EmbedMinifiedScript(shareButtonScript(id), id)
+}
+
+templ buttonViewOnYoutube(id string) {
+	<a href={ templ.URL("https://youtube.com/watch?from=feedler.app&v=" + id) } target="_blank" id="view-on-youtube" class="opacity-75 hover:opacity-100 btn btn-square">
+		<div class="border border-neutral-content rounded-lg px-1.5 py-0.5 pl-2">
+			@icons.Play()
+		</div>
+	</a>
 }
 
 script shareButtonScript(id string) {
@@ -73,11 +84,11 @@ script shareButtonScript(id string) {
 }
 
 templ buttonLogin() {
-	<a class="opacity-75 md:opacity-50 close-button hover:opacity-100 btn btn-primary" href="/login" id="close-button">Login</a>
+	<a class="opacity-75 close-button hover:opacity-100 btn btn-primary" href="/login" id="close-button">Login</a>
 }
 
 templ buttonBack(url string) {
-	<a class="opacity-75 md:opacity-50 close-button hover:opacity-100 btn btn-primary btn-square" href={ templ.URL(url) } id="close-button">
+	<a class="opacity-75 close-button hover:opacity-100 btn btn-primary btn-square" href={ templ.URL(url) } id="close-button">
 		@icons.Cross()
 	</a>
 }
@@ -174,11 +185,11 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 		}
 	}, 100)
 
-	function onPlayerReady(event) { 
+	function onPlayerReady(event) {
 		document.getElementById("player-loading").classList.add("hidden")
 		if (volume > 0) window.feedlr_player.setVolume(volume)
 	}
-	function onPlayerStateChange(event) { 
+	function onPlayerStateChange(event) {
 		withProgress && saveProgress()
 		if ([0, 2].includes(event.data)) {
 			window.focus() // Focus the window when the video ends or is paused to allow hotkeys to work
