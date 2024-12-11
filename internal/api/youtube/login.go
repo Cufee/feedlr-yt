@@ -43,8 +43,7 @@ type OAuth2Client struct {
 	authStatus authStatus
 	authMx     *sync.Mutex
 
-	http          *http.Client
-	authenticated bool
+	http *http.Client
 
 	authData       authData
 	deviceUserCode devideAndUserCode
@@ -124,6 +123,7 @@ func (c *OAuth2Client) Token(ctx context.Context) (string, error) {
 			return "", err
 		}
 	}
+
 	return c.authData.Token.Access, nil
 }
 
@@ -149,28 +149,36 @@ func (c *OAuth2Client) RefreshToken(ctx context.Context) error {
 	c.authData.Token.Access = newToken.Access
 	c.authData.Token.Expiration = newToken.Expiration
 	c.authStatus = AuthStatusAuthenticated
+
+	err = c.saveAuthCache(ctx, c.authData)
+	if err != nil {
+		log.Err(err).Msg("failed to save auth cache")
+	}
+
 	return nil
 }
 
-func (c *OAuth2Client) Authenticate(ctx context.Context) (<-chan struct{}, error) {
-	cache, err := c.getAuthCache(ctx)
-	if err != nil && !database.IsErrNotFound(err) {
-		return nil, err
-	}
-	if err == nil {
-		log.Debug().Msg("found a token cache")
-
-		done := make(chan struct{})
-		close(done)
-
-		c.authData = cache
-		c.authStatus = AuthStatusAuthenticated
-
-		err := c.RefreshToken(ctx)
-		if err != nil {
+func (c *OAuth2Client) Authenticate(ctx context.Context, skipCache bool) (<-chan struct{}, error) {
+	if !skipCache {
+		cache, err := c.getAuthCache(ctx)
+		if err != nil && !database.IsErrNotFound(err) {
 			return nil, err
 		}
-		return done, nil
+		if err == nil {
+			log.Debug().Msg("found a token cache")
+
+			done := make(chan struct{})
+			close(done)
+
+			c.authData = cache
+			c.authStatus = AuthStatusAuthenticated
+
+			err := c.RefreshToken(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return done, nil
+		}
 	}
 
 	log.Debug().Msg("requesting a new client ID")
@@ -178,7 +186,7 @@ func (c *OAuth2Client) Authenticate(ctx context.Context) (<-chan struct{}, error
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Str("url", url).Str("code", code).Msg("Waiting for authenctication")
+	log.Info().Str("url", url).Str("code", code).Msg("Waiting for authentication")
 
 	return done, nil
 }
@@ -291,15 +299,18 @@ tickerLoop:
 		if err != nil {
 			return AuthToken{}, err
 		}
-		defer res.Body.Close()
 
 		body, err := io.ReadAll(res.Body)
+		res.Body.Close()
 		if err != nil {
 			return AuthToken{}, err
 		}
 
 		var data oAuth2TokensResponse
 		err = json.Unmarshal(body, &data)
+		if err != nil {
+			return AuthToken{}, err
+		}
 
 		switch data.Error {
 		default:
@@ -352,6 +363,10 @@ func (c OAuth2Client) getClientID(ctx context.Context) (clientID, error) {
 	}
 
 	document, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	if err != nil {
+		return clientID{}, errors.Wrap(err, "failed to parse document")
+	}
+
 	script := document.Find(`script[id="base-js"]`)
 	if script == nil {
 		println(string(body))

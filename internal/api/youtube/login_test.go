@@ -42,7 +42,7 @@ func (s *testDatabaseStore) CreateConfiguration(ctx context.Context, key string,
 
 func testAuthClient() (*OAuth2Client, error) {
 	client := NewOAuthClient(&testDatabaseStore{})
-	authed, err := client.Authenticate(context.Background())
+	authed, err := client.Authenticate(context.Background(), true)
 	if err != nil {
 		return nil, err
 	}

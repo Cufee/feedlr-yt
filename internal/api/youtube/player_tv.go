@@ -70,6 +70,20 @@ func (c *client) getTVPlayerDetails(videoId string, tries ...int) (*VideoDetails
 		return nil, err
 	}
 
+	transport := &http.Transport{}
+
+	var hasProxy bool
+	proxy, found := getPlayerProxy()
+	if found {
+		transport.Proxy = http.ProxyURL(proxy.url)
+		hasProxy = true
+	}
+
+	client := &http.Client{
+		Timeout:   time.Second * 10,
+		Transport: transport,
+	}
+
 	body := make(map[string]any)
 	maps.Copy(body, tvClientBody)
 
@@ -86,9 +100,11 @@ func (c *client) getTVPlayerDetails(videoId string, tries ...int) (*VideoDetails
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	client := &http.Client{Timeout: time.Second * 10}
 	res, err := client.Do(req)
 	if err != nil {
+		if hasProxy {
+			proxy.disableFor(time.Minute * 5)
+		}
 		if len(tries) < 1 || tries[0] < 2 {
 			return nil, err
 		}
@@ -125,6 +141,10 @@ func (c *client) getTVPlayerDetails(videoId string, tries ...int) (*VideoDetails
 			Thumbnail:   c.BuildVideoThumbnailURL(videoId),
 			URL:         c.BuildVideoEmbedURL(videoId),
 		},
+	}
+
+	if details.PlayabilityStatus.Status == "UNPLAYABLE" {
+		return nil, errors.New("account is likely restricted from using the TV api")
 	}
 
 	if strings.Contains(details.PlayabilityStatus.Reason, "video is private") || strings.Contains(details.PlayabilityStatus.Reason, "video is unavailable") {

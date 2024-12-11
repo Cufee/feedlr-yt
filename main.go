@@ -34,7 +34,7 @@ func main() {
 
 	authClient := youtube.NewOAuthClient(db)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
-	done, err := authClient.Authenticate(ctx)
+	done, err := authClient.Authenticate(ctx, os.Getenv("NO_YT_AUTH_CACHE") == "true")
 	if err != nil {
 		cancel()
 		panic(err)
