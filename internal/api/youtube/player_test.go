@@ -1,12 +1,31 @@
 package youtube
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
+	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
+	"github.com/cufee/feedlr-yt/tests/mock"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 )
+
+func testAuthClient() (*auth.Client, error) {
+	client := auth.NewClient(&mock.AuthStore{})
+	authed, err := client.Authenticate(context.Background(), true)
+	if err != nil {
+		return nil, err
+	}
+	<-authed
+
+	status := client.AuthStatus()
+	if status != auth.AuthStatusAuthenticated {
+		return nil, errors.New("bad auth status")
+	}
+	return client, nil
+}
 
 func TestGetVideoPlayerDetails(t *testing.T) {
 	is := is.New(t)
@@ -17,14 +36,8 @@ func TestGetVideoPlayerDetails(t *testing.T) {
 	client, err := NewClient("<none>", authClient)
 	is.NoErr(err)
 	{
-		video, err := client.GetVideoPlayerDetails("JpW1KrK6Xjk")
-		is.NoErr(err)
-
-		e, err := json.MarshalIndent(video, "", "  ")
-		is.NoErr(err)
-
-		is.True(video.Type == VideoTypePrivate)
-		log.Print(string(e))
+		_, err := client.GetVideoPlayerDetails("JpW1KrK6Xjk")
+		is.True(errors.Is(err, ErrLoginRequired))
 	}
 	{
 		video, err := client.GetVideoPlayerDetails("LaRKIwpGPTU")

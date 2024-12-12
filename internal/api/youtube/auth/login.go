@@ -1,4 +1,4 @@
-package youtube
+package auth
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"regexp"
 	"sync"
 	"time"
 
@@ -18,102 +17,22 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type clientID struct {
-	ID     string `json:"id"`
-	Secret string `json:"secret"`
-}
-
-type authData struct {
-	Token  AuthToken `json:"token"`
-	Client clientID  `json:"client"`
-}
-
-type authStatus int
-
-const (
-	AuthStatusNotStarted = iota
-	AuthStatusStarted
-	AuthStatusPendingApproval
-	AuthStatusRefreshing
-	AuthStatusAuthenticated
-	AuthStatusExpired
-)
-
-type OAuth2Client struct {
-	authStatus authStatus
-	authMx     *sync.Mutex
-
-	http *http.Client
-
-	authData       authData
-	deviceUserCode devideAndUserCode
-
-	taskTicker *time.Ticker
-
-	store database.ConfigurationClient
-}
-
-type AuthToken struct {
-	Type       string
-	Scope      string
-	Access     string
-	Refresh    string
-	Expiration time.Time
-}
-
-type oAuth2TokensResponse struct {
-	RefreshToken string `json:"refresh_token"`
-	AccessToken  string `json:"access_token"`
-	Scope        string `json:"scope"`
-	Type         string `json:"token_type"`
-
-	ExpiryDate string `json:"expiry_date"`
-	ExpiresIn  int    `json:"expires_in"`
-
-	Error            string `json:"error"`
-	ErrorDescription string `json:"error_description"`
-}
-
-type devideAndUserCode struct {
-	DeviceCode      string    `json:"device_code"`
-	ExpiresIn       int       `json:"expires_in"`
-	ExpiresAt       time.Time `json:"-"`
-	Interval        int       `json:"interval"`
-	UserCode        string    `json:"user_code"`
-	VerificationURL string    `json:"verification_url"`
-	ErrorCode       string    `json:"error_code"`
-}
-
-const (
-	youtubeBaseURL           = "https://www.youtube.com"
-	youtubeTVURL             = youtubeBaseURL + "/tv"
-	authServerCodeURL        = youtubeBaseURL + "/o/oauth2/device/code"
-	authServerTokenURL       = youtubeBaseURL + "/o/oauth2/token"
-	authServerRevokeTokenURL = youtubeBaseURL + "/o/oauth2/revoke"
-
-	constStoreKey = "youtube-oauth-store"
-)
-
-var (
-	regexClientIdentity = regexp.MustCompile(`clientId:"(?<client_id>[^"]+)",[^"]*?:"(?<client_secret>[^"]+)"`)
-)
-
-func NewOAuthClient(store database.ConfigurationClient) *OAuth2Client {
-	return &OAuth2Client{
+func NewClient(store database.ConfigurationClient) *Client {
+	return &Client{
 		http:   http.DefaultClient,
 		authMx: &sync.Mutex{},
 		store:  store,
 	}
 }
 
-func (c OAuth2Client) Close() error {
+func (c *Client) Close() error {
 	if c.taskTicker != nil {
 		c.taskTicker.Stop()
 	}
 	return nil
 }
 
-func (c *OAuth2Client) Token(ctx context.Context) (string, error) {
+func (c *Client) Token(ctx context.Context) (string, error) {
 	if c.authStatus != AuthStatusAuthenticated || c.authData.Token.Access == "" {
 		return "", errors.New("not authenticated")
 	}
@@ -127,14 +46,14 @@ func (c *OAuth2Client) Token(ctx context.Context) (string, error) {
 	return c.authData.Token.Access, nil
 }
 
-func (c *OAuth2Client) AuthStatus() authStatus {
+func (c *Client) AuthStatus() authStatus {
 	c.authMx.Lock()
 	defer c.authMx.Unlock()
 
 	return c.authStatus
 }
 
-func (c *OAuth2Client) RefreshToken(ctx context.Context) error {
+func (c *Client) RefreshToken(ctx context.Context) error {
 	if !c.authMx.TryLock() {
 		return errors.New("auth already in progress")
 	}
@@ -158,7 +77,7 @@ func (c *OAuth2Client) RefreshToken(ctx context.Context) error {
 	return nil
 }
 
-func (c *OAuth2Client) Authenticate(ctx context.Context, skipCache bool) (<-chan struct{}, error) {
+func (c *Client) Authenticate(ctx context.Context, skipCache bool) (<-chan struct{}, error) {
 	if !skipCache {
 		cache, err := c.getAuthCache(ctx)
 		if err != nil && !database.IsErrNotFound(err) {
@@ -191,7 +110,7 @@ func (c *OAuth2Client) Authenticate(ctx context.Context, skipCache bool) (<-chan
 	return done, nil
 }
 
-func (c *OAuth2Client) authenticateNewClient(ctx context.Context) (string, string, <-chan struct{}, error) {
+func (c *Client) authenticateNewClient(ctx context.Context) (string, string, <-chan struct{}, error) {
 	if !c.authMx.TryLock() {
 		return "", "", nil, errors.New("auth already in progress")
 	}
@@ -200,7 +119,7 @@ func (c *OAuth2Client) authenticateNewClient(ctx context.Context) (string, strin
 
 	c.authData = authData{}
 	c.authStatus = AuthStatusStarted
-	c.deviceUserCode = devideAndUserCode{}
+	c.deviceUserCode = deviceAndUserCode{}
 
 	c.authData.Client, err = c.getClientID(ctx)
 	if err != nil {
@@ -241,7 +160,7 @@ func (c *OAuth2Client) authenticateNewClient(ctx context.Context) (string, strin
 	return c.deviceUserCode.VerificationURL, c.deviceUserCode.UserCode, done, nil
 }
 
-func (c *OAuth2Client) getAuthCache(ctx context.Context) (authData, error) {
+func (c *Client) getAuthCache(ctx context.Context) (authData, error) {
 	config, err := c.store.GetConfiguration(ctx, constStoreKey)
 	if err != nil {
 		return authData{}, err
@@ -256,7 +175,7 @@ func (c *OAuth2Client) getAuthCache(ctx context.Context) (authData, error) {
 	return data, nil
 }
 
-func (c *OAuth2Client) saveAuthCache(ctx context.Context, data authData) error {
+func (c *Client) saveAuthCache(ctx context.Context, data authData) error {
 	encoded, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -269,7 +188,7 @@ func (c *OAuth2Client) saveAuthCache(ctx context.Context, data authData) error {
 	return nil
 }
 
-func (c OAuth2Client) getAccessTokens(ctx context.Context, deviceAndUserCode devideAndUserCode, clientID clientID) (AuthToken, error) {
+func (c *Client) getAccessTokens(ctx context.Context, deviceAndUserCode deviceAndUserCode, clientID clientID) (AuthToken, error) {
 	payload := map[string]string{
 		"client_id":     clientID.ID,
 		"client_secret": clientID.Secret,
@@ -341,7 +260,7 @@ tickerLoop:
 	return AuthToken{}, errors.New("ticker stopped before a token was obtained")
 }
 
-func (c OAuth2Client) getClientID(ctx context.Context) (clientID, error) {
+func (c *Client) getClientID(ctx context.Context) (clientID, error) {
 	req, err := http.NewRequest("GET", youtubeTVURL, nil)
 	if err != nil {
 		return clientID{}, errors.Wrap(err, "failed to make a new tv script request")
@@ -405,7 +324,7 @@ func (c OAuth2Client) getClientID(ctx context.Context) (clientID, error) {
 	return clientID{ID: group[1], Secret: group[2]}, nil
 }
 
-func (c OAuth2Client) getDeviceAndUsercode(ctx context.Context, clientID string) (devideAndUserCode, error) {
+func (c *Client) getDeviceAndUsercode(ctx context.Context, clientID string) (deviceAndUserCode, error) {
 	payload := map[string]string{
 		"client_id":    clientID,
 		"scope":        "http://gdata.youtube.com https://www.googleapis.com/auth/youtube-paid-content",
@@ -415,12 +334,12 @@ func (c OAuth2Client) getDeviceAndUsercode(ctx context.Context, clientID string)
 
 	encoded, err := json.Marshal(payload)
 	if err != nil {
-		return devideAndUserCode{}, errors.Wrap(err, "failed to encode server code payload")
+		return deviceAndUserCode{}, errors.Wrap(err, "failed to encode server code payload")
 	}
 
 	req, err := http.NewRequest("POST", authServerCodeURL, bytes.NewReader(encoded))
 	if err != nil {
-		return devideAndUserCode{}, errors.Wrap(err, "failed to make a server code request")
+		return deviceAndUserCode{}, errors.Wrap(err, "failed to make a server code request")
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(ctx)
@@ -428,25 +347,25 @@ func (c OAuth2Client) getDeviceAndUsercode(ctx context.Context, clientID string)
 	reqTime := time.Now()
 	res, err := c.http.Do(req)
 	if err != nil {
-		return devideAndUserCode{}, err
+		return deviceAndUserCode{}, err
 	}
 	defer res.Body.Close()
 
-	var body devideAndUserCode
+	var body deviceAndUserCode
 	err = json.NewDecoder(res.Body).Decode(&body)
 	if err != nil {
-		return devideAndUserCode{}, errors.Wrap(err, "failed to unmarshal server code response body")
+		return deviceAndUserCode{}, errors.Wrap(err, "failed to unmarshal server code response body")
 	}
 
 	if body.ErrorCode != "" {
-		return devideAndUserCode{}, errors.Wrap(errors.New(body.ErrorCode), "server code request returned an error")
+		return deviceAndUserCode{}, errors.Wrap(errors.New(body.ErrorCode), "server code request returned an error")
 	}
 
 	body.ExpiresAt = reqTime.Add(time.Second * time.Duration(body.ExpiresIn))
 	return body, nil
 }
 
-func (c OAuth2Client) refreshAccessToken(ctx context.Context, client clientID, token AuthToken) (AuthToken, error) {
+func (c *Client) refreshAccessToken(ctx context.Context, client clientID, token AuthToken) (AuthToken, error) {
 	payload := map[string]string{
 		"client_id":     client.ID,
 		"client_secret": client.Secret,

@@ -133,5 +133,5 @@ var playerLimiter = time.NewTicker(time.Second / 5)
 
 func (c *client) GetVideoPlayerDetails(videoId string, tries ...int) (*VideoDetails, error) {
 	<-playerLimiter.C
-	return c.getTVPlayerDetails(videoId, tries...)
+	return c.getDesktopPlayerDetails(videoId, tries...)
 }
