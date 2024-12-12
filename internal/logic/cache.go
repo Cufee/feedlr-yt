@@ -160,6 +160,13 @@ func UpdateChannelVideoCache(ctx context.Context, db database.Client, videoID st
 		return err
 	}
 
+	if current != nil {
+		video.ChannelID = current.ChannelID
+	}
+	if video.ChannelID == "" {
+		return errors.New("cannot refresh an uncached private video without a channel id")
+	}
+
 	update := &models.Video{
 		ChannelID:   video.ChannelID,
 		ID:          video.ID,

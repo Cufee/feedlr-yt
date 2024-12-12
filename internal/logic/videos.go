@@ -150,7 +150,7 @@ func GetVideoByID(ctx context.Context, db interface {
 }, id string) (types.VideoProps, error) {
 	vid, err := db.GetVideoByID(ctx, id, database.Video.WithChannel())
 	if err != nil && !database.IsErrNotFound(err) {
-		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.database.DefaultClient.GetVideoByID failed to get video")
+		return types.VideoProps{}, errors.Wrap(err, "failed to get video")
 	}
 	if vid != nil && vid.R.Channel != nil {
 		return types.VideoModelToProps(vid, types.ChannelModelToProps(vid.R.Channel)), nil
@@ -158,7 +158,10 @@ func GetVideoByID(ctx context.Context, db interface {
 
 	details, err := youtube.DefaultClient.GetVideoDetailsByID(id)
 	if err != nil {
-		return types.VideoProps{}, errors.Wrap(err, "GetVideoByID.youtube.DefaultClient.GetVideoPlayerDetails failed to get video details")
+		return types.VideoProps{}, errors.Wrap(err, "failed to get video details")
+	}
+	if details.ChannelID == "" {
+		return types.VideoProps{}, errors.New("failed to get video details, channel id is blank")
 	}
 
 	channel, _, err := CacheChannel(ctx, db, details.ChannelID)
