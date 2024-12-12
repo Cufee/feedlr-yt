@@ -97,7 +97,7 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	if res.StatusCode != 200 {
 		if len(tries) < 1 || tries[0] < 2 {
 			log.Debug().Str("body", string(responseBody)).Int("status", res.StatusCode).Msg("invalid response")
-			return nil, errors.New("GetVideoPlayerDetails.http.Post: invalid response")
+			return nil, errors.New("bad response status code")
 		}
 		return c.GetVideoPlayerDetails(videoId, tries[0]-1)
 	}
@@ -143,7 +143,7 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 
 	// Some other issue, not a private video explicitly
 	if details.PlayabilityStatus.Status == "LOGIN_REQUIRED" {
-		log.Warn().Str("video", videoId).Str("message", details.PlayabilityStatus.Reason).Msg("login required to view content")
+		log.Warn().Str("video", videoId).Str("reason", details.PlayabilityStatus.Reason).Strs("messages", details.PlayabilityStatus.Messages).Msg("login required to view content")
 		fullDetails.Type = VideoTypeFailed
 		return &fullDetails, nil
 	}

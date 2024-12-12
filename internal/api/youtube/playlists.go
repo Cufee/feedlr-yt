@@ -1,10 +1,10 @@
 package youtube
 
 import (
-	"errors"
 	"sort"
 	"time"
 
+	"github.com/pkg/errors"
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/youtube/v3"
@@ -18,11 +18,11 @@ type PlayListItemWithDetails struct {
 func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
 	playlists, err := c.service.Channels.List([]string{"id", "contentDetails"}).Id(channelId).Fields("items(contentDetails/relatedPlaylists/uploads)").Do()
 	if err != nil {
-		return "", errors.Join(errors.New("GetChannelUploadPlaylistID.youtube.service.Channels.List"), err)
+		return "", errors.Wrap(err, "channels list failed")
 	}
 
 	if len(playlists.Items) <= 0 {
-		return "", errors.New("GetChannelUploadPlaylistID.youtube.service.Channels.List: no channels found")
+		return "", errors.New("channels list returned no channels")
 	}
 
 	return playlists.Items[0].ContentDetails.RelatedPlaylists.Uploads, nil
@@ -38,7 +38,7 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 
 	res, err := c.service.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistId).MaxResults(50).Do() // https://developers.google.com/youtube/v3/docs/playlists/list#parameters
 	if err != nil {
-		return nil, errors.Join(errors.New("GetPlaylistVideos.youtube.service.PlaylistItems.List"), err)
+		return nil, errors.Wrap(err, "playlist items failed")
 	}
 
 	var group errgroup.Group

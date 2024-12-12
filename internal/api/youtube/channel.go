@@ -1,8 +1,9 @@
 package youtube
 
 import (
-	"errors"
 	"time"
+
+	"github.com/friendsofgo/errors"
 )
 
 type Channel struct {
@@ -29,7 +30,7 @@ func (c *client) SearchChannels(query string, limit int) ([]Channel, error) {
 	}
 	res, err := c.service.Search.List([]string{"id", "snippet"}).Q(query).Type("channel").MaxResults((int64(limit))).Do()
 	if err != nil {
-		return nil, errors.Join(errors.New("SearchChannels.youtube.service.Search.List"), err)
+		return nil, errors.Wrap(err, "search failed")
 	}
 
 	var channels []Channel
@@ -49,11 +50,11 @@ func (c *client) SearchChannels(query string, limit int) ([]Channel, error) {
 func (c *client) GetChannel(channelID string) (*Channel, error) {
 	res, err := c.service.Channels.List([]string{"id", "snippet"}).Id(channelID).Do()
 	if err != nil {
-		return nil, errors.Join(errors.New("GetChannel.youtube.service.Channels.List"), err)
+		return nil, errors.Wrap(err, "channels list failed")
 	}
 
 	if len(res.Items) <= 0 {
-		return nil, errors.New("GetChannel.youtube.service.Channels.List: no channels found")
+		return nil, errors.New("channels list returned no channels")
 	}
 
 	var channel Channel
@@ -68,12 +69,12 @@ func (c *client) GetChannel(channelID string) (*Channel, error) {
 func (c *client) GetChannelVideos(channelID string, uploadedAfter time.Time, limit int, skipVideoIds ...string) ([]Video, error) {
 	uploadsId, err := c.GetChannelUploadPlaylistID(channelID)
 	if err != nil {
-		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetChannelUploadPlaylistID"), err)
+		return nil, err
 	}
 
 	videos, err := c.GetPlaylistVideos(uploadsId, uploadedAfter, limit, skipVideoIds...)
 	if err != nil {
-		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetPlaylistVideos"), err)
+		return nil, err
 	}
 	return videos, nil
 }
