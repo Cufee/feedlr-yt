@@ -73,9 +73,6 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 
 	res, err := client.Do(req)
 	if err != nil {
-		// if hasProxy {
-		// 	proxy.disableFor(time.Minute * 5)
-		// }
 		if len(tries) < 1 || tries[0] < 2 {
 			return nil, err
 		}
@@ -131,6 +128,7 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		return &fullDetails, nil
 	}
 	if details.PlayabilityStatus.Status != "OK" || details.PlayerVideoDetails.IsPrivate {
+		// This will result in videos being marked private when we fail to auth correctly
 		fullDetails.Type = VideoTypePrivate
 		return &fullDetails, nil
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/friendsofgo/errors"
-	"github.com/ssoroka/slice"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 )
@@ -37,11 +36,6 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				return err
 			}
 
-			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, limit)
-			if err != nil {
-				return errors.Wrap(err, "youtube#GetPlaylistVideos")
-			}
-
 			dctx, dcancel := context.WithTimeout(ctx, time.Second*5)
 			defer dcancel()
 
@@ -55,12 +49,13 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				existingIDs = append(existingIDs, v.ID)
 			}
 
+			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, limit, existingIDs...)
+			if err != nil {
+				return errors.Wrap(err, "youtube#GetPlaylistVideos")
+			}
+
 			var updated bool
 			for _, video := range recentVideos {
-				if slice.Contains(existingIDs, video.ID) {
-					continue
-				}
-
 				updates = append(updates, &models.Video{
 					ChannelID:   c,
 					ID:          video.ID,
