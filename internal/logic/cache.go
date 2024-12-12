@@ -39,7 +39,13 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 			dctx, dcancel := context.WithTimeout(ctx, time.Second*5)
 			defer dcancel()
 
-			existingVideos, err := db.FindVideos(dctx, database.Video.Channel(channelID), database.Video.TypeNot("private"))
+			existingVideos, err := db.FindVideos(
+				dctx,
+				database.Video.Limit(24),
+				// we should not skip failed videos
+				database.Video.Channel(channelID), database.Video.TypeNot(string(youtube.VideoTypeFailed)),
+				database.Video.Select(models.VideoColumns.ID, models.VideoColumns.ChannelID, models.VideoColumns.Type),
+			)
 			if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 				return errors.Wrap(err, "db#FindVideos")
 			}
@@ -49,7 +55,11 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				existingIDs = append(existingIDs, v.ID)
 			}
 
-			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, channel.FeedUpdatedAt, limit, existingIDs...)
+			// since we make a list of videos to skip,
+			// we can check back a little more to effectively retry failed ones
+			videosSince := time.Now().Add(-2 * (time.Since(channel.FeedUpdatedAt) + time.Hour))
+
+			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, videosSince, limit, existingIDs...)
 			if err != nil {
 				return errors.Wrap(err, "youtube#GetPlaylistVideos")
 			}

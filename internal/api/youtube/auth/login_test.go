@@ -30,6 +30,10 @@ func TestLoginFlow(t *testing.T) {
 	client, err := testAuthClient()
 	is.NoErr(err)
 
+	token, err := client.Token(context.Background())
+	is.NoErr(err)
+	println(token)
+
 	err = client.RefreshToken(context.Background())
 	is.NoErr(err)
 }

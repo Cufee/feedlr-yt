@@ -20,10 +20,12 @@ type VideoQuery func(o *videoQuery)
 
 type videoQuery struct {
 	withChannel bool
+	limit       int
 	id          []any
 	channels    []any
 	typesIn     []any
 	typesNotIn  []any
+	columns     []string
 }
 
 type videoQuerySlice []VideoQuery
@@ -65,6 +67,16 @@ func (video) ID(id ...string) VideoQuery {
 		o.id = append(o.id, toAny(id)...)
 	}
 }
+func (video) Limit(limit int) VideoQuery {
+	return func(o *videoQuery) {
+		o.limit = limit
+	}
+}
+func (video) Select(columns ...string) VideoQuery {
+	return func(o *videoQuery) {
+		o.columns = append(o.columns, columns...)
+	}
+}
 
 func (c *sqliteClient) GetVideoByID(ctx context.Context, id string, o ...VideoQuery) (*models.Video, error) {
 	opts := videoQuerySlice(o).opts()
@@ -87,9 +99,17 @@ func (c *sqliteClient) GetVideoByID(ctx context.Context, id string, o ...VideoQu
 func (c *sqliteClient) FindVideos(ctx context.Context, o ...VideoQuery) ([]*models.Video, error) {
 	opts := videoQuerySlice(o).opts()
 
-	sql := sqlbuilder.
-		Select("*").
-		From(models.TableNames.Videos)
+	withSelect := sqlbuilder.Select("*")
+	if opts.columns != nil {
+		withSelect = sqlbuilder.Select(opts.columns...)
+	}
+
+	sql := withSelect.
+		From(models.TableNames.Videos).
+		OrderBy(models.ViewColumns.CreatedAt).Desc()
+	if opts.limit > 0 {
+		sql = sql.Limit(opts.limit)
+	}
 
 	var where []string
 	if opts.channels != nil {
