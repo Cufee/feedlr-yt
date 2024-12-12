@@ -22,9 +22,19 @@ type DesktopPlayerResponse struct {
 }
 
 type DesktopPlayabilityStatus struct {
-	Status          string `json:"status"`
-	Reason          string `json:"reason"`
-	PlayableInEmbed bool   `json:"playableInEmbed"`
+	Status          string   `json:"status"`
+	Reason          string   `json:"reason"`
+	Messages        []string `json:"messages"`
+	PlayableInEmbed bool     `json:"playableInEmbed"`
+}
+
+func (s DesktopPlayabilityStatus) inferPrivate() bool {
+	for _, message := range s.Messages {
+		if strings.Contains(message, "private video") {
+			return true
+		}
+	}
+	return false
 }
 
 type DesktopPlayerVideoDetails struct {
@@ -126,7 +136,7 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		return &fullDetails, nil
 	}
 
-	if details.PlayerVideoDetails.IsPrivate || strings.Contains(details.PlayabilityStatus.Reason, "This is a private video") {
+	if details.PlayerVideoDetails.IsPrivate || details.PlayabilityStatus.inferPrivate() {
 		fullDetails.Type = VideoTypePrivate
 		return &fullDetails, nil
 	}
