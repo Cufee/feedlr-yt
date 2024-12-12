@@ -27,6 +27,9 @@ func NewSubscription(ctx context.Context, db database.Client, userId, channelId 
 	}
 
 	go func() {
+		if time.Since(channel.FeedUpdatedAt) < time.Hour {
+			return
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 		defer cancel()
 		CacheChannelVideos(ctx, db, 3, channelId)
