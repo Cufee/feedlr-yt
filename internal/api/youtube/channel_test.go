@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestGetChannelVideos(t *testing.T) {
@@ -13,7 +14,7 @@ func TestGetChannelVideos(t *testing.T) {
 		t.Error(err)
 	}
 
-	videos, err := client.GetChannelVideos("UCXuqSBlHAE6Xw-yeJA0Tunw", 3)
+	videos, err := client.GetChannelVideos("UCXuqSBlHAE6Xw-yeJA0Tunw", time.Time{}, 3)
 	if err != nil {
 		t.Error(err)
 	}

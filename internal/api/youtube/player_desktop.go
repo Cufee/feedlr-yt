@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -96,9 +97,6 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse response body")
 	}
-	if details.PlayabilityStatus.Status == "LOGIN_REQUIRED" {
-		log.Warn().Str("video", videoId).Str("message", details.PlayabilityStatus.Reason).Msg("login required to view content")
-	}
 
 	duration, _ := strconv.Atoi(details.PlayerVideoDetails.LengthSeconds)
 	fullDetails := VideoDetails{
@@ -127,9 +125,16 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		}
 		return &fullDetails, nil
 	}
-	if details.PlayabilityStatus.Status != "OK" || details.PlayerVideoDetails.IsPrivate {
-		// This will result in videos being marked private when we fail to auth correctly
+
+	if details.PlayerVideoDetails.IsPrivate || strings.Contains(details.PlayabilityStatus.Reason, "This is a private video") {
 		fullDetails.Type = VideoTypePrivate
+		return &fullDetails, nil
+	}
+
+	// Some other issue, not a private video explicitly
+	if details.PlayabilityStatus.Status == "LOGIN_REQUIRED" {
+		log.Warn().Str("video", videoId).Str("message", details.PlayabilityStatus.Reason).Msg("login required to view content")
+		fullDetails.Type = VideoTypeFailed
 		return &fullDetails, nil
 	}
 

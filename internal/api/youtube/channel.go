@@ -65,13 +65,13 @@ func (c *client) GetChannel(channelID string) (*Channel, error) {
 	return &channel, nil
 }
 
-func (c *client) GetChannelVideos(channelID string, limit int, skipVideoIds ...string) ([]Video, error) {
+func (c *client) GetChannelVideos(channelID string, uploadedAfter time.Time, limit int, skipVideoIds ...string) ([]Video, error) {
 	uploadsId, err := c.GetChannelUploadPlaylistID(channelID)
 	if err != nil {
 		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetChannelUploadPlaylistID"), err)
 	}
 
-	videos, err := c.GetPlaylistVideos(uploadsId, limit, skipVideoIds...)
+	videos, err := c.GetPlaylistVideos(uploadsId, uploadedAfter, limit, skipVideoIds...)
 	if err != nil {
 		return nil, errors.Join(errors.New("GetChannelVideos.youtube.GetPlaylistVideos"), err)
 	}

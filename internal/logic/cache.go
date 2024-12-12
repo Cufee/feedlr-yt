@@ -49,7 +49,7 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				existingIDs = append(existingIDs, v.ID)
 			}
 
-			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, limit, existingIDs...)
+			recentVideos, err := youtube.DefaultClient.GetPlaylistVideos(channel.UploadsPlaylistID, channel.FeedUpdatedAt, limit, existingIDs...)
 			if err != nil {
 				return errors.Wrap(err, "youtube#GetPlaylistVideos")
 			}

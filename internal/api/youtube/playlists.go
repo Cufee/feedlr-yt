@@ -28,7 +28,7 @@ func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
 	return playlists.Items[0].ContentDetails.RelatedPlaylists.Uploads, nil
 }
 
-func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ...string) ([]Video, error) {
+func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, limit int, skipVideoIds ...string) ([]Video, error) {
 	if playlistId == "" {
 		return nil, errors.New("playlist id cannot be blank")
 	}
@@ -56,6 +56,11 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 				return nil
 			}
 
+			publishedAt, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+			if publishedAt.Before(uploadedAfter) {
+				return nil
+			}
+
 			details, err := c.GetVideoPlayerDetails(item.Snippet.ResourceId.VideoId, 2)
 			if err != nil {
 				return err
@@ -67,7 +72,7 @@ func (c *client) GetPlaylistVideos(playlistId string, limit int, skipVideoIds ..
 			details.Title = item.Snippet.Title
 			details.ChannelID = item.Snippet.ChannelId
 			details.Description = item.Snippet.Description
-			details.PublishedAt, _ = time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+			details.PublishedAt = publishedAt
 			videoDetails <- details
 			return nil
 		})

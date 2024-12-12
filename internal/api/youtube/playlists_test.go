@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestGetPlaylistVideos(t *testing.T) {
@@ -18,7 +19,7 @@ func TestGetPlaylistVideos(t *testing.T) {
 		t.Error(err)
 	}
 
-	videos, err := client.GetPlaylistVideos(playlist, 3)
+	videos, err := client.GetPlaylistVideos(playlist, time.Time{}, 3)
 	if err != nil {
 		t.Error(err)
 	}
