@@ -159,10 +159,6 @@ func UpdateChannelVideoCache(ctx context.Context, db database.Client, videoID st
 	if err != nil {
 		return err
 	}
-	_, _, err = CacheChannel(ctx, db, video.ChannelID)
-	if err != nil {
-		return err
-	}
 
 	update := &models.Video{
 		ChannelID:   video.ChannelID,
@@ -179,5 +175,11 @@ func UpdateChannelVideoCache(ctx context.Context, db database.Client, videoID st
 	if err != nil {
 		return err
 	}
+
+	_, _, err = CacheChannel(ctx, db, video.ChannelID)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
