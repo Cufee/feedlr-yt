@@ -40,7 +40,7 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 			return nil, nil, ctx.Err(err)
 		}
 
-		pctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+		pctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*1500)
 		defer cancel()
 
 		props, err := logic.GetPlayerPropsWithOpts(pctx, ctx.Database(), uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: settings.SponsorBlock.SponsorBlockEnabled})
@@ -63,7 +63,10 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 	}
 
 	// No auth, do not check progress
-	props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), "", video, logic.GetPlayerOptions{WithProgress: false, WithSegments: true})
+	pctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*1500)
+	defer cancel()
+
+	props, err := logic.GetPlayerPropsWithOpts(pctx, ctx.Database(), "", video, logic.GetPlayerOptions{WithProgress: false, WithSegments: true})
 	if err != nil {
 		log.Printf("GetVideoByID: %v", err)
 		return nil, nil, ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&from=feedler.app", video), http.StatusTemporaryRedirect)

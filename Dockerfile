@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=$GOPATH/pkg/mod CGO_ENABLED=1 GOOS=linux go build 
 
 FROM debian:stable-slim
 
-ENV TZ=Europe/Berlin
+ENV TZ=Etc/UTC
 ENV ZONEINFO=/zoneinfo.zip
 COPY --from=builder /usr/local/go/lib/time/zoneinfo.zip /
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
