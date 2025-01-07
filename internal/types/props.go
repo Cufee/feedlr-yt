@@ -1,7 +1,6 @@
 package types
 
 import (
-	"log"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
@@ -106,7 +105,6 @@ type VideoPlayerProps struct {
 func (v *VideoPlayerProps) AddSegments(segments ...sponsorblock.Segment) error {
 	for _, segment := range segments {
 		if len(segment.Segment) != 2 {
-			log.Printf("segment %v for video %v has invalid length", segment, v.Video.ID)
 			continue
 		}
 		v.SkipSegments = append(v.SkipSegments, SegmentProps{

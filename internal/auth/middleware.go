@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"log"
-
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,11 +15,7 @@ func Middleware(sc *sessions.SessionClient) func(c *fiber.Ctx) error {
 		if session.Valid() {
 			c.Locals("session", session)
 
-			err := session.Refresh(c.Context())
-			if err != nil {
-				log.Printf("failed to refresh session: %s\n", err)
-			}
-
+			_ = session.Refresh(c.Context())
 			return c.Next()
 		}
 
