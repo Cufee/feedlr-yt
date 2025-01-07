@@ -45,7 +45,6 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 
 		props, err := logic.GetPlayerPropsWithOpts(pctx, ctx.Database(), uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: settings.SponsorBlock.SponsorBlockEnabled})
 		if err != nil {
-			log.Printf("GetVideoByID: %v", err)
 			return nil, nil, ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&from=feedler.app", video), http.StatusTemporaryRedirect)
 		}
 
@@ -68,7 +67,6 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 
 	props, err := logic.GetPlayerPropsWithOpts(pctx, ctx.Database(), "", video, logic.GetPlayerOptions{WithProgress: false, WithSegments: true})
 	if err != nil {
-		log.Printf("GetVideoByID: %v", err)
 		return nil, nil, ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&from=feedler.app", video), http.StatusTemporaryRedirect)
 	}
 
