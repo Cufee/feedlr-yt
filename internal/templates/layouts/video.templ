@@ -6,7 +6,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates/layouts/partials"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/tpot/brewed"
-	"github.com/sosodev/duration"
 	"time"
 )
 
@@ -16,12 +15,22 @@ func Video(video types.VideoProps) brewed.Layout[*handler.Context] {
 	}
 }
 
-func durationToString(videoDuration int) string {
-	d := duration.FromTimeDuration(time.Duration(videoDuration))
-	if d == nil {
-		return ""
-	}
-	return d.String()
+func secondsToISO8601Duration(seconds int) string {
+	duration := time.Duration(seconds) * time.Second
+
+	days := duration / (24 * time.Hour)
+	duration %= 24 * time.Hour
+
+	hours := duration / time.Hour
+	duration %= time.Hour
+
+	minutes := duration / time.Minute
+	duration %= time.Minute
+
+	secs := duration / time.Second
+
+	// Construct the ISO8601 duration string
+	return fmt.Sprintf("P%dDT%dH%dM%dS", days, hours, minutes, secs)
 }
 
 templ videoLayout(video types.VideoProps, content ...templ.Component) {
@@ -35,7 +44,7 @@ templ videoLayout(video types.VideoProps, content ...templ.Component) {
 			<meta property="video:duration" content={ fmt.Sprint(video.Duration) }/>
 			<meta property="og:video:duration" content={ fmt.Sprint(video.Duration) }/>
 			<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", video.ID) }/>
-			<meta itemprop="duration" content={ durationToString(video.Duration) }/>
+			<meta itemprop="duration" content={ secondsToISO8601Duration(video.Duration) }/>
 			<meta name="twitter:card" content="summary_large_image"/>
 			<meta name="twitter:title" content={ video.Title }/>
 			<meta name="twitter:description" content={ video.Description }/>
