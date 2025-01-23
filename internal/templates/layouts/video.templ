@@ -32,6 +32,7 @@ templ videoLayout(video types.VideoProps, content ...templ.Component) {
 			<meta property="og:title" content={ video.Title }/>
 			<meta property="og:type" content="video.episode"/>
 			<meta property="og:description" content={ video.Description }/>
+			<meta property="video:duration" content={ fmt.Sprint(video.Duration) }/>
 			<meta property="og:video:duration" content={ fmt.Sprint(video.Duration) }/>
 			<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", video.ID) }/>
 			<meta itemprop="duration" content={ durationToString(video.Duration) }/>
