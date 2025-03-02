@@ -187,7 +187,8 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 
 	function onPlayerReady(event) {
 		document.getElementById("player-loading").classList.add("hidden")
-		if (volume > 0) window.feedlr_player.setVolume(volume)
+		const volume = parseInt(window.localStorage.getItem("player-volume"))
+		if (Number.isInteger(volume) && volume > 0) window.feedlr_player.setVolume(volume)
 	}
 	function onPlayerStateChange(event) {
 		withProgress && saveProgress()
@@ -199,12 +200,15 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 	function saveProgress() {
 		if (!window.feedlr_player) return;
 		const currentVolume = Math.floor(window.feedlr_player.getVolume())
+		if (currentVolume > 0) {
+			window.localStorage.setItem("player-volume", currentVolume)
+		}
 		const currentTime = Math.floor(window.feedlr_player.getCurrentTime())
 		if (lastProgress === currentTime) {
 			return true
 		}
 		lastProgress = currentTime
-		fetch(`/api/videos/${video}/progress?progress=${currentTime}&volume=${currentVolume || 100}`, {
+		fetch(`/api/videos/${video}/progress?progress=${currentTime}`, {
 			method: 'POST',
 			credentials: 'include'
 		}).catch(e => console.error(e))

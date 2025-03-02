@@ -13,7 +13,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates/layouts"
 	"github.com/cufee/feedlr-yt/internal/templates/pages"
 	"github.com/cufee/tpot/brewed"
-	"github.com/houseme/mobiledetect/ua"
 )
 
 var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Layout[*handler.Context], templ.Component, error) {
@@ -49,10 +48,6 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 		}
 
 		props.ReportProgress = true
-		props.PlayerVolumeLevel = 100
-		if ua.New(ctx.Get("User-Agent")).Desktop() {
-			props.PlayerVolumeLevel = settings.PlayerVolume // Sound controls don't work on mobile
-		}
 		if props.Video.Duration > 0 && props.Video.Progress >= props.Video.Duration {
 			props.Video.Progress = 0
 		}
