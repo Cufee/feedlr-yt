@@ -45,7 +45,7 @@ templ videoPlayer(player types.VideoPlayerProps) {
 	<div id="player"></div>
 	<script id="" src="https://www.youtube.com/iframe_api"></script>
 	@shared.EmbedMinifiedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
-	@shared.EmbedMinifiedScript(youtubePlayerInit(player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress), player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress)
+	@shared.EmbedMinifiedScript(youtubePlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress)
 }
 
 templ buttonChannel(id string) {
@@ -152,7 +152,7 @@ script hotkeyScript(returnUrl string) {
 	})
 }
 
-script youtubePlayerInit(video string, progress, volume int, withProgress bool) {
+script youtubePlayerInit(channel string, video string, progress, volume int, withProgress bool) {
 	if (withProgress) {
 		setTimeout(() => {
 			document.querySelector("#close-button").addEventListener("click", saveProgress);
@@ -187,7 +187,7 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 
 	function onPlayerReady(event) {
 		document.getElementById("player-loading").classList.add("hidden")
-		const volume = parseInt(window.localStorage.getItem("player-volume"))
+		const volume = parseInt(window.localStorage.getItem(`player-volume-${channel}`) || window.localStorage.getItem("player-volume"))
 		if (Number.isInteger(volume) && volume > 0) window.feedlr_player.setVolume(volume)
 	}
 	function onPlayerStateChange(event) {
@@ -202,6 +202,7 @@ script youtubePlayerInit(video string, progress, volume int, withProgress bool) 
 		const currentVolume = Math.floor(window.feedlr_player.getVolume())
 		if (currentVolume > 0) {
 			window.localStorage.setItem("player-volume", currentVolume)
+			window.localStorage.setItem(`player-volume-${channel}`, currentVolume)
 		}
 		const currentTime = Math.floor(window.feedlr_player.getCurrentTime())
 		if (lastProgress === currentTime) {
