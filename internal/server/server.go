@@ -52,8 +52,8 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		server.Use(favicon.New(favicon.Config{
 			FileSystem:   http.FS(assets),
 			CacheControl: "public, max-age=86400",
-			File:         "assets/favicon.ico",
-			URL:          "/favicon.ico",
+			File:         "assets/favicon.png",
+			URL:          "/favicon.png",
 		}))
 		server.Use("/assets", staticWithCacheMiddleware("assets", assets))
 

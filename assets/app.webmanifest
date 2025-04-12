@@ -1,23 +1,8 @@
 {
-    "name": "Feedlr App",
+    "name": "feedr",
     "short_name": "feedlr",
-    "description": "Feelds App for YouTube",
+    "description": "YouTube without distractions",
     "icons": [
-        {
-            "src": "/assets/icon-32.png",
-            "sizes": "32x32",
-            "type": "image/png"
-        },
-        {
-            "src": "/assets/icon-64.png",
-            "sizes": "64x64",
-            "type": "image/png"
-        },
-        {
-            "src": "/assets/icon-128.png",
-            "sizes": "128x128",
-            "type": "image/png"
-        },
         {
             "src": "/assets/icon-256.png",
             "sizes": "256x256",
