@@ -1,7 +1,5 @@
 package partials
 
-import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
-
 templ AppManifest() {
 	<link href="/assets/app.webmanifest" rel="manifest"/>
 }
@@ -25,8 +23,6 @@ templ GenericOgMetadata() {
 
 templ Head(htmxReplace bool, content ...templ.Component) {
 	<head>
-		<link href="/assets/css/animate.min.css" rel="stylesheet"/>
-		<link href="/assets/css/daisyui.min.css" rel="stylesheet" type="text/css"/>
 		<link href="/assets/favicon.ico" rel="icon" type="x-icon"/>
 		<meta charset="UTF-8"/>
 		<meta name="color-scheme" content="dark"/>
@@ -35,24 +31,11 @@ templ Head(htmxReplace bool, content ...templ.Component) {
 			@c
 		}
 		{ children... }
-		<script src="/assets/js/tailwind.js"></script>
+		<link href="/assets/css/animate.min.css" rel="stylesheet"/>
+		<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css"/>
+		<link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css"/>
+		<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 		<script src="/assets/js/htmx.min.js"></script>
-		<script src="/assets/js/htmx.head-support.js"></script>
 		<script src="/assets/js/hyperscript.min.js" async></script>
-		@shared.EmbedScript(tailwindConfig())
 	</head>
-}
-
-script tailwindConfig() {
-	tailwind.config = {
-		theme: {
-			extend: {
-				colors: {
-					primary: "#e6426d",
-					secondary: "#4297e6",
-					accent: "#e6d042"
-				}
-			}
-		}
-	}
 }

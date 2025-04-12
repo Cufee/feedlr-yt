@@ -11,7 +11,7 @@ var App brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...tem
 }
 
 templ app(path string, content ...templ.Component) {
-	<html lang="en">
+	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
 		<body class="flex flex-col items-center h-dvh" hx-ext="head-support">
 			@partials.NavProgressAnimated()

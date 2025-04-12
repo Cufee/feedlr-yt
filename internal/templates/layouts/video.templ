@@ -34,7 +34,7 @@ func secondsToISO8601Duration(seconds int) string {
 }
 
 templ videoLayout(video types.VideoProps, content ...templ.Component) {
-	<html lang="en">
+	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.HeadlessManifest()) {
 			<title>Feedlr - { video.Title }</title>
 			<meta name="author" content={ video.Channel.Title }/>

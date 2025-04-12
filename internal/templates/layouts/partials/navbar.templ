@@ -6,11 +6,11 @@ import (
 )
 
 templ Navbar(path string) {
-	<div id="components-navbar" hx-boost="false" hx-push-url="true" hx-indicator="#nav-indicator" hx-swap="innerHTML show:window:top">
-		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 group">
+	<div id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator" hx-swap="innerHTML show:window:top">
+		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 group pt-2">
 			<div class="flex flex-row gap-2">
-				<a href="/app" class="relative -mx-3">
-					@shared.Logo("64")
+				<a href="/app" class="relative font-bold text-primary hover:underline underline-offset-2">
+					feedlr
 				</a>
 			</div>
 			<div class="flex flex-row items-center gap-2">
@@ -29,7 +29,7 @@ templ Navbar(path string) {
 }
 
 templ NavbarWithLogin(path string) {
-	<div id="components-navbar" hx-boost="false" hx-push-url="true" hx-indicator="#nav-indicator" hx-target="#main" hx-swap="innerHTML show:window:top">
+	<div id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator" hx-target="#main" hx-swap="innerHTML show:window:top">
 		<div id="nav-indicator" class="flex flex-row items-center justify-between gap-2 group">
 			<div class="absolute top-0 left-0 w-full">
 				<progress id="nav-progress" class="invisible h-1 rounded-none opacity-75 progress progress-info" value="0" max="100"></progress>
