@@ -6,7 +6,7 @@ templ NavProgressAnimated(...templ.Component) {
 	<div class="fixed top-0 w-full overflow-hidden h-fit rounded-b-box">
 		<div id="nav-progress" class="invisible h-1 transition-all bg-primary rounded-r-full duration-[50ms] ease-in" style="width: 0%"></div>
 	</div>
-	@shared.EmbedMinifiedScript(animateNavProgress())
+	@shared.EmbedScript(animateNavProgress())
 }
 
 script animateNavProgress() {
@@ -19,7 +19,7 @@ script animateNavProgress() {
 	const progressSlowStep = () => {
 		return Math.floor(Math.random() * 2);
 	}
-	
+
 	document.body.addEventListener('load', () => {
 		progressBar.value = 0;
 		progressBar.style.width = progressBar.value + "%"
@@ -32,7 +32,7 @@ script animateNavProgress() {
 			stopAnimation = null;
 		}
 	});
-	
+
 	document.body.addEventListener('htmx:afterRequest', () => {
 		setTimeout(() => {
 			progressBar.classList.add('invisible');

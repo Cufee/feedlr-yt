@@ -38,14 +38,14 @@ templ Video(props types.VideoPlayerProps) {
 			@notificationToast("SponsorBlock skipped a video segment")
 		</div>
 	</div>
-	@shared.EmbedMinifiedScript(hotkeyScript(props.ReturnURL), props.ReturnURL)
+	@shared.EmbedScript(hotkeyScript(props.ReturnURL), props.ReturnURL)
 }
 
 templ videoPlayer(player types.VideoPlayerProps) {
 	<div id="player"></div>
 	<script id="" src="https://www.youtube.com/iframe_api"></script>
-	@shared.EmbedMinifiedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
-	@shared.EmbedMinifiedScript(youtubePlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress)
+	@shared.EmbedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
+	@shared.EmbedScript(youtubePlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress)
 }
 
 templ buttonChannel(id string) {
@@ -58,7 +58,7 @@ templ buttonShare(id string) {
 	<button id="share-video-link-btn" class="opacity-75 hover:opacity-100 btn btn-square">
 		@icons.Share()
 	</button>
-	@shared.EmbedMinifiedScript(shareButtonScript(id), id)
+	@shared.EmbedScript(shareButtonScript(id), id)
 }
 
 templ buttonViewOnYoutube(id string) {

@@ -39,7 +39,7 @@ templ Head(htmxReplace bool, content ...templ.Component) {
 		<script src="/assets/js/htmx.min.js"></script>
 		<script src="/assets/js/htmx.head-support.js"></script>
 		<script src="/assets/js/hyperscript.min.js" async></script>
-		@shared.EmbedMinifiedScript(tailwindConfig())
+		@shared.EmbedScript(tailwindConfig())
 	</head>
 }
 

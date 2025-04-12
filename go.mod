@@ -19,7 +19,6 @@ require (
 	github.com/segmentio/ksuid v1.0.4
 	github.com/sosodev/duration v1.3.1
 	github.com/spf13/viper v1.19.0
-	github.com/tdewolff/minify/v2 v2.21.2
 	github.com/volatiletech/randomize v0.0.1
 	github.com/volatiletech/sqlboiler/v4 v4.18.0
 	github.com/volatiletech/strmangle v0.0.8
@@ -80,7 +79,6 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/tdewolff/parse/v2 v2.7.19 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
