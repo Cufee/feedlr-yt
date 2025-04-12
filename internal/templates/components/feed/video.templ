@@ -44,7 +44,7 @@ templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedO
 	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3" id="components-video-feed">
 		for _, video := range videos {
 			<div class="flex flex-col gap-1" id={ fmt.Sprintf("video-item-%s", video.ID) }>
-				<a href={ templ.URL(fmt.Sprintf("/video/%s?return=%s", video.ID, returnUrl)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full cursor-pointer rounded-box group">
+				<a href={ templ.URL(fmt.Sprintf("/video/%s?return=%s", video.ID, returnUrl)) } hx-boost="false" hx-target="body" class="relative flex flex-col w-full cursor-pointer rounded-box group">
 					@videoCardComponent(video, opts)
 				</a>
 				<div class="flex flex-col">
@@ -53,7 +53,7 @@ templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedO
 					</span>
 					<div class="flex flex-col">
 						if opts.showChannelName {
-							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="overflow-hidden text-gray-500 truncate text-md w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Title }>
+							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="overflow-hidden text-gray-500 truncate text-md w-fit" hx-boost="false" hx-target="body" title={ video.Channel.Title }>
 								{ video.Channel.Title }
 							</a>
 						}
@@ -154,7 +154,7 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 
 templ VideoTile(video types.VideoProps, opts feedOptions) {
 	<div class="relative overflow-hidden video-tile rounded-xl">
-		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative group">
+		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="false" hx-target="body" class="relative group">
 			@videoCardComponent(video, opts)
 		</a>
 	</div>
