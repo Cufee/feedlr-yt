@@ -113,6 +113,18 @@ func (ctx *Context) UserID() (string, bool) {
 	return id, true
 }
 
+func (ctx *Context) Authenticated() bool {
+	session, ok := ctx.Session()
+	if !ok {
+		return false
+	}
+	id, ok := session.UserID()
+	if !ok || id == "" {
+		return false
+	}
+	return true
+}
+
 func (ctx *Context) Database() database.Client {
 	return ctx.db
 }

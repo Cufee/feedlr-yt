@@ -1,8 +1,9 @@
 package shared
 
-import "fmt"
+import "strings"
 
-templ Logo(size string) {
-	<div class="flex flex-row items-center pointer-events-none select-none cursor-inherit"><img draggable="false" src={ fmt.Sprintf("/assets/icon-%s.png", size) } alt="Feedlr"/></div>
+templ Logo(class ...string) {
+	<div class={ "text-center font-bold text-primary underline underline-offset-4 pointer-events-none", strings.Join(class, " ") }>
+		feedlr
+	</div>
 }
-

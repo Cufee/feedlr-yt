@@ -7,16 +7,16 @@ import (
 )
 
 var App brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...templ.Component) (templ.Component, error) {
-	return app(ctx.Request().URL.Path, body...), nil
+	return app(ctx.Request().URL.Path, ctx.Authenticated(), body...), nil
 }
 
-templ app(path string, content ...templ.Component) {
+templ app(path string, authenticated bool, content ...templ.Component) {
 	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
 		<body class="flex flex-col items-center h-dvh" hx-ext="head-support">
 			@partials.NavProgressAnimated()
 			<main class="flex flex-col flex-grow w-full gap-2 p-2 pt-0 mx-auto max-w-7xl">
-				@partials.Navbar(path)
+				@partials.Navbar(path, authenticated)
 				for _, c := range content {
 					@c
 				}

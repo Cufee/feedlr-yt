@@ -2,5 +2,6 @@ tmp
 .git
 .vscode
 **/.DS_Store
+node_modules
 
 .env

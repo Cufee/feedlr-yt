@@ -33,7 +33,9 @@ templ Video(props types.VideoPlayerProps) {
 				}
 			</div>
 		</div>
-		@videoPlayer(props)
+		<div class="grow w-full">
+			@videoPlayer(props)
+		</div>
 		<div id="notification-toast" class="opacity-0 pointer-events-none">
 			@notificationToast("SponsorBlock skipped a video segment")
 		</div>
