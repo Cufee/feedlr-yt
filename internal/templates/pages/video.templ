@@ -18,8 +18,7 @@ func durationToString(videoDuration int) string {
 }
 
 templ Video(props types.VideoPlayerProps) {
-	<div class="relative flex flex-col items-center justify-center h-full w-full">
-		<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
+	<div class="relative flex flex-col items-center justify-center grow">
 		<div class="w-full flex gap-2 p-2 bg-black justify-between">
 			<div class="flex gap-2">
 				@buttonChannel(props.Video.Channel.ID)
@@ -33,7 +32,8 @@ templ Video(props types.VideoPlayerProps) {
 				}
 			</div>
 		</div>
-		<div class="grow w-full">
+		<div class="grow w-full flex flex-col relative">
+			<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 			@videoPlayer(props)
 		</div>
 		<div id="notification-toast" class="opacity-0 pointer-events-none">
@@ -44,7 +44,7 @@ templ Video(props types.VideoPlayerProps) {
 }
 
 templ videoPlayer(player types.VideoPlayerProps) {
-	<div id="player"></div>
+	<div id="player" class="grow"></div>
 	<script id="" src="https://www.youtube.com/iframe_api"></script>
 	@shared.EmbedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
 	@shared.EmbedScript(youtubePlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress)

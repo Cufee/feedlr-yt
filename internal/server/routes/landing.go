@@ -19,5 +19,4 @@ var Landing brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.L
 		return nil, nil, ctx.Redirect("/app", http.StatusTemporaryRedirect)
 	}
 	return layouts.Main, pages.Landing(), nil
-
 }
