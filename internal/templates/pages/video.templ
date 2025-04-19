@@ -44,7 +44,7 @@ templ Video(props types.VideoPlayerProps) {
 }
 
 templ videoPlayer(player types.VideoPlayerProps) {
-	<div id="player" class="grow"></div>
+	<div id="player" class="grow overflow-hidden"></div>
 	<script id="" src="https://www.youtube.com/iframe_api"></script>
 	@shared.EmbedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
 	@shared.EmbedScript(youtubePlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress)
