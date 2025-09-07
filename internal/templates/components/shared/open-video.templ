@@ -3,146 +3,71 @@ package shared
 import "fmt"
 
 templ OpenVideoButton() {
-    <div class="flex justify-center">
-        <div class="flex flex-row gap-2">
-            <button id="open_video_modal_btn" class="btn btn-ghost">
-                Open a YouTube Video
-            </button>
-        </div>
-        <dialog id="open_video_modal" class="bg-black bg-opacity-50 modal modal-top lg:modal-middle">
-            <div class="flex flex-col items-center justify-center gap-4 lg:!bg-transparent modal-box group" id="open_video_modal_box">
-                <div class="flex flex-col items-center justify-center w-full">
-                    @OpenVideoInput("", true)
-                </div>
-                <div class="hidden lg:block">
-                    Press <kbd class="kbd kbd-sm">Enter</kbd> to open this window and <kbd class="kbd kbd-sm">Esc</kbd> to close it.
-                </div>
-            </div>
-            <form method="dialog" class="modal-backdrop">
-                <button id="open_video_close">close</button>
-            </form>
-        </dialog>
-        @EmbedScript(openVideoModalScript())
-    </div>
+	<div class="flex justify-center">
+		<div class="flex flex-row gap-2">
+			<button id="open_video_modal_btn" class="btn btn-ghost" onclick="open_video_modal.showModal()">
+				Open a YouTube Video
+			</button>
+		</div>
+		<dialog id="open_video_modal" class="bg-black bg-opacity-50 modal modal-top lg:modal-middle">
+			<div class="flex flex-col items-center justify-center gap-4 lg:!bg-transparent modal-box group" id="open_video_modal_box">
+				<div class="flex flex-col items-center justify-center w-full">
+					@OpenVideoInput("", true)
+				</div>
+				<div class="hidden lg:block">
+					Press <kbd class="kbd kbd-sm">Enter</kbd> to open this window and <kbd class="kbd kbd-sm">Esc</kbd> to close it.
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop">
+				<button id="open_video_close">close</button>
+			</form>
+		</dialog>
+		@EmbedScript(openVideoModalScript())
+	</div>
 }
 
 templ OpenVideoInput(url string, valid bool) {
-    <form
-        class="flex w-full m-0 join"
-        id="open_video_modal_form"
-        hx-post="/api/videos/open"
-        hx-indicator="#open_video_modal"
-        hx-target="#open_video_modal_form"
-        hx-swap="outerHTML"
-        hx-sync="this:replace"
-        _="on htmx:beforeRequest
+	<form
+		class="flex w-full m-0 join"
+		id="open_video_modal_form"
+		hx-post="/api/videos/open"
+		hx-indicator="#open_video_modal"
+		hx-target="#open_video_modal_form"
+		hx-swap="outerHTML"
+		hx-sync="this:replace"
+		_="on htmx:beforeRequest
         if #open_video_input.value == ''
           halt"
-    >
-        <input
-            type="text"
-            id="open_video_input"
-            name="link"
-            value={ url }
-            placeholder="https://youtube.com/watch..."
-            class={ fmt.Sprintf("flex-grow input input-bordered join-item bg-base-200 %s", OptionalClass(!valid, "input-error")) }
-        />
-        <button type="submit" class="btn btn-primary join-item">Watch</button>
-    </form>
+	>
+		<input
+			type="text"
+			id="open_video_input"
+			name="link"
+			value={ url }
+			placeholder="https://youtube.com/watch..."
+			class={ fmt.Sprintf("flex-grow input input-bordered join-item bg-base-200 %s", OptionalClass(!valid, "input-error")) }
+		/>
+		<button type="submit" class="btn btn-primary join-item">Watch</button>
+	</form>
 }
 
-// Updated Script
 script openVideoModalScript() {
-    const modal = document.getElementById("open_video_modal");
-    const modalBox = document.getElementById("open_video_modal_box");
-    const modalButton = document.getElementById("open_video_modal_btn");
-
-    let hasClipboardPermission = false;
-
-    function getVideoIdFromUrl(urlString) {
-        if (typeof urlString !== 'string' || !urlString.trim()) return null;
-        
-        let processedUrl = urlString.trim();
-        try {
-            const url = new URL(processedUrl);
-            let videoId = null;
-
-            if (url.hostname.endsWith('youtube.com')) {
-                videoId = url.searchParams.get('v');
-            } else if (url.hostname === 'youtu.be') {
-                videoId = url.pathname.slice(1);
-            }
-
-            if (videoId && /^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-                return videoId;
-            }
-        } catch (e) {
-            // Not a valid URL
-        }
-        return null;
+	const modal = document.getElementById("open_video_modal");
+	const modalBox = document.getElementById("open_video_modal_box");
+	const modalButton = document.getElementById("open_video_modal_btn");
+	const openModal = () => {
+    	const input = modalBox.querySelector("#open_video_input")
+    	input.classList.remove("input-error");
+    	input.value = "";
+		modal.showModal();
+    	input.focus();
+	}
+	modalButton.addEventListener("click", openModal);
+  	document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+    	 if (!modal.open) {
+        	openModal()
+      }
     }
-
-    async function getVideoIdFromClipboard() {
-        if (!hasClipboardPermission) { return null; }
-        try {
-            const text = await navigator.clipboard.readText();
-            return getVideoIdFromUrl(text);
-        } catch (err) {
-            hasClipboardPermission = false;
-            return null;
-        }
-    }
-
-    async function checkClipboardPermission() {
-        if (!navigator.clipboard || !navigator.permissions) { return; }
-        try {
-            const permission = await navigator.permissions.query({ name: "clipboard-read" });
-            hasClipboardPermission = permission.state === "granted" || permission.state === "prompt";
-            permission.onchange = () => {
-                hasClipboardPermission = permission.state === "granted";
-                updateButtonState();
-            };
-        } catch (e) {
-            console.log("Clipboard permission API not available.");
-        }
-    }
-
-    async function updateButtonState() {
-        const videoId = await getVideoIdFromClipboard();
-        modalButton.textContent = videoId ? "Open from Clipboard" : "Open a YouTube Video";
-    }
-
-    const openModal = () => {
-        const input = modalBox.querySelector("#open_video_input");
-        input.classList.remove("input-error");
-        input.value = "";
-        modal.showModal();
-        input.focus();
-    };
-
-    const handleAction = async () => {
-        const videoId = await getVideoIdFromClipboard();
-        if (videoId) {
-            window.location.href = `/video/${videoId}`;
-        } else {
-            openModal();
-        }
-    };
-
-    modalButton.addEventListener("click", (e) => {
-        e.preventDefault();
-        handleAction();
-    });
-
-    document.addEventListener("keydown", (e) => {
-        const isInput = document.activeElement.tagName.toLowerCase().match(/input|textarea/);
-        if (e.key === "Enter" && !modal.open && !isInput) {
-            e.preventDefault();
-            handleAction();
-        }
-    });
-
-    checkClipboardPermission();
-    document.addEventListener("DOMContentLoaded", updateButtonState);
-    window.addEventListener("focus", updateButtonState);
+  });
 }
