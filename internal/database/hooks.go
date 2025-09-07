@@ -3,9 +3,9 @@ package database
 import (
 	"context"
 
+	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/lucsky/cuid"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 func ensureID(value string) string {

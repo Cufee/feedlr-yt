@@ -3,8 +3,8 @@ package database
 import (
 	"context"
 
+	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type ConfigurationClient interface {

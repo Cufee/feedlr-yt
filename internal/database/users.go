@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/aarondl/sqlboiler/v4/boil"
+	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/huandu/go-sqlbuilder"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 var ErrUsernameNotAvailable = errors.New("username taken")

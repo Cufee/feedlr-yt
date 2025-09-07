@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/aarondl/sqlboiler/v4/boil"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type Client interface {

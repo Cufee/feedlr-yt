@@ -7,8 +7,8 @@ RUN --mount=type=cache,target=$GOPATH/pkg/mod go install github.com/a-h/templ/cm
 # install task
 RUN --mount=type=cache,target=$GOPATH/pkg/mod go install github.com/go-task/task/v3/cmd/task@latest
 # install sqlboiler
-RUN --mount=type=cache,target=$GOPATH/pkg/mod go install github.com/volatiletech/sqlboiler/v4@latest
-RUN --mount=type=cache,target=$GOPATH/pkg/mod go install github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-sqlite3@latest
+RUN --mount=type=cache,target=$GOPATH/pkg/mod go install github.com/aarondl/sqlboiler/v4@latest
+RUN --mount=type=cache,target=$GOPATH/pkg/mod go install github.com/aarondl/sqlboiler/v4/drivers/sqlboiler-sqlite3@latest
 
 # cache deps
 COPY go.mod go.sum ./
