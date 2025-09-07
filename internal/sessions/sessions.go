@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/aarondl/null/v8"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/segmentio/ksuid"
-	"github.com/volatiletech/null/v8"
 )
 
 var ErrNotFound = errors.New("session not found")

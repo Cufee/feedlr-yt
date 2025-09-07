@@ -6,9 +6,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/aarondl/null/v8"
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/cufee/feedlr-yt/internal/database/models"
-	"github.com/volatiletech/null/v8"
 )
 
 type SessionsClient interface {

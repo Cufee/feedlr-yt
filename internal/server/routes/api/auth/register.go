@@ -5,13 +5,13 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/aarondl/null/v8"
 	"github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/tpot/brewed"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/lucsky/cuid"
-	"github.com/volatiletech/null/v8"
 )
 
 var RegistrationBegin brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
