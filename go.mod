@@ -19,8 +19,6 @@ require (
 	github.com/segmentio/ksuid v1.0.4
 	github.com/sosodev/duration v1.3.1
 	github.com/spf13/viper v1.19.0
-	github.com/volatiletech/randomize v0.0.1 // indirect
-	github.com/volatiletech/strmangle v0.0.8 // indirect
 	go.mongodb.org/mongo-driver v1.17.1
 	golang.org/x/oauth2 v0.25.0 // indirect
 	modernc.org/sqlite v1.31.1
@@ -38,7 +36,6 @@ require (
 	github.com/huandu/go-sqlbuilder v1.33.1
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/rs/zerolog v1.33.0
-	github.com/volatiletech/null/v8 v8.1.2
 	golang.org/x/sync v0.16.0
 )
 
@@ -89,7 +86,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
-	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
