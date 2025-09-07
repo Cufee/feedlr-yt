@@ -1,9 +1,9 @@
 version: 3
 
 # User by --watch
-interval: '500ms'
+interval: "500ms"
 
-dotenv: ['.env']
+dotenv: [".env"]
 vars:
   DATABASE_PATH: $DATABASE_PATH
   COMMIT_ID:
@@ -17,13 +17,15 @@ tasks:
   test:
     desc: Run tests
     cmds:
-      - go test ./... -v          
+      - go test ./... -v
   upgrade:
     desc: Upgrade dependencies
     cmds:
       - go get -u ./...
   generate:
     desc: Run go generate
+    evv:
+      SQLITE3_DBNAME: "{{.DATABASE_PATH}}"
     cmds:
       - go generate ./...
       - sqlboiler sqlite3
