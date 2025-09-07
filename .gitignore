@@ -8,5 +8,3 @@ node_modules
 
 **/*_gen.go
 **/*_templ.go
-
-internal/database/models

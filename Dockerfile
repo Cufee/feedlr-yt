@@ -2,10 +2,6 @@ FROM golang:1.23-bookworm as builder
 
 WORKDIR /workspace
 
-# install sqlboiler
-RUN --mount=type=cache,target=$GOPATH/pkg/mod go install github.com/aarondl/sqlboiler/v4@latest
-RUN --mount=type=cache,target=$GOPATH/pkg/mod go install github.com/aarondl/sqlboiler/v4/drivers/sqlboiler-sqlite3@latest
-
 # cache deps
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=$GOPATH/pkg/mod go mod download

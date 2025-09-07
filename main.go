@@ -22,8 +22,6 @@ import (
 
 //go:generate go tool templ generate
 
-//go:generate sqlboiler sqlite3
-
 // Embed assets
 //
 //go:embed assets/*
