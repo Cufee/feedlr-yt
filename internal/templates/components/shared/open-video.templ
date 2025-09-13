@@ -5,7 +5,7 @@ import "fmt"
 templ OpenVideoButton() {
 	<div class="flex justify-center">
 		<div class="flex flex-row gap-2">
-			<button id="open_video_modal_btn" class="btn btn-ghost" onclick="open_video_modal.showModal()">
+			<button id="open_video_modal_btn" class="btn btn-ghost">
 				Open a YouTube Video
 			</button>
 		</div>
@@ -55,6 +55,32 @@ script openVideoModalScript() {
 	const modal = document.getElementById("open_video_modal");
 	const modalBox = document.getElementById("open_video_modal_box");
 	const modalButton = document.getElementById("open_video_modal_btn");
+	
+	const openVideoOrModal = async () => {
+		try {
+			const result = await navigator.permissions.query({ name: "clipboard-read" });
+			if (!["granted", "prompt"].includes(result.state)) {
+				throw "missing permissions"
+			}
+
+			const text = await navigator.clipboard.readText();
+			const url = new URL(text);
+			
+			let videoId;
+			if (url.hostname.endsWith('youtube.com')) {
+                videoId = url.searchParams.get('v');
+            } else if (url.hostname === 'youtu.be') {
+                videoId = url.pathname.slice(1);
+            }
+			if (!videoId) {
+				throw "no video id found in clipboard";
+			}
+			window.location.href = "/video/" + videoId;
+		} catch (_error) {
+			openModal();
+		}
+	}
+	
 	const openModal = () => {
     	const input = modalBox.querySelector("#open_video_input")
     	input.classList.remove("input-error");
@@ -62,12 +88,13 @@ script openVideoModalScript() {
 		modal.showModal();
     	input.focus();
 	}
-	modalButton.addEventListener("click", openModal);
+
+	modalButton.addEventListener("click", openVideoOrModal);
   	document.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
-    	 if (!modal.open) {
-        	openModal()
-      }
+    	if (!modal.open) {
+        	openVideoOrModal();
+      	}
     }
   });
 }
