@@ -81,38 +81,28 @@ script openVideoModalScript() {
 	}
 	
 	const openModal = () => {
-    	const input = modalBox.querySelector("#open_video_input")
-    	input.classList.remove("input-error");
-    	input.value = "";
-		modal.showModal();
-    	input.focus();
-	}
-
-	// support manually clicking on the button
-	modalButton.addEventListener("click", (e) => {
 		try {
 			const text = await navigator.clipboard.readText();
 			if (!openVideoFromText(text)) {
 				throw "failed to open a video from clipboard";
 			}
 		} catch (_error) {
-			openModal();
+			const input = modalBox.querySelector("#open_video_input")
+			input.classList.remove("input-error");
+			input.value = "";
+			modal.showModal();
+			input.focus();
 		}
-	});
+	}
+
+
+
+	// support manually clicking on the button
+	modalButton.addEventListener("click", openModal);
   	document.addEventListener("keydown", (e) => {
 		if (e.key === "Enter") {
 			if (!modal.open) {
-				openVideoOrModal();
-			}
-		}
-	});
-
-	// listen for a global paste event
-	document.addEventListener('paste', async (event) => {
-		if (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA') {
-			const text = (event.clipboardData || window.clipboardData).getData('text');
-			if (openVideoFromText(text)) {
-				event.preventDefault();
+				openModal();
 			}
 		}
 	});
