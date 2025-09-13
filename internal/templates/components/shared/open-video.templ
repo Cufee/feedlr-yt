@@ -58,11 +58,6 @@ script openVideoModalScript() {
 	
 	const openVideoOrModal = async () => {
 		try {
-			const result = await navigator.permissions.query({ name: "clipboard-read" });
-			if (!["granted", "prompt"].includes(result.state)) {
-				throw "missing permissions"
-			}
-
 			const text = await navigator.clipboard.readText();
 			const url = new URL(text);
 			
@@ -71,6 +66,8 @@ script openVideoModalScript() {
                 videoId = url.searchParams.get('v');
             } else if (url.hostname === 'youtu.be') {
                 videoId = url.pathname.slice(1);
+			} else if (url.hostname === 'feedlr.app' && url.pathname.includes("/video/")) {
+                videoId = url.pathname.split("/video/").pop();
             }
 			if (!videoId) {
 				throw "no video id found in clipboard";
