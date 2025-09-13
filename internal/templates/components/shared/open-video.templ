@@ -56,11 +56,12 @@ script openVideoModalScript() {
 	const modalBox = document.getElementById("open_video_modal_box");
 	const modalButton = document.getElementById("open_video_modal_btn");
 	
-	const openVideoOrModal = async () => {
+	const openVideoFromText = async (text) => {
+		if (!text) {
+			return false;
+		}
 		try {
-			const text = await navigator.clipboard.readText();
 			const url = new URL(text);
-			
 			let videoId;
 			if (url.hostname.endsWith('youtube.com')) {
                 videoId = url.searchParams.get('v');
@@ -73,8 +74,9 @@ script openVideoModalScript() {
 				throw "no video id found in clipboard";
 			}
 			window.location.href = "/video/" + videoId;
+			return true;
 		} catch (_error) {
-			openModal();
+			return false;
 		}
 	}
 	
@@ -86,12 +88,32 @@ script openVideoModalScript() {
     	input.focus();
 	}
 
-	modalButton.addEventListener("click", openVideoOrModal);
+	// support manually clicking on the button
+	modalButton.addEventListener("click", (e) => {
+		try {
+			const text = await navigator.clipboard.readText();
+			if (!openVideoFromText(text)) {
+				throw "failed to open a video from clipboard";
+			}
+		catch (_error) {
+			openModal();
+		}
+	});
   	document.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-    	if (!modal.open) {
-        	openVideoOrModal();
-      	}
-    }
-  });
+		if (e.key === "Enter") {
+			if (!modal.open) {
+				openVideoOrModal();
+			}
+		}
+	});
+
+	// listen for a global paste event
+	document.addEventListener('paste', async (event) => {
+		if (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA') {
+			const text = (event.clipboardData || window.clipboardData).getData('text');
+			if (openVideoFromText(text)) {
+				event.preventDefault();
+			}
+		}
+	});
 }
