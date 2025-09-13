@@ -95,7 +95,7 @@ script openVideoModalScript() {
 			if (!openVideoFromText(text)) {
 				throw "failed to open a video from clipboard";
 			}
-		catch (_error) {
+		} catch (_error) {
 			openModal();
 		}
 	});
