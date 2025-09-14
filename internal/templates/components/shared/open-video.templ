@@ -56,7 +56,7 @@ script openVideoModalScript() {
 	const modalBox = document.getElementById("open_video_modal_box");
 	const modalButton = document.getElementById("open_video_modal_btn");
 	
-	const openVideoFromText = async (text) => {
+	const openVideoFromText = (text) => {
 		if (!text) {
 			return false;
 		}
@@ -80,7 +80,7 @@ script openVideoModalScript() {
 		}
 	}
 	
-	const openModal = () => {
+	const openModal = async () => {
 		try {
 			const text = await navigator.clipboard.readText();
 			if (!openVideoFromText(text)) {
