@@ -19,6 +19,10 @@ func durationToString(videoDuration int) string {
 
 templ Video(props types.VideoPlayerProps) {
 	<div class="relative flex flex-col items-center justify-center grow">
+		<div class="grow w-full flex flex-col relative">
+			<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
+			@videoPlayer(props)
+		</div>
 		<div class="w-full flex gap-2 p-2 bg-black justify-between">
 			<div class="flex gap-2">
 				@buttonChannel(props.Video.Channel.ID)
@@ -31,10 +35,6 @@ templ Video(props types.VideoPlayerProps) {
 					@buttonLogin()
 				}
 			</div>
-		</div>
-		<div class="grow w-full flex flex-col relative">
-			<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
-			@videoPlayer(props)
 		</div>
 		<div id="notification-toast" class="opacity-0 pointer-events-none">
 			@notificationToast("SponsorBlock skipped a video segment")
