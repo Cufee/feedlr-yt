@@ -89,6 +89,10 @@ func (c Session) UpdateUser(ctx context.Context, userID null.String, connectionI
 	if err != nil {
 		return Session{exists: false}, err
 	}
+
+	c.data.UserID = userID
+	c.data.ConnectionID = connectionID
+
 	return c, nil
 }
 

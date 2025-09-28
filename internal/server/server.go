@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	root "github.com/cufee/feedlr-yt/internal/server/routes"
@@ -23,7 +22,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, port ...int) func() error {
+func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, authMw func(c *fiber.Ctx) error, port ...int) func() error {
 	var portString string
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
@@ -41,7 +40,6 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 			return adaptor.HTTPHandler(s.Handler(func(w http.ResponseWriter, r *http.Request) *handler.Context { return ctx }))(c)
 		}
 	}
-	authMiddleware := auth.Middleware(ses)
 
 	return func() error {
 		server := fiber.New()
@@ -76,11 +74,11 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		server.Post("/register/begin", toFiber(login.RegistrationBegin))
 		server.Post("/register/finish", toFiber(login.RegistrationFinish))
 
-		// // Routes with unique auth handlers
+		// Routes with unique auth handlers
 		server.Get("/video/:id", toFiber(root.Video))
 		server.Get("/channel/:id", toFiber(root.Channel))
 
-		api := server.Group("/api").Use(limiterMiddleware).Use(authMiddleware)
+		api := server.Group("/api").Use(limiterMiddleware).Use(authMw)
 		api.Post("/passkeys/add/begin", toFiber(login.AdditionalPasskeyBegin))
 		api.Post("/passkeys/add/finish", toFiber(login.AdditionalPasskeyFinish))
 		api.Delete("/passkeys/:passkeyId", toFiber(login.DeletePasskey))
@@ -96,7 +94,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		api.Post("/settings/sponsorblock/category", toFiber(rapi.ToggleSponsorBlockCategory))
 
 		// All routes used by HTMX should have a POST handler
-		app := server.Group("/app").Use(limiterMiddleware).Use(authMiddleware)
+		app := server.Group("/app").Use(limiterMiddleware).Use(authMw)
 		app.All("/", toFiber(rapp.Home))
 		app.All("/recent", toFiber(rapp.Recent))
 		app.All("/settings", toFiber(rapp.Settings))

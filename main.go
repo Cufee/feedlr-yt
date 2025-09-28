@@ -10,6 +10,7 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
+	mw "github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic/background"
 	"github.com/cufee/feedlr-yt/internal/server"
@@ -88,6 +89,8 @@ func main() {
 		panic(err)
 	}
 
-	start := server.New(db, ses, assetsFs, bluemonday.StrictPolicy(), wa)
+	authMiddleware := mw.Middleware(ses)
+
+	start := server.New(db, ses, assetsFs, bluemonday.StrictPolicy(), wa, authMiddleware)
 	start()
 }
