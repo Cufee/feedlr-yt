@@ -41,7 +41,7 @@ func (c *SessionClient) New(ctx context.Context) (Session, error) {
 	var record models.Session
 	record.Deleted = false
 	record.ID = id.String()
-	record.ExpiresAt = time.Now().Add(time.Hour * 24 * 30)
+	record.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
 
 	session, err := c.db.CreateSession(ctx, &record)
 	if err != nil {
@@ -108,15 +108,23 @@ func (c Session) UpdateMeta(ctx context.Context, meta map[string]string) (Sessio
 	return c, nil
 }
 
-func (s Session) Refresh(ctx context.Context) error {
+func (s Session) Refresh(ctx *fiber.Ctx) error {
 	if !s.Valid() {
 		return errors.New("session does not exist")
 	}
 
-	_, err := s.db.SetSessionExpiration(ctx, s.data.ID, time.Now().Add(time.Hour*24*30))
+	updated, err := s.db.SetSessionExpiration(ctx.Context(), s.data.ID, time.Now().Add(time.Hour*24*7))
 	if err != nil {
 		return err
 	}
+	s.data = updated
+
+	cookie, err := s.Cookie()
+	if err != nil {
+		return err
+	}
+	ctx.Cookie(cookie)
+
 	return nil
 }
 

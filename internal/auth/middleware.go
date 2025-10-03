@@ -13,9 +13,9 @@ func Middleware(sc *sessions.SessionClient) func(c *fiber.Ctx) error {
 		}
 
 		if session.Valid() {
-			c.Locals("session", session)
+			_ = session.Refresh(c)
 
-			_ = session.Refresh(c.Context())
+			c.Locals("session", session)
 			return c.Next()
 		}
 
