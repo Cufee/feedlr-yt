@@ -5,7 +5,7 @@ services:
     build:
       dockerfile: Dockerfile.migrate
     pull_policy: always
-    command: "migrate apply --allow-dirty --dir \"file:///migrations\" --tx-mode all --url \"sqlite://${DATABASE_PATH}?_fk=1\""
+    command: "migrate apply --allow-dirty --dir 'file:///migrations' --tx-mode all --url 'sqlite://${DATABASE_PATH}?_fk=1'"
     volumes:
       - ${DATABASE_DIR}:/data
     networks:
