@@ -87,5 +87,22 @@ func init() {
 		c.ID = ensureID(c.ID)
 		return nil
 	})
-
+	// Playlists
+	models.AddPlaylistHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, c *models.Playlist) error {
+		c.ID = ensureID(c.ID)
+		return nil
+	})
+	models.AddPlaylistHook(boil.BeforeUpsertHook, func(ctx context.Context, ce boil.ContextExecutor, c *models.Playlist) error {
+		c.ID = ensureID(c.ID)
+		return nil
+	})
+	// Playlist Items
+	models.AddPlaylistItemHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, c *models.PlaylistItem) error {
+		c.ID = ensureID(c.ID)
+		return nil
+	})
+	models.AddPlaylistItemHook(boil.BeforeUpsertHook, func(ctx context.Context, ce boil.ContextExecutor, c *models.PlaylistItem) error {
+		c.ID = ensureID(c.ID)
+		return nil
+	})
 }

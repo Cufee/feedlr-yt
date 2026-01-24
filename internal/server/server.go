@@ -22,7 +22,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, authMw func(c *fiber.Ctx) error, port ...int) func() error {
+func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, authMw func(c *fiber.Ctx) error, globalMw func(c *fiber.Ctx) error, port ...int) func() error {
 	var portString string
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
@@ -61,6 +61,11 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		// Disable caching for all routes
 		server.Use(cacheBusterMiddleware)
 
+		// Global middleware (used in dev mode to set up mock auth for all routes)
+		if globalMw != nil {
+			server.Use(globalMw)
+		}
+
 		// Root/Error and etc
 		server.All("/", toFiber(root.Landing))
 		server.All("/error", toFiber(root.Error))
@@ -84,6 +89,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		api.Delete("/passkeys/:passkeyId", toFiber(login.DeletePasskey))
 
 		api.Post("/videos/:id/progress", toFiber(rapi.SaveVideoProgress))
+		api.Post("/videos/:id/watch-later", toFiber(rapi.ToggleWatchLater))
 		api.Post("/videos/open", toFiber(rapi.OpenVideo))
 
 		api.Get("/channels/search", toFiber(rapi.SearchChannels))
@@ -97,6 +103,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		app := server.Group("/app").Use(limiterMiddleware).Use(authMw)
 		app.All("/", toFiber(rapp.Home))
 		app.All("/recent", toFiber(rapp.Recent))
+		app.All("/watch-later", toFiber(rapp.WatchLater))
 		app.All("/settings", toFiber(rapp.Settings))
 		app.All("/onboarding", toFiber(rapp.Onboarding))
 		app.All("/subscriptions", toFiber(rapp.Subscriptions))

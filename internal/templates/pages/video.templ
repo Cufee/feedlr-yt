@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/types"
@@ -23,6 +24,9 @@ templ Video(props types.VideoPlayerProps) {
 			<div class="flex gap-2">
 				@buttonChannel(props.Video.Channel.ID)
 				@buttonShare(props.Video.ID)
+				if props.Authenticated {
+					@feed.WatchLaterButton(props.Video.ID, props.Video.InWatchLater, feed.WatchLaterVideo)
+				}
 			</div>
 			<div class="flex gap-2">
 				if (props.Authenticated) {

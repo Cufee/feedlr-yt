@@ -10,6 +10,12 @@ templ VideosFeed(props types.UserVideoFeedProps) {
 	<head><title>Feedlr</title></head>
 	<div id="app-index" class="flex flex-col gap-4">
 		@shared.OpenVideoButton()
+		if len(props.WatchLater) > 0 {
+			<div class="divider uppercase text-xs font-bold">
+				<a href="/app/watch-later" class="link link-hover">watch later</a>
+			</div>
+			@feed.VideoCarousel(props.WatchLater, feed.WithProgressBar, feed.WithWatchLaterButton)
+		}
 		if len(props.New) > 0 {
 			<div class="divider uppercase text-xs font-bold">new</div>
 		}

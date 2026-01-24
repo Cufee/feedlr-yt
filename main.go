@@ -1,3 +1,5 @@
+//go:build !dev
+
 package main
 
 import (
@@ -91,6 +93,6 @@ func main() {
 
 	authMiddleware := mw.Middleware(ses)
 
-	start := server.New(db, ses, assetsFs, bluemonday.StrictPolicy(), wa, authMiddleware)
+	start := server.New(db, ses, assetsFs, bluemonday.StrictPolicy(), wa, authMiddleware, nil)
 	start()
 }

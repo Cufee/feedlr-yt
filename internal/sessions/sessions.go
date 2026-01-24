@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aarondl/null/v8"
@@ -57,11 +58,11 @@ func (c *SessionClient) Get(ctx context.Context, id string) (Session, error) {
 	}
 
 	var meta map[string]string = make(map[string]string)
-	if session.Meta != nil {
+	if session.Meta != nil && len(session.Meta) > 0 {
 		err := json.Unmarshal(session.Meta, &meta)
 		if err != nil {
-			_ = c.Delete(ctx, id)
-			return Session{exists: false}, err
+			// Invalid meta JSON, just use empty map instead of deleting session
+			meta = make(map[string]string)
 		}
 	}
 
@@ -77,7 +78,14 @@ func (c Session) ID() string {
 }
 
 func (c Session) Valid() bool {
-	return c.exists && c.data.ID != "" && c.db != nil
+	if !c.exists || c.data.ID == "" || c.db == nil {
+		return false
+	}
+	// Check if session is expired
+	if c.data.ExpiresAt.Before(time.Now()) {
+		return false
+	}
+	return true
 }
 
 func (c Session) UpdateUser(ctx context.Context, userID null.String, connectionID null.String) (Session, error) {
@@ -140,18 +148,21 @@ func (s Session) UserID() (string, bool) {
 	return "", false
 }
 
-var cookieDomain = os.Getenv("COOKIE_DOMAIN")
-
 func (s Session) Cookie() (*fiber.Cookie, error) {
+	host := os.Getenv("COOKIE_DOMAIN")
+	// Strip port from domain - cookies don't use ports
+	domain := strings.Split(host, ":")[0]
+	secure := !strings.Contains(host, "localhost")
+
 	return &fiber.Cookie{
 		Name:    "session_id",
 		Value:   s.data.ID,
 		Expires: s.data.ExpiresAt,
 
-		Secure:   true,
+		Secure:   secure,
 		HTTPOnly: true,
 		Path:     "/",
-		Domain:   cookieDomain,
+		Domain:   domain,
 		SameSite: "lax",
 	}, nil
 }

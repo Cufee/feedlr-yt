@@ -8,3 +8,7 @@ node_modules
 
 **/*_gen.go
 **/*_templ.go
+
+*.db
+*.sqlite
+*.sqlite3

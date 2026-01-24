@@ -24,7 +24,7 @@ The core functionality is fully complete and is working reliably.
 ### Stack
 - Go [templ](https://templ.guide/) with [HTMX](https://htmx.org/), [Tailwind](https://tailwindcss.com/), [DaisyUI](https://daisyui.com/) and [Hyperscript](https://hyperscript.org/)
 - Go Fiber
-- MongoDB
+- SQLite with SQLBoiler ORM
 
 ### Developing
 Start a local dev server:

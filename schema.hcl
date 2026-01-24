@@ -433,3 +433,118 @@ table "subscriptions" {
     columns = [ column.channel_id ]
   }
 }
+
+table "playlists" {
+  schema = schema.main
+
+  column "id" {
+    null = false
+    type = text
+  }
+  column "created_at" {
+    null = false
+    type = date
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+
+  column "user_id" {
+    null = false
+    type = text
+  }
+  column "slug" {
+    null = false
+    type = text
+  }
+  column "name" {
+    null = false
+    type = text
+  }
+  column "system" {
+    null = false
+    type = boolean
+    default = false
+  }
+  column "ttl_days" {
+    null = true
+    type = integer
+  }
+  column "max_size" {
+    null = true
+    type = integer
+  }
+
+  foreign_key "playlists_user_id_fkey" {
+    columns = [ column.user_id ]
+    ref_columns = [ table.users.column.id ]
+    on_delete   = CASCADE
+  }
+
+  index "idx_playlists_user_id" {
+    columns = [ column.user_id ]
+  }
+  index "idx_playlists_user_id_slug_unique" {
+    columns = [ column.user_id, column.slug ]
+    unique = true
+  }
+}
+
+table "playlist_items" {
+  schema = schema.main
+
+  column "id" {
+    null = false
+    type = text
+  }
+  column "created_at" {
+    null = false
+    type = date
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+
+  column "playlist_id" {
+    null = false
+    type = text
+  }
+  column "video_id" {
+    null = false
+    type = text
+  }
+  column "position" {
+    null = false
+    type = integer
+    default = 0
+  }
+
+  foreign_key "playlist_items_playlist_id_fkey" {
+    columns = [ column.playlist_id ]
+    ref_columns = [ table.playlists.column.id ]
+    on_delete   = CASCADE
+  }
+  foreign_key "playlist_items_video_id_fkey" {
+    columns = [ column.video_id ]
+    ref_columns = [ table.videos.column.id ]
+  }
+
+  index "idx_playlist_items_playlist_id" {
+    columns = [ column.playlist_id ]
+  }
+  index "idx_playlist_items_playlist_id_video_id_unique" {
+    columns = [ column.playlist_id, column.video_id ]
+    unique = true
+  }
+  index "idx_playlist_items_playlist_id_created_at" {
+    columns = [ column.playlist_id, column.created_at ]
+  }
+}

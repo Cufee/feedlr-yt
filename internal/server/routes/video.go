@@ -52,6 +52,10 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 			props.Video.Progress = 0
 		}
 
+		// Check if video is in watch later
+		inWatchLater, _ := logic.IsInWatchLater(pctx, ctx.Database(), uid, video)
+		props.Video.InWatchLater = inWatchLater
+
 		props.ReturnURL = ctx.Query("return", "/app")
 		return layouts.Video(props.Video), pages.Video(props), nil
 	}

@@ -11,9 +11,30 @@ vars:
 
 tasks:
   dev:
-    desc: Run the application in development mode with hot reload
+    desc: Run the application in development mode with hot reload (Go + Tailwind)
+    deps: [tailwind:build]
+    cmds:
+      - task --parallel dev:go dev:tailwind
+
+  dev:go:
+    desc: Run Go hot reload with air
     cmds:
       - air
+
+  dev:tailwind:
+    desc: Run Tailwind in watch mode
+    cmds:
+      - npm run dev
+
+  tailwind:build:
+    desc: Build Tailwind CSS once
+    cmds:
+      - npm run build
+
+  tailwind:watch:
+    desc: Run Tailwind in watch mode (alias for dev:tailwind)
+    cmds:
+      - npm run dev
   test:
     desc: Run tests
     cmds:
@@ -52,12 +73,12 @@ tasks:
   build:full:
     desc: Build the application with go generate
     aliases: [build]
-    deps: [generate]
+    deps: [generate, tailwind:build]
     cmds:
       - task: build:fast
   build:docker:
-    desc: Build the application without generating styles
-    deps: [generate]
+    desc: Build the application for Docker
+    deps: [generate, tailwind:build]
     cmds:
       - task: build:fast
   build:image:

@@ -59,8 +59,9 @@ func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
 }
 
 type UserVideoFeedProps struct {
-	New     []VideoProps
-	Watched []VideoProps
+	New        []VideoProps
+	Watched    []VideoProps
+	WatchLater []VideoProps
 }
 
 type ChannelPageProps struct {
@@ -76,11 +77,12 @@ type ChannelWithVideosProps struct {
 
 type VideoProps struct {
 	youtube.Video
-	Progress    int
-	Hidden      bool
-	Channel     ChannelProps
-	PublishedAt time.Time
-	CreatedAt   time.Time
+	Progress     int
+	Hidden       bool
+	InWatchLater bool
+	Channel      ChannelProps
+	PublishedAt  time.Time
+	CreatedAt    time.Time
 }
 
 type SegmentProps struct {

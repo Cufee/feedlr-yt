@@ -79,10 +79,16 @@ func (ctx *Context) SetSession(s sessions.Session) bool {
 }
 
 func (ctx *Context) Session() (sessions.Session, bool) {
+	// Check if middleware set the session
 	session, ok := ctx.Locals("session").(sessions.Session)
 	if !ok {
+		// Try to get session from cookie
+		sessionID := ctx.Cookies("session_id")
+		if sessionID == "" {
+			return sessions.Session{}, false
+		}
 		var err error
-		session, err = ctx.ses.Get(ctx.Context(), ctx.Cookies("session_id"))
+		session, err = ctx.ses.Get(ctx.Context(), sessionID)
 		if err != nil {
 			return sessions.Session{}, false
 		}

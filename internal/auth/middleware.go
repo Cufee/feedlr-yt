@@ -12,13 +12,18 @@ func Middleware(sc *sessions.SessionClient) func(c *fiber.Ctx) error {
 			return c.Redirect("/login")
 		}
 
-		if session.Valid() {
-			_ = session.Refresh(c)
-
-			c.Locals("session", session)
-			return c.Next()
+		if !session.Valid() {
+			return c.Redirect("/login")
 		}
 
-		return c.Redirect("/login")
+		// Check if session has a user associated
+		userID, ok := session.UserID()
+		if !ok || userID == "" {
+			return c.Redirect("/login")
+		}
+
+		_ = session.Refresh(c)
+		c.Locals("session", session)
+		return c.Next()
 	}
 }

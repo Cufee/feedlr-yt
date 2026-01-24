@@ -3,7 +3,7 @@ tmp_dir = "tmp"
 
 [build]
 bin = "./tmp/main"
-cmd = "npm run build && go generate ./... && go build -o ./tmp/main main_dev.go"
+cmd = "go generate ./... && go build -tags dev -o ./tmp/main ."
 delay = 1000
 exclude_dir = ["node_modules", "assets", "tmp", "vendor"]
 exclude_file = []

@@ -1,12 +1,10 @@
-//go:build ignore
+//go:build dev
 
 package main
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
@@ -20,14 +18,15 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-//go:generate go tool templ generate
-
 func main() {
+	log.Info().Msg("Starting in DEVELOPMENT mode with mock auth")
+
 	db, err := database.NewSQLiteClient(os.Getenv("DATABASE_PATH"))
 	if err != nil {
 		panic(err)
 	}
 
+	// YouTube API setup
 	authClient := auth.NewClient(db)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	done, err := authClient.Authenticate(ctx, os.Getenv("YOUTUBE_API_SKIP_AUTH_CACHE") == "true")
@@ -46,19 +45,21 @@ func main() {
 	}
 	youtube.DefaultClient = yt
 
+	// Session client (needed by server even though MockMiddleware creates its own)
 	ses, err := sessions.New(db)
 	if err != nil {
 		panic(err)
 	}
 
-	host := os.Getenv("COOKIE_DOMAIN")
-	origin := fmt.Sprintf("https://%s", host)
-	if strings.Contains(origin, "localhost:") {
-		origin = fmt.Sprintf("http://%s", host)
+	// Use mock auth middleware globally - bypasses passkeys for ALL routes
+	mockAuth := mw.MockMiddleware(db)
+
+	// Start server with:
+	// - os.DirFS(".") for live asset reloading
+	// - nil for webauthn (not needed in dev mode)
+	// - mockAuth as both auth middleware AND global middleware
+	start := server.New(db, ses, os.DirFS("."), bluemonday.StrictPolicy(), nil, mockAuth, mockAuth)
+	if err := start(); err != nil {
+		panic(err)
 	}
-
-	authMiddleware := mw.MockMiddleware(db)
-
-	start := server.New(db, ses, os.DirFS("."), bluemonday.StrictPolicy(), nil, authMiddleware)
-	start()
 }
