@@ -38,13 +38,20 @@ var ToggleWatchLater brewed.Partial[*handler.Context] = func(ctx *handler.Contex
 
 	case "carousel":
 		// For carousel, always removing (carousel only shows pinned items)
+		// Fetch video props for OOB card sync
+		props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), userID, videoID, logic.GetPlayerOptions{WithProgress: true})
+		if err != nil {
+			return nil, err
+		}
+		props.Video.InWatchLater = false // Just removed from watch later
+
 		// Check if this was the last item - if so, remove entire section
 		count, _ := logic.GetWatchLaterCount(ctx.Context(), ctx.Database(), userID)
 		if count == 0 {
-			return feed.WatchLaterSectionRemove(), nil
+			return feed.SectionRemoveWithCardSync(props.Video, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay), nil
 		}
-		// Otherwise just remove the carousel item
-		return feed.WatchLaterCarouselItemRemove(), nil
+		// Otherwise just remove the carousel item + update card
+		return feed.CarouselRemoveWithCardSync(props.Video, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay), nil
 
 	case "card":
 		// For card style, return the full video card with OOB carousel sync

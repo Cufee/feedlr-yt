@@ -11,10 +11,10 @@ import (
 type FeedOption func(*feedOptions)
 
 type feedOptions struct {
-	showProgressBar       bool
-	showProgressOverlay   bool
-	showProgressActions   bool
-	showWatchLaterButton  bool
+	showProgressBar      bool
+	showProgressOverlay  bool
+	showProgressActions  bool
+	showWatchLaterButton bool
 
 	showChannelName bool
 }
@@ -137,6 +137,25 @@ templ WatchLaterSectionRemove() {
 	<div id="watch-later-section" hx-swap-oob="delete"></div>
 }
 
+// VideoCardOOB - returns video card as OOB swap
+templ VideoCardOOB(video types.VideoProps, opts ...FeedOption) {
+	<div hx-swap-oob={ fmt.Sprintf("outerHTML:#video-card-%s", video.ID) }>
+		@VideoCard(video, opts...)
+	</div>
+}
+
+// CarouselRemoveWithCardSync - removes carousel item + OOB updates card
+templ CarouselRemoveWithCardSync(video types.VideoProps, opts ...FeedOption) {
+	@WatchLaterCarouselItemRemove()
+	@VideoCardOOB(video, opts...)
+}
+
+// SectionRemoveWithCardSync - removes entire section + OOB updates card
+templ SectionRemoveWithCardSync(video types.VideoProps, opts ...FeedOption) {
+	@WatchLaterSectionRemove()
+	@VideoCardOOB(video, opts...)
+}
+
 // VideoCardWithCarouselAdd - returns video card + OOB to add carousel item
 templ VideoCardWithCarouselAdd(video types.VideoProps, opts ...FeedOption) {
 	@VideoCard(video, opts...)
@@ -194,7 +213,7 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 						</button>
 					}
 					<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Hide" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v&hidden=true", video.ID, video.Progress) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
-						@icons.EyeCrossed()
+						@icons.EyeClosed()
 					</button>
 					if video.Progress > 0 {
 						<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Mark as unwatched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=0&hidden=%t", video.ID, video.Hidden) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
