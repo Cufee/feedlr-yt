@@ -35,12 +35,32 @@ var ToggleWatchLater brewed.Partial[*handler.Context] = func(ctx *handler.Contex
 	switch style {
 	case "video":
 		return feed.WatchLaterButton(videoID, inWatchLater, feed.WatchLaterVideo), nil
+
 	case "carousel":
-		// For carousel, remove the entire item when unpinned
-		if !inWatchLater {
-			return feed.WatchLaterRemoved(videoID), nil
+		// For carousel, always removing (carousel only shows pinned items)
+		// Check if this was the last item - if so, remove entire section
+		count, _ := logic.GetWatchLaterCount(ctx.Context(), ctx.Database(), userID)
+		if count == 0 {
+			return feed.WatchLaterSectionRemove(), nil
 		}
-		return feed.WatchLaterButton(videoID, inWatchLater, feed.WatchLaterCarousel), nil
+		// Otherwise just remove the carousel item
+		return feed.WatchLaterCarouselItemRemove(), nil
+
+	case "card":
+		// For card style, return the full video card with OOB carousel sync
+		props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), userID, videoID, logic.GetPlayerOptions{WithProgress: true})
+		if err != nil {
+			return nil, err
+		}
+		props.Video.InWatchLater = inWatchLater
+
+		if inWatchLater {
+			// Added to watch later - add to carousel (OOB will no-op if section doesn't exist)
+			return feed.VideoCardWithCarouselAdd(props.Video, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay), nil
+		}
+		// Removed from watch later - remove from carousel
+		return feed.VideoCardWithCarouselRemove(props.Video, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay), nil
+
 	default:
 		return feed.WatchLaterButton(videoID, inWatchLater, feed.WatchLaterFeed), nil
 	}

@@ -53,8 +53,12 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 		return nil, errors.Wrap(err, "GetUserSubscriptionsProps.GetCompleteUserProgress failed to get user progress")
 	}
 
+	// Get watch later video IDs to set InWatchLater field
+	watchLaterIDs, _ := GetWatchLaterVideoIDs(ctx, db, userId)
+
 	var feed types.UserVideoFeedProps
 	for _, video := range allVideos {
+		video.InWatchLater = watchLaterIDs[video.ID]
 		if v, ok := views[video.ID]; ok {
 			if v.Hidden.Bool {
 				continue

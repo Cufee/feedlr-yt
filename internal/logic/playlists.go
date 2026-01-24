@@ -139,6 +139,24 @@ func GetWatchLaterVideos(ctx context.Context, db interface {
 	return videos, hasMore, nil
 }
 
+// GetWatchLaterCount returns the number of videos in the user's Watch Later playlist
+func GetWatchLaterCount(ctx context.Context, db database.PlaylistsClient, userID string) (int, error) {
+	playlist, err := db.GetPlaylistBySlug(ctx, userID, WatchLaterSlug)
+	if err != nil {
+		if database.IsErrNotFound(err) {
+			return 0, nil
+		}
+		return 0, errors.Wrap(err, "failed to get watch later playlist")
+	}
+
+	items, err := db.GetPlaylistItems(ctx, playlist.ID)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get playlist items")
+	}
+
+	return len(items), nil
+}
+
 // GetWatchLaterVideoIDs returns a map of video IDs that are in the user's Watch Later playlist
 func GetWatchLaterVideoIDs(ctx context.Context, db database.PlaylistsClient, userID string) (map[string]bool, error) {
 	playlist, err := db.GetPlaylistBySlug(ctx, userID, WatchLaterSlug)

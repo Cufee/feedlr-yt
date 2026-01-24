@@ -80,36 +80,73 @@ func VideoCarousel(videos []types.VideoProps, options ...FeedOption) templ.Compo
 }
 
 templ videoCarouselComponent(videos []types.VideoProps, opts feedOptions) {
-	<div class="relative flex w-full gap-3 overflow-x-auto snap-x snap-mandatory pb-2" id="components-video-carousel">
-		for _, video := range videos {
-			<div class="snap-start shrink-0 w-56 md:w-72" id={ fmt.Sprintf("carousel-item-%s", video.ID) }>
-				<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col cursor-pointer group">
-					<div class="relative overflow-hidden rounded-lg aspect-video">
-						@VideoThumbnail(video.ID, video.Title, false)
-						if video.Progress > 0 {
-							<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-xl font-bold uppercase bg-black opacity-70">Watched</div>
-							if opts.showProgressBar {
-								<progress class="absolute bottom-0 left-0 z-20 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(utils.MaxInt(video.Duration, video.Progress)) }></progress>
-							}
-						}
-						if opts.showWatchLaterButton {
-							<div class="absolute z-20 top-2 right-2">
-								@WatchLaterButton(video.ID, true, WatchLaterCarousel)
-							</div>
-						}
-					</div>
-					<span class="block mt-1 text-sm leading-tight line-clamp-2 hover:underline" style="overflow-wrap: anywhere;">
-						{ video.Title }
-					</span>
-				</a>
-			</div>
-		}
+	<div class="watch-later-section h-36 md:h-48 relative" id="components-video-carousel">
+		<div class="watch-later-items flex w-full h-full gap-3 overflow-x-auto snap-x snap-mandatory" id="watch-later-items">
+			for _, video := range videos {
+				@WatchLaterCarouselItem(video)
+			}
+		</div>
+		<div class="watch-later-placeholder absolute inset-0 flex items-center justify-center">
+			<span class="text-sm text-gray-500">Refresh to hide this section</span>
+		</div>
 	</div>
 }
 
-// WatchLaterRemoved - empty element to remove item from carousel via HTMX swap
-templ WatchLaterRemoved(videoID string) {
+// WatchLaterCarouselItem - a single carousel item for OOB insertion
+templ WatchLaterCarouselItem(video types.VideoProps) {
+	<div class="watch-later-item snap-start shrink-0 w-56 md:w-72 flex flex-col" id={ fmt.Sprintf("carousel-item-%s", video.ID) }>
+		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col h-full cursor-pointer group">
+			<div class="relative overflow-hidden rounded-lg flex-1">
+				@VideoThumbnail(video.ID, video.Title, false)
+				if video.Progress > 0 {
+					<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-xl font-bold uppercase bg-black opacity-70">Watched</div>
+					<progress class="absolute bottom-0 left-0 z-20 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(utils.MaxInt(video.Duration, video.Progress)) }></progress>
+				}
+				<div class="absolute z-20 top-2 right-2">
+					@WatchLaterButton(video.ID, true, WatchLaterCarousel)
+				</div>
+			</div>
+			<span class="block mt-1 text-sm leading-tight line-clamp-2 hover:underline" style="overflow-wrap: anywhere;">
+				{ video.Title }
+			</span>
+		</a>
+	</div>
+}
+
+// WatchLaterCarouselItemOOB - carousel item with OOB swap for prepending to carousel
+templ WatchLaterCarouselItemOOB(video types.VideoProps) {
+	<div hx-swap-oob="afterbegin:#watch-later-items">
+		@WatchLaterCarouselItem(video)
+	</div>
+}
+
+// WatchLaterCarouselItemRemove - removes a carousel item (primary swap response)
+templ WatchLaterCarouselItemRemove() {
 	<!-- removed -->
+}
+
+// WatchLaterCarouselItemRemoveOOB - removes a carousel item via OOB swap
+templ WatchLaterCarouselItemRemoveOOB(videoID string) {
+	<div id={ fmt.Sprintf("carousel-item-%s", videoID) } hx-swap-oob="delete"></div>
+}
+
+// WatchLaterSectionRemove - removes entire watch later section (primary swap + OOB)
+// Used when removing the last item from carousel - replaces the item and removes section
+templ WatchLaterSectionRemove() {
+	<!-- removed -->
+	<div id="watch-later-section" hx-swap-oob="delete"></div>
+}
+
+// VideoCardWithCarouselAdd - returns video card + OOB to add carousel item
+templ VideoCardWithCarouselAdd(video types.VideoProps, opts ...FeedOption) {
+	@VideoCard(video, opts...)
+	@WatchLaterCarouselItemOOB(video)
+}
+
+// VideoCardWithCarouselRemove - returns video card + OOB to remove carousel item
+templ VideoCardWithCarouselRemove(video types.VideoProps, opts ...FeedOption) {
+	@VideoCard(video, opts...)
+	@WatchLaterCarouselItemRemoveOOB(video.ID)
 }
 
 templ VideoThumbnail(videoID, alt string, hidden bool) {
@@ -147,6 +184,15 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 						@icons.Eye()
 					</button>
 				} else {
+					if video.InWatchLater {
+						<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=card", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+							@icons.PinOff()
+						</button>
+					} else {
+						<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Add to Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=card", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+							@icons.Pin()
+						</button>
+					}
 					<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Hide" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v&hidden=true", video.ID, video.Progress) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
 						@icons.EyeCrossed()
 					</button>
