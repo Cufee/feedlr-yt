@@ -1489,6 +1489,9 @@
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+  .row-span-2 {
+    grid-row: span 2 / span 2;
+  }
   .container {
     width: 100%;
     @media (width >= 40rem) {
@@ -1997,11 +2000,17 @@
   .h-6 {
     height: calc(var(--spacing) * 6);
   }
+  .h-9 {
+    height: calc(var(--spacing) * 9);
+  }
   .h-12 {
     height: calc(var(--spacing) * 12);
   }
   .h-36 {
     height: calc(var(--spacing) * 36);
+  }
+  .h-44 {
+    height: calc(var(--spacing) * 44);
   }
   .h-\[6rem\] {
     height: 6rem;
@@ -2017,6 +2026,9 @@
   }
   .h-svh {
     height: 100svh;
+  }
+  .min-h-10 {
+    min-height: calc(var(--spacing) * 10);
   }
   .min-h-\[6rem\] {
     min-height: 6rem;
@@ -2118,8 +2130,20 @@
   .snap-start {
     scroll-snap-align: start;
   }
+  .auto-cols-\[14rem\] {
+    grid-auto-columns: 14rem;
+  }
+  .grid-flow-col {
+    grid-auto-flow: column;
+  }
   .grid-cols-1 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  .grid-rows-\[auto_auto\] {
+    grid-template-rows: auto auto;
+  }
+  .grid-rows-subgrid {
+    grid-template-rows: subgrid;
   }
   .flex-col {
     flex-direction: column;
@@ -2621,6 +2645,11 @@
       height: calc(var(--spacing) * 48);
     }
   }
+  .md\:h-52 {
+    @media (width >= 48rem) {
+      height: calc(var(--spacing) * 52);
+    }
+  }
   .md\:loading-lg {
     @media (width >= 48rem) {
       width: calc(var(--size-selector, 0.25rem) * 7);
@@ -2644,6 +2673,11 @@
   .md\:basis-1\/3 {
     @media (width >= 48rem) {
       flex-basis: calc(1/3 * 100%);
+    }
+  }
+  .md\:auto-cols-\[18rem\] {
+    @media (width >= 48rem) {
+      grid-auto-columns: 18rem;
     }
   }
   .md\:grid-cols-2 {
