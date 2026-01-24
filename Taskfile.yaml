@@ -24,7 +24,7 @@ tasks:
       - go get -u ./...
   generate:
     desc: Run go generate
-    evv:
+    env:
       SQLITE3_DBNAME: "{{.DATABASE_PATH}}"
     cmds:
       - go generate ./...
