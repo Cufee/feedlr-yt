@@ -12,6 +12,73 @@ import (
 const WatchLaterSlug = "watch-later"
 const WatchLaterTTLDays = 30
 
+// getCompletionBuffer returns the buffer in seconds for considering a video fully watched
+// - Videos over 30 minutes: 5 minutes buffer
+// - Videos over 15 minutes: 1 minute buffer
+// - Default: 30 seconds buffer
+func getCompletionBuffer(durationSeconds int) int {
+	switch {
+	case durationSeconds > 30*60: // > 30 minutes
+		return 5 * 60 // 5 minutes
+	case durationSeconds > 15*60: // > 15 minutes
+		return 60 // 1 minute
+	default:
+		return 30 // 30 seconds
+	}
+}
+
+// RemoveFromWatchLaterIfFullyWatched removes a video from Watch Later playlist
+// if the progress indicates it has been fully watched (within the completion buffer)
+func RemoveFromWatchLaterIfFullyWatched(ctx context.Context, db interface {
+	database.PlaylistsClient
+	database.VideosClient
+}, userID, videoID string, progress int) error {
+	// Get video to check duration
+	video, err := db.GetVideoByID(ctx, videoID)
+	if err != nil {
+		if database.IsErrNotFound(err) {
+			return nil // Video not in DB, nothing to do
+		}
+		return errors.Wrap(err, "failed to get video")
+	}
+
+	duration := int(video.Duration)
+	if duration <= 0 {
+		return nil // Unknown duration, skip
+	}
+
+	buffer := getCompletionBuffer(duration)
+	if progress+buffer < duration {
+		return nil // Not fully watched yet
+	}
+
+	// Video is fully watched, check if it's in Watch Later
+	playlist, err := db.GetPlaylistBySlug(ctx, userID, WatchLaterSlug)
+	if err != nil {
+		if database.IsErrNotFound(err) {
+			return nil // No Watch Later playlist
+		}
+		return errors.Wrap(err, "failed to get watch later playlist")
+	}
+
+	inPlaylist, err := db.IsVideoInPlaylist(ctx, playlist.ID, videoID)
+	if err != nil {
+		return errors.Wrap(err, "failed to check if video in playlist")
+	}
+
+	if !inPlaylist {
+		return nil // Not in Watch Later
+	}
+
+	// Remove from Watch Later
+	err = db.RemovePlaylistItem(ctx, playlist.ID, videoID)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove from watch later")
+	}
+
+	return nil
+}
+
 // GetOrCreateWatchLater gets the user's Watch Later playlist, creating it if it doesn't exist
 func GetOrCreateWatchLater(ctx context.Context, db database.PlaylistsClient, userID string) (*models.Playlist, error) {
 	playlist, err := db.GetPlaylistBySlug(ctx, userID, WatchLaterSlug)
