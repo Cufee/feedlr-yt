@@ -44,8 +44,8 @@ templ Channel(props types.ChannelPageProps) {
 
 templ subscribeButton(id string, authenticated, subscribed bool) {
 	if authenticated && subscribed {
-		@subscriptions.UnsubscribeButtonSmall(id)
+		@subscriptions.UnsubscribeButtonSmall(id, subscriptions.WithRefresh)
 	} else if authenticated {
-		@subscriptions.SubscribeButtonSmall(id)
+		@subscriptions.SubscribeButtonSmall(id, subscriptions.WithRefresh)
 	}
 }

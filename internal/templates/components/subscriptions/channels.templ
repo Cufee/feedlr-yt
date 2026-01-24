@@ -19,26 +19,60 @@ templ SubscribedChannelTile(props types.ChannelProps) {
 	</a>
 }
 
-templ UnsubscribeButtonSmall(channelId string) {
+type subscribeButtonOptions struct {
+	refreshPage bool
+}
+
+type SubscribeButtonOption func(*subscribeButtonOptions)
+
+var WithRefresh SubscribeButtonOption = func(o *subscribeButtonOptions) {
+	o.refreshPage = true
+}
+
+func UnsubscribeButtonSmall(channelId string, opts ...SubscribeButtonOption) templ.Component {
+	var o subscribeButtonOptions
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return unsubscribeButtonSmallImpl(channelId, o)
+}
+
+templ unsubscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 	<button
 		type="button"
 		class="btn btn-square"
 		hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe?type=button", channelId) }
-		hx-swap="outerHTML"
-		hx-target="this"
+		if opts.refreshPage {
+			hx-on::after-request="window.location.reload()"
+		} else {
+			hx-swap="outerHTML"
+			hx-target="this"
+		}
 		title="Unsubscribe"
 	>
 		@icons.BookmarkCrossed()
 	</button>
 }
 
-templ SubscribeButtonSmall(channelId string) {
+func SubscribeButtonSmall(channelId string, opts ...SubscribeButtonOption) templ.Component {
+	var o subscribeButtonOptions
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return subscribeButtonSmallImpl(channelId, o)
+}
+
+templ subscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 	<button
 		type="button"
 		class="btn btn-primary btn-square"
 		hx-post={ fmt.Sprintf("/api/channels/%s/subscribe?type=button", channelId) }
-		hx-swap="outerHTML"
-		hx-target="this"
+		if opts.refreshPage {
+			hx-on::after-request="window.location.reload()"
+		} else {
+			hx-swap="outerHTML"
+			hx-target="this"
+		}
 		title="Subscribe"
 	>
 		@icons.Bookmark()

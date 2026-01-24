@@ -2634,6 +2634,11 @@
       }
     }
   }
+  .max-md\:visible {
+    @media (width < 48rem) {
+      visibility: visible;
+    }
+  }
   .sm\:basis-1\/3 {
     @media (width >= 40rem) {
       flex-basis: calc(1/3 * 100%);
@@ -2642,6 +2647,11 @@
   .sm\:grid-cols-2 {
     @media (width >= 40rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .md\:invisible {
+    @media (width >= 48rem) {
+      visibility: hidden;
     }
   }
   .md\:block {
@@ -2739,6 +2749,15 @@
       --fontsize: 0.75rem;
       --btn-p: 0.75rem;
       --size: calc(var(--size-field, 0.25rem) * 8);
+    }
+  }
+  .md\:group-hover\:visible {
+    @media (width >= 48rem) {
+      &:is(:where(.group):hover *) {
+        @media (hover: hover) {
+          visibility: visible;
+        }
+      }
     }
   }
   .lg\:block {
