@@ -65,7 +65,7 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 			if err != nil {
 				return err
 			}
-			if details == nil || details.Type == VideoTypeShort {
+			if details == nil || details.isShort() {
 				return nil
 			}
 

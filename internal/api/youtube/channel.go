@@ -24,6 +24,10 @@ type Video struct {
 	Description string
 }
 
+func (v Video) isShort() bool {
+	return v.Type == VideoTypeShort || (v.Type == VideoTypeVideo && v.Duration < 61 && v.Duration > 0)
+}
+
 func (c *client) SearchChannels(query string, limit int) ([]Channel, error) {
 	if limit < 1 {
 		limit = 3
