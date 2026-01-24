@@ -83,24 +83,24 @@ templ videoCarouselComponent(videos []types.VideoProps, opts feedOptions) {
 	<div class="relative flex w-full gap-3 overflow-x-auto snap-x snap-mandatory pb-2" id="components-video-carousel">
 		for _, video := range videos {
 			<div class="snap-start shrink-0 w-56 md:w-72" id={ fmt.Sprintf("carousel-item-%s", video.ID) }>
-				<div class="relative overflow-hidden rounded-lg aspect-video group">
-					<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body">
+				<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col cursor-pointer group">
+					<div class="relative overflow-hidden rounded-lg aspect-video">
 						@VideoThumbnail(video.ID, video.Title, false)
-					</a>
-					if video.Progress > 0 {
-						<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-sm font-bold uppercase bg-black opacity-70">Watched</div>
-						if opts.showProgressBar {
-							<progress class="absolute bottom-0 left-0 z-20 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(utils.MaxInt(video.Duration, video.Progress)) }></progress>
+						if video.Progress > 0 {
+							<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-xl font-bold uppercase bg-black opacity-70">Watched</div>
+							if opts.showProgressBar {
+								<progress class="absolute bottom-0 left-0 z-20 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(utils.MaxInt(video.Duration, video.Progress)) }></progress>
+							}
 						}
-					}
-					if opts.showWatchLaterButton {
-						<div class="absolute z-20 top-2 right-2">
-							@WatchLaterButton(video.ID, true, WatchLaterCarousel)
-						</div>
-					}
-				</div>
-				<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="block mt-1 text-sm leading-tight line-clamp-2 hover:underline" style="overflow-wrap: anywhere;">
-					{ video.Title }
+						if opts.showWatchLaterButton {
+							<div class="absolute z-20 top-2 right-2">
+								@WatchLaterButton(video.ID, true, WatchLaterCarousel)
+							</div>
+						}
+					</div>
+					<span class="block mt-1 text-sm leading-tight line-clamp-2 hover:underline" style="overflow-wrap: anywhere;">
+						{ video.Title }
+					</span>
 				</a>
 			</div>
 		}

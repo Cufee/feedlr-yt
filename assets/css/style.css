@@ -1358,14 +1358,8 @@
   .top-0 {
     top: calc(var(--spacing) * 0);
   }
-  .top-1 {
-    top: calc(var(--spacing) * 1);
-  }
   .top-2 {
     top: calc(var(--spacing) * 2);
-  }
-  .right-1 {
-    right: calc(var(--spacing) * 1);
   }
   .right-2 {
     right: calc(var(--spacing) * 2);
@@ -2012,9 +2006,6 @@
   .h-12 {
     height: calc(var(--spacing) * 12);
   }
-  .h-44 {
-    height: calc(var(--spacing) * 44);
-  }
   .h-\[6rem\] {
     height: 6rem;
   }
@@ -2047,12 +2038,6 @@
   }
   .w-12 {
     width: calc(var(--spacing) * 12);
-  }
-  .w-32 {
-    width: calc(var(--spacing) * 32);
-  }
-  .w-40 {
-    width: calc(var(--spacing) * 40);
   }
   .w-56 {
     width: calc(var(--spacing) * 56);
@@ -2130,11 +2115,6 @@
   .snap-mandatory {
     --tw-scroll-snap-strictness: mandatory;
   }
-  .carousel-center {
-    .carousel-item {
-      scroll-snap-align: center;
-    }
-  }
   .snap-start {
     scroll-snap-align: start;
   }
@@ -2189,13 +2169,6 @@
   .gap-x-4 {
     column-gap: calc(var(--spacing) * 4);
   }
-  .space-x-2 {
-    :where(& > :not(:last-child)) {
-      --tw-space-x-reverse: 0;
-      margin-inline-start: calc(calc(var(--spacing) * 2) * var(--tw-space-x-reverse));
-      margin-inline-end: calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-x-reverse)));
-    }
-  }
   .gap-y-8 {
     row-gap: calc(var(--spacing) * 8);
   }
@@ -2212,9 +2185,6 @@
   }
   .overflow-x-auto {
     overflow-x: auto;
-  }
-  .overflow-x-scroll {
-    overflow-x: scroll;
   }
   .rounded-box {
     border-radius: var(--radius-box);
@@ -2301,9 +2271,6 @@
   }
   .object-cover {
     object-fit: cover;
-  }
-  .p-0 {
-    padding: calc(var(--spacing) * 0);
   }
   .p-2 {
     padding: calc(var(--spacing) * 2);
@@ -2519,11 +2486,6 @@
     --btn-p: 0.75rem;
     --size: calc(var(--size-field, 0.25rem) * 8);
   }
-  .btn-xs {
-    --fontsize: 0.6875rem;
-    --btn-p: 0.5rem;
-    --size: calc(var(--size-field, 0.25rem) * 6);
-  }
   .badge-primary {
     --badge-color: var(--color-primary);
     --badge-fg: var(--color-primary-content);
@@ -2562,13 +2524,6 @@
   .toggle-primary {
     &:checked, &[aria-checked="true"] {
       --input-color: var(--color-primary);
-    }
-  }
-  .group-hover\:visible {
-    &:is(:where(.group):hover *) {
-      @media (hover: hover) {
-        visibility: visible;
-      }
     }
   }
   .group-hover\:inline-block {
@@ -2664,11 +2619,6 @@
       display: none;
     }
   }
-  .md\:h-60 {
-    @media (width >= 48rem) {
-      height: calc(var(--spacing) * 60);
-    }
-  }
   .md\:loading-lg {
     @media (width >= 48rem) {
       width: calc(var(--size-selector, 0.25rem) * 7);
@@ -2677,16 +2627,6 @@
   .md\:loading-sm {
     @media (width >= 48rem) {
       width: calc(var(--size-selector, 0.25rem) * 5);
-    }
-  }
-  .md\:w-40 {
-    @media (width >= 48rem) {
-      width: calc(var(--spacing) * 40);
-    }
-  }
-  .md\:w-48 {
-    @media (width >= 48rem) {
-      width: calc(var(--spacing) * 48);
     }
   }
   .md\:w-72 {
@@ -2717,15 +2657,6 @@
   .md\:gap-4 {
     @media (width >= 48rem) {
       gap: calc(var(--spacing) * 4);
-    }
-  }
-  .md\:space-x-4 {
-    @media (width >= 48rem) {
-      :where(& > :not(:last-child)) {
-        --tw-space-x-reverse: 0;
-        margin-inline-start: calc(calc(var(--spacing) * 4) * var(--tw-space-x-reverse));
-        margin-inline-end: calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-x-reverse)));
-      }
     }
   }
   .md\:p-0 {
@@ -2920,11 +2851,6 @@
   inherits: false;
   initial-value: proximity;
 }
-@property --tw-space-x-reverse {
-  syntax: "*";
-  inherits: false;
-  initial-value: 0;
-}
 @property --tw-border-style {
   syntax: "*";
   inherits: false;
@@ -3088,7 +3014,6 @@
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
       --tw-scroll-snap-strictness: proximity;
-      --tw-space-x-reverse: 0;
       --tw-border-style: solid;
       --tw-leading: initial;
       --tw-font-weight: initial;
