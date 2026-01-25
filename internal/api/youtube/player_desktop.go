@@ -126,6 +126,7 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	}
 	fullDetails := VideoDetails{
 		ChannelID: details.PlayerVideoDetails.ChannelID,
+		Duration:  duration,
 		Video: Video{
 			Type:        VideoTypeVideo,
 			ID:          videoId,
