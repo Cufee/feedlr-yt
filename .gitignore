@@ -6,8 +6,11 @@ node_modules
 
 .env
 
+# Generated files
 **/*_gen.go
 **/*_templ.go
+internal/database/models/
+assets/css/style.css
 
 *.db
 *.sqlite
