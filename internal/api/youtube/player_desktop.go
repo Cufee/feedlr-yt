@@ -56,6 +56,17 @@ type DesktopPlayerVideoDetails struct {
 	IsUpcoming        bool      `json:"isUpcoming"`
 }
 
+// isThumbnailPortrait checks if any thumbnail has portrait orientation (width < height)
+// which indicates a Shorts video (9:16 aspect ratio, e.g., 405x720)
+func isThumbnailPortrait(thumbnail Thumbnail) bool {
+	for _, t := range thumbnail.Thumbnails {
+		if t.Width > 0 && t.Height > 0 && t.Width < t.Height {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDetails, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -84,10 +95,10 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 
 	res, err := client.Do(req)
 	if err != nil {
-		if len(tries) < 1 || tries[0] < 2 {
-			return nil, err
+		if len(tries) > 0 && tries[0] > 0 {
+			return c.getDesktopPlayerDetails(videoId, tries[0]-1)
 		}
-		return c.GetVideoPlayerDetails(videoId, tries[0]-1)
+		return nil, err
 	}
 
 	responseBody, err := io.ReadAll(res.Body)
@@ -95,11 +106,11 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		return nil, err
 	}
 	if res.StatusCode != 200 {
-		if len(tries) < 1 || tries[0] < 2 {
-			log.Debug().Str("body", string(responseBody)).Int("status", res.StatusCode).Msg("invalid response")
-			return nil, errors.New("bad response status code")
+		if len(tries) > 0 && tries[0] > 0 {
+			return c.getDesktopPlayerDetails(videoId, tries[0]-1)
 		}
-		return c.GetVideoPlayerDetails(videoId, tries[0]-1)
+		log.Debug().Str("body", string(responseBody)).Int("status", res.StatusCode).Msg("invalid response")
+		return nil, errors.New("bad response status code")
 	}
 
 	var details DesktopPlayerResponse
@@ -108,7 +119,11 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		return nil, errors.Wrap(err, "failed to parse response body")
 	}
 
+	// Get duration from primary source, fallback to microformat
 	duration, _ := strconv.Atoi(details.PlayerVideoDetails.LengthSeconds)
+	if duration == 0 {
+		duration, _ = strconv.Atoi(details.Microformat.PlayerMicroformatRenderer.LengthSeconds)
+	}
 	fullDetails := VideoDetails{
 		ChannelID: details.PlayerVideoDetails.ChannelID,
 		Video: Video{
@@ -149,6 +164,8 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	}
 
 	// Check if this video is a Short and get duration if needed
+	hasStreamingData := len(details.StreamingData.Formats) > 0 || len(details.StreamingData.AdaptiveFormats) > 0
+
 	for _, format := range details.StreamingData.Formats {
 		if fullDetails.Duration == 0 {
 			duration, _ := strconv.Atoi(format.ApproxDurationMs)
@@ -174,8 +191,20 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		}
 	}
 
+	// Fallback: check thumbnail aspect ratio for Shorts (9:16, e.g., 405x720)
+	if isThumbnailPortrait(details.PlayerVideoDetails.Thumbnail) {
+		fullDetails.Type = VideoTypeShort
+		return &fullDetails, nil
+	}
+
+	// Duration-based Short detection
 	if fullDetails.Duration > 0 && fullDetails.Duration <= 60 {
 		fullDetails.Type = VideoTypeShort
+	}
+
+	// Log warning when response appears incomplete (may indicate rate limiting)
+	if !hasStreamingData && fullDetails.Duration == 0 {
+		log.Warn().Str("video", videoId).Msg("missing streaming data and duration - possible rate limiting")
 	}
 
 	return &fullDetails, nil
