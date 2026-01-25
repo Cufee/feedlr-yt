@@ -325,9 +325,9 @@ const (
 // WatchLaterButton - consolidated button for all contexts
 templ WatchLaterButton(videoID string, inWatchLater bool, variant WatchLaterVariant) {
 	if variant == WatchLaterVideo {
-		// Video page style - uses btn-primary for active state, always shows Pin icon
+		// Video page style - uses text-primary for active state to color the icon stroke, always shows Pin icon
 		if inWatchLater {
-			<button id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="btn btn-square btn-primary" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=video", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
+			<button id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="btn btn-square opacity-70 hover:opacity-100 text-primary" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=video", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
 				@icons.Pin()
 			</button>
 		} else {
