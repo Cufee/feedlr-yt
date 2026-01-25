@@ -205,11 +205,16 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	}
 
 	// Duration-based Short detection
-	if fullDetails.Duration > 0 && fullDetails.Duration <= 60 {
+	// Use stricter threshold (60s) when we have streaming data to verify
+	// Use lenient threshold (90s) when streaming data is missing (can't check dimensions)
+	shortDurationThreshold := 60
+	if !hasStreamingData {
+		shortDurationThreshold = 90
+	}
+	if fullDetails.Duration > 0 && fullDetails.Duration <= shortDurationThreshold {
 		fullDetails.Type = VideoTypeShort
 	}
 
-	// Log warning when response appears incomplete (may indicate rate limiting)
 	if !hasStreamingData && fullDetails.Duration == 0 {
 		log.Warn().Str("video", videoId).Msg("missing streaming data and duration - possible rate limiting")
 	}
