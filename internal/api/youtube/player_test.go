@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestStreamRecordingDetection(t *testing.T) {
+func TestVideoTypeDetection(t *testing.T) {
 	videos := []struct {
 		id           string
 		description  string
@@ -16,6 +16,7 @@ func TestStreamRecordingDetection(t *testing.T) {
 	}{
 		{"GODPh96F0M0", "past stream (VOD)", VideoTypeStreamRecording},
 		{"aARsNGL-Xwc", "regular video", VideoTypeVideo},
+		{"KeLmi62DmjU", "short", VideoTypeShort},
 	}
 
 	for _, v := range videos {
@@ -25,12 +26,41 @@ func TestStreamRecordingDetection(t *testing.T) {
 				t.Fatalf("failed to fetch: %v", err)
 			}
 
-			var detectedType VideoType
 			duration := 0
 			if resp.PlayerVideoDetails.LengthSeconds != "" {
 				d, _ := json.Number(resp.PlayerVideoDetails.LengthSeconds).Int64()
 				duration = int(d)
 			}
+
+			// Log debug info
+			t.Logf("Duration: %d seconds", duration)
+			t.Logf("IsLiveContent: %v", resp.PlayerVideoDetails.IsLiveContent)
+			t.Logf("Thumbnail portrait: %v", isThumbnailPortrait(resp.PlayerVideoDetails.Thumbnail))
+			t.Logf("Formats count: %d, AdaptiveFormats count: %d", len(resp.StreamingData.Formats), len(resp.StreamingData.AdaptiveFormats))
+
+			// Check all formats for portrait
+			isPortraitFormat := false
+			for _, f := range resp.StreamingData.Formats {
+				if f.Width > 0 && f.Height > 0 {
+					t.Logf("Format: %dx%d (portrait=%v)", f.Width, f.Height, f.Width < f.Height)
+					if f.Width < f.Height {
+						isPortraitFormat = true
+					}
+				}
+			}
+			for _, f := range resp.StreamingData.AdaptiveFormats {
+				if f.Width > 0 && f.Height > 0 {
+					if f.Width < f.Height {
+						isPortraitFormat = true
+						t.Logf("Adaptive portrait: %dx%d", f.Width, f.Height)
+						break
+					}
+				}
+			}
+			t.Logf("Has portrait format: %v", isPortraitFormat)
+
+			// Detection logic matching player_desktop.go
+			var detectedType VideoType = VideoTypeVideo
 
 			if resp.PlayerVideoDetails.IsLiveContent {
 				if resp.PlayerVideoDetails.IsLive {
@@ -41,8 +71,37 @@ func TestStreamRecordingDetection(t *testing.T) {
 					detectedType = VideoTypeStreamRecording
 				}
 			} else {
-				detectedType = VideoTypeVideo
+				// Check format dimensions for shorts
+				for _, f := range resp.StreamingData.Formats {
+					if f.Width < f.Height {
+						detectedType = VideoTypeShort
+						break
+					}
+				}
+				if detectedType != VideoTypeShort {
+					for _, f := range resp.StreamingData.AdaptiveFormats {
+						if f.Width < f.Height {
+							detectedType = VideoTypeShort
+							break
+						}
+					}
+				}
+				// Fallback: thumbnail portrait
+				if detectedType != VideoTypeShort && isThumbnailPortrait(resp.PlayerVideoDetails.Thumbnail) {
+					detectedType = VideoTypeShort
+				}
+				// Fallback: duration threshold (90s without streaming data, 60s with)
+				hasStreamingData := len(resp.StreamingData.Formats) > 0 || len(resp.StreamingData.AdaptiveFormats) > 0
+				threshold := 60
+				if !hasStreamingData {
+					threshold = 90
+				}
+				if detectedType != VideoTypeShort && duration > 0 && duration <= threshold {
+					detectedType = VideoTypeShort
+				}
 			}
+
+			t.Logf("Detected: %s, Expected: %s", detectedType, v.expectedType)
 
 			if detectedType != v.expectedType {
 				t.Errorf("type mismatch: got %s, want %s", detectedType, v.expectedType)
