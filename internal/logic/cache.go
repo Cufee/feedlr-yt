@@ -2,13 +2,13 @@ package logic
 
 import (
 	"context"
-
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/friendsofgo/errors"
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 )
@@ -146,25 +146,44 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 	return record, false, nil
 }
 
-func UpdateChannelVideoCache(ctx context.Context, db database.Client, videoID string) error {
+func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) {
 	current, err := db.GetVideoByID(ctx, videoID)
 	if err != nil && !database.IsErrNotFound(err) {
-		return err
+		log.Warn().Err(err).Str("videoID", videoID).Msg("failed to get video for cache refresh")
+		return
 	}
-	if current != nil && time.Since(current.UpdatedAt) < time.Hour {
-		return nil
+
+	var staleThreshold time.Duration
+	if current != nil {
+		switch current.Type {
+		case string(youtube.VideoTypeLiveStream), string(youtube.VideoTypeUpcomingStream), string(youtube.VideoTypeStreamRecording):
+			staleThreshold = time.Hour
+		default:
+			staleThreshold = 6 * time.Hour
+		}
+
+		if time.Since(current.UpdatedAt) < staleThreshold {
+			return
+		}
+
+		if err := db.TouchVideoUpdatedAt(ctx, videoID); err != nil {
+			log.Warn().Err(err).Str("videoID", videoID).Msg("failed to touch video timestamp")
+			return
+		}
 	}
 
 	video, err := youtube.DefaultClient.GetVideoDetailsByID(videoID)
 	if err != nil {
-		return err
+		log.Warn().Err(err).Str("videoID", videoID).Msg("failed to fetch video details for cache refresh")
+		return
 	}
 
 	if current != nil {
 		video.ChannelID = current.ChannelID
 	}
 	if video.ChannelID == "" {
-		return errors.New("cannot refresh an uncached private video without a channel id")
+		log.Warn().Str("videoID", videoID).Msg("cannot refresh uncached private video without channel id")
+		return
 	}
 
 	update := &models.Video{
@@ -178,15 +197,12 @@ func UpdateChannelVideoCache(ctx context.Context, db database.Client, videoID st
 		Private:     video.Type == youtube.VideoTypePrivate,
 	}
 
-	err = db.UpsertVideos(ctx, update)
-	if err != nil {
-		return err
+	if err := db.UpsertVideos(ctx, update); err != nil {
+		log.Warn().Err(err).Str("videoID", videoID).Msg("failed to upsert video during cache refresh")
+		return
 	}
 
-	_, _, err = CacheChannel(ctx, db, video.ChannelID)
-	if err != nil {
-		return err
+	if _, _, err := CacheChannel(ctx, db, video.ChannelID); err != nil {
+		log.Warn().Err(err).Str("videoID", videoID).Str("channelID", video.ChannelID).Msg("failed to cache channel during video refresh")
 	}
-
-	return nil
 }

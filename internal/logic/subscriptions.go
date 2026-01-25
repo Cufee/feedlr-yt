@@ -57,3 +57,18 @@ func DeleteSubscription(ctx context.Context, db database.SubscriptionsClient, us
 	}
 	return nil
 }
+
+func UpdateSubscriptionFilter(ctx context.Context, db database.SubscriptionsClient, userID, channelID string, filter types.VideoFilter) error {
+	sub, err := db.FindSubscription(ctx, userID, channelID)
+	if err != nil {
+		return errors.Wrap(err, "failed to find subscription")
+	}
+
+	sub.VideoFilter = string(filter)
+	err = db.UpdateSubscription(ctx, sub)
+	if err != nil {
+		return errors.Wrap(err, "failed to update subscription")
+	}
+
+	return nil
+}

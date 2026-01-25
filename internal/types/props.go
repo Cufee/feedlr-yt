@@ -41,9 +41,18 @@ type NavbarProps struct {
 	Hide       bool
 }
 
+type VideoFilter string
+
+const (
+	VideoFilterAll     VideoFilter = "all"
+	VideoFilterVideos  VideoFilter = "videos"
+	VideoFilterStreams VideoFilter = "streams"
+)
+
 type ChannelProps struct {
 	youtube.Channel
-	Favorite bool
+	Favorite    bool
+	VideoFilter VideoFilter
 }
 
 type ChannelSearchResultProps struct {
@@ -67,6 +76,7 @@ type UserVideoFeedProps struct {
 type ChannelPageProps struct {
 	Authenticated bool
 	Subscribed    bool
+	VideoFilter   VideoFilter
 	Channel       ChannelWithVideosProps
 }
 

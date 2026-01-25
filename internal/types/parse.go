@@ -45,6 +45,7 @@ func ChannelModelToProps(channel *models.Channel) ChannelProps {
 func SubscriptionChannelModelToProps(sub *models.Subscription) ChannelProps {
 	c := ChannelModelToProps(sub.R.Channel)
 	c.Favorite = sub.Favorite
+	c.VideoFilter = VideoFilter(sub.VideoFilter)
 	return c
 }
 

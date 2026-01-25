@@ -140,15 +140,21 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		fullDetails.Video.PublishedAt, _ = time.Parse(time.RFC3339, details.Microformat.PlayerMicroformatRenderer.PublishDate)
 	}
 
-	// Check if a video is a live stream
-	// Status will not be OK if a video is an upcoming stream
-	if details.PlayerVideoDetails.IsLiveContent && duration == 0 {
+	// Check if a video is live content (stream)
+	if details.PlayerVideoDetails.IsLiveContent {
 		if details.PlayerVideoDetails.IsLive {
+			// Currently live
 			fullDetails.Type = VideoTypeLiveStream
-		} else {
+			return &fullDetails, nil
+		} else if duration == 0 {
+			// Not live yet, no duration = upcoming
 			fullDetails.Type = VideoTypeUpcomingStream
+			return &fullDetails, nil
+		} else {
+			// Has duration, not live = past stream recording
+			fullDetails.Type = VideoTypeStreamRecording
+			return &fullDetails, nil
 		}
-		return &fullDetails, nil
 	}
 
 	if details.PlayerVideoDetails.IsPrivate || details.PlayabilityStatus.inferPrivate() {

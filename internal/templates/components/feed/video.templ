@@ -2,10 +2,11 @@ package feed
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
-	"time"
 )
 
 type FeedOption func(*feedOptions)
@@ -57,8 +58,17 @@ templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedO
 					</span>
 					<div class="flex flex-col">
 						if opts.showChannelName {
-							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="overflow-hidden text-gray-500 truncate text-md w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Title }>
+							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="flex items-center gap-1 overflow-hidden text-gray-500 truncate text-md w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Title }>
 								{ video.Channel.Title }
+								if video.Channel.VideoFilter == types.VideoFilterVideos {
+									<span class="size-3.5 shrink-0">
+										@icons.Clapperboard()
+									</span>
+								} else if video.Channel.VideoFilter == types.VideoFilterStreams {
+									<span class="size-3.5 shrink-0">
+										@icons.Radio()
+									</span>
+								}
 							</a>
 						}
 						<span class="text-sm text-gray-500 w-fit">

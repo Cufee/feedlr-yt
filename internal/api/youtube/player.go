@@ -16,12 +16,13 @@ type VideoType string
 var invalidVideoDurations = []int{93}
 
 const (
-	VideoTypeUpcomingStream VideoType = "upcoming_stream"
-	VideoTypeLiveStream     VideoType = "live_stream"
-	VideoTypeVideo          VideoType = "video"
-	VideoTypeShort          VideoType = "short"
-	VideoTypePrivate        VideoType = "private"
-	VideoTypeFailed         VideoType = "failed"
+	VideoTypeUpcomingStream    VideoType = "upcoming_stream"
+	VideoTypeLiveStream        VideoType = "live_stream"
+	VideoTypeStreamRecording   VideoType = "stream_recording"
+	VideoTypeVideo             VideoType = "video"
+	VideoTypeShort             VideoType = "short"
+	VideoTypePrivate           VideoType = "private"
+	VideoTypeFailed            VideoType = "failed"
 )
 
 type VideoDetails struct {

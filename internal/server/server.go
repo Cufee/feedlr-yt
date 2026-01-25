@@ -95,6 +95,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		api.Get("/channels/search", toFiber(rapi.SearchChannels))
 		api.Post("/channels/:id/subscribe", toFiber(rapi.CreateSubscription))
 		api.Post("/channels/:id/unsubscribe", toFiber(rapi.RemoveSubscription))
+		api.Post("/channels/:id/filter", toFiber(rapi.UpdateVideoFilter))
 
 		api.Post("/settings/sponsorblock", toFiber(rapi.ToggleSponsorBlock))
 		api.Post("/settings/sponsorblock/category", toFiber(rapi.ToggleSponsorBlockCategory))

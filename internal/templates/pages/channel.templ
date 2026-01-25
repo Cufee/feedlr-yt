@@ -38,6 +38,15 @@ templ Channel(props types.ChannelPageProps) {
 				@channel.ChannelTile(props.Channel.Channel, subscribeButton(props.Channel.ID, props.Authenticated, props.Subscribed))
 			</div>
 		</div>
+		if props.Authenticated && props.Subscribed {
+			@subscriptions.VideoFilterTabs(props.Channel.ID, props.VideoFilter)
+		}
+		@ChannelVideoFeed(props)
+	</div>
+}
+
+templ ChannelVideoFeed(props types.ChannelPageProps) {
+	<div id="channel-video-feed" class="w-full">
 		@feed.VideoFeed(props.Channel.Videos, fmt.Sprintf("/channel/%s", props.Channel.ID), propsToOptions(props)...)
 	</div>
 }

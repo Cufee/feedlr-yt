@@ -14,6 +14,7 @@ type VideosClient interface {
 	GetVideoByID(ctx context.Context, id string, o ...VideoQuery) (*models.Video, error)
 	FindVideos(ctx context.Context, o ...VideoQuery) ([]*models.Video, error)
 	UpsertVideos(ctx context.Context, videos ...*models.Video) error
+	TouchVideoUpdatedAt(ctx context.Context, id string) error
 }
 
 type VideoQuery func(o *videoQuery)
@@ -154,6 +155,15 @@ func (c *sqliteClient) UpsertVideos(ctx context.Context, videos ...*models.Video
 		}
 	}
 	return nil
+}
+
+func (c *sqliteClient) TouchVideoUpdatedAt(ctx context.Context, id string) error {
+	video, err := models.FindVideo(ctx, c.db, id)
+	if err != nil {
+		return err
+	}
+	_, err = video.Update(ctx, c.db, boil.Whitelist(models.VideoColumns.UpdatedAt))
+	return err
 }
 
 type ViewsClient interface {

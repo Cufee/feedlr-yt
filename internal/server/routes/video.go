@@ -3,7 +3,6 @@ package root
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -19,15 +18,11 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 	session, _ := ctx.Session()
 
 	video := ctx.Params("id")
-	// Update cache in the background
+	// Refresh cache in the background if stale
 	go func(id string) {
 		c, cancel := context.WithTimeout(context.Background(), time.Second*15)
 		defer cancel()
-
-		err := logic.UpdateChannelVideoCache(c, ctx.Database(), id)
-		if err != nil {
-			log.Printf("VideoHandler.UpdateVideoCache error: %v\n", err)
-		}
+		logic.RefreshVideoCache(c, ctx.Database(), id)
 	}(video)
 
 	if uid, valid := session.UserID(); valid {

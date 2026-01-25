@@ -2,6 +2,7 @@ package subscriptions
 
 import (
 	"fmt"
+
 	"github.com/cufee/feedlr-yt/internal/templates/components/channel"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/types"
@@ -76,5 +77,35 @@ templ subscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 		title="Subscribe"
 	>
 		@icons.Bookmark()
+	</button>
+}
+
+templ VideoFilterTabs(channelID string, current types.VideoFilter) {
+	<div id="video-filter-toggle" class="flex justify-center w-full">
+		<div class="inline-flex rounded-lg bg-base-300 p-1 gap-1">
+			@filterTab(channelID, types.VideoFilterAll, current, "All", nil)
+			@filterTab(channelID, types.VideoFilterVideos, current, "Videos", icons.Clapperboard())
+			@filterTab(channelID, types.VideoFilterStreams, current, "Streams", icons.Radio())
+		</div>
+	</div>
+}
+
+templ filterTab(channelID string, filter, current types.VideoFilter, label string, icon templ.Component) {
+	<button
+		class={
+			"btn btn-sm px-4",
+			templ.KV("btn-primary", filter == current),
+			templ.KV("btn-ghost", filter != current),
+		}
+		hx-post={ fmt.Sprintf("/api/channels/%s/filter?filter=%s", channelID, filter) }
+		hx-target="#channel-video-feed"
+		hx-swap="innerHTML"
+	>
+		if icon != nil {
+			<span class="size-4">
+				@icon
+			</span>
+		}
+		{ label }
 	</button>
 }

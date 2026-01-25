@@ -42,12 +42,27 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 	channelProps := types.ChannelModelToProps(channel)
 	props := types.ChannelPageProps{
 		Authenticated: userID != "",
+		VideoFilter:   types.VideoFilterAll,
 		Channel: types.ChannelWithVideosProps{
 			ChannelProps: channelProps,
 		},
 	}
 
-	videos, err := GetChannelVideos(ctx, db, 24, channelID)
+	// Check if user is subscribed and get their filter preference
+	if userID != "" {
+		sub, err := db.FindSubscription(ctx, userID, channelID)
+		if err == nil {
+			props.Subscribed = true
+			props.VideoFilter = types.VideoFilter(sub.VideoFilter)
+			if props.VideoFilter == "" {
+				props.VideoFilter = types.VideoFilterAll
+			}
+		} else if !database.IsErrNotFound(err) {
+			return nil, errors.Wrap(err, "failed to find subscription")
+		}
+	}
+
+	videos, err := GetChannelVideosFiltered(ctx, db, 24, props.VideoFilter, channelID)
 	if err != nil && !database.IsErrNotFound(err) && !errors.Is(err, youtube.ErrLoginRequired) {
 		return nil, err
 	}
@@ -63,6 +78,8 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 		for _, v := range inserted {
 			videos = append(videos, types.VideoModelToProps(v, channelProps))
 		}
+		// Apply filter to freshly cached videos
+		videos = filterVideosByType(videos, props.VideoFilter)
 	}
 
 	props.Channel.Videos = trimVideoList(12, 3, videos)

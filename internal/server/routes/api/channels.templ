@@ -2,11 +2,14 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/templates/pages"
+	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/tpot/brewed"
-	"net/http"
 )
 
 var SearchChannels brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
@@ -73,4 +76,47 @@ var RemoveSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Cont
 	}
 
 	return nil, ctx.SendStatus(http.StatusOK)
+}
+
+var UpdateVideoFilter brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
+	if !ok {
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
+	}
+
+	channelID := ctx.Params("id")
+	filterStr := ctx.Query("filter")
+
+	// Validate filter value
+	var filter types.VideoFilter
+	switch filterStr {
+	case "all":
+		filter = types.VideoFilterAll
+	case "videos":
+		filter = types.VideoFilterVideos
+	case "streams":
+		filter = types.VideoFilterStreams
+	default:
+		return nil, ctx.SendStatus(http.StatusBadRequest)
+	}
+
+	err := logic.UpdateSubscriptionFilter(ctx.Context(), ctx.Database(), userID, channelID, filter)
+	if err != nil {
+		return nil, ctx.Err(err)
+	}
+
+	// Return the filtered video feed
+	props, err := logic.GetChannelPageProps(ctx.Context(), ctx.Database(), userID, channelID)
+	if err != nil {
+		return nil, ctx.Err(err)
+	}
+
+	return videoFilterResponse(channelID, filter, *props), nil
+}
+
+templ videoFilterResponse(channelID string, filter types.VideoFilter, props types.ChannelPageProps) {
+	@pages.ChannelVideoFeed(props)
+	<div id="video-filter-toggle" hx-swap-oob="true">
+		@subscriptions.VideoFilterTabs(channelID, filter)
+	</div>
 }

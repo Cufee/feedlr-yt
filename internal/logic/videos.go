@@ -43,8 +43,25 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 		return nil, errors.Wrap(err, "GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos")
 	}
 
-	videoIds := make([]string, len(allVideos))
-	for i, v := range allVideos {
+	// Apply per-channel video filters and set channel props with VideoFilter
+	var filteredVideos []types.VideoProps
+	for _, video := range allVideos {
+		// Replace video's channel with the one from channelsMap (which has VideoFilter set)
+		if channelWithFilter, ok := channelsMap[video.Channel.ID]; ok {
+			video.Channel = channelWithFilter
+		}
+		channelFilter := video.Channel.VideoFilter
+		if channelFilter == "" {
+			channelFilter = types.VideoFilterAll
+		}
+		// Use filterVideosByType to check if this video passes the channel's filter
+		if len(filterVideosByType([]types.VideoProps{video}, channelFilter)) > 0 {
+			filteredVideos = append(filteredVideos, video)
+		}
+	}
+
+	videoIds := make([]string, len(filteredVideos))
+	for i, v := range filteredVideos {
 		videoIds[i] = v.ID
 	}
 
@@ -57,7 +74,7 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 	watchLaterIDs, _ := GetWatchLaterVideoIDs(ctx, db, userId)
 
 	var feed types.UserVideoFeedProps
-	for _, video := range allVideos {
+	for _, video := range filteredVideos {
 		video.InWatchLater = watchLaterIDs[video.ID]
 		if v, ok := views[video.ID]; ok {
 			if v.Hidden.Bool {
@@ -66,7 +83,6 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 			video.Progress = int(v.Progress)
 			feed.Watched = append(feed.Watched, video)
 		} else {
-
 			feed.New = append(feed.New, video)
 		}
 	}
@@ -319,4 +335,69 @@ func trimVideoList(limit, batchSize int, videos []types.VideoProps) []types.Vide
 		return videos[:cutoff]
 	}
 	return videos
+}
+
+/*
+Returns a list of video props for a channel filtered by type
+*/
+func GetChannelVideosFiltered(ctx context.Context, db database.VideosClient, limit int, filter types.VideoFilter, channelID string) ([]types.VideoProps, error) {
+	opts := []database.VideoQuery{
+		database.Video.Channel(channelID),
+		database.Video.Limit(limit),
+		database.Video.WithChannel(),
+	}
+
+	switch filter {
+	case types.VideoFilterVideos:
+		opts = append(opts, database.Video.TypeEq("video"))
+	case types.VideoFilterStreams:
+		opts = append(opts, database.Video.TypeEq("live_stream", "upcoming_stream", "stream_recording"))
+	default:
+		opts = append(opts, database.Video.TypeNot("private", "short"))
+	}
+
+	videos, err := db.FindVideos(ctx, opts...)
+	if err != nil && !database.IsErrNotFound(err) {
+		return nil, errors.Wrap(err, "GetChannelVideosFiltered.db.FindVideos failed to get videos")
+	}
+
+	var props []types.VideoProps
+	for _, video := range videos {
+		c := types.ChannelModelToProps(video.R.Channel)
+		props = append(props, types.VideoModelToProps(video, c))
+	}
+
+	slices.SortFunc(props, func(a, b types.VideoProps) int {
+		return b.PublishedAt.Compare(a.PublishedAt)
+	})
+
+	return props, nil
+}
+
+/*
+Filters video props by type (used for filtering freshly cached videos)
+*/
+func filterVideosByType(videos []types.VideoProps, filter types.VideoFilter) []types.VideoProps {
+	if filter == types.VideoFilterAll {
+		return videos
+	}
+
+	var filtered []types.VideoProps
+	for _, v := range videos {
+		switch filter {
+		case types.VideoFilterVideos:
+			if v.Type == youtube.VideoTypeVideo {
+				filtered = append(filtered, v)
+			}
+		case types.VideoFilterStreams:
+			if v.Type == youtube.VideoTypeLiveStream || v.Type == youtube.VideoTypeUpcomingStream || v.Type == youtube.VideoTypeStreamRecording {
+				filtered = append(filtered, v)
+			}
+		default:
+			if v.Type != youtube.VideoTypePrivate && v.Type != youtube.VideoTypeShort {
+				filtered = append(filtered, v)
+			}
+		}
+	}
+	return filtered
 }
