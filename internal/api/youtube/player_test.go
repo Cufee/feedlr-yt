@@ -17,6 +17,7 @@ func TestVideoTypeDetection(t *testing.T) {
 		{"GODPh96F0M0", "past stream (VOD)", VideoTypeStreamRecording},
 		{"aARsNGL-Xwc", "regular video", VideoTypeVideo},
 		{"KeLmi62DmjU", "short", VideoTypeShort},
+		{"H4iECWYllc4", "short with landscape thumbnail", VideoTypeShort},
 	}
 
 	for _, v := range videos {
@@ -89,6 +90,14 @@ func TestVideoTypeDetection(t *testing.T) {
 				// Fallback: thumbnail portrait
 				if detectedType != VideoTypeShort && isThumbnailPortrait(resp.PlayerVideoDetails.Thumbnail) {
 					detectedType = VideoTypeShort
+				}
+				// Fallback: /shorts/ URL check
+				if detectedType != VideoTypeShort && duration > 0 && duration <= 180 {
+					isShort := isShortsURL(v.id)
+					t.Logf("Shorts URL check: %v", isShort)
+					if isShort {
+						detectedType = VideoTypeShort
+					}
 				}
 				// Fallback: duration threshold (90s without streaming data, 60s with)
 				hasStreamingData := len(resp.StreamingData.Formats) > 0 || len(resp.StreamingData.AdaptiveFormats) > 0

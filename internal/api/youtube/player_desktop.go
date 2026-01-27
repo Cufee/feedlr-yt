@@ -56,6 +56,22 @@ type DesktopPlayerVideoDetails struct {
 	IsUpcoming        bool      `json:"isUpcoming"`
 }
 
+// isShortsURL checks if YouTube serves the /shorts/ URL for this video (200 = short, 303 redirect = not)
+func isShortsURL(videoID string) bool {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Head("https://www.youtube.com/shorts/" + videoID)
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
 // isThumbnailPortrait checks if any thumbnail has portrait orientation (width < height)
 // which indicates a Shorts video (9:16 aspect ratio, e.g., 405x720)
 func isThumbnailPortrait(thumbnail Thumbnail) bool {
@@ -202,6 +218,14 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	if isThumbnailPortrait(details.PlayerVideoDetails.Thumbnail) {
 		fullDetails.Type = VideoTypeShort
 		return &fullDetails, nil
+	}
+
+	// Fallback: check if /shorts/{id} URL resolves (200 = short, 303 = not short)
+	if fullDetails.Duration > 0 && fullDetails.Duration <= 180 {
+		if isShortsURL(videoId) {
+			fullDetails.Type = VideoTypeShort
+			return &fullDetails, nil
+		}
 	}
 
 	// Duration-based Short detection
