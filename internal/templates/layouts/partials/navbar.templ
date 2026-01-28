@@ -26,9 +26,6 @@ templ navbar(path string) {
 			<a class={ "btn", "btn-neutral", "nav-btn", "btn-square","no-animation", templ.KV("btn-active", path=="/app/recent") } href="/app/recent" title="Recent Views">
 				@icons.Clock()
 			</a>
-			<a class={ "btn", "btn-neutral", "nav-btn", "btn-square","no-animation", templ.KV("btn-active", path=="/app/watch-later") } href="/app/watch-later" title="Watch Later">
-				@icons.Pin()
-			</a>
 			<a class={ "btn", "btn-neutral", "nav-btn", "btn-square","no-animation", templ.KV("btn-active", path=="/app/subscriptions") } href="/app/subscriptions" title="Manage Subscriptions">
 				@icons.Bookmark()
 			</a>
