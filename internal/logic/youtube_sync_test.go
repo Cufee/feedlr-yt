@@ -86,3 +86,25 @@ func TestBuildPlaylistSyncPlanInsertPositionsAppendAtEnd(t *testing.T) {
 	is.Equal(plan.ToAdd[1].VideoID, "c")
 	is.Equal(plan.ToAdd[1].Position, int64(2))
 }
+
+func TestBuildPlaylistSyncPlanInsertPositionsIgnoreItemsPlannedForDelete(t *testing.T) {
+	is := is.New(t)
+
+	desired := []string{"n1", "a", "b", "c"}
+	remote := []playlistRemoteItem{
+		{ItemID: "stale-head", VideoID: "x", Position: 0},
+		{ItemID: "i-a", VideoID: "a", Position: 1},
+		{ItemID: "i-b", VideoID: "b", Position: 2},
+		{ItemID: "i-c", VideoID: "c", Position: 3},
+		{ItemID: "stale-tail", VideoID: "y", Position: 4},
+	}
+
+	plan := buildPlaylistSyncPlan(desired, remote, 4)
+	is.Equal(len(plan.ToDelete), 2)
+	is.Equal(plan.ToDelete[0], "stale-tail")
+	is.Equal(plan.ToDelete[1], "stale-head")
+
+	is.Equal(len(plan.ToAdd), 1)
+	is.Equal(plan.ToAdd[0].VideoID, "n1")
+	is.Equal(plan.ToAdd[0].Position, int64(0))
+}

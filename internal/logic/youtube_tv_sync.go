@@ -999,6 +999,9 @@ func (s *YouTubeTVSyncService) loadSponsorSegments(videoID string, categories []
 	if len(categories) == 0 {
 		return nil
 	}
+	if sponsorblock.C == nil {
+		return nil
+	}
 
 	raw, err := sponsorblock.C.GetVideoSegments(videoID, categories...)
 	if err != nil {

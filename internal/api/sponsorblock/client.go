@@ -4,9 +4,9 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
-
-	"github.com/cufee/feedlr-yt/internal/utils"
 )
 
 type client struct {
@@ -20,9 +20,10 @@ var C *client
 var ErrRequestTimeout = errors.New("request timeout")
 
 func init() {
-	apiUrl := utils.MustGetEnv("SPONSORBLOCK_API_URL")
+	apiUrl := strings.TrimSpace(os.Getenv("SPONSORBLOCK_API_URL"))
 	if apiUrl == "" {
-		log.Fatal("SPONSORBLOCK_API_URL is empty")
+		log.Println("sponsorblock disabled: SPONSORBLOCK_API_URL is not set")
+		return
 	}
 
 	DefaultClient = &client{
