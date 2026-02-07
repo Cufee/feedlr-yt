@@ -18,6 +18,11 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 )
 
+const (
+	homeFeedFetchWindow = 96
+	homeFeedLimit       = 36
+)
+
 /*
 Returns a list of channel props with videos for all user subscriptions
 */
@@ -36,7 +41,7 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 		channelIds = append(channelIds, c.ID)
 	}
 
-	allVideos, err := GetChannelVideos(ctx, db, 36, channelIds...)
+	allVideos, err := GetChannelVideos(ctx, db, homeFeedFetchWindow, channelIds...)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetUserSubscriptionsProps.GetChannelVideos failed to get channel videos")
 	}
@@ -82,6 +87,19 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 			feed.Watched = append(feed.Watched, video)
 		} else {
 			feed.New = append(feed.New, video)
+		}
+	}
+
+	if total := len(feed.New) + len(feed.Watched); total > homeFeedLimit {
+		remaining := homeFeedLimit
+		if len(feed.New) > remaining {
+			feed.New = feed.New[:remaining]
+			feed.Watched = nil
+		} else {
+			remaining -= len(feed.New)
+			if len(feed.Watched) > remaining {
+				feed.Watched = feed.Watched[:remaining]
+			}
 		}
 	}
 
@@ -156,7 +174,20 @@ func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int
 	}
 
 	slices.SortFunc(props, func(a, b types.VideoProps) int {
-		return b.PublishedAt.Compare(a.PublishedAt)
+		if c := b.PublishedAt.Compare(a.PublishedAt); c != 0 {
+			return c
+		}
+		if c := b.CreatedAt.Compare(a.CreatedAt); c != 0 {
+			return c
+		}
+		switch {
+		case b.ID > a.ID:
+			return 1
+		case b.ID < a.ID:
+			return -1
+		default:
+			return 0
+		}
 	})
 
 	return trimVideoList(limit, 3, props), nil

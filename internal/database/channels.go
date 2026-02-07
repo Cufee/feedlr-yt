@@ -84,7 +84,9 @@ func (c *sqliteClient) GetChannels(ctx context.Context, o ...ChannelQuery) ([]*m
 		sql := sqlbuilder.
 			Select("*").
 			From(models.TableNames.Videos).
-			Desc().OrderBy(models.VideoColumns.PublishedAt)
+			Desc().OrderBy(models.VideoColumns.PublishedAt).
+			Desc().OrderBy(models.VideoColumns.CreatedAt).
+			Desc().OrderBy(models.VideoColumns.ID)
 		sql = sql.Where(
 			sql.And(
 				sql.In(models.VideoColumns.ChannelID, ids...),
@@ -196,7 +198,9 @@ func (c *sqliteClient) GetChannel(ctx context.Context, channelId string, o ...Ch
 		sql := sqlbuilder.
 			Select("*").
 			From(models.TableNames.Videos).
-			Desc().OrderBy(models.VideoColumns.PublishedAt)
+			Desc().OrderBy(models.VideoColumns.PublishedAt).
+			Desc().OrderBy(models.VideoColumns.CreatedAt).
+			Desc().OrderBy(models.VideoColumns.ID)
 		sql = sql.Where(
 			sql.And(
 				sql.EQ(models.VideoColumns.ChannelID, channel.ID),
