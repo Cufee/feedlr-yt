@@ -107,7 +107,8 @@ func (c *sqliteClient) FindVideos(ctx context.Context, o ...VideoQuery) ([]*mode
 
 	sql := withSelect.
 		From(models.TableNames.Videos).
-		OrderBy(models.ViewColumns.CreatedAt).Desc()
+		OrderBy(models.VideoColumns.CreatedAt).Desc().
+		OrderBy(models.VideoColumns.ID).Desc()
 	if opts.limit > 0 {
 		sql = sql.Limit(opts.limit)
 	}
