@@ -2,7 +2,6 @@ package feed
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/types"
@@ -72,7 +71,7 @@ templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedO
 							</a>
 						}
 						<span class="text-sm text-gray-500 w-fit">
-							{ formatTimestamp(video.PublishedAt) }
+							{ utils.RelativeTimeAgo(video.PublishedAt) }
 						</span>
 					</div>
 				</div>
@@ -291,27 +290,6 @@ func secondsToDurationString(seconds int) string {
 		return fmt.Sprintf("%02d:%02d", minutes, seconds)
 	}
 	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
-}
-
-func formatTimestamp(timestamp time.Time) string {
-	now := time.Now()
-	diff := now.Sub(timestamp)
-
-	if diff < time.Minute {
-		return "Just now"
-	} else if diff < time.Hour {
-		return fmt.Sprintf("%d minutes ago", int(diff.Minutes()))
-	} else if diff < time.Hour*24 {
-		return fmt.Sprintf("%d hours ago", int(diff.Hours()))
-	} else if diff < time.Hour*24*7 {
-		return fmt.Sprintf("%d days ago", int(diff.Hours()/24))
-	} else if diff < time.Hour*24*30 {
-		return fmt.Sprintf("%d weeks ago", int(diff.Hours()/24/7))
-	} else if diff < time.Hour*24*365 {
-		return fmt.Sprintf("%d months ago", int(diff.Hours()/24/30))
-	} else {
-		return fmt.Sprintf("%d years ago", int(diff.Hours()/24/365))
-	}
 }
 
 type WatchLaterVariant string

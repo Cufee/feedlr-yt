@@ -9,6 +9,7 @@ templ Settings(props types.SettingsPageProps) {
 	<head><title>Feedlr - Settings</title></head>
 	<div class="flex flex-col gap-4">
 		@settings.ManageAccount(props.Passkeys)
+		@settings.YouTubeSyncSettings(props.YouTubeSync)
 		@settings.SponsorBlockSettings(props.SponsorBlock)
 	</div>
 }

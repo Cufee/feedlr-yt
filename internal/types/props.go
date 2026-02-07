@@ -14,6 +14,16 @@ type SettingsPageProps struct {
 	PlayerVolume int
 	SponsorBlock SponsorBlockSettingsProps
 	Passkeys     []PasskeyProps
+	YouTubeSync  YouTubeSyncStatusProps
+}
+
+type YouTubeSyncStatusProps struct {
+	Available    bool
+	Connected    bool
+	Enabled      bool
+	PlaylistID   string
+	LastError    string
+	LastSyncedAt time.Time
 }
 
 func (s *SettingsPageProps) Decode(record *models.Setting) error {

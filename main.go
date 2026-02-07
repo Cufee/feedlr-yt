@@ -14,6 +14,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
 	mw "github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/logic/background"
 	"github.com/cufee/feedlr-yt/internal/server"
 	"github.com/cufee/feedlr-yt/internal/sessions"
@@ -36,6 +37,12 @@ func main() {
 		panic(err)
 	}
 
+	youtubeSync, err := logic.NewYouTubeSyncService(db)
+	if err != nil {
+		panic(err)
+	}
+	logic.DefaultYouTubeSync = youtubeSync
+
 	authClient := auth.NewClient(db)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	done, err := authClient.Authenticate(ctx, os.Getenv("YOUTUBE_API_SKIP_AUTH_CACHE") == "true")
@@ -54,7 +61,7 @@ func main() {
 	}
 	youtube.DefaultClient = yt
 
-	_, err = background.StartCronTasks(db)
+	_, err = background.StartCronTasks(db, youtubeSync)
 	if err != nil {
 		panic(err)
 	}

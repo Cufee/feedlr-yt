@@ -1,4 +1,4 @@
-h1:L+3xBBxzwDyAME7qa+Ion/tILqNxxz/l9Y67tXQAgXQ=
+h1:DGAlRqbSgQeerJL90jHHMaOvBLBcdN7f6Fpjvp6gG04=
 20240807155610.sql h1:vUvxqUJtYXbYE1ldEt9n/a9rKcEA0B4WOvX/HAVcUhM=
 20240807195423.sql h1:6dmweJgX9tZN09JTMhJ+hPfYrDaTdoDFymvTheNPwVA=
 20240811174503.sql h1:B4yRj6Z7aGRaSQPed0rddpuZGm84utuiAwxLRQN+jgo=
@@ -13,3 +13,4 @@ h1:L+3xBBxzwDyAME7qa+Ion/tILqNxxz/l9Y67tXQAgXQ=
 20241126152715.sql h1:QSvB+AWk0A0baNeZJAsjJUbeFJKBVw9FFLPUBLINQao=
 20260124193534_add_playlists.sql h1:T72YKCtI9C635HaQG0Q4jwoTA98OTWdkgW1ZrXdUrKA=
 20260124200000_add_subscription_video_filter.sql h1:bRQY4gGgZ3Lrynx9y2ov/vAmzhsrtb9MU2BZenJzvlE=
+20260206170000_add_youtube_sync_accounts.sql h1:cq4X23oaUdfCNwmR+LdGg9mI7nO6pbDKmI9SpudBPq4=

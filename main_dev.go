@@ -11,6 +11,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
 	mw "github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/server"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/rs/zerolog/log"
@@ -25,6 +26,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	youtubeSync, err := logic.NewYouTubeSyncService(db)
+	if err != nil {
+		panic(err)
+	}
+	logic.DefaultYouTubeSync = youtubeSync
 
 	// YouTube API setup
 	authClient := auth.NewClient(db)

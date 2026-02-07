@@ -1,0 +1,95 @@
+package settings
+
+import (
+	"fmt"
+	"github.com/cufee/feedlr-yt/internal/types"
+	"github.com/cufee/feedlr-yt/internal/utils"
+)
+
+func playlistURL(playlistID string) string {
+	return fmt.Sprintf("https://www.youtube.com/playlist?list=%s", playlistID)
+}
+
+templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps) {
+	<div class="flex flex-col w-full gap-4 p-3 shadow-inner md:gap-4 md:p-6 bg-base-300 rounded-xl" id="youtube-sync-settings">
+		<div class="flex flex-wrap items-center justify-between w-full gap-2 px-4">
+			<span class="self-center text-xl font-bold">YouTube Playlist Sync</span>
+			if status.Connected {
+				<span
+					class={ map[bool]string{
+					true:  "badge badge-primary badge-sm text-primary-content w-24 justify-center",
+					false: "badge badge-sm bg-base-200 text-base-content/60 border border-base-content/15 w-24 justify-center",
+				}[status.Enabled] }
+				>
+					{ map[bool]string{true: "Enabled", false: "Paused"}[status.Enabled] }
+				</span>
+			}
+		</div>
+		<div class="flex flex-col w-full gap-4 p-4 rounded-lg bg-base-100">
+			if !status.Available {
+				<div class="text-sm opacity-70">Sync is disabled on this deployment.</div>
+			} else if !status.Connected {
+				<div class="flex flex-col gap-3">
+					<div class="text-sm leading-relaxed opacity-70">
+						Connect your YouTube account to keep a private playlist mirrored from your Feedlr home feed.
+					</div>
+					<form action="/api/settings/youtube-sync/connect/begin" method="post">
+						<button type="submit" class="btn btn-sm btn-primary">Connect YouTube</button>
+					</form>
+				</div>
+			} else {
+				<div class="grid gap-2 text-sm sm:grid-cols-2">
+					<div class="p-3 rounded-lg bg-base-200">
+						<div class="flex items-center justify-between gap-2">
+							<div class="font-semibold">Status</div>
+							if status.PlaylistID != "" && status.Enabled {
+								<a
+									href={ playlistURL(status.PlaylistID) }
+									target="_blank"
+									rel="noreferrer noopener"
+									class="btn btn-ghost btn-xs btn-square"
+									title="Open synced playlist"
+								>↗</a>
+							} else {
+								<button
+									type="button"
+									class="btn btn-ghost btn-xs btn-square opacity-40"
+									title={ map[bool]string{true: "Playlist not created yet", false: "Enable sync to open playlist"}[status.Enabled] }
+									disabled
+								>↗</button>
+							}
+						</div>
+						<div class="opacity-80">{ map[bool]string{true: "Syncing automatically", false: "Paused by user"}[status.Enabled] }</div>
+						if status.LastError != "" {
+							<div class="flex items-center gap-1 mt-1 text-xs text-error">
+								<span aria-hidden="true">⚠</span>
+								<span>Sync issue detected</span>
+							</div>
+						}
+					</div>
+					<div class="p-3 rounded-lg bg-base-200">
+						<div class="font-semibold">Last Sync</div>
+						<div class="opacity-80">
+							if status.LastSyncedAt.IsZero() {
+								Not synced yet
+							} else {
+								{ utils.RelativeTimeAgo(status.LastSyncedAt) }
+							}
+						</div>
+					</div>
+				</div>
+				<div class="flex flex-wrap gap-2 pt-1">
+					<form action="/api/settings/youtube-sync/toggle" method="post">
+						<input type="hidden" name="enabled" value={ fmt.Sprintf("%t", !status.Enabled) }/>
+						<button type="submit" class={ map[bool]string{true: "btn btn-sm btn-outline w-32 justify-center", false: "btn btn-sm btn-primary w-32 justify-center"}[status.Enabled] }>
+							{ map[bool]string{true: "Pause Sync", false: "Enable Sync"}[status.Enabled] }
+						</button>
+					</form>
+					<form action="/api/settings/youtube-sync/disconnect" method="post">
+						<button type="submit" class="btn btn-sm btn-error btn-outline w-32 justify-center" hx-confirm="Disconnect YouTube sync? This removes stored credentials.">Disconnect</button>
+					</form>
+				</div>
+			}
+		</div>
+	</div>
+}
