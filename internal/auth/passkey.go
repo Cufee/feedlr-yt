@@ -6,6 +6,7 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/friendsofgo/errors"
 	"github.com/go-webauthn/webauthn/webauthn"
 )
@@ -132,6 +133,7 @@ func (s *userStore) NewUser(ctx context.Context, userID string, username string)
 func (s *userStore) CreateUser(ctx context.Context, user *User) error {
 	record, err := s.db.CreateUser(ctx, user.ID, user.Username)
 	if err != nil {
+		metrics.IncUserEvent("user_create", "error")
 		return err
 	}
 	user.User = record
@@ -148,22 +150,26 @@ func (s *userStore) CreateUser(ctx context.Context, user *User) error {
 
 		data, err := json.Marshal(c.Credential)
 		if err != nil {
+			metrics.IncUserEvent("user_create", "error")
 			return errors.Wrap(err, "failed to encode credential")
 		}
 		c.Passkey.Data = data
 
 		err = s.db.SaveUserPasskey(ctx, c.Passkey)
 		if err != nil {
+			metrics.IncUserEvent("user_create", "error")
 			return errors.Wrap(err, "failed to encode credential")
 		}
 	}
 
+	metrics.IncUserEvent("user_create", "success")
 	return nil
 }
 
 func (s *userStore) SaveUser(ctx context.Context, user *User) error {
 	err := s.db.UpdateUser(ctx, user.User)
 	if err != nil {
+		metrics.IncUserEvent("user_update", "error")
 		return err
 	}
 
@@ -179,17 +185,20 @@ func (s *userStore) SaveUser(ctx context.Context, user *User) error {
 
 		data, err := json.Marshal(c.Credential)
 		if err != nil {
+			metrics.IncUserEvent("user_update", "error")
 			return errors.Wrap(err, "failed to encode credential")
 		}
 		c.Passkey.Data = data
 
 		err = s.db.SaveUserPasskey(ctx, c.Passkey)
 		if err != nil {
+			metrics.IncUserEvent("user_update", "error")
 			return errors.Wrap(err, "failed to encode credential")
 		}
 
 		c.updated = false
 	}
 
+	metrics.IncUserEvent("user_update", "success")
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
@@ -17,6 +18,7 @@ type PlayListItemWithDetails struct {
 
 func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
 	playlists, err := c.service.Channels.List([]string{"id", "contentDetails"}).Id(channelId).Fields("items(contentDetails/relatedPlaylists/uploads)").Do()
+	metrics.ObserveYouTubeAPICall("data_v3", "get_channel_upload_playlist", err)
 	if err != nil {
 		return "", errors.Wrap(err, "channels list failed")
 	}
@@ -37,6 +39,7 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 	}
 
 	res, err := c.service.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistId).MaxResults(50).Do() // https://developers.google.com/youtube/v3/docs/playlists/list#parameters
+	metrics.ObserveYouTubeAPICall("data_v3", "list_playlist_items", err)
 	if err != nil {
 		return nil, errors.Wrap(err, "playlist items failed")
 	}
@@ -79,8 +82,10 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 	}
 
 	if err := group.Wait(); err != nil {
+		metrics.ObserveYouTubeAPICall("data_v3", "playlist_video_details_batch", err)
 		return nil, err
 	}
+	metrics.ObserveYouTubeAPICall("data_v3", "playlist_video_details_batch", nil)
 	close(videoDetails)
 
 	var videos []Video

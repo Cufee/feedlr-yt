@@ -8,6 +8,7 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/go-co-op/gocron"
 )
@@ -16,9 +17,10 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 	s := gocron.NewScheduler(time.UTC)
 
 	_, err := s.Cron(utils.MustGetEnv("VIDEO_CACHE_UPDATE_CRON")).Do(func() {
-		err := CacheAllChannelsWithVideos(db)
-		if err != nil {
-			log.Printf("CacheAllChannelsWithVideos: %v", err)
+		runErr := CacheAllChannelsWithVideos(db)
+		metrics.ObserveBackgroundTask("cache_all_channels_with_videos", runErr)
+		if runErr != nil {
+			log.Printf("CacheAllChannelsWithVideos: %v", runErr)
 		}
 	})
 	if err != nil {
@@ -30,6 +32,7 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 		deleted, err := db.CleanupExpiredPlaylistItems(ctx)
+		metrics.ObserveBackgroundTask("cleanup_expired_playlist_items", err)
 		if err != nil {
 			log.Printf("CleanupExpiredPlaylistItems: %v", err)
 		} else if deleted > 0 {
@@ -49,9 +52,10 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 		defer cancel()
 
-		err := sync.RunSyncTick(ctx)
-		if err != nil {
-			log.Printf("RunSyncTick: %v", err)
+		runErr := sync.RunSyncTick(ctx)
+		metrics.ObserveBackgroundTask("youtube_sync_run_tick", runErr)
+		if runErr != nil {
+			log.Printf("RunSyncTick: %v", runErr)
 		}
 	})
 	if err != nil {
@@ -63,9 +67,10 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 
-			err := tvSync.RunConnectionTick(ctx)
-			if err != nil {
-				log.Printf("RunConnectionTick: %v", err)
+			runErr := tvSync.RunConnectionTick(ctx)
+			metrics.ObserveBackgroundTask("youtube_tv_sync_connection_tick", runErr)
+			if runErr != nil {
+				log.Printf("RunConnectionTick: %v", runErr)
 			}
 		})
 		if err != nil {
@@ -76,9 +81,10 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 
-			err := tvSync.RunLifecycleTick(ctx)
-			if err != nil {
-				log.Printf("RunLifecycleTick: %v", err)
+			runErr := tvSync.RunLifecycleTick(ctx)
+			metrics.ObserveBackgroundTask("youtube_tv_sync_lifecycle_tick", runErr)
+			if runErr != nil {
+				log.Printf("RunLifecycleTick: %v", runErr)
 			}
 		})
 		if err != nil {

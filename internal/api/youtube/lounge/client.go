@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cufee/feedlr-yt/internal/metrics"
 )
 
 const defaultLoungeAPIBaseURL = "https://www.youtube.com/api/lounge"
@@ -95,7 +97,9 @@ func NewClientWithBaseURL(httpClient *http.Client, baseURL string) *Client {
 func (c *Client) PairWithCode(ctx context.Context, pairingCode string) (Screen, error) {
 	code := strings.TrimSpace(pairingCode)
 	if code == "" {
-		return Screen{}, fmt.Errorf("pairing code is required")
+		err := fmt.Errorf("pairing code is required")
+		metrics.ObserveYouTubeTVCall("pair_with_code", err)
+		return Screen{}, err
 	}
 
 	form := url.Values{}
@@ -106,18 +110,23 @@ func (c *Client) PairWithCode(ctx context.Context, pairingCode string) (Screen, 
 
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, c.baseURL+"/pairing/get_screen", strings.NewReader(form.Encode()))
 	if err != nil {
+		metrics.ObserveYouTubeTVCall("pair_with_code", err)
 		return Screen{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := c.http.Do(req)
+	metrics.ObserveYouTubeTVCall("pair_with_code_request", err)
 	if err != nil {
+		metrics.ObserveYouTubeTVCall("pair_with_code", err)
 		return Screen{}, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return Screen{}, fmt.Errorf("lounge pair failed with status %d", res.StatusCode)
+		err := fmt.Errorf("lounge pair failed with status %d", res.StatusCode)
+		metrics.ObserveYouTubeTVCall("pair_with_code", err)
+		return Screen{}, err
 	}
 
 	var payload struct {
@@ -129,12 +138,16 @@ func (c *Client) PairWithCode(ctx context.Context, pairingCode string) (Screen, 
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		metrics.ObserveYouTubeTVCall("pair_with_code", err)
 		return Screen{}, err
 	}
 	if payload.Screen.ScreenID == "" || payload.Screen.LoungeToken == "" {
-		return Screen{}, fmt.Errorf("invalid lounge pair response")
+		err := fmt.Errorf("invalid lounge pair response")
+		metrics.ObserveYouTubeTVCall("pair_with_code", err)
+		return Screen{}, err
 	}
 
+	metrics.ObserveYouTubeTVCall("pair_with_code", nil)
 	return Screen{
 		ID:          payload.Screen.ScreenID,
 		Name:        payload.Screen.Name,
@@ -145,7 +158,9 @@ func (c *Client) PairWithCode(ctx context.Context, pairingCode string) (Screen, 
 func (c *Client) RefreshLoungeToken(ctx context.Context, screenID string) (Screen, error) {
 	screenID = strings.TrimSpace(screenID)
 	if screenID == "" {
-		return Screen{}, errors.New("screen id is required")
+		err := errors.New("screen id is required")
+		metrics.ObserveYouTubeTVCall("refresh_lounge_token", err)
+		return Screen{}, err
 	}
 
 	form := url.Values{}
@@ -156,18 +171,23 @@ func (c *Client) RefreshLoungeToken(ctx context.Context, screenID string) (Scree
 
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, c.baseURL+"/pairing/get_lounge_token_batch", strings.NewReader(form.Encode()))
 	if err != nil {
+		metrics.ObserveYouTubeTVCall("refresh_lounge_token", err)
 		return Screen{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := c.http.Do(req)
+	metrics.ObserveYouTubeTVCall("refresh_lounge_token_request", err)
 	if err != nil {
+		metrics.ObserveYouTubeTVCall("refresh_lounge_token", err)
 		return Screen{}, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return Screen{}, fmt.Errorf("refresh lounge token failed with status %d", res.StatusCode)
+		err := fmt.Errorf("refresh lounge token failed with status %d", res.StatusCode)
+		metrics.ObserveYouTubeTVCall("refresh_lounge_token", err)
+		return Screen{}, err
 	}
 
 	var payload struct {
@@ -178,17 +198,23 @@ func (c *Client) RefreshLoungeToken(ctx context.Context, screenID string) (Scree
 		} `json:"screens"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		metrics.ObserveYouTubeTVCall("refresh_lounge_token", err)
 		return Screen{}, err
 	}
 	if len(payload.Screens) == 0 {
-		return Screen{}, errors.New("refresh lounge token returned no screens")
+		err := errors.New("refresh lounge token returned no screens")
+		metrics.ObserveYouTubeTVCall("refresh_lounge_token", err)
+		return Screen{}, err
 	}
 
 	screen := payload.Screens[0]
 	if screen.ScreenID == "" || screen.LoungeToken == "" {
-		return Screen{}, errors.New("refresh lounge token response missing fields")
+		err := errors.New("refresh lounge token response missing fields")
+		metrics.ObserveYouTubeTVCall("refresh_lounge_token", err)
+		return Screen{}, err
 	}
 
+	metrics.ObserveYouTubeTVCall("refresh_lounge_token", nil)
 	return Screen{
 		ID:          screen.ScreenID,
 		Name:        screen.Name,
@@ -200,7 +226,9 @@ func (c *Client) Connect(ctx context.Context, screenID, loungeToken, deviceName 
 	screenID = strings.TrimSpace(screenID)
 	loungeToken = strings.TrimSpace(loungeToken)
 	if screenID == "" || loungeToken == "" {
-		return nil, errors.New("screen id and lounge token are required")
+		err := errors.New("screen id and lounge token are required")
+		metrics.ObserveYouTubeTVCall("connect", err)
+		return nil, err
 	}
 	if strings.TrimSpace(deviceName) == "" {
 		deviceName = defaultDeviceName
@@ -225,18 +253,22 @@ func (c *Client) Connect(ctx context.Context, screenID, loungeToken, deviceName 
 
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, connectURL, strings.NewReader(connectBody.Encode()))
 	if err != nil {
+		metrics.ObserveYouTubeTVCall("connect", err)
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := c.http.Do(req)
+	metrics.ObserveYouTubeTVCall("connect_request", err)
 	if err != nil {
+		metrics.ObserveYouTubeTVCall("connect", err)
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	body, _ := io.ReadAll(res.Body)
 	if err := sessionResponseError(res.StatusCode, string(body)); err != nil {
+		metrics.ObserveYouTubeTVCall("connect", err)
 		return nil, err
 	}
 
@@ -252,17 +284,22 @@ func (c *Client) Connect(ctx context.Context, screenID, loungeToken, deviceName 
 		return nil
 	})
 	if err != nil {
+		metrics.ObserveYouTubeTVCall("connect", err)
 		return nil, err
 	}
 	if !session.connected() {
-		return nil, errors.New("lounge connect missing session identifiers")
+		err := errors.New("lounge connect missing session identifiers")
+		metrics.ObserveYouTubeTVCall("connect", err)
+		return nil, err
 	}
 
+	metrics.ObserveYouTubeTVCall("connect", nil)
 	return session, nil
 }
 
 func (c *Client) Subscribe(ctx context.Context, session *Session, onEvent func(Event) error) error {
 	if session == nil || !session.connected() {
+		metrics.ObserveYouTubeTVCall("subscribe", ErrNotConnected)
 		return ErrNotConnected
 	}
 
@@ -274,24 +311,30 @@ func (c *Client) Subscribe(ctx context.Context, session *Session, onEvent func(E
 	url := c.baseURL + "/bc/bind?" + params.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
+		metrics.ObserveYouTubeTVCall("subscribe", err)
 		return err
 	}
 
 	res, err := c.http.Do(req)
+	metrics.ObserveYouTubeTVCall("subscribe_request", err)
 	if err != nil {
 		if ctx.Err() != nil {
+			metrics.ObserveYouTubeTVCall("subscribe", ctx.Err())
 			return ctx.Err()
 		}
+		metrics.ObserveYouTubeTVCall("subscribe", err)
 		return err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		payload, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
-		return sessionResponseError(res.StatusCode, string(payload))
+		err := sessionResponseError(res.StatusCode, string(payload))
+		metrics.ObserveYouTubeTVCall("subscribe", err)
+		return err
 	}
 
-	return parseEventChunks(res.Body, func(events []Event) error {
+	err = parseEventChunks(res.Body, func(events []Event) error {
 		session.applyEvents(events)
 		for _, event := range events {
 			switch event.Type {
@@ -306,6 +349,8 @@ func (c *Client) Subscribe(ctx context.Context, session *Session, onEvent func(E
 		}
 		return nil
 	})
+	metrics.ObserveYouTubeTVCall("subscribe", err)
+	return err
 }
 
 func (c *Client) SeekTo(ctx context.Context, session *Session, seconds float64) error {
@@ -323,6 +368,7 @@ func (c *Client) GetNowPlaying(ctx context.Context, session *Session) error {
 
 func (c *Client) command(ctx context.Context, session *Session, command string, commandParameters map[string]string) error {
 	if session == nil || !session.connected() {
+		metrics.ObserveYouTubeTVCall("command_"+command, ErrNotConnected)
 		return ErrNotConnected
 	}
 
@@ -343,23 +389,29 @@ func (c *Client) command(ctx context.Context, session *Session, command string, 
 
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, c.baseURL+"/bc/bind?"+params.Encode(), strings.NewReader(body.Encode()))
 	if err != nil {
+		metrics.ObserveYouTubeTVCall("command_"+command, err)
 		return err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := c.http.Do(req)
+	metrics.ObserveYouTubeTVCall("command_request_"+command, err)
 	if err != nil {
 		if ctx.Err() != nil {
+			metrics.ObserveYouTubeTVCall("command_"+command, ctx.Err())
 			return ctx.Err()
 		}
+		metrics.ObserveYouTubeTVCall("command_"+command, err)
 		return err
 	}
 	defer res.Body.Close()
 
 	payload, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
 	if err := sessionResponseError(res.StatusCode, string(payload)); err != nil {
+		metrics.ObserveYouTubeTVCall("command_"+command, err)
 		return err
 	}
+	metrics.ObserveYouTubeTVCall("command_"+command, nil)
 	return nil
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/aarondl/null/v8"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/pkg/errors"
@@ -79,6 +80,7 @@ func (s *YouTubeSyncService) OAuthAuthURL(state string) string {
 
 func (s *YouTubeSyncService) CompleteOAuth(ctx context.Context, userID, code string) error {
 	token, err := s.oauthConfig.Exchange(ctx, code)
+	metrics.ObserveYouTubeOAuthCall("playlist_sync_oauth_exchange", err)
 	if err != nil {
 		return errors.Wrap(err, "oauth exchange failed")
 	}
@@ -103,6 +105,7 @@ func (s *YouTubeSyncService) CompleteOAuth(ctx context.Context, userID, code str
 	}
 
 	err = s.db.UpsertYouTubeSyncCredentials(ctx, userID, encrypted, s.crypto.secretHash)
+	metrics.ObserveYouTubeOAuthCall("playlist_sync_save_credentials", err)
 	if err != nil {
 		return errors.Wrap(err, "failed to persist oauth credentials")
 	}
@@ -151,6 +154,7 @@ func (s *YouTubeSyncService) Status(ctx context.Context, userID string) (types.Y
 
 func (s *YouTubeSyncService) RunSyncTick(ctx context.Context) error {
 	accounts, err := s.db.ListEnabledYouTubeSyncAccounts(ctx, s.maxUsersPerTick)
+	metrics.ObserveBackgroundTask("youtube_sync_list_accounts", err)
 	if err != nil {
 		return err
 	}
@@ -161,6 +165,7 @@ func (s *YouTubeSyncService) RunSyncTick(ctx context.Context) error {
 	for _, account := range accounts {
 		runCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		err := s.syncUser(runCtx, account)
+		metrics.ObserveBackgroundTask("youtube_sync_user", err)
 		cancel()
 		if err != nil {
 			log.Warn().Err(err).Str("userID", account.UserID).Msg("youtube sync failed")
@@ -172,10 +177,13 @@ func (s *YouTubeSyncService) RunSyncTick(ctx context.Context) error {
 
 func (s *YouTubeSyncService) RunSyncForUser(ctx context.Context, userID string) error {
 	account, err := s.db.GetYouTubeSyncAccountByUserID(ctx, userID)
+	metrics.ObserveBackgroundTask("youtube_sync_load_user_account", err)
 	if err != nil {
 		return err
 	}
-	return s.syncUser(ctx, account)
+	err = s.syncUser(ctx, account)
+	metrics.ObserveBackgroundTask("youtube_sync_user", err)
+	return err
 }
 
 func (s *YouTubeSyncService) syncUser(ctx context.Context, account *models.YoutubeSyncAccount) error {
@@ -362,6 +370,7 @@ func (s *YouTubeSyncService) youtubeServiceForAccount(ctx context.Context, accou
 
 	httpClient := oauth2.NewClient(ctx, tokenSource)
 	service, err := ytv3.NewService(ctx, option.WithHTTPClient(httpClient))
+	metrics.ObserveYouTubeAPICall("playlist_sync", "new_service", err)
 	if err != nil {
 		return nil, err
 	}
@@ -545,6 +554,7 @@ func createYouTubeSyncPlaylist(ctx context.Context, service *ytv3.Service) (stri
 			PrivacyStatus: "private",
 		},
 	}).Context(ctx).Do()
+	metrics.ObserveYouTubeAPICall("playlist_sync", "create_playlist", err)
 	if err != nil {
 		return "", err
 	}
@@ -562,6 +572,7 @@ func listPlaylistItems(ctx context.Context, service *ytv3.Service, playlistID st
 	}
 
 	result, err := call.Context(ctx).Do()
+	metrics.ObserveYouTubeAPICall("playlist_sync", "list_playlist_items", err)
 	if err != nil {
 		return nil, err
 	}
@@ -625,11 +636,14 @@ func insertVideoIntoPlaylist(ctx context.Context, service *ytv3.Service, playlis
 	_, err := service.PlaylistItems.Insert([]string{"snippet"}, &ytv3.PlaylistItem{
 		Snippet: snippet,
 	}).Context(ctx).Do()
+	metrics.ObserveYouTubeAPICall("playlist_sync", "insert_playlist_item", err)
 	return err
 }
 
 func deletePlaylistItem(ctx context.Context, service *ytv3.Service, playlistItemID string) error {
-	return service.PlaylistItems.Delete(playlistItemID).Context(ctx).Do()
+	err := service.PlaylistItems.Delete(playlistItemID).Context(ctx).Do()
+	metrics.ObserveYouTubeAPICall("playlist_sync", "delete_playlist_item", err)
+	return err
 }
 
 func isYouTubePlaylistNotFound(err error) bool {

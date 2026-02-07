@@ -12,14 +12,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/pkg/errors"
 )
 
 func (c *Client) GetContext(ctx context.Context) (*WebPlayerRequestContext, error) {
 	if c.context != nil {
+		metrics.ObserveYouTubeOAuthCall("get_web_player_context_cache", nil)
 		return c.context, nil
 	}
 	context, err := c.newWebPlayerRequestContext()
+	metrics.ObserveYouTubeOAuthCall("get_web_player_context", err)
 	if err != nil {
 		return nil, err
 	}
@@ -45,6 +48,7 @@ func (c *Client) newWebPlayerRequestContext() (*WebPlayerRequestContext, error) 
 	req.Header.Set("Cookie", fmt.Sprintf("PREF=tz=%s;VISITOR_INFO1_LIVE=%s", strings.ReplaceAll(tz, "/", "."), context.VisitorID))
 
 	res, err := c.http.Do(req)
+	metrics.ObserveYouTubeOAuthCall("fetch_sw_js_data", err)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +69,7 @@ func (c *Client) newWebPlayerRequestContext() (*WebPlayerRequestContext, error) 
 
 	var bodyData [][]any
 	err = json.Unmarshal([]byte(cleanBody), &bodyData)
+	metrics.ObserveYouTubeOAuthCall("decode_sw_js_data", err)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse /sw.js_data body")
 	}

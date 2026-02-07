@@ -7,6 +7,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/friendsofgo/errors"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,7 +19,9 @@ Cache recent videos for each channel to the database
 */
 func CacheChannelVideos(ctx context.Context, db database.Client, limit int, channelIds ...string) ([]*models.Video, error) {
 	if len(channelIds) < 1 {
-		return nil, errors.New("at least 1 channel id is required")
+		err := errors.New("at least 1 channel id is required")
+		metrics.ObserveVideoRefresh("cache_channel_videos", err)
+		return nil, err
 	}
 
 	var updates []*models.Video
@@ -88,9 +91,11 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 	}
 
 	if err := group.Wait(); err != nil {
+		metrics.ObserveVideoRefresh("cache_channel_videos", err)
 		return nil, err
 	}
 	if len(updates) == 0 {
+		metrics.ObserveVideoRefresh("cache_channel_videos", nil)
 		return nil, nil
 	}
 
@@ -99,9 +104,12 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 
 	err := db.UpsertVideos(ctx, updates...)
 	if err != nil {
+		metrics.ObserveVideoRefresh("cache_channel_videos", err)
 		return nil, errors.Wrap(err, "db#UpsertVideos")
 	}
 
+	metrics.ObserveVideoRefresh("cache_channel_videos", nil)
+	metrics.AddVideoRefreshItems("cache_channel_videos", len(updates))
 	return updates, nil
 }
 
@@ -114,16 +122,19 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 
 	existing, err := db.GetChannel(dctx, channelID)
 	if err == nil && existing.UploadsPlaylistID != "" {
+		metrics.ObserveVideoRefresh("cache_channel", nil)
 		return existing, true, nil
 	}
 
 	channel, err := youtube.DefaultClient.GetChannel(channelID)
 	if err != nil {
+		metrics.ObserveVideoRefresh("cache_channel", err)
 		return nil, false, errors.Wrap(err, "youtube#GetChannel")
 	}
 
 	uploadsPlaylist, err := youtube.DefaultClient.GetChannelUploadPlaylistID(channelID)
 	if err != nil {
+		metrics.ObserveVideoRefresh("cache_channel", err)
 		return nil, false, errors.Wrap(err, "youtube#GetChannelUploadPlaylistID")
 	}
 
@@ -140,15 +151,18 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 
 	err = db.UpsertChannel(uctx, record)
 	if err != nil {
+		metrics.ObserveVideoRefresh("cache_channel", err)
 		return nil, false, errors.Wrap(err, "db#UpsertChannel")
 	}
 
+	metrics.ObserveVideoRefresh("cache_channel", nil)
 	return record, false, nil
 }
 
 func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) {
 	current, err := db.GetVideoByID(ctx, videoID)
 	if err != nil && !database.IsErrNotFound(err) {
+		metrics.ObserveVideoRefresh("refresh_video_cache", err)
 		log.Warn().Err(err).Str("videoID", videoID).Msg("failed to get video for cache refresh")
 		return
 	}
@@ -163,10 +177,12 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 		}
 
 		if time.Since(current.UpdatedAt) < staleThreshold {
+			metrics.ObserveVideoRefresh("refresh_video_cache_skip_fresh", nil)
 			return
 		}
 
 		if err := db.TouchVideoUpdatedAt(ctx, videoID); err != nil {
+			metrics.ObserveVideoRefresh("refresh_video_cache", err)
 			log.Warn().Err(err).Str("videoID", videoID).Msg("failed to touch video timestamp")
 			return
 		}
@@ -174,6 +190,7 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 
 	video, err := youtube.DefaultClient.GetVideoDetailsByID(videoID)
 	if err != nil {
+		metrics.ObserveVideoRefresh("refresh_video_cache", err)
 		log.Warn().Err(err).Str("videoID", videoID).Msg("failed to fetch video details for cache refresh")
 		return
 	}
@@ -182,6 +199,7 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 		video.ChannelID = current.ChannelID
 	}
 	if video.ChannelID == "" {
+		metrics.ObserveVideoRefresh("refresh_video_cache", errors.New("missing_channel_id"))
 		log.Warn().Str("videoID", videoID).Msg("cannot refresh uncached private video without channel id")
 		return
 	}
@@ -198,11 +216,15 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 	}
 
 	if err := db.UpsertVideos(ctx, update); err != nil {
+		metrics.ObserveVideoRefresh("refresh_video_cache", err)
 		log.Warn().Err(err).Str("videoID", videoID).Msg("failed to upsert video during cache refresh")
 		return
 	}
 
 	if _, _, err := CacheChannel(ctx, db, video.ChannelID); err != nil {
+		metrics.ObserveVideoRefresh("refresh_video_cache_channel", err)
 		log.Warn().Err(err).Str("videoID", videoID).Str("channelID", video.ChannelID).Msg("failed to cache channel during video refresh")
 	}
+	metrics.ObserveVideoRefresh("refresh_video_cache", nil)
+	metrics.AddVideoRefreshItems("refresh_video_cache", 1)
 }

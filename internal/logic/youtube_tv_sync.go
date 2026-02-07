@@ -16,6 +16,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/lounge"
 	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/pkg/errors"
@@ -1078,6 +1079,7 @@ func (s *YouTubeTVSyncService) recordConnect(userID string) {
 		return
 	}
 	total := s.metrics.connects.Add(1)
+	metrics.ObserveTVSyncEvent("connect", nil)
 	log.Info().
 		Str("userID", userID).
 		Uint64("connect_total", total).
@@ -1089,6 +1091,7 @@ func (s *YouTubeTVSyncService) recordDisconnect(userID, state string, err error)
 		return
 	}
 	total := s.metrics.disconnects.Add(1)
+	metrics.ObserveTVSyncEvent("disconnect_"+state, err)
 	entry := log.Info().
 		Str("userID", userID).
 		Str("state", state).
@@ -1104,6 +1107,7 @@ func (s *YouTubeTVSyncService) recordReconnect(userID string, err error) {
 		return
 	}
 	total := s.metrics.reconnects.Add(1)
+	metrics.ObserveTVSyncEvent("reconnect", err)
 	log.Info().
 		Str("userID", userID).
 		Str("reason", sanitizeError(err)).
@@ -1116,6 +1120,7 @@ func (s *YouTubeTVSyncService) recordProgressUpdate(userID, videoID string, inco
 		return
 	}
 	total := s.metrics.progressUpdates.Add(1)
+	metrics.ObserveTVSyncEvent("progress_update", nil)
 	log.Debug().
 		Str("userID", userID).
 		Str("videoID", videoID).
@@ -1130,6 +1135,7 @@ func (s *YouTubeTVSyncService) recordSponsorSkip(userID, videoID string, start, 
 		return
 	}
 	total := s.metrics.sponsorSkips.Add(1)
+	metrics.ObserveTVSyncEvent("sponsor_skip", nil)
 	log.Debug().
 		Str("userID", userID).
 		Str("videoID", videoID).

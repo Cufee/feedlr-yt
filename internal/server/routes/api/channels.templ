@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
 	"github.com/cufee/feedlr-yt/internal/templates/pages"
@@ -15,25 +16,31 @@ import (
 var SearchChannels brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
 	userID, ok := ctx.UserID()
 	if !ok {
+		metrics.IncUserAction("search_channels", "unauthorized")
 		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
 	query := ctx.Query("search")
 	if len(query) < 3 || len(query) > 32 {
 		if len(query) == 0 {
+			metrics.IncUserAction("search_channels", "empty")
 			return nil, nil
 		}
+		metrics.IncUserAction("search_channels", "invalid_query")
 		return channelsSearchErrorMessage("Channel name must be between 3 and 32 characters long"), nil
 	}
 
 	channels, err := logic.SearchChannels(ctx.Context(), ctx.Database(), userID, query, 4)
 	if err != nil {
+		metrics.IncUserAction("search_channels", "error")
 		return nil, ctx.Err(err)
 	}
 	if len(channels) == 0 {
+		metrics.IncUserAction("search_channels", "not_found")
 		return channelsSearchErrorMessage(fmt.Sprintf("Didn't find any channels named %s", query)), nil
 	}
 
+	metrics.IncUserAction("search_channels", "success")
 	return subscriptions.SearchResultChannels(channels), nil
 }
 
@@ -44,43 +51,52 @@ templ channelsSearchErrorMessage(message string) {
 var CreateSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
 	userID, ok := ctx.UserID()
 	if !ok {
+		metrics.IncUserAction("create_subscription", "unauthorized")
 		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
 	channelId := ctx.Params("id")
 	props, err := logic.NewSubscription(ctx.Context(), ctx.Database(), userID, channelId)
 	if err != nil {
+		metrics.IncUserAction("create_subscription", "error")
 		return nil, err
 	}
 
 	if ctx.Query("type") == "button" {
+		metrics.IncUserAction("create_subscription", "success")
 		return subscriptions.UnsubscribeButtonSmall(props.ID), nil
 	}
+	metrics.IncUserAction("create_subscription", "success")
 	return subscriptions.SubscribedChannelTile(*props), nil
 }
 
 var RemoveSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
 	userID, ok := ctx.UserID()
 	if !ok {
+		metrics.IncUserAction("remove_subscription", "unauthorized")
 		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
 	channelId := ctx.Params("id")
 	err := logic.DeleteSubscription(ctx.Context(), ctx.Database(), userID, channelId)
 	if err != nil {
+		metrics.IncUserAction("remove_subscription", "error")
 		return nil, err
 	}
 
 	if ctx.Query("type") == "button" {
+		metrics.IncUserAction("remove_subscription", "success")
 		return subscriptions.SubscribeButtonSmall(channelId), nil
 	}
 
+	metrics.IncUserAction("remove_subscription", "success")
 	return nil, ctx.SendStatus(http.StatusOK)
 }
 
 var UpdateVideoFilter brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
 	userID, ok := ctx.UserID()
 	if !ok {
+		metrics.IncUserAction("update_video_filter", "unauthorized")
 		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
@@ -97,20 +113,24 @@ var UpdateVideoFilter brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 	case "streams":
 		filter = types.VideoFilterStreams
 	default:
+		metrics.IncUserAction("update_video_filter", "invalid_filter")
 		return nil, ctx.SendStatus(http.StatusBadRequest)
 	}
 
 	err := logic.UpdateSubscriptionFilter(ctx.Context(), ctx.Database(), userID, channelID, filter)
 	if err != nil {
+		metrics.IncUserAction("update_video_filter", "error")
 		return nil, ctx.Err(err)
 	}
 
 	// Return the filtered video feed
 	props, err := logic.GetChannelPageProps(ctx.Context(), ctx.Database(), userID, channelID)
 	if err != nil {
+		metrics.IncUserAction("update_video_filter", "error")
 		return nil, ctx.Err(err)
 	}
 
+	metrics.IncUserAction("update_video_filter", "success")
 	return videoFilterResponse(channelID, filter, *props), nil
 }
 

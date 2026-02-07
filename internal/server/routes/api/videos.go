@@ -6,6 +6,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
@@ -16,6 +17,7 @@ import (
 var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
 	userID, ok := ctx.UserID()
 	if !ok {
+		metrics.IncUserAction("save_video_progress", "unauthorized")
 		return nil, ctx.SendStatus(http.StatusUnauthorized)
 	}
 
@@ -26,6 +28,7 @@ var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 
 	resolvedProgress, err := logic.UpdateView(ctx.Context(), ctx.Database(), userID, video, progress, hidden)
 	if err != nil {
+		metrics.IncUserAction("save_video_progress", "error")
 		return nil, err
 	}
 
@@ -36,32 +39,39 @@ var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 		// Sound controls don't work on mobile, we always set the volume to 100 there
 		err = logic.UpdatePlayerVolume(ctx.Context(), ctx.Database(), userID, volume)
 		if err != nil {
+			metrics.IncUserAction("save_video_progress", "error")
 			return nil, err
 		}
 	}
 
 	if ctx.Get("HX-Request") == "" {
+		metrics.IncUserAction("save_video_progress", "success")
 		return nil, ctx.SendStatus(http.StatusOK)
 	}
 
 	props, err := logic.GetPlayerPropsWithOpts(ctx.Context(), ctx.Database(), userID, video, logic.GetPlayerOptions{WithProgress: true})
 	if err != nil {
+		metrics.IncUserAction("save_video_progress", "error")
 		return nil, err
 	}
 
+	metrics.IncUserAction("save_video_progress", "success")
 	return feed.VideoCard(props.Video, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay), nil
 }
 
 var OpenVideo brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
 	link, err := ctx.FormValue("link")
 	if err != nil {
+		metrics.IncUserAction("open_video", "invalid_request")
 		return shared.OpenVideoInput("", true), nil
 	}
 	id, valid := logic.VideoIDFromURL(link)
 	if !valid {
+		metrics.IncUserAction("open_video", "invalid_url")
 		return shared.OpenVideoInput(link, false), nil
 	}
 
 	ctx.Set("HX-Reswap", "none")
+	metrics.IncUserAction("open_video", "success")
 	return nil, ctx.Redirect("/video/"+id, http.StatusTemporaryRedirect)
 }
