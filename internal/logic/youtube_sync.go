@@ -267,10 +267,10 @@ func (s *YouTubeSyncService) syncUser(ctx context.Context, account *models.Youtu
 	var mutationErrors []string
 	var firstMutationErr error
 
-	for _, add := range plan.ToAdd {
-		err := insertVideoIntoPlaylist(ctx, service, playlistID, add.VideoID, add.Position)
+	for _, itemID := range plan.ToDelete {
+		err := deletePlaylistItem(ctx, service, itemID)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to insert video %s into playlist %s at position %d", add.VideoID, playlistID, add.Position)
+			err = errors.Wrapf(err, "failed to delete playlist item %s", itemID)
 			if firstMutationErr == nil {
 				firstMutationErr = err
 			}
@@ -278,10 +278,19 @@ func (s *YouTubeSyncService) syncUser(ctx context.Context, account *models.Youtu
 		}
 	}
 
-	for _, itemID := range plan.ToDelete {
-		err := deletePlaylistItem(ctx, service, itemID)
+	if firstMutationErr != nil {
+		lastErr := strings.Join(mutationErrors, " | ")
+		if len(lastErr) > 4000 {
+			lastErr = lastErr[:4000]
+		}
+		s.storeRunResult(ctx, account.UserID, account.LastFeedVideoPublishedAt, account.LastSyncedAt, attemptedAt, lastErr)
+		return firstMutationErr
+	}
+
+	for _, add := range plan.ToAdd {
+		err := insertVideoIntoPlaylist(ctx, service, playlistID, add.VideoID, add.Position)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to delete playlist item %s", itemID)
+			err = errors.Wrapf(err, "failed to insert video %s into playlist %s at position %d", add.VideoID, playlistID, add.Position)
 			if firstMutationErr == nil {
 				firstMutationErr = err
 			}
@@ -452,7 +461,14 @@ func buildPlaylistSyncPlan(desired []string, remote []playlistRemoteItem, maxExp
 	}
 
 	slices.SortFunc(removeCandidates, func(a, b playlistRemoteItem) int {
-		return int(b.Position - a.Position)
+		switch {
+		case a.Position > b.Position:
+			return -1
+		case a.Position < b.Position:
+			return 1
+		default:
+			return 0
+		}
 	})
 
 	insertBudget := maxExpensiveCalls / 2
@@ -475,15 +491,20 @@ func buildPlaylistSyncPlan(desired []string, remote []playlistRemoteItem, maxExp
 	}
 
 	selectedAdds := slices.Clone(toAddCandidates[:addCount])
-	plan := playlistSyncPlan{
-		ToAdd: buildPlaylistAddOperations(desired, remote, selectedAdds),
-	}
+	plan := playlistSyncPlan{}
+	deletedItemIDs := make(map[string]bool, deleteCount)
 	for _, item := range removeCandidates[:deleteCount] {
 		if item.ItemID == "" {
 			continue
 		}
 		plan.ToDelete = append(plan.ToDelete, item.ItemID)
+		deletedItemIDs[item.ItemID] = true
 	}
+	remoteForInsert := remote
+	if len(deletedItemIDs) > 0 {
+		remoteForInsert = filterRemoteItems(remote, deletedItemIDs)
+	}
+	plan.ToAdd = buildPlaylistAddOperations(desired, remoteForInsert, selectedAdds)
 
 	return plan
 }
@@ -542,6 +563,17 @@ func indexOfPlaylistVideo(work []playlistWorkItem, videoID string) int {
 		}
 	}
 	return -1
+}
+
+func filterRemoteItems(remote []playlistRemoteItem, excludedItemIDs map[string]bool) []playlistRemoteItem {
+	filtered := make([]playlistRemoteItem, 0, len(remote))
+	for _, item := range remote {
+		if item.ItemID != "" && excludedItemIDs[item.ItemID] {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
 }
 
 func createYouTubeSyncPlaylist(ctx context.Context, service *ytv3.Service) (string, error) {

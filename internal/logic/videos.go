@@ -281,6 +281,9 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 	}
 
 	if options.WithSegments {
+		if sponsorblock.C == nil {
+			return playerProps, nil
+		}
 		segments, err := sponsorblock.C.GetVideoSegments(videoId)
 		if err == nil {
 			err := playerProps.AddSegments(segments...)
