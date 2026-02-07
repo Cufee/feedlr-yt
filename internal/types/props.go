@@ -10,11 +10,12 @@ import (
 )
 
 type SettingsPageProps struct {
-	FeedMode     string
-	PlayerVolume int
-	SponsorBlock SponsorBlockSettingsProps
-	Passkeys     []PasskeyProps
-	YouTubeSync  YouTubeSyncStatusProps
+	FeedMode      string
+	PlayerVolume  int
+	SponsorBlock  SponsorBlockSettingsProps
+	Passkeys      []PasskeyProps
+	YouTubeSync   YouTubeSyncStatusProps
+	YouTubeTVSync YouTubeTVSyncStatusProps
 }
 
 type YouTubeSyncStatusProps struct {
@@ -24,6 +25,22 @@ type YouTubeSyncStatusProps struct {
 	PlaylistID   string
 	LastError    string
 	LastSyncedAt time.Time
+}
+
+type YouTubeTVSyncStatusProps struct {
+	Available bool
+	Connected bool
+	Enabled   bool
+
+	ConnectionState string
+	StateReason     string
+	ScreenName      string
+	LastError       string
+
+	LastConnectedAt    time.Time
+	LastEventAt        time.Time
+	LastDisconnectAt   time.Time
+	LastUserActivityAt time.Time
 }
 
 func (s *SettingsPageProps) Decode(record *models.Setting) error {

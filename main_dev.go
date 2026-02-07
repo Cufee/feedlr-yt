@@ -33,6 +33,12 @@ func main() {
 	}
 	logic.DefaultYouTubeSync = youtubeSync
 
+	youtubeTVSync, err := logic.NewYouTubeTVSyncService(db)
+	if err != nil {
+		panic(err)
+	}
+	logic.DefaultYouTubeTVSync = youtubeTVSync
+
 	// YouTube API setup
 	authClient := auth.NewClient(db)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
@@ -51,6 +57,14 @@ func main() {
 		panic(err)
 	}
 	youtube.DefaultClient = yt
+	bootCtx, bootCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	if err := youtubeTVSync.RunLifecycleTick(bootCtx); err != nil {
+		log.Warn().Err(err).Msg("initial tv sync lifecycle tick failed")
+	}
+	if err := youtubeTVSync.RunConnectionTick(bootCtx); err != nil {
+		log.Warn().Err(err).Msg("initial tv sync connection tick failed")
+	}
+	bootCancel()
 
 	// Session client (needed by server even though MockMiddleware creates its own)
 	ses, err := sessions.New(db)

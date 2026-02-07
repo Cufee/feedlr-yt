@@ -12,7 +12,7 @@ import (
 	"github.com/go-co-op/gocron"
 )
 
-func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService) (*gocron.Scheduler, error) {
+func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *logic.YouTubeTVSyncService) (*gocron.Scheduler, error) {
 	s := gocron.NewScheduler(time.UTC)
 
 	_, err := s.Cron(utils.MustGetEnv("VIDEO_CACHE_UPDATE_CRON")).Do(func() {
@@ -56,6 +56,34 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService) (*gocron
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if tvSync != nil {
+		_, err = s.Cron("*/1 * * * *").Do(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+
+			err := tvSync.RunConnectionTick(ctx)
+			if err != nil {
+				log.Printf("RunConnectionTick: %v", err)
+			}
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = s.Cron("*/15 * * * *").Do(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+
+			err := tvSync.RunLifecycleTick(ctx)
+			if err != nil {
+				log.Printf("RunLifecycleTick: %v", err)
+			}
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	s.StartAsync()
