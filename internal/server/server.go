@@ -1,9 +1,13 @@
 package server
 
 import (
+	"errors"
 	"io/fs"
+	"net"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
@@ -20,6 +24,8 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog/log"
 )
 
 func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, authMw func(c *fiber.Ctx) error, globalMw func(c *fiber.Ctx) error, port ...int) func() error {
@@ -42,7 +48,12 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 	}
 
 	return func() error {
+		if err := startMetricsServer(); err != nil {
+			return err
+		}
+
 		server := fiber.New()
+		server.Use(requestMetricsMiddleware)
 		server.Use(logger.New())
 		server.Get("/healthy", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 
@@ -123,4 +134,50 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 
 		return server.Listen(":" + portString)
 	}
+}
+
+func metricsPath() string {
+	path := strings.TrimSpace(os.Getenv("METRICS_PATH"))
+	if path == "" {
+		path = "/metrics"
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return path
+}
+
+func metricsAddress() string {
+	port := strings.TrimSpace(os.Getenv("METRICS_PORT"))
+	if port == "" {
+		port = "9090"
+	}
+
+	if strings.Contains(port, ":") {
+		return port
+	}
+	return ":" + port
+}
+
+func startMetricsServer() error {
+	path := metricsPath()
+	addr := metricsAddress()
+
+	mux := http.NewServeMux()
+	mux.Handle(path, promhttp.Handler())
+
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Str("addr", listener.Addr().String()).Str("path", path).Msg("metrics server started")
+
+	go func() {
+		if serveErr := http.Serve(listener, mux); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+			log.Error().Err(serveErr).Msg("metrics server stopped unexpectedly")
+		}
+	}()
+
+	return nil
 }

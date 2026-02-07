@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/pkg/errors"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
@@ -38,6 +39,7 @@ func NewClient(apiKey string, auth *auth.Client) (*client, error) {
 	c := &client{auth: auth}
 	opts := option.WithAPIKey(apiKey)
 	service, err := youtube.NewService(context.Background(), opts)
+	metrics.ObserveYouTubeAPICall("data_v3", "new_service", err)
 	if err != nil {
 		return nil, err
 	}

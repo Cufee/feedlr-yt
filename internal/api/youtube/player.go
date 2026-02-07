@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/url"
 	"time"
+
+	"github.com/cufee/feedlr-yt/internal/metrics"
 )
 
 var (
@@ -16,13 +18,13 @@ type VideoType string
 var invalidVideoDurations = []int{93}
 
 const (
-	VideoTypeUpcomingStream    VideoType = "upcoming_stream"
-	VideoTypeLiveStream        VideoType = "live_stream"
-	VideoTypeStreamRecording   VideoType = "stream_recording"
-	VideoTypeVideo             VideoType = "video"
-	VideoTypeShort             VideoType = "short"
-	VideoTypePrivate           VideoType = "private"
-	VideoTypeFailed            VideoType = "failed"
+	VideoTypeUpcomingStream  VideoType = "upcoming_stream"
+	VideoTypeLiveStream      VideoType = "live_stream"
+	VideoTypeStreamRecording VideoType = "stream_recording"
+	VideoTypeVideo           VideoType = "video"
+	VideoTypeShort           VideoType = "short"
+	VideoTypePrivate         VideoType = "private"
+	VideoTypeFailed          VideoType = "failed"
 )
 
 type VideoDetails struct {
@@ -135,5 +137,10 @@ var playerLimiter = time.NewTicker(time.Second / 5)
 
 func (c *client) GetVideoPlayerDetails(videoId string, tries ...int) (*VideoDetails, error) {
 	<-playerLimiter.C
-	return c.getDesktopPlayerDetails(videoId, tries...)
+	details, err := c.getDesktopPlayerDetails(videoId, tries...)
+	metrics.ObserveYouTubeAPICall("player", "get_video_player_details", err)
+	if err != nil {
+		return nil, err
+	}
+	return details, nil
 }

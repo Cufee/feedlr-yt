@@ -11,6 +11,7 @@ import (
 	"github.com/aarondl/null/v8"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/gofiber/fiber/v2"
 	"github.com/segmentio/ksuid"
 )
@@ -36,6 +37,7 @@ func New(db database.SessionsClient) (*SessionClient, error) {
 func (c *SessionClient) New(ctx context.Context) (Session, error) {
 	id, err := ksuid.NewRandom()
 	if err != nil {
+		metrics.IncUserEvent("session_new", "error")
 		return Session{exists: false}, err
 	}
 
@@ -46,14 +48,17 @@ func (c *SessionClient) New(ctx context.Context) (Session, error) {
 
 	session, err := c.db.CreateSession(ctx, &record)
 	if err != nil {
+		metrics.IncUserEvent("session_new", "error")
 		return Session{exists: false}, err
 	}
+	metrics.IncUserEvent("session_new", "success")
 	return Session{db: c.db, data: session, exists: true, Meta: make(map[string]string)}, nil
 }
 
 func (c *SessionClient) Get(ctx context.Context, id string) (Session, error) {
 	session, err := c.db.GetSession(ctx, id)
 	if err != nil {
+		metrics.IncUserEvent("session_get", "error")
 		return Session{exists: false}, err
 	}
 
@@ -66,11 +71,18 @@ func (c *SessionClient) Get(ctx context.Context, id string) (Session, error) {
 		}
 	}
 
+	metrics.IncUserEvent("session_get", "success")
 	return Session{Meta: meta, db: c.db, data: session, exists: true}, nil
 }
 
 func (c *SessionClient) Delete(ctx context.Context, id string) error {
-	return c.db.DeleteSession(ctx, id)
+	err := c.db.DeleteSession(ctx, id)
+	if err != nil {
+		metrics.IncUserEvent("session_delete", "error")
+		return err
+	}
+	metrics.IncUserEvent("session_delete", "success")
+	return nil
 }
 
 func (c Session) ID() string {
@@ -95,12 +107,14 @@ func (c Session) UpdateUser(ctx context.Context, userID null.String, connectionI
 
 	err := c.db.UpdateSessionUser(ctx, c.data.ID, userID, connectionID)
 	if err != nil {
+		metrics.IncUserEvent("session_update_user", "error")
 		return Session{exists: false}, err
 	}
 
 	c.data.UserID = userID
 	c.data.ConnectionID = connectionID
 
+	metrics.IncUserEvent("session_update_user", "success")
 	return c, nil
 }
 
@@ -111,8 +125,10 @@ func (c Session) UpdateMeta(ctx context.Context, meta map[string]string) (Sessio
 
 	err := c.db.UpdateSessionMeta(ctx, c.data.ID, meta)
 	if err != nil {
+		metrics.IncUserEvent("session_update_meta", "error")
 		return Session{exists: false}, err
 	}
+	metrics.IncUserEvent("session_update_meta", "success")
 	return c, nil
 }
 
@@ -123,16 +139,19 @@ func (s Session) Refresh(ctx *fiber.Ctx) error {
 
 	updated, err := s.db.SetSessionExpiration(ctx.Context(), s.data.ID, time.Now().Add(time.Hour*24*7))
 	if err != nil {
+		metrics.IncUserEvent("session_refresh", "error")
 		return err
 	}
 	s.data = updated
 
 	cookie, err := s.Cookie()
 	if err != nil {
+		metrics.IncUserEvent("session_refresh", "error")
 		return err
 	}
 	ctx.Cookie(cookie)
 
+	metrics.IncUserEvent("session_refresh", "success")
 	return nil
 }
 

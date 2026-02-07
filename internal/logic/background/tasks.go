@@ -6,6 +6,7 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -14,10 +15,12 @@ func CacheAllChannelsWithVideos(db database.Client) error {
 	defer cancel()
 
 	channels, err := db.GetChannelsForUpdate(ctx)
+	metrics.ObserveVideoRefresh("cache_all_channels_fetch_channels", err)
 	if err != nil {
 		return err
 	}
 	if len(channels) == 0 {
+		metrics.ObserveVideoRefresh("cache_all_channels", nil)
 		return nil
 	}
 
@@ -31,6 +34,7 @@ func CacheAllChannelsWithVideos(db database.Client) error {
 			defer cancel()
 
 			_, err := logic.CacheChannelVideos(ctx, db, 12, id)
+			metrics.ObserveVideoRefresh("cache_channel_videos", err)
 			if err != nil {
 				return err
 			}
@@ -39,5 +43,10 @@ func CacheAllChannelsWithVideos(db database.Client) error {
 		})
 	}
 
-	return group.Wait()
+	err = group.Wait()
+	metrics.ObserveVideoRefresh("cache_all_channels", err)
+	if err == nil {
+		metrics.AddVideoRefreshItems("cache_all_channels", len(channels))
+	}
+	return err
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/templates/pages"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
@@ -99,4 +100,25 @@ func outageMiddleware(c *fiber.Ctx) error {
 		return c.Next()
 	}
 	return pages.Outage().Render(c.Context(), c)
+}
+
+func requestMetricsMiddleware(c *fiber.Ctx) error {
+	err := c.Next()
+
+	route := "unknown"
+	if r := c.Route(); r != nil {
+		route = r.Path
+	}
+
+	status := c.Response().StatusCode()
+	if status == 0 {
+		if err != nil {
+			status = fiber.StatusInternalServerError
+		} else {
+			status = fiber.StatusOK
+		}
+	}
+	metrics.IncHTTPRequest(c.Method(), route, status)
+
+	return err
 }

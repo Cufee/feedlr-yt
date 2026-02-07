@@ -3,6 +3,7 @@ package youtube
 import (
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/friendsofgo/errors"
 )
 
@@ -33,6 +34,7 @@ func (c *client) SearchChannels(query string, limit int) ([]Channel, error) {
 		limit = 3
 	}
 	res, err := c.service.Search.List([]string{"id", "snippet"}).Q(query).Type("channel").MaxResults((int64(limit))).Do()
+	metrics.ObserveYouTubeAPICall("data_v3", "search_channels", err)
 	if err != nil {
 		return nil, errors.Wrap(err, "search failed")
 	}
@@ -53,6 +55,7 @@ func (c *client) SearchChannels(query string, limit int) ([]Channel, error) {
 
 func (c *client) GetChannel(channelID string) (*Channel, error) {
 	res, err := c.service.Channels.List([]string{"id", "snippet"}).Id(channelID).Do()
+	metrics.ObserveYouTubeAPICall("data_v3", "get_channel", err)
 	if err != nil {
 		return nil, errors.Wrap(err, "channels list failed")
 	}
@@ -72,11 +75,13 @@ func (c *client) GetChannel(channelID string) (*Channel, error) {
 
 func (c *client) GetChannelVideos(channelID string, uploadedAfter time.Time, limit int, skipVideoIds ...string) ([]Video, error) {
 	uploadsId, err := c.GetChannelUploadPlaylistID(channelID)
+	metrics.ObserveYouTubeAPICall("data_v3", "get_channel_videos_upload_playlist", err)
 	if err != nil {
 		return nil, err
 	}
 
 	videos, err := c.GetPlaylistVideos(uploadsId, uploadedAfter, limit, skipVideoIds...)
+	metrics.ObserveYouTubeAPICall("data_v3", "get_channel_videos_playlist", err)
 	if err != nil {
 		return nil, err
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -34,15 +35,19 @@ func (c *Client) Close() error {
 
 func (c *Client) Token(ctx context.Context) (string, error) {
 	if c.authStatus != AuthStatusAuthenticated || c.authData.Token.Access == "" {
-		return "", errors.New("not authenticated")
+		err := errors.New("not authenticated")
+		metrics.ObserveYouTubeOAuthCall("token", err)
+		return "", err
 	}
 	if c.authData.Token.Expiration.Before(time.Now()) {
 		err := c.RefreshToken(ctx)
 		if err != nil {
+			metrics.ObserveYouTubeOAuthCall("token", err)
 			return "", err
 		}
 	}
 
+	metrics.ObserveYouTubeOAuthCall("token", nil)
 	return c.authData.Token.Access, nil
 }
 
@@ -61,6 +66,7 @@ func (c *Client) RefreshToken(ctx context.Context) error {
 
 	c.authStatus = AuthStatusRefreshing
 	newToken, err := c.refreshAccessToken(ctx, c.authData.Client, c.authData.Token)
+	metrics.ObserveYouTubeOAuthCall("refresh_access_token", err)
 	if err != nil {
 		c.authStatus = AuthStatusExpired
 		return err
@@ -70,6 +76,7 @@ func (c *Client) RefreshToken(ctx context.Context) error {
 	c.authStatus = AuthStatusAuthenticated
 
 	err = c.saveAuthCache(ctx, c.authData)
+	metrics.ObserveYouTubeOAuthCall("save_auth_cache", err)
 	if err != nil {
 		log.Err(err).Msg("failed to save auth cache")
 	}
@@ -81,10 +88,12 @@ func (c *Client) Authenticate(ctx context.Context, skipCache bool) (<-chan struc
 	if !skipCache {
 		cache, err := c.getAuthCache(ctx)
 		if err != nil && !database.IsErrNotFound(err) {
+			metrics.ObserveYouTubeOAuthCall("load_auth_cache", err)
 			return nil, err
 		}
 		if err == nil {
 			log.Debug().Msg("found a token cache")
+			metrics.ObserveYouTubeOAuthCall("load_auth_cache", nil)
 
 			done := make(chan struct{})
 			close(done)
@@ -94,14 +103,17 @@ func (c *Client) Authenticate(ctx context.Context, skipCache bool) (<-chan struc
 
 			err := c.RefreshToken(ctx)
 			if err != nil {
+				metrics.ObserveYouTubeOAuthCall("authenticate_with_cache", err)
 				return nil, err
 			}
+			metrics.ObserveYouTubeOAuthCall("authenticate_with_cache", nil)
 			return done, nil
 		}
 	}
 
 	log.Debug().Msg("requesting a new client ID")
 	url, code, done, err := c.authenticateNewClient(ctx)
+	metrics.ObserveYouTubeOAuthCall("authenticate_new_client", err)
 	if err != nil {
 		return nil, err
 	}
@@ -122,12 +134,14 @@ func (c *Client) authenticateNewClient(ctx context.Context) (string, string, <-c
 	c.deviceUserCode = deviceAndUserCode{}
 
 	c.authData.Client, err = c.getClientID(ctx)
+	metrics.ObserveYouTubeOAuthCall("get_client_id", err)
 	if err != nil {
 		c.authStatus = AuthStatusExpired
 		return "", "", nil, err
 	}
 
 	c.deviceUserCode, err = c.getDeviceAndUsercode(ctx, c.authData.Client.ID)
+	metrics.ObserveYouTubeOAuthCall("get_device_user_code", err)
 	if err != nil {
 		c.authStatus = AuthStatusExpired
 		return "", "", nil, err
@@ -144,6 +158,7 @@ func (c *Client) authenticateNewClient(ctx context.Context) (string, string, <-c
 		defer cancel()
 
 		c.authData.Token, err = c.getAccessTokens(ctx, c.deviceUserCode, c.authData.Client)
+		metrics.ObserveYouTubeOAuthCall("get_access_tokens", err)
 		if err != nil {
 			c.authStatus = AuthStatusExpired
 			log.Err(err).Msg("failed to get access tokens")
@@ -152,6 +167,7 @@ func (c *Client) authenticateNewClient(ctx context.Context) (string, string, <-c
 		c.authStatus = AuthStatusAuthenticated
 
 		err := c.saveAuthCache(ctx, c.authData)
+		metrics.ObserveYouTubeOAuthCall("save_auth_cache", err)
 		if err != nil {
 			log.Err(err).Msg("failed to save auth cache")
 		}
@@ -215,6 +231,7 @@ tickerLoop:
 
 		reqTime := time.Now()
 		res, err := c.http.Do(req)
+		metrics.ObserveYouTubeOAuthCall("poll_token", err)
 		if err != nil {
 			return AuthToken{}, err
 		}
@@ -227,6 +244,7 @@ tickerLoop:
 
 		var data oAuth2TokensResponse
 		err = json.Unmarshal(body, &data)
+		metrics.ObserveYouTubeOAuthCall("poll_token_decode", err)
 		if err != nil {
 			return AuthToken{}, err
 		}
@@ -271,6 +289,7 @@ func (c *Client) getClientID(ctx context.Context) (clientID, error) {
 	req.Header.Set("Accept-Language", "en-US")
 
 	res, err := c.http.Do(req)
+	metrics.ObserveYouTubeOAuthCall("fetch_tv_page", err)
 	if err != nil {
 		return clientID{}, errors.Wrap(err, "failed to fetch tv script body")
 	}
@@ -304,6 +323,7 @@ func (c *Client) getClientID(ctx context.Context) (clientID, error) {
 	req = req.WithContext(ctx)
 
 	res, err = c.http.Do(req)
+	metrics.ObserveYouTubeOAuthCall("fetch_tv_script", err)
 	if err != nil {
 		return clientID{}, errors.Wrap(err, "failed to get tv script content")
 	}
@@ -346,6 +366,7 @@ func (c *Client) getDeviceAndUsercode(ctx context.Context, clientID string) (dev
 
 	reqTime := time.Now()
 	res, err := c.http.Do(req)
+	metrics.ObserveYouTubeOAuthCall("request_device_code", err)
 	if err != nil {
 		return deviceAndUserCode{}, err
 	}
@@ -353,6 +374,7 @@ func (c *Client) getDeviceAndUsercode(ctx context.Context, clientID string) (dev
 
 	var body deviceAndUserCode
 	err = json.NewDecoder(res.Body).Decode(&body)
+	metrics.ObserveYouTubeOAuthCall("decode_device_code", err)
 	if err != nil {
 		return deviceAndUserCode{}, errors.Wrap(err, "failed to unmarshal server code response body")
 	}
@@ -387,6 +409,7 @@ func (c *Client) refreshAccessToken(ctx context.Context, client clientID, token 
 
 	reqTime := time.Now()
 	res, err := c.http.Do(req)
+	metrics.ObserveYouTubeOAuthCall("refresh_token_request", err)
 	if err != nil {
 		return AuthToken{}, err
 	}
@@ -394,6 +417,7 @@ func (c *Client) refreshAccessToken(ctx context.Context, client clientID, token 
 
 	var data oAuth2TokensResponse
 	err = json.NewDecoder(res.Body).Decode(&data)
+	metrics.ObserveYouTubeOAuthCall("refresh_token_decode", err)
 	if err != nil {
 		return AuthToken{}, errors.Wrap(err, "failed to decode token response")
 	}

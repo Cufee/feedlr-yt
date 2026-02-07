@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -65,6 +66,7 @@ func isShortsURL(videoID string) bool {
 		},
 	}
 	resp, err := client.Head("https://www.youtube.com/shorts/" + videoID)
+	metrics.ObserveYouTubeAPICall("player", "shorts_head_probe", err)
 	if err != nil {
 		return false
 	}
@@ -88,49 +90,59 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	defer cancel()
 
 	token, err := c.auth.Token(ctx)
+	metrics.ObserveYouTubeAPICall("player", "resolve_auth_token", err)
 	if err != nil {
 		return nil, err
 	}
 
 	bodyContext, err := c.auth.GetContext(ctx)
+	metrics.ObserveYouTubeAPICall("player", "resolve_player_context", err)
 	if err != nil {
 		return nil, err
 	}
 
 	body, err := bodyContext.ForVideo(token, videoId)
+	metrics.ObserveYouTubeAPICall("player", "build_player_payload", err)
 	if err != nil {
 		return nil, err
 	}
 
 	client := &http.Client{Timeout: time.Second * 10}
 	req, err := http.NewRequest("POST", playerURL.String(), body)
+	metrics.ObserveYouTubeAPICall("player", "build_player_request", err)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	res, err := client.Do(req)
+	metrics.ObserveYouTubeAPICall("player", "player_request", err)
 	if err != nil {
 		if len(tries) > 0 && tries[0] > 0 {
 			return c.getDesktopPlayerDetails(videoId, tries[0]-1)
 		}
 		return nil, err
 	}
+	defer res.Body.Close()
 
 	responseBody, err := io.ReadAll(res.Body)
+	metrics.ObserveYouTubeAPICall("player", "player_response_body", err)
 	if err != nil {
 		return nil, err
 	}
 	if res.StatusCode != 200 {
+		metrics.ObserveYouTubeAPICall("player", "player_status", errors.New("non_200_status"))
 		if len(tries) > 0 && tries[0] > 0 {
 			return c.getDesktopPlayerDetails(videoId, tries[0]-1)
 		}
 		log.Debug().Str("body", string(responseBody)).Int("status", res.StatusCode).Msg("invalid response")
 		return nil, errors.New("bad response status code")
 	}
+	metrics.ObserveYouTubeAPICall("player", "player_status", nil)
 
 	var details DesktopPlayerResponse
 	err = json.Unmarshal(responseBody, &details)
+	metrics.ObserveYouTubeAPICall("player", "parse_player_response", err)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse response body")
 	}
