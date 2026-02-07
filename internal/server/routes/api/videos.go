@@ -24,13 +24,13 @@ var SaveVideoProgress brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 	volume, _ := strconv.Atoi(ctx.Query("volume"))
 	progress, _ := strconv.Atoi(ctx.Query("progress"))
 
-	err := logic.UpdateView(ctx.Context(), ctx.Database(), userID, video, progress, hidden)
+	resolvedProgress, err := logic.UpdateView(ctx.Context(), ctx.Database(), userID, video, progress, hidden)
 	if err != nil {
 		return nil, err
 	}
 
 	// Remove from Watch Later if fully watched
-	_ = logic.RemoveFromWatchLaterIfFullyWatched(ctx.Context(), ctx.Database(), userID, video, progress)
+	_ = logic.RemoveFromWatchLaterIfFullyWatched(ctx.Context(), ctx.Database(), userID, video, resolvedProgress)
 
 	if ua.New(ctx.Get("User-Agent")).Desktop() {
 		// Sound controls don't work on mobile, we always set the volume to 100 there

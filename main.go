@@ -43,6 +43,12 @@ func main() {
 	}
 	logic.DefaultYouTubeSync = youtubeSync
 
+	youtubeTVSync, err := logic.NewYouTubeTVSyncService(db)
+	if err != nil {
+		panic(err)
+	}
+	logic.DefaultYouTubeTVSync = youtubeTVSync
+
 	authClient := auth.NewClient(db)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	done, err := authClient.Authenticate(ctx, os.Getenv("YOUTUBE_API_SKIP_AUTH_CACHE") == "true")
@@ -61,10 +67,18 @@ func main() {
 	}
 	youtube.DefaultClient = yt
 
-	_, err = background.StartCronTasks(db, youtubeSync)
+	_, err = background.StartCronTasks(db, youtubeSync, youtubeTVSync)
 	if err != nil {
 		panic(err)
 	}
+	bootCtx, bootCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	if err := youtubeTVSync.RunLifecycleTick(bootCtx); err != nil {
+		log.Warn().Err(err).Msg("initial tv sync lifecycle tick failed")
+	}
+	if err := youtubeTVSync.RunConnectionTick(bootCtx); err != nil {
+		log.Warn().Err(err).Msg("initial tv sync connection tick failed")
+	}
+	bootCancel()
 
 	ses, err := sessions.New(db)
 	if err != nil {
