@@ -31,6 +31,7 @@ const (
 	youtubeSyncPlaylistName        = "Feedlr Sync"
 	youtubeSyncPlaylistDescription = "Managed by Feedlr"
 	youtubeSyncPlaylistSize        = 24
+	youtubeSyncListRetryAttempts   = 4
 )
 
 var DefaultYouTubeSync *YouTubeSyncService
@@ -225,7 +226,7 @@ func (s *YouTubeSyncService) syncUser(ctx context.Context, account *models.Youtu
 		}
 	}
 
-	remoteItems, err := listPlaylistItems(ctx, service, playlistID, 50)
+	remoteItems, err := listPlaylistItemsWithRetry(ctx, service, playlistID, 50)
 	if err != nil && isYouTubePlaylistNotFound(err) {
 		if expensiveCallsLeft < 1 {
 			err = errors.Wrap(err, "playlist missing remotely and no write calls left in current sync budget")
@@ -244,7 +245,7 @@ func (s *YouTubeSyncService) syncUser(ctx context.Context, account *models.Youtu
 			return err
 		}
 
-		remoteItems, err = listPlaylistItems(ctx, service, playlistID, 50)
+		remoteItems, err = listPlaylistItemsWithRetry(ctx, service, playlistID, 50)
 	}
 	if err != nil {
 		s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
@@ -261,12 +262,10 @@ func (s *YouTubeSyncService) syncUser(ctx context.Context, account *models.Youtu
 	var mutationErrors []string
 	var firstMutationErr error
 
-	selectedAdds := slices.Clone(plan.ToAdd)
-	// Insert in reverse order at position 0 so final order remains newest-first.
-	for i := len(selectedAdds) - 1; i >= 0; i-- {
-		err := insertVideoIntoPlaylist(ctx, service, playlistID, selectedAdds[i], 0)
+	for _, add := range plan.ToAdd {
+		err := insertVideoIntoPlaylist(ctx, service, playlistID, add.VideoID, add.Position)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to insert video %s into playlist %s", selectedAdds[i], playlistID)
+			err = errors.Wrapf(err, "failed to insert video %s into playlist %s at position %d", add.VideoID, playlistID, add.Position)
 			if firstMutationErr == nil {
 				firstMutationErr = err
 			}
@@ -398,8 +397,17 @@ type playlistRemoteItem struct {
 }
 
 type playlistSyncPlan struct {
-	ToAdd    []string
+	ToAdd    []playlistAddOperation
 	ToDelete []string
+}
+
+type playlistAddOperation struct {
+	VideoID  string
+	Position int64
+}
+
+type playlistWorkItem struct {
+	VideoID string
 }
 
 func buildPlaylistSyncPlan(desired []string, remote []playlistRemoteItem, maxExpensiveCalls int) playlistSyncPlan {
@@ -430,10 +438,10 @@ func buildPlaylistSyncPlan(desired []string, remote []playlistRemoteItem, maxExp
 		seenRemote[item.VideoID] = true
 	}
 
-	var toAdd []string
+	var toAddCandidates []string
 	for _, id := range desired {
 		if !seenRemote[id] {
-			toAdd = append(toAdd, id)
+			toAddCandidates = append(toAddCandidates, id)
 		}
 	}
 
@@ -444,14 +452,14 @@ func buildPlaylistSyncPlan(desired []string, remote []playlistRemoteItem, maxExp
 	insertBudget := maxExpensiveCalls / 2
 	deleteBudget := maxExpensiveCalls - insertBudget
 
-	addCount := min(insertBudget, len(toAdd))
+	addCount := min(insertBudget, len(toAddCandidates))
 	deleteCount := min(deleteBudget, len(removeCandidates))
 	used := addCount + deleteCount
 
 	// Borrow unused budget, preferring inserts (most recent content first).
 	remaining := maxExpensiveCalls - used
 	if remaining > 0 {
-		extraAdds := min(remaining, len(toAdd)-addCount)
+		extraAdds := min(remaining, len(toAddCandidates)-addCount)
 		addCount += extraAdds
 		remaining -= extraAdds
 	}
@@ -460,8 +468,9 @@ func buildPlaylistSyncPlan(desired []string, remote []playlistRemoteItem, maxExp
 		deleteCount += extraDeletes
 	}
 
+	selectedAdds := slices.Clone(toAddCandidates[:addCount])
 	plan := playlistSyncPlan{
-		ToAdd: slices.Clone(toAdd[:addCount]),
+		ToAdd: buildPlaylistAddOperations(desired, remote, selectedAdds),
 	}
 	for _, item := range removeCandidates[:deleteCount] {
 		if item.ItemID == "" {
@@ -471,6 +480,62 @@ func buildPlaylistSyncPlan(desired []string, remote []playlistRemoteItem, maxExp
 	}
 
 	return plan
+}
+
+func buildPlaylistAddOperations(desired []string, remote []playlistRemoteItem, selectedAdds []string) []playlistAddOperation {
+	if len(selectedAdds) == 0 {
+		return nil
+	}
+
+	selectedSet := make(map[string]bool, len(selectedAdds))
+	for _, id := range selectedAdds {
+		selectedSet[id] = true
+	}
+
+	work := make([]playlistWorkItem, 0, len(remote)+len(selectedAdds))
+	present := make(map[string]bool, len(remote)+len(selectedAdds))
+	for _, item := range remote {
+		work = append(work, playlistWorkItem{VideoID: item.VideoID})
+		if item.VideoID != "" {
+			present[item.VideoID] = true
+		}
+	}
+
+	var ops []playlistAddOperation
+	for i := len(desired) - 1; i >= 0; i-- {
+		videoID := desired[i]
+		if !selectedSet[videoID] || present[videoID] {
+			continue
+		}
+
+		position := len(work)
+		for j := i + 1; j < len(desired); j++ {
+			anchorPosition := indexOfPlaylistVideo(work, desired[j])
+			if anchorPosition >= 0 {
+				position = anchorPosition
+				break
+			}
+		}
+
+		ops = append(ops, playlistAddOperation{
+			VideoID:  videoID,
+			Position: int64(position),
+		})
+
+		work = slices.Insert(work, position, playlistWorkItem{VideoID: videoID})
+		present[videoID] = true
+	}
+
+	return ops
+}
+
+func indexOfPlaylistVideo(work []playlistWorkItem, videoID string) int {
+	for i := range work {
+		if work[i].VideoID == videoID {
+			return i
+		}
+	}
+	return -1
 }
 
 func createYouTubeSyncPlaylist(ctx context.Context, service *ytv3.Service) (string, error) {
@@ -518,6 +583,33 @@ func listPlaylistItems(ctx context.Context, service *ytv3.Service, playlistID st
 		items = append(items, remote)
 	}
 	return items, nil
+}
+
+func listPlaylistItemsWithRetry(ctx context.Context, service *ytv3.Service, playlistID string, maxResults int64) ([]playlistRemoteItem, error) {
+	var lastErr error
+
+	for attempt := 1; attempt <= youtubeSyncListRetryAttempts; attempt++ {
+		items, err := listPlaylistItems(ctx, service, playlistID, maxResults)
+		if err == nil {
+			return items, nil
+		}
+		lastErr = err
+
+		if !isYouTubePlaylistNotFound(err) || attempt == youtubeSyncListRetryAttempts {
+			return nil, err
+		}
+
+		delay := time.Duration(attempt) * 250 * time.Millisecond
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+
+	return nil, lastErr
 }
 
 func insertVideoIntoPlaylist(ctx context.Context, service *ytv3.Service, playlistID, videoID string, position int64) error {
