@@ -24,6 +24,25 @@ func youtubeSyncService() (*logic.YouTubeSyncService, error) {
 	return logic.DefaultYouTubeSync, nil
 }
 
+func youtubeTVSyncService() (*logic.YouTubeTVSyncService, error) {
+	if logic.DefaultYouTubeTVSync == nil {
+		return nil, errors.New("youtube tv sync is disabled")
+	}
+	return logic.DefaultYouTubeTVSync, nil
+}
+
+func parseEnabledForm(ctx *handler.Context) (bool, error) {
+	rawEnabled, err := ctx.FormValue("enabled")
+	if err != nil {
+		return false, err
+	}
+	enabled, err := strconv.ParseBool(rawEnabled)
+	if err != nil {
+		return false, errors.New("invalid enabled value")
+	}
+	return enabled, nil
+}
+
 var BeginYouTubeSyncConnect brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
 	userID, ok := ctx.UserID()
 	if !ok {
@@ -126,13 +145,78 @@ var ToggleYouTubeSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Cont
 		return ctx.Err(err)
 	}
 
-	rawEnabled, err := ctx.FormValue("enabled")
+	enabled, err := parseEnabledForm(ctx)
 	if err != nil {
 		return ctx.Err(err)
 	}
-	enabled, err := strconv.ParseBool(rawEnabled)
+
+	err = service.SetEnabled(ctx.Context(), userID, enabled)
 	if err != nil {
-		return ctx.Err(errors.New("invalid enabled value"))
+		return ctx.Err(err)
+	}
+	return ctx.Redirect("/app/settings", http.StatusTemporaryRedirect)
+}
+
+var ConnectYouTubeTVSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
+	userID, ok := ctx.UserID()
+	if !ok {
+		return ctx.SendStatus(http.StatusUnauthorized)
+	}
+
+	service, err := youtubeTVSyncService()
+	if err != nil {
+		return ctx.Err(err)
+	}
+
+	pairingCode, err := ctx.FormValue("pairing_code")
+	if err != nil {
+		return ctx.Err(err)
+	}
+	if pairingCode == "" {
+		return ctx.Err(errors.New("missing pairing code"))
+	}
+
+	err = service.PairWithCode(ctx.Context(), userID, pairingCode)
+	if err != nil {
+		return ctx.Err(err)
+	}
+
+	return ctx.Redirect("/app/settings", http.StatusTemporaryRedirect)
+}
+
+var DisconnectYouTubeTVSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
+	userID, ok := ctx.UserID()
+	if !ok {
+		return ctx.SendStatus(http.StatusUnauthorized)
+	}
+
+	service, err := youtubeTVSyncService()
+	if err != nil {
+		return ctx.Err(err)
+	}
+
+	err = service.Disconnect(ctx.Context(), userID)
+	if err != nil {
+		return ctx.Err(err)
+	}
+
+	return ctx.Redirect("/app/settings", http.StatusTemporaryRedirect)
+}
+
+var ToggleYouTubeTVSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
+	userID, ok := ctx.UserID()
+	if !ok {
+		return ctx.SendStatus(http.StatusUnauthorized)
+	}
+
+	service, err := youtubeTVSyncService()
+	if err != nil {
+		return ctx.Err(err)
+	}
+
+	enabled, err := parseEnabledForm(ctx)
+	if err != nil {
+		return ctx.Err(err)
 	}
 
 	err = service.SetEnabled(ctx.Context(), userID, enabled)

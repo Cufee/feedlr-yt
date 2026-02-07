@@ -2,13 +2,11 @@ package logic
 
 import (
 	"context"
-
 	"net/url"
 	"regexp"
 	"slices"
-	"time"
-
 	"strings"
+	"time"
 
 	"github.com/aarondl/null/v8"
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
@@ -214,6 +212,38 @@ func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *yout
 	return err
 }
 
+func EnsureVideoCached(ctx context.Context, db interface {
+	database.VideosClient
+	database.ChannelsClient
+}, videoID string) error {
+	_, err := db.GetVideoByID(ctx, videoID)
+	if err == nil {
+		return nil
+	}
+	if !database.IsErrNotFound(err) {
+		return errors.Wrap(err, "failed to check cached video")
+	}
+
+	details, err := youtube.DefaultClient.GetVideoDetailsByID(videoID)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch video details")
+	}
+	if details.ChannelID == "" {
+		return errors.New("video details missing channel id")
+	}
+
+	_, _, err = CacheChannel(ctx, db, details.ChannelID)
+	if err != nil {
+		return errors.Wrap(err, "failed to cache video channel")
+	}
+
+	if err := UpdateVideoCache(ctx, db, details); err != nil {
+		return errors.Wrap(err, "failed to cache video")
+	}
+
+	return nil
+}
+
 type GetPlayerOptions struct {
 	WithProgress bool
 	WithSegments bool
@@ -266,14 +296,60 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 	return playerProps, nil
 }
 
-func UpdateView(ctx context.Context, db database.ViewsClient, userId, videoId string, progress int, hidden bool) error {
+func UpdateView(ctx context.Context, db database.ViewsClient, userId, videoId string, progress int, hidden bool) (int, error) {
+	currentProgress, currentHidden, err := getCurrentViewState(ctx, db, userId, videoId)
+	if err != nil {
+		return 0, err
+	}
+
+	return upsertViewProgress(ctx, db, userId, videoId, currentProgress, currentHidden, progress, hidden)
+}
+
+func UpdateViewProgress(ctx context.Context, db database.ViewsClient, userId, videoId string, progress int) (int, error) {
+	currentProgress, currentHidden, err := getCurrentViewState(ctx, db, userId, videoId)
+	if err != nil {
+		return 0, err
+	}
+
+	// Preserve hidden state when syncing progress from external sources like TV playback.
+	return upsertViewProgress(ctx, db, userId, videoId, currentProgress, currentHidden, progress, currentHidden)
+}
+
+func getCurrentViewState(ctx context.Context, db database.ViewsClient, userId, videoId string) (int, bool, error) {
+	views, err := db.GetUserViews(ctx, userId, videoId)
+	if err != nil && !database.IsErrNotFound(err) {
+		return 0, false, err
+	}
+
+	currentProgress := 0
+	currentHidden := false
+	for _, view := range views {
+		if view.VideoID == videoId {
+			currentProgress = int(view.Progress)
+			currentHidden = view.Hidden.Bool
+			break
+		}
+	}
+	return currentProgress, currentHidden, nil
+}
+
+func upsertViewProgress(ctx context.Context, db database.ViewsClient, userId, videoId string, currentProgress int, currentHidden bool, progress int, hidden bool) (int, error) {
+	progress = max(0, progress)
+	if currentProgress == progress && currentHidden == hidden {
+		return progress, nil
+	}
+
 	err := db.UpsertView(ctx, &models.View{
 		VideoID:  videoId,
 		UserID:   userId,
 		Progress: int64(progress),
 		Hidden:   null.BoolFrom(hidden),
 	})
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	return progress, nil
 }
 
 func GetUserViews(ctx context.Context, db database.ViewsClient, userId string, videos ...string) (map[string]*models.View, error) {

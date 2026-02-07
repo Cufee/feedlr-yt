@@ -104,6 +104,105 @@ table "youtube_sync_accounts" {
   }
 }
 
+table "youtube_tv_sync_accounts" {
+  schema = schema.main
+
+  column "id" {
+    null = false
+    type = text
+  }
+  column "created_at" {
+    null = false
+    type = date
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+
+  column "user_id" {
+    null = false
+    type = text
+  }
+  column "screen_id" {
+    null = false
+    type = text
+  }
+  column "screen_name" {
+    null = false
+    type = text
+    default = ""
+  }
+  column "lounge_token_enc" {
+    null = false
+    type = blob
+  }
+  column "enc_secret_hash" {
+    null = false
+    type = text
+  }
+  column "sync_enabled" {
+    null = false
+    type = boolean
+    default = true
+  }
+  column "connection_state" {
+    null = false
+    type = text
+    default = "disconnected"
+  }
+  column "state_reason" {
+    null = false
+    type = text
+    default = ""
+  }
+  column "last_connected_at" {
+    null = true
+    type = date
+  }
+  column "last_event_at" {
+    null = true
+    type = date
+  }
+  column "last_disconnect_at" {
+    null = true
+    type = date
+  }
+  column "last_user_activity_at" {
+    null = true
+    type = date
+  }
+  column "last_video_id" {
+    null = true
+    type = text
+  }
+  column "last_error" {
+    null = false
+    type = text
+    default = ""
+  }
+
+  foreign_key "youtube_tv_sync_accounts_user_id_fkey" {
+    columns = [ column.user_id ]
+    ref_columns = [ table.users.column.id ]
+    on_delete   = CASCADE
+  }
+
+  index "idx_youtube_tv_sync_accounts_user_id_unique" {
+    columns = [ column.user_id ]
+    unique = true
+  }
+  index "idx_youtube_tv_sync_accounts_sync_enabled_connection_state" {
+    columns = [ column.sync_enabled, column.connection_state ]
+  }
+  index "idx_youtube_tv_sync_accounts_last_event_at" {
+    columns = [ column.last_event_at ]
+  }
+}
+
 table "channels" {
   schema = schema.main
 

@@ -24,6 +24,7 @@ type Client interface {
 
 	ConfigurationClient
 	YouTubeSyncClient
+	YouTubeTVSyncClient
 
 	Close() error
 }

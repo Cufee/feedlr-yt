@@ -103,6 +103,9 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		api.Get("/settings/youtube-sync/connect/callback", toFiber(rapi.FinishYouTubeSyncConnect))
 		api.Post("/settings/youtube-sync/disconnect", toFiber(rapi.DisconnectYouTubeSync))
 		api.Post("/settings/youtube-sync/toggle", toFiber(rapi.ToggleYouTubeSync))
+		api.Post("/settings/youtube-sync/tv/connect", toFiber(rapi.ConnectYouTubeTVSync))
+		api.Post("/settings/youtube-sync/tv/disconnect", toFiber(rapi.DisconnectYouTubeTVSync))
+		api.Post("/settings/youtube-sync/tv/toggle", toFiber(rapi.ToggleYouTubeTVSync))
 
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(limiterMiddleware).Use(authMw)
