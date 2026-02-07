@@ -3,11 +3,8 @@ package logic
 import (
 	"context"
 	stdErrors "errors"
-	"fmt"
 	"net/http"
-	"os"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -59,8 +56,8 @@ func NewYouTubeSyncService(db database.Client) (*YouTubeSyncService, error) {
 			Scopes:       []string{youTubeSyncOAuthScope},
 			Endpoint:     google.Endpoint,
 		},
-		maxExpensiveCallsPerSync: envInt("PLAYLIST_SYNC_MAX_EXPENSIVE_CALLS", 4),
-		maxUsersPerTick:          envInt("PLAYLIST_SYNC_MAX_USERS_PER_TICK", 100),
+		maxExpensiveCallsPerSync: 4,
+		maxUsersPerTick:          100,
 	}
 	if service.maxExpensiveCallsPerSync <= 0 {
 		return nil, errors.New("PLAYLIST_SYNC_MAX_EXPENSIVE_CALLS must be greater than 0")
@@ -649,17 +646,4 @@ func isYouTubePlaylistNotFound(err error) bool {
 		}
 	}
 	return false
-}
-
-func envInt(key string, fallback int) int {
-	raw := strings.TrimSpace(os.Getenv(key))
-	if raw == "" {
-		return fallback
-	}
-
-	n, err := strconv.Atoi(raw)
-	if err != nil {
-		panic(fmt.Sprintf("invalid integer for %s: %s", key, raw))
-	}
-	return n
 }
