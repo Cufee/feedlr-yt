@@ -148,3 +148,4 @@ task test
 - [Frontend Guide](./FRONTEND.md) - Templates, components, styling
 - [Database Guide](./DATABASE.md) - Schema, queries, migrations
 - [YouTube API Guide](./YOUTUBE-API.md) - Client, auth, rate limiting
+- [Playlist Sync Design](./PLAYLIST-SYNC.md) - OAuth-based diff sync to a YouTube playlist

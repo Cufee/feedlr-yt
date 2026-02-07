@@ -25,6 +25,11 @@ var Settings brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.
 		return nil, nil, ctx.Err(err)
 	}
 
+	props.YouTubeSync, err = logic.DefaultYouTubeSync.Status(ctx.Context(), userID)
+	if err != nil {
+		return nil, nil, ctx.Err(err)
+	}
+
 	passkeys, err := ctx.Database().GetUserPasskeys(ctx.Context(), userID)
 	if err != nil && !database.IsErrNotFound(err) {
 		return nil, nil, ctx.Err(err)

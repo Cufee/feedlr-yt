@@ -23,6 +23,7 @@ type Client interface {
 	PlaylistsClient
 
 	ConfigurationClient
+	YouTubeSyncClient
 
 	Close() error
 }

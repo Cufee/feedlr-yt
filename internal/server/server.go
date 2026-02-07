@@ -99,6 +99,10 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 
 		api.Post("/settings/sponsorblock", toFiber(rapi.ToggleSponsorBlock))
 		api.Post("/settings/sponsorblock/category", toFiber(rapi.ToggleSponsorBlockCategory))
+		api.Post("/settings/youtube-sync/connect/begin", toFiber(rapi.BeginYouTubeSyncConnect))
+		api.Get("/settings/youtube-sync/connect/callback", toFiber(rapi.FinishYouTubeSyncConnect))
+		api.Post("/settings/youtube-sync/disconnect", toFiber(rapi.DisconnectYouTubeSync))
+		api.Post("/settings/youtube-sync/toggle", toFiber(rapi.ToggleYouTubeSync))
 
 		// All routes used by HTMX should have a POST handler
 		app := server.Group("/app").Use(limiterMiddleware).Use(authMw)

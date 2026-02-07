@@ -494,6 +494,129 @@ func testUsersInsertWhitelist(t *testing.T) {
 	}
 }
 
+func testUserOneToOneYoutubeSyncAccountUsingYoutubeSyncAccount(t *testing.T) {
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var foreign YoutubeSyncAccount
+	var local User
+
+	seed := randomize.NewSeed()
+	if err := randomize.Struct(seed, &foreign, youtubeSyncAccountDBTypes, true, youtubeSyncAccountColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize YoutubeSyncAccount struct: %s", err)
+	}
+	if err := randomize.Struct(seed, &local, userDBTypes, true, userColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize User struct: %s", err)
+	}
+
+	if err := local.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	foreign.UserID = local.ID
+	if err := foreign.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	check, err := local.YoutubeSyncAccount().One(ctx, tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if check.UserID != foreign.UserID {
+		t.Errorf("want: %v, got %v", foreign.UserID, check.UserID)
+	}
+
+	ranAfterSelectHook := false
+	AddYoutubeSyncAccountHook(boil.AfterSelectHook, func(ctx context.Context, e boil.ContextExecutor, o *YoutubeSyncAccount) error {
+		ranAfterSelectHook = true
+		return nil
+	})
+
+	slice := UserSlice{&local}
+	if err = local.L.LoadYoutubeSyncAccount(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
+		t.Fatal(err)
+	}
+	if local.R.YoutubeSyncAccount == nil {
+		t.Error("struct should have been eager loaded")
+	}
+
+	local.R.YoutubeSyncAccount = nil
+	if err = local.L.LoadYoutubeSyncAccount(ctx, tx, true, &local, nil); err != nil {
+		t.Fatal(err)
+	}
+	if local.R.YoutubeSyncAccount == nil {
+		t.Error("struct should have been eager loaded")
+	}
+
+	if !ranAfterSelectHook {
+		t.Error("failed to run AfterSelect hook for relationship")
+	}
+}
+
+func testUserOneToOneSetOpYoutubeSyncAccountUsingYoutubeSyncAccount(t *testing.T) {
+	var err error
+
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a User
+	var b, c YoutubeSyncAccount
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &b, youtubeSyncAccountDBTypes, false, strmangle.SetComplement(youtubeSyncAccountPrimaryKeyColumns, youtubeSyncAccountColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &c, youtubeSyncAccountDBTypes, false, strmangle.SetComplement(youtubeSyncAccountPrimaryKeyColumns, youtubeSyncAccountColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	for i, x := range []*YoutubeSyncAccount{&b, &c} {
+		err = a.SetYoutubeSyncAccount(ctx, tx, i != 0, x)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if a.R.YoutubeSyncAccount != x {
+			t.Error("relationship struct not set to correct value")
+		}
+		if x.R.User != &a {
+			t.Error("failed to append to foreign relationship struct")
+		}
+
+		if a.ID != x.UserID {
+			t.Error("foreign key was wrong value", a.ID)
+		}
+
+		zero := reflect.Zero(reflect.TypeOf(x.UserID))
+		reflect.Indirect(reflect.ValueOf(&x.UserID)).Set(zero)
+
+		if err = x.Reload(ctx, tx); err != nil {
+			t.Fatal("failed to reload", err)
+		}
+
+		if a.ID != x.UserID {
+			t.Error("foreign key was wrong value", a.ID, x.UserID)
+		}
+
+		if _, err = x.Delete(ctx, tx); err != nil {
+			t.Fatal("failed to delete x", err)
+		}
+	}
+}
+
 func testUserToManyPlaylists(t *testing.T) {
 	var err error
 	ctx := context.Background()

@@ -44,7 +44,7 @@ func (c *Client) newWebPlayerRequestContext() (*WebPlayerRequestContext, error) 
 	req.Header.Set("User-Agent", userAgents[rand.Intn(len(userAgents))])
 	req.Header.Set("Cookie", fmt.Sprintf("PREF=tz=%s;VISITOR_INFO1_LIVE=%s", strings.ReplaceAll(tz, "/", "."), context.VisitorID))
 
-	res, err := c.http.Get(youtubeBaseURL + "/sw.js_data")
+	res, err := c.http.Do(req)
 	if err != nil {
 		return nil, err
 	}

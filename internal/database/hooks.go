@@ -105,4 +105,13 @@ func init() {
 		c.ID = ensureID(c.ID)
 		return nil
 	})
+	// YouTube Sync Accounts
+	models.AddYoutubeSyncAccountHook(boil.BeforeInsertHook, func(ctx context.Context, ce boil.ContextExecutor, c *models.YoutubeSyncAccount) error {
+		c.ID = ensureID(c.ID)
+		return nil
+	})
+	models.AddYoutubeSyncAccountHook(boil.BeforeUpsertHook, func(ctx context.Context, ce boil.ContextExecutor, c *models.YoutubeSyncAccount) error {
+		c.ID = ensureID(c.ID)
+		return nil
+	})
 }

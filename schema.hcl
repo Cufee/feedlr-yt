@@ -31,6 +31,79 @@ table "app_configuration" {
   }
 }
 
+table "youtube_sync_accounts" {
+  schema = schema.main
+
+  column "id" {
+    null = false
+    type = text
+  }
+  column "created_at" {
+    null = false
+    type = date
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+
+  column "user_id" {
+    null = false
+    type = text
+  }
+  column "refresh_token_enc" {
+    null = false
+    type = blob
+  }
+  column "enc_secret_hash" {
+    null = false
+    type = text
+  }
+  column "playlist_id" {
+    null = true
+    type = text
+  }
+  column "sync_enabled" {
+    null = false
+    type = boolean
+    default = true
+  }
+  column "last_feed_video_published_at" {
+    null = true
+    type = date
+  }
+  column "last_synced_at" {
+    null = true
+    type = date
+  }
+  column "last_sync_attempt_at" {
+    null = true
+    type = date
+  }
+  column "last_error" {
+    null = false
+    type = text
+    default = ""
+  }
+
+  foreign_key "youtube_sync_accounts_user_id_fkey" {
+    columns = [ column.user_id ]
+    ref_columns = [ table.users.column.id ]
+    on_delete   = CASCADE
+  }
+
+  index "idx_youtube_sync_accounts_user_id_unique" {
+    columns = [ column.user_id ]
+    unique = true
+  }
+  index "idx_youtube_sync_accounts_sync_enabled_last_synced_at" {
+    columns = [ column.sync_enabled, column.last_synced_at ]
+  }
+}
+
 table "channels" {
   schema = schema.main
 
