@@ -2,7 +2,6 @@ package settings
 
 import (
 	"fmt"
-
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
 )
@@ -16,10 +15,12 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps) {
 		<div class="flex flex-wrap items-center justify-between w-full gap-2 px-4">
 			<span class="self-center text-xl font-bold">YouTube Playlist Sync</span>
 			if status.Connected {
-				<span class={ map[bool]string{
+				<span
+					class={ map[bool]string{
 					true:  "badge badge-primary badge-sm text-primary-content w-24 justify-center",
 					false: "badge badge-sm bg-base-200 text-base-content/60 border border-base-content/15 w-24 justify-center",
-				}[status.Enabled] }>
+				}[status.Enabled] }
+				>
 					{ map[bool]string{true: "Enabled", false: "Paused"}[status.Enabled] }
 				</span>
 			}
@@ -59,6 +60,12 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps) {
 							}
 						</div>
 						<div class="opacity-80">{ map[bool]string{true: "Syncing automatically", false: "Paused by user"}[status.Enabled] }</div>
+						if status.LastError != "" {
+							<div class="flex items-center gap-1 mt-1 text-xs text-error">
+								<span aria-hidden="true">⚠</span>
+								<span>Sync issue detected</span>
+							</div>
+						}
 					</div>
 					<div class="p-3 rounded-lg bg-base-200">
 						<div class="font-semibold">Last Sync</div>
@@ -71,13 +78,6 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps) {
 						</div>
 					</div>
 				</div>
-
-				if status.LastError != "" {
-					<div class="p-3 text-sm rounded-lg bg-error/15 text-error">
-						<span class="font-semibold">Last Error:</span> { status.LastError }
-					</div>
-				}
-
 				<div class="flex flex-wrap gap-2 pt-1">
 					<form action="/api/settings/youtube-sync/toggle" method="post">
 						<input type="hidden" name="enabled" value={ fmt.Sprintf("%t", !status.Enabled) }/>
