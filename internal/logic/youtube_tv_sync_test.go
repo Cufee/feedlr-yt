@@ -132,3 +132,36 @@ func TestTVSyncRuntimeResumeAppliedFlagResetsOnVideoChange(t *testing.T) {
 		t.Fatal("expected resume flag reset after active video changed")
 	}
 }
+
+func TestTVSyncRuntimePlaybackSnapshotAndReset(t *testing.T) {
+	runtime := newTVSyncRuntime(false, nil)
+
+	videoID, state := runtime.currentPlaybackSnapshot()
+	if videoID != "" || state != "" {
+		t.Fatalf("expected empty playback snapshot, got video=%q state=%q", videoID, state)
+	}
+
+	if !runtime.setCurrentVideo("video-a") {
+		t.Fatal("expected first video assignment")
+	}
+	runtime.setCurrentPlaybackState("1")
+
+	videoID, state = runtime.currentPlaybackSnapshot()
+	if videoID != "video-a" || state != "1" {
+		t.Fatalf("unexpected playback snapshot, got video=%q state=%q", videoID, state)
+	}
+
+	if !runtime.setCurrentVideo("video-b") {
+		t.Fatal("expected video change to be treated as new")
+	}
+	videoID, state = runtime.currentPlaybackSnapshot()
+	if videoID != "video-b" || state != "" {
+		t.Fatalf("expected playback state reset on video change, got video=%q state=%q", videoID, state)
+	}
+
+	runtime.clearCurrentVideo()
+	videoID, state = runtime.currentPlaybackSnapshot()
+	if videoID != "" || state != "" {
+		t.Fatalf("expected cleared playback snapshot, got video=%q state=%q", videoID, state)
+	}
+}

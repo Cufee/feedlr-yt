@@ -39,7 +39,7 @@ const (
 	tvSyncStatusUpdateInterval      = 15 * time.Second
 	tvSyncWorkerStopTimeout         = 2 * time.Second
 	tvSyncConnectionKickTimeout     = 15 * time.Second
-	tvSyncNowPlayingPollInterval    = 5 * time.Second
+	tvSyncNowPlayingPollInterval    = 15 * time.Second
 	tvSyncVideoCacheRetryInterval   = 1 * time.Minute
 	tvSyncConnectionStateConnectMsg = "Establishing TV session"
 	tvSyncNoEventsReason            = "No TV events received"
@@ -82,10 +82,11 @@ type tvSyncVideoRuntime struct {
 type tvSyncRuntime struct {
 	mu sync.Mutex
 
-	lastEventAt         time.Time
-	lastStatusPersistAt time.Time
-	currentVideoID      string
-	resumeApplied       bool
+	lastEventAt          time.Time
+	lastStatusPersistAt  time.Time
+	currentVideoID       string
+	currentPlaybackState string
+	resumeApplied        bool
 
 	sponsorEnabled    bool
 	sponsorCategories []sponsorblock.Category
@@ -137,6 +138,7 @@ func (r *tvSyncRuntime) setCurrentVideo(videoID string) bool {
 		return false
 	}
 	r.currentVideoID = videoID
+	r.currentPlaybackState = ""
 	r.resumeApplied = false
 	return true
 }
@@ -145,6 +147,26 @@ func (r *tvSyncRuntime) currentVideo() string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.currentVideoID
+}
+
+func (r *tvSyncRuntime) clearCurrentVideo() {
+	r.mu.Lock()
+	r.currentVideoID = ""
+	r.currentPlaybackState = ""
+	r.resumeApplied = false
+	r.mu.Unlock()
+}
+
+func (r *tvSyncRuntime) setCurrentPlaybackState(state string) {
+	r.mu.Lock()
+	r.currentPlaybackState = state
+	r.mu.Unlock()
+}
+
+func (r *tvSyncRuntime) currentPlaybackSnapshot() (string, string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.currentVideoID, r.currentPlaybackState
 }
 
 func (r *tvSyncRuntime) resumeAppliedForCurrentVideo() bool {
@@ -178,10 +200,11 @@ type YouTubeTVSyncService struct {
 	crypto *youtubeSyncCrypto
 	lounge *lounge.Client
 
-	noEventTimeout       time.Duration
-	watchdogPollInterval time.Duration
-	reconnectMin         time.Duration
-	reconnectMax         time.Duration
+	noEventTimeout         time.Duration
+	watchdogPollInterval   time.Duration
+	nowPlayingPollInterval time.Duration
+	reconnectMin           time.Duration
+	reconnectMax           time.Duration
 
 	metrics *tvSyncMetrics
 
@@ -219,13 +242,14 @@ func NewYouTubeTVSyncService(db database.Client) (*YouTubeTVSyncService, error) 
 		crypto: newYouTubeSyncCrypto(
 			utils.MustGetEnv("YOUTUBE_SYNC_ENCRYPTION_SECRET"),
 		),
-		lounge:               lounge.NewClient(&http.Client{}),
-		noEventTimeout:       tvSyncNoEventTimeout,
-		watchdogPollInterval: 5 * time.Second,
-		reconnectMin:         tvSyncReconnectMin,
-		reconnectMax:         tvSyncReconnectMax,
-		metrics:              &tvSyncMetrics{},
-		workers:              map[string]*tvSyncWorker{},
+		lounge:                 lounge.NewClient(&http.Client{}),
+		noEventTimeout:         tvSyncNoEventTimeout,
+		watchdogPollInterval:   5 * time.Second,
+		nowPlayingPollInterval: tvSyncNowPlayingPollInterval,
+		reconnectMin:           tvSyncReconnectMin,
+		reconnectMax:           tvSyncReconnectMax,
+		metrics:                &tvSyncMetrics{},
+		workers:                map[string]*tvSyncWorker{},
 	}
 
 	return service, nil
@@ -604,6 +628,11 @@ func (s *YouTubeTVSyncService) connectAndRunOnce(ctx context.Context, account *d
 	nowPlayingPollDone := make(chan struct{})
 	go func() {
 		defer close(nowPlayingPollDone)
+		pollInterval := s.nowPlayingPollInterval
+		if pollInterval <= 0 {
+			return
+		}
+
 		requestNowPlaying := func() {
 			err := s.lounge.GetNowPlaying(subCtx, session)
 			if err == nil {
@@ -622,7 +651,7 @@ func (s *YouTubeTVSyncService) connectAndRunOnce(ctx context.Context, account *d
 			log.Debug().Err(err).Str("userID", account.UserID).Msg("tv sync nowPlaying poll failed")
 		}
 
-		ticker := time.NewTicker(tvSyncNowPlayingPollInterval)
+		ticker := time.NewTicker(pollInterval)
 		defer ticker.Stop()
 
 		for {
@@ -630,7 +659,8 @@ func (s *YouTubeTVSyncService) connectAndRunOnce(ctx context.Context, account *d
 			case <-subCtx.Done():
 				return
 			case <-ticker.C:
-				if runtime.currentVideo() == "" {
+				videoID, playbackState := runtime.currentPlaybackSnapshot()
+				if videoID == "" || playbackState != "1" {
 					continue
 				}
 				requestNowPlaying()
@@ -791,6 +821,9 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 	videoRuntime := runtime.videoRuntime(videoID)
 	now := time.Now().UTC()
 	state := strings.TrimSpace(playback.State)
+	if state != "" {
+		runtime.setCurrentPlaybackState(state)
+	}
 	if !runtime.resumeAppliedForCurrentVideo() && shouldAttemptResumeSeek(isNewVideo, playback, state, videoRuntime.lastState) {
 		saved := s.getStoredProgress(ctx, account.UserID, videoID)
 		if shouldApplyResumeSeek(saved, playback) {
@@ -840,6 +873,9 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 	}
 	if state != "" {
 		videoRuntime.lastState = state
+	}
+	if state == "0" {
+		runtime.clearCurrentVideo()
 	}
 	return nil
 }
