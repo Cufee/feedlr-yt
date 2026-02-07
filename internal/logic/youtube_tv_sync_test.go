@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
+	"github.com/cufee/feedlr-yt/internal/api/youtube/lounge"
 )
 
 func TestNormalizeSponsorSegments(t *testing.T) {
@@ -50,11 +51,84 @@ func TestClampPlaybackSecond(t *testing.T) {
 	}
 }
 
-func TestShouldForceSeekToStoredProgress(t *testing.T) {
-	if !shouldForceSeekToStoredProgress(true) {
-		t.Fatal("expected seek for new video")
+func TestShouldAttemptResumeSeek(t *testing.T) {
+	playbackAtStart := lounge.PlaybackEvent{
+		HasCurrentTime: true,
+		CurrentTime:    10,
 	}
-	if shouldForceSeekToStoredProgress(false) {
-		t.Fatal("did not expect seek for existing video state")
+	if !shouldAttemptResumeSeek(true, playbackAtStart, "1", "") {
+		t.Fatal("expected resume attempt for new video near start")
+	}
+
+	playbackOngoing := lounge.PlaybackEvent{
+		HasCurrentTime: true,
+		CurrentTime:    300,
+	}
+	if shouldAttemptResumeSeek(true, playbackOngoing, "1", "") {
+		t.Fatal("did not expect resume attempt for new video that is already ongoing")
+	}
+
+	if !shouldAttemptResumeSeek(false, playbackOngoing, "1", "2") {
+		t.Fatal("expected resume attempt on transition into playing state")
+	}
+
+	if shouldAttemptResumeSeek(false, playbackOngoing, "1", "") {
+		t.Fatal("did not expect resume attempt on first seen ongoing playback state")
+	}
+}
+
+func TestShouldApplyResumeSeek(t *testing.T) {
+	playbackAtStart := lounge.PlaybackEvent{
+		HasCurrentTime: true,
+		CurrentTime:    10,
+	}
+	if !shouldApplyResumeSeek(42, playbackAtStart) {
+		t.Fatal("expected seek near start with saved progress")
+	}
+
+	playbackOngoing := lounge.PlaybackEvent{
+		HasCurrentTime: true,
+		CurrentTime:    300,
+	}
+	if !shouldApplyResumeSeek(320, playbackOngoing) {
+		t.Fatal("expected seek when app progress is sufficiently ahead")
+	}
+	if shouldApplyResumeSeek(305, playbackOngoing) {
+		t.Fatal("did not expect seek when app progress is not ahead enough")
+	}
+	if shouldApplyResumeSeek(0, playbackOngoing) {
+		t.Fatal("did not expect seek without saved progress")
+	}
+	if shouldApplyResumeSeek(320, lounge.PlaybackEvent{}) {
+		t.Fatal("did not expect seek without current time")
+	}
+}
+
+func TestTVSyncRuntimeResumeAppliedFlagResetsOnVideoChange(t *testing.T) {
+	runtime := newTVSyncRuntime(false, nil)
+	if runtime.resumeAppliedForCurrentVideo() {
+		t.Fatal("did not expect resume flag before any video")
+	}
+
+	if !runtime.setCurrentVideo("video-a") {
+		t.Fatal("expected first video assignment to be treated as new")
+	}
+	runtime.markResumeAppliedForCurrentVideo()
+	if !runtime.resumeAppliedForCurrentVideo() {
+		t.Fatal("expected resume flag to be set for active video")
+	}
+
+	if runtime.setCurrentVideo("video-a") {
+		t.Fatal("did not expect same video to be treated as new")
+	}
+	if !runtime.resumeAppliedForCurrentVideo() {
+		t.Fatal("expected resume flag to remain set for same active video")
+	}
+
+	if !runtime.setCurrentVideo("video-b") {
+		t.Fatal("expected video change to be treated as new")
+	}
+	if runtime.resumeAppliedForCurrentVideo() {
+		t.Fatal("expected resume flag reset after active video changed")
 	}
 }

@@ -85,7 +85,7 @@ Notes:
 - Implement command serialization (mutex) to avoid RID/offset races.
 - Implement watchdog based on "time since last event".
 - Refresh now-playing state after playback-speed changes.
-- Poll `getNowPlaying` periodically while connected to ensure steady progress updates even when passive events are sparse.
+- Poll `getNowPlaying` periodically while connected and an active video is known, to ensure steady progress updates without waking idle TV app sessions.
 
 ### 2) New logic service: `internal/logic/youtube_tv_sync.go`
 
@@ -206,12 +206,16 @@ All states should be shown in Settings UI with human-readable reason and relativ
 ### Resume-on-start
 
 Trigger:
-- first `nowPlaying` or `onStateChange` for a new `video_id` in a connection session.
+- new video where current TV position is within the start window,
+- transition into playing state (`state=1`) for an already-known video in the connection session.
 
 Steps:
 1. Load saved progress from `views.progress`.
-2. If saved progress is > `0`, send a single `seekTo(saved)` for that trigger.
-3. Skip persisting progress for that same event to avoid writing pre-seek timestamps.
+2. Determine whether this event represents playback start (new video near start, or play-state transition).
+3. If saved progress is > `0` and current position is within start window, send `seekTo(saved)`.
+4. If current position is beyond start window, seek only when saved progress is ahead by a minimum threshold.
+5. Mark a single in-memory resume flag for the active video so this resume logic is evaluated once per active video.
+6. Skip persisting progress for that same event to avoid writing pre-seek timestamps.
 
 ### Progress ingest (TV -> Feedlr)
 
@@ -225,6 +229,8 @@ Process events while playing:
 
 Default constants:
 - `tvSyncProgressWriteIntervalSec = 10`
+- `tvSyncResumeStartWindowSec = 90`
+- `tvSyncResumeAheadThresholdSec = 8`
 - `tvSyncNowPlayingPollIntervalSec = 5`
 - `tvSyncVideoCacheRetryIntervalSec = 60`
 
