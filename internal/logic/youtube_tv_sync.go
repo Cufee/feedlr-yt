@@ -67,15 +67,13 @@ type tvSyncSegment struct {
 }
 
 type tvSyncVideoRuntime struct {
-	lastProgressWrite  time.Time
-	lastVideoCacheTry  time.Time
-	sponsorLoaded      bool
-	sponsorSegments    []tvSyncSegment
-	skippedSegments    map[int]bool
-	lastSponsorSkipAt  time.Time
-	lastObservedSecond int
-	lastState          string
-	videoCached        bool
+	lastProgressWrite time.Time
+	lastVideoCacheTry time.Time
+	sponsorLoaded     bool
+	sponsorSegments   []tvSyncSegment
+	skippedSegments   map[int]bool
+	lastSponsorSkipAt time.Time
+	videoCached       bool
 }
 
 type tvSyncRuntime struct {
@@ -589,23 +587,22 @@ func (s *YouTubeTVSyncService) connectAndRunOnce(ctx context.Context, account *d
 	nowPlayingPollDone := make(chan struct{})
 	go func() {
 		defer close(nowPlayingPollDone)
-		requestNowPlaying := func() bool {
+		requestNowPlaying := func() {
 			err := s.lounge.GetNowPlaying(subCtx, session)
 			if err == nil {
-				return true
+				return
 			}
 			if subCtx.Err() != nil {
-				return false
+				return
 			}
 
 			if stdErrors.Is(err, lounge.ErrAuthExpired) || stdErrors.Is(err, lounge.ErrUnknownSID) || stdErrors.Is(err, lounge.ErrSessionGone) {
 				log.Warn().Err(err).Str("userID", account.UserID).Msg("tv sync nowPlaying poll failed with session error")
 				cancel()
-				return false
+				return
 			}
 
 			log.Debug().Err(err).Str("userID", account.UserID).Msg("tv sync nowPlaying poll failed")
-			return false
 		}
 
 		requestNowPlaying()
@@ -775,7 +772,6 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 
 	videoRuntime := runtime.videoRuntime(videoID)
 	now := time.Now().UTC()
-	state := strings.TrimSpace(playback.State)
 	if shouldForceSeekToStoredProgress(isNewVideo) {
 		saved := s.getStoredProgress(ctx, account.UserID, videoID)
 		if saved > 0 {
@@ -786,9 +782,6 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 				log.Debug().Str("userID", account.UserID).Str("videoID", videoID).Int("saved_progress", saved).Msg("applied tv resume seek from app state")
 			}
 		}
-		if state != "" {
-			videoRuntime.lastState = state
-		}
 		// Never persist pre-seek TV timestamps from the same event.
 		return nil
 	}
@@ -796,7 +789,6 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 	observedSecond := 0
 	if playback.HasCurrentTime {
 		observedSecond = clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration)
-		videoRuntime.lastObservedSecond = observedSecond
 	}
 
 	if playback.HasCurrentTime {
@@ -822,10 +814,6 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 			}
 		}
 	}
-	if state != "" {
-		videoRuntime.lastState = state
-	}
-
 	return nil
 }
 

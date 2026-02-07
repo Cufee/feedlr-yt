@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented in this branch (pending end-to-end client validation).
+Implemented.
 
 This document captures the implementation plan for:
 - syncing playback progress between TV playback and Feedlr,
@@ -85,6 +85,7 @@ Notes:
 - Implement command serialization (mutex) to avoid RID/offset races.
 - Implement watchdog based on "time since last event".
 - Refresh now-playing state after playback-speed changes.
+- Poll `getNowPlaying` periodically while connected to ensure steady progress updates even when passive events are sparse.
 
 ### 2) New logic service: `internal/logic/youtube_tv_sync.go`
 
@@ -205,8 +206,7 @@ All states should be shown in Settings UI with human-readable reason and relativ
 ### Resume-on-start
 
 Trigger:
-- first `nowPlaying` or `onStateChange` for a new `video_id` in a connection session,
-- transition into playing state for the active video.
+- first `nowPlaying` or `onStateChange` for a new `video_id` in a connection session.
 
 Steps:
 1. Load saved progress from `views.progress`.
@@ -219,11 +219,14 @@ Process events while playing:
 1. Normalize candidate progress:
    - floor seconds,
    - clamp to `[0, duration]` when duration known.
-2. Persist at most once per `write_interval` using the same view write path used by the app.
-3. After write, run existing "remove watch-later if fully watched" rule.
+2. Ensure the video exists in local cache before writing progress (fetch/cache when missing).
+3. Persist at most once per `write_interval` using the same view write path used by the app.
+4. After write, run existing "remove watch-later if fully watched" rule.
 
 Default constants:
 - `tvSyncProgressWriteIntervalSec = 10`
+- `tvSyncNowPlayingPollIntervalSec = 5`
+- `tvSyncVideoCacheRetryIntervalSec = 60`
 
 ### SponsorBlock skip on TV
 
@@ -306,7 +309,7 @@ Use inactivity policies above to bound idle connections.
 1. Add structured logs + metrics counters:
    - connect/disconnect counts,
    - reconnect reason,
-   - progress update accepted/rejected counts,
+   - progress update counts,
    - sponsor skip count.
 2. Validate with staging users.
 3. Tune thresholds based on observed behavior.
