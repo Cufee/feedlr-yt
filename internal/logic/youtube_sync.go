@@ -31,6 +31,7 @@ const (
 	youtubeSyncPlaylistName        = "Feedlr Sync"
 	youtubeSyncPlaylistDescription = "Managed by Feedlr"
 	youtubeSyncPlaylistSize        = 24
+	youtubeSyncListRetryAttempts   = 4
 )
 
 var DefaultYouTubeSync *YouTubeSyncService
@@ -225,7 +226,7 @@ func (s *YouTubeSyncService) syncUser(ctx context.Context, account *models.Youtu
 		}
 	}
 
-	remoteItems, err := listPlaylistItems(ctx, service, playlistID, 50)
+	remoteItems, err := listPlaylistItemsWithRetry(ctx, service, playlistID, 50)
 	if err != nil && isYouTubePlaylistNotFound(err) {
 		if expensiveCallsLeft < 1 {
 			err = errors.Wrap(err, "playlist missing remotely and no write calls left in current sync budget")
@@ -244,7 +245,7 @@ func (s *YouTubeSyncService) syncUser(ctx context.Context, account *models.Youtu
 			return err
 		}
 
-		remoteItems, err = listPlaylistItems(ctx, service, playlistID, 50)
+		remoteItems, err = listPlaylistItemsWithRetry(ctx, service, playlistID, 50)
 	}
 	if err != nil {
 		s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
@@ -518,6 +519,33 @@ func listPlaylistItems(ctx context.Context, service *ytv3.Service, playlistID st
 		items = append(items, remote)
 	}
 	return items, nil
+}
+
+func listPlaylistItemsWithRetry(ctx context.Context, service *ytv3.Service, playlistID string, maxResults int64) ([]playlistRemoteItem, error) {
+	var lastErr error
+
+	for attempt := 1; attempt <= youtubeSyncListRetryAttempts; attempt++ {
+		items, err := listPlaylistItems(ctx, service, playlistID, maxResults)
+		if err == nil {
+			return items, nil
+		}
+		lastErr = err
+
+		if !isYouTubePlaylistNotFound(err) || attempt == youtubeSyncListRetryAttempts {
+			return nil, err
+		}
+
+		delay := time.Duration(attempt) * 250 * time.Millisecond
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+
+	return nil, lastErr
 }
 
 func insertVideoIntoPlaylist(ctx context.Context, service *ytv3.Service, playlistID, videoID string, position int64) error {
