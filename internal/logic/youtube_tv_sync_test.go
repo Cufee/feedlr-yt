@@ -4,8 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aarondl/null/v8"
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/lounge"
+	"github.com/cufee/feedlr-yt/internal/database"
 )
 
 func TestNormalizeSponsorSegments(t *testing.T) {
@@ -101,6 +103,43 @@ func TestShouldApplyResumeSeek(t *testing.T) {
 	}
 	if shouldApplyResumeSeek(320, lounge.PlaybackEvent{}) {
 		t.Fatal("did not expect seek without current time")
+	}
+}
+
+func TestShouldSuppressResumeSeekAfterReconnect(t *testing.T) {
+	now := time.Now().UTC()
+	account := &database.YouTubeTVSyncAccount{
+		LastVideoID:      null.StringFrom("video-a"),
+		LastDisconnectAt: null.TimeFrom(now.Add(-30 * time.Second)),
+	}
+	playbackNearStart := lounge.PlaybackEvent{
+		HasCurrentTime: true,
+		CurrentTime:    12,
+	}
+	if !shouldSuppressResumeSeekAfterReconnect(account, "video-a", playbackNearStart, now) {
+		t.Fatal("expected suppression for same video shortly after reconnect near start window")
+	}
+
+	if shouldSuppressResumeSeekAfterReconnect(account, "video-b", playbackNearStart, now) {
+		t.Fatal("did not expect suppression for different video")
+	}
+
+	account.LastDisconnectAt = null.TimeFrom(now.Add(-(tvSyncResumeReconnectWindow + time.Second)))
+	if shouldSuppressResumeSeekAfterReconnect(account, "video-a", playbackNearStart, now) {
+		t.Fatal("did not expect suppression outside reconnect window")
+	}
+
+	account.LastDisconnectAt = null.TimeFrom(now.Add(-30 * time.Second))
+	playbackFarFromStart := lounge.PlaybackEvent{
+		HasCurrentTime: true,
+		CurrentTime:    240,
+	}
+	if shouldSuppressResumeSeekAfterReconnect(account, "video-a", playbackFarFromStart, now) {
+		t.Fatal("did not expect suppression when playback is outside start window")
+	}
+
+	if shouldSuppressResumeSeekAfterReconnect(account, "video-a", lounge.PlaybackEvent{}, now) {
+		t.Fatal("did not expect suppression without current playback time")
 	}
 }
 

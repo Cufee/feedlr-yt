@@ -32,6 +32,7 @@ const (
 	tvSyncNoEventTimeout            = 60 * time.Second
 	tvSyncReconnectMin              = 10 * time.Second
 	tvSyncReconnectMax              = 5 * time.Minute
+	tvSyncResumeReconnectWindow     = 2 * time.Minute
 	tvSyncProgressWriteInterval     = 10 * time.Second
 	tvSyncResumeStartWindowSec      = 90
 	tvSyncResumeAheadThresholdSec   = 8
@@ -826,6 +827,19 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 		runtime.setCurrentPlaybackState(state)
 	}
 	if !runtime.resumeAppliedForCurrentVideo() && shouldAttemptResumeSeek(isNewVideo, playback, state, videoRuntime.lastState) {
+		if shouldSuppressResumeSeekAfterReconnect(account, videoID, playback, now) {
+			runtime.markResumeAppliedForCurrentVideo()
+			if state != "" {
+				videoRuntime.lastState = state
+			}
+			if err := s.lounge.GetNowPlaying(ctx, session); err != nil {
+				log.Debug().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Msg("failed to request nowPlaying after reconnect resume suppression")
+			}
+			log.Debug().Str("userID", account.UserID).Str("videoID", videoID).Msg("suppressed tv resume seek after recent reconnect")
+			// Ignore the potentially stale event that triggered suppression.
+			return nil
+		}
+
 		saved := s.getStoredProgress(ctx, account.UserID, videoID)
 		if shouldApplyResumeSeek(saved, playback) {
 			if err := s.lounge.SeekTo(ctx, session, float64(saved)); err != nil {
@@ -913,6 +927,24 @@ func shouldApplyResumeSeek(savedProgress int, playback lounge.PlaybackEvent) boo
 	}
 
 	return savedProgress >= currentSecond+tvSyncResumeAheadThresholdSec
+}
+
+func shouldSuppressResumeSeekAfterReconnect(account *database.YouTubeTVSyncAccount, videoID string, playback lounge.PlaybackEvent, now time.Time) bool {
+	if account == nil || !playback.HasCurrentTime {
+		return false
+	}
+	if !account.LastVideoID.Valid || strings.TrimSpace(account.LastVideoID.String) != videoID {
+		return false
+	}
+	if !account.LastDisconnectAt.Valid {
+		return false
+	}
+	if now.Sub(account.LastDisconnectAt.Time) > tvSyncResumeReconnectWindow {
+		return false
+	}
+
+	currentSecond := clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration)
+	return currentSecond <= tvSyncResumeStartWindowSec
 }
 
 func clampPlaybackSecond(current float64, duration float64, hasDuration bool) int {
