@@ -93,7 +93,7 @@ func TestVideoTypeDetection(t *testing.T) {
 				}
 				// Fallback: /shorts/ URL check
 				if detectedType != VideoTypeShort && duration > 0 && duration <= 180 {
-					isShort := isShortsURL(v.id)
+					isShort := (&client{}).isShortsURL(v.id)
 					t.Logf("Shorts URL check: %v", isShort)
 					if isShort {
 						detectedType = VideoTypeShort

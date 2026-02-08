@@ -13,14 +13,21 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/metrics"
+	"github.com/cufee/feedlr-yt/internal/netproxy"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
 func NewClient(store database.ConfigurationClient) *Client {
+	httpClient, err := netproxy.NewYouTubeHTTPClient(0)
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to initialize youtube proxy transport, falling back to default http client")
+		httpClient = http.DefaultClient
+	}
+
 	return &Client{
-		http:   http.DefaultClient,
+		http:   httpClient,
 		authMx: &sync.Mutex{},
 		store:  store,
 	}

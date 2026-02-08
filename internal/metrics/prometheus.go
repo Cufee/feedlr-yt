@@ -107,6 +107,26 @@ var (
 		},
 		[]string{"event", "outcome"},
 	)
+
+	proxyEventsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "feedlr",
+			Subsystem: "proxy",
+			Name:      "events_total",
+			Help:      "Total number of proxy configuration and routing events.",
+		},
+		[]string{"scope", "event", "outcome"},
+	)
+
+	proxyErrorsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "feedlr",
+			Subsystem: "proxy",
+			Name:      "errors_total",
+			Help:      "Total number of proxy-related request errors.",
+		},
+		[]string{"scope", "stage", "kind"},
+	)
 )
 
 func init() {
@@ -121,6 +141,8 @@ func init() {
 		videoRefreshItemsTotal,
 		backgroundTasksTotal,
 		tvSyncEventsTotal,
+		proxyEventsTotal,
+		proxyErrorsTotal,
 	)
 }
 
@@ -187,6 +209,22 @@ func ObserveTVSyncEvent(event string, err error) {
 	tvSyncEventsTotal.WithLabelValues(
 		normalizeLabel(event),
 		outcomeFromErr(err),
+	).Inc()
+}
+
+func ObserveProxyEvent(scope, event string, err error) {
+	proxyEventsTotal.WithLabelValues(
+		normalizeLabel(scope),
+		normalizeLabel(event),
+		outcomeFromErr(err),
+	).Inc()
+}
+
+func ObserveProxyError(scope, stage, kind string) {
+	proxyErrorsTotal.WithLabelValues(
+		normalizeLabel(scope),
+		normalizeLabel(stage),
+		normalizeLabel(kind),
 	).Inc()
 }
 

@@ -58,13 +58,12 @@ type DesktopPlayerVideoDetails struct {
 }
 
 // isShortsURL checks if YouTube serves the /shorts/ URL for this video (200 = short, 303 redirect = not)
-func isShortsURL(videoID string) bool {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+func (c *client) isShortsURL(videoID string) bool {
+	client := c.httpClientWithTimeout(5 * time.Second)
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
 	}
+
 	resp, err := client.Head("https://www.youtube.com/shorts/" + videoID)
 	metrics.ObserveYouTubeAPICall("player", "shorts_head_probe", err)
 	if err != nil {
@@ -72,6 +71,16 @@ func isShortsURL(videoID string) bool {
 	}
 	resp.Body.Close()
 	return resp.StatusCode == http.StatusOK
+}
+
+func (c *client) httpClientWithTimeout(timeout time.Duration) *http.Client {
+	if c.http == nil {
+		return &http.Client{Timeout: timeout}
+	}
+
+	cloned := *c.http
+	cloned.Timeout = timeout
+	return &cloned
 }
 
 // isThumbnailPortrait checks if any thumbnail has portrait orientation (width < height)
@@ -107,7 +116,7 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		return nil, err
 	}
 
-	client := &http.Client{Timeout: time.Second * 10}
+	client := c.httpClientWithTimeout(10 * time.Second)
 	req, err := http.NewRequest("POST", playerURL.String(), body)
 	metrics.ObserveYouTubeAPICall("player", "build_player_request", err)
 	if err != nil {
@@ -234,7 +243,7 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 
 	// Fallback: check if /shorts/{id} URL resolves (200 = short, 303 = not short)
 	if fullDetails.Duration > 0 && fullDetails.Duration <= 180 {
-		if isShortsURL(videoId) {
+		if c.isShortsURL(videoId) {
 			fullDetails.Type = VideoTypeShort
 			return &fullDetails, nil
 		}
