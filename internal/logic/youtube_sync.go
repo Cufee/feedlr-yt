@@ -28,7 +28,7 @@ const (
 
 	youtubeSyncPlaylistName        = "Feedlr Sync"
 	youtubeSyncPlaylistDescription = "Managed by Feedlr"
-	youtubeSyncPlaylistSize        = 24
+	youtubeSyncPlaylistSize        = 36
 	youtubeSyncListRetryAttempts   = 4
 )
 
