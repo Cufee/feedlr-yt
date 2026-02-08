@@ -4,7 +4,6 @@ import (
 	"context"
 	stdErrors "errors"
 	"math"
-	"net/http"
 	"slices"
 	"sort"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/youtube/lounge"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/metrics"
+	"github.com/cufee/feedlr-yt/internal/netproxy"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/pkg/errors"
@@ -239,12 +239,17 @@ type tvSyncMetrics struct {
 }
 
 func NewYouTubeTVSyncService(db database.Client) (*YouTubeTVSyncService, error) {
+	loungeHTTPClient, err := netproxy.NewYouTubeHTTPClient(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize youtube lounge http client")
+	}
+
 	service := &YouTubeTVSyncService{
 		db: db,
 		crypto: newYouTubeSyncCrypto(
 			utils.MustGetEnv("YOUTUBE_SYNC_ENCRYPTION_SECRET"),
 		),
-		lounge:                 lounge.NewClient(&http.Client{}),
+		lounge:                 lounge.NewClient(loungeHTTPClient),
 		noEventTimeout:         tvSyncNoEventTimeout,
 		watchdogPollInterval:   5 * time.Second,
 		nowPlayingPollInterval: tvSyncNowPlayingPollInterval,

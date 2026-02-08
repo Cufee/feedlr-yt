@@ -3,9 +3,11 @@ package youtube
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
 	"github.com/cufee/feedlr-yt/internal/metrics"
+	"github.com/cufee/feedlr-yt/internal/netproxy"
 	"github.com/pkg/errors"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
@@ -14,6 +16,7 @@ import (
 type client struct {
 	service *youtube.Service
 	auth    *auth.Client
+	http    *http.Client
 }
 
 func (c *client) BuildVideoThumbnailURL(videoID string) string {
@@ -36,7 +39,12 @@ func NewClient(apiKey string, auth *auth.Client) (*client, error) {
 		return nil, errors.New("auth client is required")
 	}
 
-	c := &client{auth: auth}
+	httpClient, err := netproxy.NewYouTubeHTTPClient(0)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &client{auth: auth, http: httpClient}
 	opts := option.WithAPIKey(apiKey)
 	service, err := youtube.NewService(context.Background(), opts)
 	metrics.ObserveYouTubeAPICall("data_v3", "new_service", err)
