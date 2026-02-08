@@ -6,6 +6,7 @@ import (
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/doug-martin/goqu/v9"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/pkg/errors"
 )
@@ -100,39 +101,41 @@ func (c *sqliteClient) GetVideoByID(ctx context.Context, id string, o ...VideoQu
 func (c *sqliteClient) FindVideos(ctx context.Context, o ...VideoQuery) ([]*models.Video, error) {
 	opts := videoQuerySlice(o).opts()
 
-	withSelect := sqlbuilder.Select("*")
+	columns := []any{goqu.Star()}
 	if opts.columns != nil {
-		withSelect = sqlbuilder.Select(opts.columns...)
+		columns = toAny(opts.columns)
 	}
 
-	sql := withSelect.
-		From(models.TableNames.Videos).
-		OrderBy(models.VideoColumns.CreatedAt).Desc().
-		OrderBy(models.VideoColumns.ID).Desc()
+	sql := goqu.From(models.TableNames.Videos).
+		Select(columns...).
+		Order(
+			goqu.I(models.VideoColumns.PublishedAt).Desc(),
+			goqu.I(models.VideoColumns.CreatedAt).Desc(),
+			goqu.I(models.VideoColumns.ID).Desc(),
+		)
 	if opts.limit > 0 {
-		sql = sql.Limit(opts.limit)
+		sql = sql.Limit(uint(opts.limit))
 	}
 
-	var where []string
 	if opts.channels != nil {
-		where = append(where, sql.In(models.VideoColumns.ChannelID, opts.channels...))
+		sql = sql.Where(goqu.I(models.VideoColumns.ChannelID).In(opts.channels...))
 	}
 	if opts.typesIn != nil {
-		where = append(where, sql.In(models.VideoColumns.Type, opts.typesIn...))
+		sql = sql.Where(goqu.I(models.VideoColumns.Type).In(opts.typesIn...))
 	}
 	if opts.typesNotIn != nil {
-		where = append(where, sql.NotIn(models.VideoColumns.Type, opts.typesNotIn...))
+		sql = sql.Where(goqu.I(models.VideoColumns.Type).NotIn(opts.typesNotIn...))
 	}
 	if opts.id != nil {
-		where = append(where, sql.In(models.VideoColumns.ID, opts.id...))
-	}
-	if where != nil {
-		sql = sql.Where(sql.And(where...))
+		sql = sql.Where(goqu.I(models.VideoColumns.ID).In(opts.id...))
 	}
 
 	var err error
 	var videos []*models.Video
-	q, a := sql.Build()
+	q, a, err := sql.ToSQL()
+	if err != nil {
+		return nil, err
+	}
 	videos, err = models.Videos(qm.SQL(q, a...)).All(ctx, c.db)
 	if err != nil {
 		return nil, err
