@@ -56,6 +56,7 @@ All metrics use the `feedlr` namespace.
    - YouTube dependency health (`feedlr_youtube_api_calls_total`, `feedlr_youtube_oauth_calls_total`, `feedlr_youtube_tv_calls_total`).
    - Background/video refresh throughput (`feedlr_background_tasks_total`, `feedlr_video_refresh_*`).
    - TV sync reliability (`feedlr_youtube_tv_sync_events_total`).
+   - Import starter dashboard: `docs/observability/feedlr-service-obsv.dashboard.json`.
 4. Add alert rules:
    - YouTube API/OAuth error ratio spikes.
    - TV connect/reconnect failure spikes.
@@ -63,3 +64,25 @@ All metrics use the `feedlr` namespace.
 5. Follow-up improvements:
    - Add histograms for latency-sensitive external calls.
    - Add gauges for connected TV workers and sync queue depth.
+
+## Dashboard Focus (Critical Paths First)
+
+The baseline dashboard in `docs/observability/feedlr-service-obsv.dashboard.json` is organized around reliability for:
+
+- Feed/video delivery paths:
+  - `/video/:id`, `/app`, `/app/recent`, `/app/watch-later`, `/channel/:id`, `/api/videos/:id/progress`
+  - Focus panels: critical-path RPS, critical-path error rate, 5xx by route, top route error buckets.
+
+- Video refresh pipeline:
+  - `feedlr_video_refresh_operations_total{operation,outcome}`
+  - `feedlr_video_refresh_items_total{operation}`
+  - `feedlr_background_tasks_total{task,outcome}`
+  - Focus panels: refresh error rate, refresh errors by operation, refresh item throughput, top refresh/background error buckets.
+
+- Dependencies affecting refresh/video details:
+  - `feedlr_youtube_api_calls_total{client,operation,outcome}` (critical operations)
+  - `feedlr_proxy_events_total{scope,event,outcome}`
+  - `feedlr_proxy_errors_total{scope,stage,kind}`
+  - Focus panels: critical YouTube API error rate, proxy request error rate, operation/stage breakdowns, top error buckets.
+
+Generic traffic and product activity panels remain as a secondary section for broad context.
