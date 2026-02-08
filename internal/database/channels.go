@@ -6,7 +6,6 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/doug-martin/goqu/v9"
-	"github.com/huandu/go-sqlbuilder"
 
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/aarondl/sqlboiler/v4/queries/qm"
@@ -81,28 +80,31 @@ func (c *sqliteClient) GetChannels(ctx context.Context, o ...ChannelQuery) ([]*m
 			ids = append(ids, c.ID)
 		}
 
-		sql := sqlbuilder.
-			Select("*").
-			From(models.TableNames.Videos).
-			Desc().OrderBy(models.VideoColumns.PublishedAt).
-			Desc().OrderBy(models.VideoColumns.CreatedAt).
-			Desc().OrderBy(models.VideoColumns.ID)
-		sql = sql.Where(
-			sql.And(
-				sql.In(models.VideoColumns.ChannelID, ids...),
-				sql.NotIn(models.VideoColumns.Type, "private", "short"),
-			),
-		)
-		if opts.videosLimit > 0 {
-			sql = sql.Limit(opts.videosLimit)
-		}
+		if len(ids) > 0 {
+			sql := goqu.From(models.TableNames.Videos).
+				Select(goqu.Star()).
+				Order(
+					goqu.I(models.VideoColumns.PublishedAt).Desc(),
+					goqu.I(models.VideoColumns.CreatedAt).Desc(),
+					goqu.I(models.VideoColumns.ID).Desc(),
+				).
+				Where(
+					goqu.I(models.VideoColumns.ChannelID).In(ids...),
+					goqu.I(models.VideoColumns.Type).NotIn("private", "short"),
+				)
+			if opts.videosLimit > 0 {
+				sql = sql.Limit(uint(opts.videosLimit))
+			}
 
-		q, a := sql.Build()
-		err = models.Channel{}.L.LoadVideos(ctx, c.db, false, &channels, qm.SQL(q, a...))
-		if err != nil {
-			return nil, err
+			q, a, err := sql.ToSQL()
+			if err != nil {
+				return nil, err
+			}
+			err = models.Channel{}.L.LoadVideos(ctx, c.db, false, &channels, qm.SQL(q, a...))
+			if err != nil {
+				return nil, err
+			}
 		}
-
 	}
 	if opts.withSubscriptions {
 		err = models.Channel{}.L.LoadSubscriptions(ctx, c.db, false, &channels, nil)
@@ -195,23 +197,25 @@ func (c *sqliteClient) GetChannel(ctx context.Context, channelId string, o ...Ch
 	}
 
 	if opts.withVideos {
-		sql := sqlbuilder.
-			Select("*").
-			From(models.TableNames.Videos).
-			Desc().OrderBy(models.VideoColumns.PublishedAt).
-			Desc().OrderBy(models.VideoColumns.CreatedAt).
-			Desc().OrderBy(models.VideoColumns.ID)
+		sql := goqu.From(models.TableNames.Videos).
+			Select(goqu.Star()).
+			Order(
+				goqu.I(models.VideoColumns.PublishedAt).Desc(),
+				goqu.I(models.VideoColumns.CreatedAt).Desc(),
+				goqu.I(models.VideoColumns.ID).Desc(),
+			)
 		sql = sql.Where(
-			sql.And(
-				sql.EQ(models.VideoColumns.ChannelID, channel.ID),
-				sql.NotIn(models.VideoColumns.Type, "private", "short"),
-			),
+			goqu.I(models.VideoColumns.ChannelID).Eq(channel.ID),
+			goqu.I(models.VideoColumns.Type).NotIn("private", "short"),
 		)
 		if opts.videosLimit > 0 {
-			sql = sql.Limit(opts.videosLimit)
+			sql = sql.Limit(uint(opts.videosLimit))
 		}
 
-		q, a := sql.Build()
+		q, a, err := sql.ToSQL()
+		if err != nil {
+			return nil, err
+		}
 		err = models.Channel{}.L.LoadVideos(ctx, c.db, true, channel, qm.SQL(q, a...))
 		if err != nil {
 			return nil, err
