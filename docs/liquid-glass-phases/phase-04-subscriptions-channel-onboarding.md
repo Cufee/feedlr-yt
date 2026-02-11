@@ -59,6 +59,7 @@ Unify channel discovery and subscription management UI with the new component sy
 - Mobile search results now avoid always-on full-card "View" overlays; subscribed state uses a compact badge.
 - Search results container collapses when empty (`empty:hidden`) to remove extra spacing under input.
 - Video duration chip now has a no-progress variant so bottom inset aligns when progress bar is absent.
+- Fixed channel filter-tab flicker by rendering an OOB tab swap with a single `#video-filter-toggle` wrapper (no nested duplicate IDs).
 - Build verification run:
 - `npm run build` (success)
 - `go generate ./...` (success)

@@ -136,7 +136,5 @@ var UpdateVideoFilter brewed.Partial[*handler.Context] = func(ctx *handler.Conte
 
 templ videoFilterResponse(channelID string, filter types.VideoFilter, props types.ChannelPageProps) {
 	@pages.ChannelVideoFeed(props)
-	<div id="video-filter-toggle" hx-swap-oob="true">
-		@subscriptions.VideoFilterTabs(channelID, filter)
-	</div>
+	@subscriptions.VideoFilterTabsOOB(channelID, filter)
 }

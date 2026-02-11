@@ -81,7 +81,21 @@ templ subscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 }
 
 templ VideoFilterTabs(channelID string, current types.VideoFilter) {
-	<div id="video-filter-toggle" class="ui-filter-tabs-wrap">
+	@videoFilterTabs(channelID, current, false)
+}
+
+templ VideoFilterTabsOOB(channelID string, current types.VideoFilter) {
+	@videoFilterTabs(channelID, current, true)
+}
+
+templ videoFilterTabs(channelID string, current types.VideoFilter, oob bool) {
+	<div
+		id="video-filter-toggle"
+		class="ui-filter-tabs-wrap"
+		if oob {
+			hx-swap-oob="outerHTML"
+		}
+	>
 		<div class="ui-filter-tabs">
 			@filterTab(channelID, types.VideoFilterAll, current, "All", nil)
 			@filterTab(channelID, types.VideoFilterVideos, current, "Videos", icons.Clapperboard())
