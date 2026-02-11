@@ -25,6 +25,7 @@ Use annotated git tags for rollback checkpoints after each completed phase.
 - `checkpoint/liquid-glass-06-phase-04-polish-v5`
 - `checkpoint/liquid-glass-07-phase-05-pass1`
 - `checkpoint/liquid-glass-07-phase-05-pass2`
+- `checkpoint/liquid-glass-07-phase-05-pass3`
 - `checkpoint/liquid-glass-05-phase-03`
 - `checkpoint/liquid-glass-06-phase-04`
 - `checkpoint/liquid-glass-07-phase-05`
@@ -81,3 +82,4 @@ git reset --hard checkpoint/liquid-glass-XX-name
 - `checkpoint/liquid-glass-06-phase-04-polish-v5` -> phase 04 polish (full-width integrated subscriptions search input + search section no-card layout + search results aligned to subscriptions grid behavior)
 - `checkpoint/liquid-glass-07-phase-05-pass1` -> phase 05 pass 1 (supporting/fallback pages migrated to shared `ui-*` primitives; behavior/scripts unchanged)
 - `checkpoint/liquid-glass-07-phase-05-pass2` -> phase 05 pass 2 (settings account/sync/sponsorblock surfaces and controls migrated to `ui-*` primitives while preserving endpoints/actions)
+- `checkpoint/liquid-glass-07-phase-05-pass3` -> phase 05 pass 3 (settings outer-card layer removed in favor of section-label separation; inline errors unified with shared error style)

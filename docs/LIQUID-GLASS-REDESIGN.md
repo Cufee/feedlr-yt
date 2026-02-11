@@ -68,6 +68,8 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Search-result and subscribed channel cards now share the same blurred "Open" overlay interaction language for visual and behavioral parity.
 - Supporting fallback pages (`/`, `/login`, `/error`, `/429`, outage) now reuse the same card/button/input/toast primitives to keep non-app states inside the same material system.
 - Settings surfaces now use a two-level glass hierarchy (section shell + inner panels/stat tiles) with shared toggle/badge/button/input primitives for consistent operational controls.
+- Settings sections now prefer label-based separation over additional outer card shells, reducing nested-card density while preserving inner operational panels.
+- Inline operational errors now use a shared compact error style (`ui-error-inline`) aligned with fallback/error page severity styling.
 
 ### Visual Principles
 

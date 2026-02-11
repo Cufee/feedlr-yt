@@ -13,27 +13,29 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 		<div class="ui-settings-header">
 			<span class="ui-settings-title">Account</span>
 		</div>
-		<div class="ui-settings-panel flex w-full flex-col gap-3">
+		<div class="ui-settings-body">
 			<div class="flex flex-wrap items-center gap-2">
 				<span class="grow text-base font-semibold text-text-primary">Passkeys</span>
 				<div class="flex flex-row items-center gap-2 justify-start">
-					<span id="error" class="hidden text-xs text-red-200"></span>
+					<span id="error" class="ui-error-inline hidden"></span>
 					<button id="addPasskey" type="button" class="ui-btn ui-btn-primary ui-btn-sm">Add a new passkey</button>
 				</div>
 			</div>
-			<div class="flex flex-col gap-2">
-				for _, pk := range passkeys {
-					<div class="ui-settings-stat flex flex-row items-center gap-2 overflow-hidden" id={ fmt.Sprintf("pk-%s", pk.ID) }>
-						<div class="flex flex-row items-center justify-between gap-2 grow overflow-hidden">
-							<span class="text-nowrap">
-								{ pk.CreatedAt.Format(time.Stamp) }
-							</span>
+			<div class="ui-settings-panel">
+				<div class="flex flex-col gap-2">
+					for _, pk := range passkeys {
+						<div class="ui-settings-stat flex flex-row items-center gap-2 overflow-hidden" id={ fmt.Sprintf("pk-%s", pk.ID) }>
+							<div class="flex flex-row items-center justify-between gap-2 grow overflow-hidden">
+								<span class="text-nowrap">
+									{ pk.CreatedAt.Format(time.Stamp) }
+								</span>
+							</div>
+							<button type="button" class="ui-btn ui-btn-danger ui-btn-sm ui-btn-icon !size-8" hx-delete={ fmt.Sprintf("/api/passkeys/%s", pk.ID) } hx-target={ fmt.Sprintf("#pk-%s", pk.ID) } hx-swap="delete" hx-confirm="Are you sure you wish to delete a passkey? This cannot be undone.">
+								@icons.Cross()
+							</button>
 						</div>
-						<button type="button" class="ui-btn ui-btn-danger ui-btn-sm ui-btn-icon !size-8" hx-delete={ fmt.Sprintf("/api/passkeys/%s", pk.ID) } hx-target={ fmt.Sprintf("#pk-%s", pk.ID) } hx-swap="delete" hx-confirm="Are you sure you wish to delete a passkey? This cannot be undone.">
-							@icons.Cross()
-						</button>
-					</div>
-				}
+					}
+				</div>
 			</div>
 		</div>
 	</div>

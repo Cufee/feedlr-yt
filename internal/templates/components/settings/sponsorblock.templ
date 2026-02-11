@@ -20,7 +20,7 @@ templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
 			</div>
 			@GlobalToggleButton(settings.SponsorBlockEnabled)
 		</div>
-		<div class="flex flex-row flex-wrap gap-3">
+		<div class="flex w-full flex-row flex-wrap gap-3">
 			for _, cat := range settings.AvailableSponsorBlockCategories {
 				@CategoryCard(cat, settings.SponsorBlockEnabled && slices.Contains(settings.SelectedSponsorBlockCategories, cat.Value), !settings.SponsorBlockEnabled)
 			}

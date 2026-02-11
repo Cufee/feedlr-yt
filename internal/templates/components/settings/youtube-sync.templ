@@ -43,7 +43,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 		<div class="ui-settings-header">
 			<span class="ui-settings-title">YouTube Sync</span>
 		</div>
-		<div class="ui-settings-panel flex w-full flex-col gap-4">
+		<div class="ui-settings-body">
 			<div class="flex flex-col gap-4" id="youtube-playlist-sync-settings">
 				<div class="flex items-center justify-between gap-2">
 					<span class="ui-settings-subtitle">Playlist Sync</span>
@@ -90,7 +90,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 							</div>
 							<div class="text-text-secondary">{ map[bool]string{true: "Syncing automatically", false: "Paused by user"}[status.Enabled] }</div>
 							if status.LastError != "" {
-								<div class="mt-1 flex items-center gap-1 text-xs text-red-200">
+								<div class="ui-error-inline mt-2 flex items-center gap-1">
 									<span aria-hidden="true">⚠</span>
 									<span>Sync issue detected</span>
 								</div>
@@ -169,7 +169,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 						<div class="ui-settings-note">Paired screen: { tvStatus.ScreenName }</div>
 					}
 					if tvStatus.LastError != "" {
-						<div class="text-sm text-red-200">{ tvStatus.LastError }</div>
+						<div class="ui-error-inline">{ tvStatus.LastError }</div>
 					}
 					<div class="flex flex-wrap gap-2 pt-1">
 						<form action="/api/settings/youtube-sync/tv/toggle" method="post">

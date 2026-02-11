@@ -61,3 +61,6 @@ Complete migration for settings-heavy and fallback pages with consistent Polar G
 - Migrated `ManageAccount`, `YouTubeSyncSettings`, and `SponsorBlockSettings` to shared `ui-*` primitives and tokenized settings surface classes.
 - Replaced Daisy toggle/badge/button/input usage in settings with `ui-toggle`, `ui-badge`, `ui-btn`, and `ui-input` variants.
 - Kept all settings form actions, HTMX endpoints, and confirmations unchanged.
+- Phase 05 pass 3:
+- Reduced settings card layering by removing the outer section-card shell and keeping section labels as the primary separators.
+- Standardized inline error messaging to shared error styling (`ui-error-inline`) so settings errors align with the broader fallback/error visual language.

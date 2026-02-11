@@ -361,7 +361,7 @@
     }
 
     .ui-settings-section {
-        @apply flex w-full flex-col gap-4 rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-glass-fill/45 p-4 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-md)] md:p-5;
+        @apply flex w-full flex-col gap-3;
     }
 
     .ui-settings-header {
@@ -374,6 +374,10 @@
 
     .ui-settings-subtitle {
         @apply text-base font-semibold text-text-primary;
+    }
+
+    .ui-settings-body {
+        @apply flex w-full flex-col gap-4;
     }
 
     .ui-settings-panel {
@@ -394,6 +398,10 @@
 
     .ui-settings-stat {
         @apply rounded-[var(--radius-md)] border border-glass-stroke/16 bg-elev-2/75 p-3;
+    }
+
+    .ui-error-inline {
+        @apply rounded-[var(--radius-control-compact)] border border-danger/35 bg-danger/15 px-2 py-1 text-xs text-red-100;
     }
 
     .ui-video-card {
