@@ -10,6 +10,7 @@ Remove legacy styling debt, confirm consistency, and finalize documentation.
 - Dead code cleanup.
 - Final cross-device QA and motion/accessibility checks.
 - Finalize frontend docs.
+- Close deferred UX polish backlog items.
 
 ## Target Files
 
@@ -28,6 +29,7 @@ Remove legacy styling debt, confirm consistency, and finalize documentation.
 - [ ] Ensure all templates use shared `ui` primitives consistently.
 - [ ] Update `docs/FRONTEND.md` with final component contracts and conventions.
 - [ ] Update main redesign doc with shipped status and any accepted deviations.
+- [ ] Burn down deferred polish items in `docs/liquid-glass-phases/polish-backlog.md`.
 
 ## Verification
 
@@ -45,4 +47,4 @@ Remove legacy styling debt, confirm consistency, and finalize documentation.
 ## Notes
 
 - Keep this phase open until every route listed in the main plan has at least one validation pass recorded.
-
+- Deferred interaction polish should not be dropped; track and close items from `docs/liquid-glass-phases/polish-backlog.md` here.

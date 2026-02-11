@@ -5,6 +5,7 @@ These files break the main redesign plan into smaller implementation chunks.
 - Primary reference: `docs/LIQUID-GLASS-REDESIGN.md`
 - Working files in this directory are intentionally mutable during implementation.
 - Checkpoint registry: `docs/liquid-glass-phases/CHECKPOINTS.md`
+- Deferred UX polish tracker: `docs/liquid-glass-phases/polish-backlog.md`
 
 ## Phase Order
 
