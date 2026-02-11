@@ -60,6 +60,8 @@ Unify channel discovery and subscription management UI with the new component sy
 - Search results container collapses when empty (`empty:hidden`) to remove extra spacing under input.
 - Video duration chip now has a no-progress variant so bottom inset aligns when progress bar is absent.
 - Fixed channel filter-tab flicker by rendering an OOB tab swap with a single `#video-filter-toggle` wrapper (no nested duplicate IDs).
+- Fixed channel-page subscribe/unsubscribe flicker by disabling HTMX swap in refresh mode (`hx-swap="none"`), avoiding transient color/state flashes before reload.
+- Aligned subscribed and search-result channel cards to the same hover affordance (shared blurred "Open" overlay behavior and loading treatment).
 - Build verification run:
 - `npm run build` (success)
 - `go generate ./...` (success)

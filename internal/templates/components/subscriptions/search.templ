@@ -20,12 +20,11 @@ templ SearchResultChannels(channels []types.ChannelSearchResultProps) {
 		<div class="ui-motion-swap ui-channel-card group channel-btn" id={ fmt.Sprintf("channel-tile-%s", ch.ID) }>
 			if ch.Subscribed {
 				<div class="ui-channel-status-badge">Subscribed</div>
-			} else {
-				<a hx-boost="true" href={ templ.URL(fmt.Sprintf("/channel/%s", ch.ID)) } class="ui-channel-overlay md:group-hover:opacity-100 group-[.htmx-request]:opacity-100" hx-indicator={ fmt.Sprintf("#channel-tile-%s", ch.ID) }>
-					<span class="loading loading-spinner loading-md md:loading-lg htmx-indicator ui-indicator-delayed"></span>
-					<span class="group-[.htmx-request]:hidden">View</span>
-				</a>
 			}
+			<a hx-boost="true" href={ templ.URL(fmt.Sprintf("/channel/%s", ch.ID)) } class="ui-channel-overlay md:group-hover:opacity-100 group-[.htmx-request]:opacity-100" hx-indicator={ fmt.Sprintf("#channel-tile-%s", ch.ID) }>
+				<span class="loading loading-spinner loading-md md:loading-lg htmx-indicator ui-indicator-delayed"></span>
+				<span class="group-[.htmx-request]:hidden">Open</span>
+			</a>
 			@channel.ChannelTile(ch.Channel, nil)
 		</div>
 	}

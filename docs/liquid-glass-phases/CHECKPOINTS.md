@@ -21,6 +21,7 @@ Use annotated git tags for rollback checkpoints after each completed phase.
 - `checkpoint/liquid-glass-06-phase-04-pass1`
 - `checkpoint/liquid-glass-06-phase-04-polish-v2`
 - `checkpoint/liquid-glass-06-phase-04-polish-v3`
+- `checkpoint/liquid-glass-06-phase-04-polish-v4`
 - `checkpoint/liquid-glass-05-phase-03`
 - `checkpoint/liquid-glass-06-phase-04`
 - `checkpoint/liquid-glass-07-phase-05`
@@ -73,3 +74,4 @@ git reset --hard checkpoint/liquid-glass-XX-name
 - `checkpoint/liquid-glass-06-phase-04-pass1` -> phase 04 pass 1 (subscriptions/channel/onboarding surface migration to channel/search/filter `ui-*` patterns)
 - `checkpoint/liquid-glass-06-phase-04-polish-v2` -> phase 04 polish (channel action icon padding balance + mobile search overlay behavior + empty-search spacing + no-progress duration-chip alignment)
 - `checkpoint/liquid-glass-06-phase-04-polish-v3` -> phase 04 polish (channel filter-tab mode switch now OOB-swaps a single centered wrapper to prevent left-align flicker)
+- `checkpoint/liquid-glass-06-phase-04-polish-v4` -> phase 04 polish (subscribe/unsubscribe refresh-mode swap flicker fix + consistent blurred "Open" hover overlay across subscribed/search channel cards)

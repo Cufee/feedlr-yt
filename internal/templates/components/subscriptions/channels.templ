@@ -9,15 +9,22 @@ import (
 )
 
 templ SubscribedChannelTile(props types.ChannelProps) {
-	<a
+	<div
+		id={ fmt.Sprintf("subscribed-channel-tile-%s", props.ID) }
 		data-search={ props.Title }
 		class="ui-motion-swap ui-channel-card group channel-btn"
-		href={ templ.URL(fmt.Sprintf("/channel/%s", props.ID)) }
-		hx-target="body"
-		hx-boost="true"
 	>
+		<a
+			hx-boost="true"
+			href={ templ.URL(fmt.Sprintf("/channel/%s", props.ID)) }
+			class="ui-channel-overlay md:group-hover:opacity-100 group-[.htmx-request]:opacity-100"
+			hx-indicator={ fmt.Sprintf("#subscribed-channel-tile-%s", props.ID) }
+		>
+			<span class="loading loading-spinner loading-md md:loading-lg htmx-indicator ui-indicator-delayed"></span>
+			<span class="group-[.htmx-request]:hidden">Open</span>
+		</a>
 		@channel.ChannelTile(props.Channel, nil)
-	</a>
+	</div>
 }
 
 type subscribeButtonOptions struct {
@@ -43,11 +50,12 @@ templ unsubscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) 
 		type="button"
 		class="ui-channel-action-btn"
 		hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe?type=button", channelId) }
+		hx-target="this"
 		if opts.refreshPage {
+			hx-swap="none"
 			hx-on::after-request="window.location.reload()"
 		} else {
 			hx-swap="outerHTML"
-			hx-target="this"
 		}
 		title="Unsubscribe"
 	>
@@ -68,11 +76,12 @@ templ subscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 		type="button"
 		class="ui-channel-action-btn ui-channel-action-btn-primary"
 		hx-post={ fmt.Sprintf("/api/channels/%s/subscribe?type=button", channelId) }
+		hx-target="this"
 		if opts.refreshPage {
+			hx-swap="none"
 			hx-on::after-request="window.location.reload()"
 		} else {
 			hx-swap="outerHTML"
-			hx-target="this"
 		}
 		title="Subscribe"
 	>
