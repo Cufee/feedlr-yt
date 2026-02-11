@@ -361,7 +361,7 @@
     }
 
     .ui-settings-section {
-        @apply flex w-full flex-col gap-3;
+        @apply flex w-full flex-col gap-3 rounded-[var(--radius-panel)] border border-glass-stroke/14 bg-glass-fill/12 p-3 md:p-4;
     }
 
     .ui-settings-header {
@@ -402,6 +402,30 @@
 
     .ui-error-inline {
         @apply rounded-[var(--radius-control-compact)] border border-danger/35 bg-danger/15 px-2 py-1 text-xs text-red-100;
+    }
+
+    .ui-toggle:disabled {
+        @apply cursor-not-allowed border-glass-stroke/10 bg-elev-1/70 opacity-60;
+    }
+
+    .ui-toggle:disabled::after {
+        @apply bg-text-secondary/50;
+    }
+
+    .ui-toggle-global {
+        @apply border-accent/40 bg-accent/16 shadow-[0_0_0_1px_rgba(177,128,230,0.2)];
+    }
+
+    .ui-toggle-global:checked {
+        @apply bg-accent/55;
+    }
+
+    .ui-toggle-category {
+        @apply border-glass-stroke/18 bg-elev-1/85;
+    }
+
+    .ui-toggle-category:checked {
+        @apply bg-accent/22;
     }
 
     .ui-video-card {

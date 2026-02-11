@@ -9,6 +9,14 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+func categoryCardClass(disabled bool) string {
+	base := "ui-settings-panel flex flex-grow basis-full flex-col gap-2 sm:basis-[calc(50%-0.4rem)] lg:basis-[calc(33.333%-0.5rem)]"
+	if disabled {
+		return base + " opacity-60 border-glass-stroke/10 bg-elev-2/45"
+	}
+	return base
+}
+
 templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
 	<div class="ui-settings-section" id="sponsorblock-settings">
 		<div class="ui-settings-header">
@@ -18,7 +26,10 @@ templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
 					@icons.Info()
 				</a>
 			</div>
-			@GlobalToggleButton(settings.SponsorBlockEnabled)
+			<div class="flex items-center gap-2">
+				<span class="ui-badge">Global</span>
+				@GlobalToggleButton(settings.SponsorBlockEnabled)
+			</div>
 		</div>
 		<div class="flex w-full flex-row flex-wrap gap-3">
 			for _, cat := range settings.AvailableSponsorBlockCategories {
@@ -29,7 +40,7 @@ templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
 }
 
 templ CategoryCard(category sponsorblock.Category, checked, disabled bool) {
-	<div class="ui-settings-panel flex flex-grow basis-full flex-col gap-2 sm:basis-[calc(50%-0.4rem)] lg:basis-[calc(33.333%-0.5rem)]">
+	<div class={ categoryCardClass(disabled) }>
 		<div class="flex justify-between gap-2">
 			<span class="text-sm font-semibold text-text-primary">{ category.Name }</span>
 			@CategoryToggleButton(category.Value, checked, disabled)
@@ -46,7 +57,7 @@ templ CategoryToggleButton(category string, checked, disabled bool) {
 	<input
 		type="checkbox"
 		id={ fmt.Sprintf("sponsorblock-cat-%s", category) }
-		class="ui-toggle"
+		class="ui-toggle ui-toggle-category"
 		checked?={ checked }
 		disabled?={ disabled }
 		hx-post={ fmt.Sprintf("/api/settings/sponsorblock/category?category=%s", category) }
@@ -59,7 +70,7 @@ templ GlobalToggleButton(checked bool) {
 	<input
 		id="sponsorblock"
 		type="checkbox"
-		class="ui-toggle"
+		class="ui-toggle ui-toggle-global"
 		checked?={ checked }
 		hx-post={ fmt.Sprintf("/api/settings/sponsorblock?value=%t", !checked) }
 		hx-target="#sponsorblock-settings"

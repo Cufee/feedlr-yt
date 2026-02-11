@@ -64,3 +64,7 @@ Complete migration for settings-heavy and fallback pages with consistent Polar G
 - Phase 05 pass 3:
 - Reduced settings card layering by removing the outer section-card shell and keeping section labels as the primary separators.
 - Standardized inline error messaging to shared error styling (`ui-error-inline`) so settings errors align with the broader fallback/error visual language.
+- Phase 05 pass 4:
+- Reintroduced a lightweight section shell to avoid settings surfaces visually blending together while still avoiding heavy nested cards.
+- SponsorBlock now visually distinguishes global vs per-category toggles (`ui-toggle-global` vs `ui-toggle-category`).
+- SponsorBlock category controls now present clear disabled-state styling when global toggle is off (muted card + disabled toggle treatment).

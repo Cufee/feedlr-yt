@@ -70,6 +70,8 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Settings surfaces now use a two-level glass hierarchy (section shell + inner panels/stat tiles) with shared toggle/badge/button/input primitives for consistent operational controls.
 - Settings sections now prefer label-based separation over additional outer card shells, reducing nested-card density while preserving inner operational panels.
 - Inline operational errors now use a shared compact error style (`ui-error-inline`) aligned with fallback/error page severity styling.
+- Settings section grouping now uses a lightweight shell to preserve visual separation without returning to heavy multi-card stacking.
+- SponsorBlock controls now differentiate global vs category intent through distinct toggle styles, and category controls visibly mute when global SponsorBlock is disabled.
 
 ### Visual Principles
 
