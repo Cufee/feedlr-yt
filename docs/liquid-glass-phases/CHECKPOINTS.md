@@ -49,3 +49,4 @@ git reset --hard checkpoint/liquid-glass-XX-name
 - `checkpoint/liquid-glass-02-phase-01` -> tokenized Tailwind foundation + `ui` primitive component package scaffold
 - `checkpoint/liquid-glass-03-phase-02` -> layout shell migrated to `ui` chrome primitives (page shell/navbar/footer/progress)
 - `checkpoint/liquid-glass-03-phase-02-polish` -> phase 02 cohesion polish (logo alignment, nav icon stroke/color, nav typography)
+- `checkpoint/liquid-glass-03-phase-02-polish-v2` -> phase 02 visual polish iteration 2 (smaller nav logo, reduced icon framing, no hover/click flash)

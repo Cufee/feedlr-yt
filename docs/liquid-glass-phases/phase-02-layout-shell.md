@@ -73,4 +73,8 @@ Rebuild top-level page shells and app chrome on the new `ui` primitives while pr
 - Adjusted logo typography/alignment for nav cohesion.
 - Tuned nav icon color and stroke weight to match shell tone.
 - Normalized nav text hierarchy with display/body font usage.
+- Phase 02 polish pass (feedback iteration 2):
+- Reduced nav logo size to better match shell rhythm.
+- Reduced icon button framing/border density for cleaner controls.
+- Aligned hover/active/selected icon states to remove click flash and purple state shift.
 - Manual page verification is pending user browser checks on the running dev server.
