@@ -17,7 +17,7 @@ templ Navbar(path string, authenticated bool) {
 
 templ NavbarLogoOnly(homeURL string) {
 	<div id="nav-indicator" class="ui-nav-shell">
-		<div class="flex min-h-11 items-center">
+		<div class="flex min-h-[50px] items-center">
 			<a href={ homeURL } class="inline-flex items-center py-1">
 				@shared.Logo()
 			</a>
