@@ -72,6 +72,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Inline operational errors now use a shared compact error style (`ui-error-inline`) aligned with fallback/error page severity styling.
 - Settings section grouping now uses a lightweight shell to preserve visual separation without returning to heavy multi-card stacking.
 - SponsorBlock controls now differentiate global vs category intent through distinct toggle styles, and category controls visibly mute when global SponsorBlock is disabled.
+- Shared open-video modal/input flow now uses `ui-dialog` + `ui-input` + `ui-btn` primitives and no longer depends on Daisy modal/join/input utility classes.
 
 ### Visual Principles
 

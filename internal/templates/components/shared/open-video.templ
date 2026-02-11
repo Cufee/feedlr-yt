@@ -5,20 +5,20 @@ import "fmt"
 templ OpenVideoButton() {
 	<div class="flex justify-center">
 		<div class="flex flex-row gap-2">
-			<button id="open_video_modal_btn" class="btn btn-ghost">
+			<button id="open_video_modal_btn" class="ui-btn ui-btn-ghost ui-btn-sm">
 				Open a YouTube Video
 			</button>
 		</div>
-		<dialog id="open_video_modal" class="bg-black bg-opacity-50 modal modal-top lg:modal-middle">
-			<div class="ui-motion-modal-panel flex flex-col items-center justify-center gap-4 lg:!bg-transparent modal-box group" id="open_video_modal_box">
+		<dialog id="open_video_modal" class="ui-dialog">
+			<div class="ui-dialog-panel ui-motion-modal-panel flex flex-col items-center justify-center gap-4 group" id="open_video_modal_box">
 				<div class="flex flex-col items-center justify-center w-full">
 					@OpenVideoInput("", true)
 				</div>
-				<div class="hidden lg:block">
-					Press <kbd class="kbd kbd-sm">Enter</kbd> to open this window and <kbd class="kbd kbd-sm">Esc</kbd> to close it.
+				<div class="hidden text-sm text-text-secondary lg:block">
+					Press <span class="ui-badge">Enter</span> to open this window and <span class="ui-badge">Esc</span> to close it.
 				</div>
 			</div>
-			<form method="dialog" class="modal-backdrop">
+			<form method="dialog" class="ui-dialog-backdrop">
 				<button id="open_video_close">close</button>
 			</form>
 		</dialog>
@@ -28,7 +28,7 @@ templ OpenVideoButton() {
 
 templ OpenVideoInput(url string, valid bool) {
 	<form
-		class="ui-motion-swap flex w-full m-0 join"
+		class="ui-motion-swap m-0 flex w-full items-center gap-2"
 		id="open_video_modal_form"
 		hx-post="/api/videos/open"
 		hx-indicator="#open_video_modal"
@@ -45,9 +45,9 @@ templ OpenVideoInput(url string, valid bool) {
 			name="link"
 			value={ url }
 			placeholder="https://youtube.com/watch..."
-			class={ fmt.Sprintf("flex-grow input input-bordered join-item bg-base-200 %s", OptionalClass(!valid, "input-error")) }
+			class={ fmt.Sprintf("ui-input w-full %s", OptionalClass(!valid, "ui-input-error")) }
 		/>
-		<button type="submit" class="btn btn-primary join-item">Watch</button>
+		<button type="submit" class="ui-btn ui-btn-primary ui-btn-md shrink-0">Watch</button>
 	</form>
 }
 
@@ -89,9 +89,8 @@ script openVideoModalScript() {
 		} catch (_error) {
 			modal.showModal();
 			const input = modalBox.querySelector("#open_video_input")
-			input.classList.remove("input-error");
+			input.classList.remove("ui-input-error");
 			input.value = "";
-			modal.showModal();
 			input.focus();
 		}
 	}

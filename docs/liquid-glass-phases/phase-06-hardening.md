@@ -48,3 +48,6 @@ Remove legacy styling debt, confirm consistency, and finalize documentation.
 
 - Keep this phase open until every route listed in the main plan has at least one validation pass recorded.
 - Deferred interaction polish should not be dropped; track and close items from `docs/liquid-glass-phases/polish-backlog.md` here.
+- Phase 06 pass 1:
+- Migrated `internal/templates/components/shared/open-video.templ` from legacy Daisy modal/join/input/button classes to shared `ui-dialog`, `ui-input`, and `ui-btn` primitives.
+- Kept modal/open-video behavior intact while removing stale class usage and a duplicate `showModal()` call in the open-modal fallback path.
