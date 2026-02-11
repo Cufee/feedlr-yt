@@ -20,7 +20,7 @@ templ SubscribedChannelTile(props types.ChannelProps) {
 			class="ui-channel-overlay md:group-hover:opacity-100 group-[.htmx-request]:opacity-100"
 			hx-indicator={ fmt.Sprintf("#subscribed-channel-tile-%s", props.ID) }
 		>
-			<span class="loading loading-spinner loading-md md:loading-lg htmx-indicator ui-indicator-delayed"></span>
+			<span class="ui-spinner size-6 border-[3px] md:size-7 htmx-indicator ui-indicator-delayed"></span>
 			<span class="group-[.htmx-request]:hidden">Open</span>
 		</a>
 		@channel.ChannelTile(props.Channel, nil)

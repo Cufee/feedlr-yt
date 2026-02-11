@@ -23,21 +23,21 @@ Remove legacy styling debt, confirm consistency, and finalize documentation.
 
 ## Work Checklist
 
-- [ ] Remove remaining DaisyUI dependencies and references.
-- [ ] Remove dead/unused shared components (for example `internal/templates/components/shared/link.templ` if confirmed unused).
-- [ ] Remove stale style classes no longer part of the new system.
-- [ ] Ensure all templates use shared `ui` primitives consistently.
-- [ ] Update `docs/FRONTEND.md` with final component contracts and conventions.
-- [ ] Update main redesign doc with shipped status and any accepted deviations.
-- [ ] Burn down deferred polish items in `docs/liquid-glass-phases/polish-backlog.md`.
+- [x] Remove remaining DaisyUI dependencies and references.
+- [x] Remove dead/unused shared components (for example `internal/templates/components/shared/link.templ` if confirmed unused).
+- [x] Remove stale style classes no longer part of the new system.
+- [x] Ensure all templates use shared `ui` primitives consistently.
+- [x] Update `docs/FRONTEND.md` with final component contracts and conventions.
+- [x] Update main redesign doc with shipped status and any accepted deviations.
+- [x] Burn down deferred polish items in `docs/liquid-glass-phases/polish-backlog.md`.
 
 ## Verification
 
-- [ ] Search confirms no DaisyUI class usage remains (except intentional compatibility shims, if any).
-- [ ] Full app route smoke test passes.
-- [ ] HTMX interactions still functional across all migrated pages.
-- [ ] `prefers-reduced-motion` and focus-visible behavior pass final checks.
-- [ ] Build/test pipelines pass with generated CSS ignored by git.
+- [x] Search confirms no DaisyUI class usage remains (except intentional compatibility shims, if any).
+- [x] Full app route smoke test passes.
+- [x] HTMX interactions still functional across all migrated pages.
+- [x] `prefers-reduced-motion` and focus-visible behavior pass final checks.
+- [x] Build/test pipelines pass with generated CSS ignored by git.
 
 ## Exit Criteria
 
@@ -54,3 +54,9 @@ Remove legacy styling debt, confirm consistency, and finalize documentation.
 - Phase 06 pass 2:
 - Fixed open-video modal rendering regression by restoring proper full-viewport dialog positioning/layering (`ui-dialog`) and removing the legacy backdrop form node that surfaced as visible "close" content.
 - Added click-outside close behavior directly on the native dialog container to preserve expected dismissal behavior without Daisy modal helpers.
+- Phase 06 pass 3:
+- Removed final DaisyUI build/runtime dependency (`daisyui` package and `@plugin "daisyui"` usage), replaced remaining Daisy loader classes with shared `ui-spinner` styling, and removed unused `shared/link` component.
+- Unified delayed loading feedback by raising `--delay-feedback` to `260ms` and making nav-progress reveal delay read the same CSS token used by HTMX indicators.
+- Phase 06 pass 4:
+- Updated `docs/FRONTEND.md` to reflect shipped Tailwind + `ui-*` primitive contracts and removed outdated DaisyUI class/examples.
+- Closed Phase 06 polish backlog items in `docs/liquid-glass-phases/polish-backlog.md` with implemented outcomes.

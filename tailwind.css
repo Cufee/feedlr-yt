@@ -1,7 +1,4 @@
 @import "tailwindcss";
-@plugin "daisyui" {
-    themes: dim --default;
-}
 
 @theme {
     --font-sans: "IBM Plex Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
@@ -47,7 +44,7 @@
 
     --ease-standard: cubic-bezier(0.2, 0.9, 0.2, 1);
     --ease-emphasized: cubic-bezier(0.1, 0.95, 0.2, 1);
-    --delay-feedback: 180ms;
+    --delay-feedback: 260ms;
 }
 
 @layer base {
@@ -410,6 +407,10 @@
 
     .ui-error-inline {
         @apply rounded-[var(--radius-control-compact)] border border-danger/35 bg-danger/15 px-2 py-1 text-xs text-red-100;
+    }
+
+    .ui-spinner {
+        @apply inline-block shrink-0 animate-spin rounded-full border-2 border-glass-stroke/35 border-t-accent/80 motion-reduce:animate-none;
     }
 
     .ui-toggle:disabled {

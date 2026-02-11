@@ -37,7 +37,7 @@ templ Video(props types.VideoPlayerProps) {
 			</div>
 		</div>
 		<div class="grow w-full flex flex-col relative">
-			<div class="absolute inset-0 z-20 flex items-center justify-center bg-canvas/95" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
+			<div class="absolute inset-0 z-20 flex items-center justify-center bg-canvas/95" id="player-loading"><span class="ui-spinner size-12 border-4"></span></div>
 			@videoPlayer(props)
 		</div>
 		<div id="notification-toast" class="opacity-0 pointer-events-none">

@@ -32,10 +32,12 @@ Key takeaways used in this plan:
 - Runtime styling now uses local generated CSS (`/assets/css/style.css`) instead of Tailwind/Daisy CDN runtime injection
 - Generated CSS output (`assets/css/style.css`) is gitignored and rebuilt via frontend build pipeline
 - Docker build now includes a styles build stage before Go compile
+- DaisyUI package/plugin dependencies are removed from the active build path
 - Phase 01 foundations are in place (`tailwind.css` tokens + `internal/templates/components/ui/*` primitives)
 - Phase 02 shell migration is in place (layout/navbar/footer/progress on `ui` chrome primitives)
 - Phase 03 pass 1 is in place (feed/video surface styling migrated to tokenized `ui-*` classes; behavior preserved)
 - Phase 04 pass 1 is in place (subscriptions/channel/onboarding surfaces migrated to channel/search/filter `ui-*` patterns)
+- Phase 06 hardening pass is in place (dependency cleanup, spinner unification, and final docs/checklist closure)
 
 ## Design Direction: "Polar Glass"
 
@@ -56,6 +58,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Brand mark sizing was reduced and baseline-aligned with nav controls for cleaner rhythm.
 - Progress feedback favors stability over micro-feedback (delayed reveal to avoid flashing on fast requests).
 - Spinner indicators now use delayed reveal for HTMX actions to prevent flicker on sub-perceptual responses.
+- Navigation progress reveal delay now reads the same shared feedback token (`--delay-feedback`) used by HTMX delayed indicators.
 - Motion defaults are subtle and short, with clear reduced-motion fallbacks.
 - Feed/video chrome now favors compact glass action chips and consistent metadata rhythm across cards, carousel, and player rail.
 - Feed card typography and control density were softened (lighter title/overlay weight, roomier icon padding, inset blurred progress treatment) to reduce visual heaviness.
@@ -257,12 +260,11 @@ Actions:
 - `internal/templates/components/shared/open-video.templ`
 - `internal/templates/components/shared/remote.templ`
 - `internal/templates/components/shared/deleted.templ`
-- `internal/templates/components/shared/link.templ`
 
 Actions:
 
 - Keep behavior helpers (`deleted`, `remote`) but move visual classes to new `ui` components.
-- `shared/link.templ` appears unused and inconsistent; remove during cleanup if confirmed dead.
+- `shared/link.templ` was removed in phase 06 after confirming it was unused.
 
 ### Icons
 

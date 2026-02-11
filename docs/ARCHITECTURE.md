@@ -9,7 +9,7 @@ feedlr-yt is a self-hosted YouTube feed reader built with Go.
 | **Backend** | Go 1.22+ with Fiber web framework |
 | **Templating** | Templ (type-safe, compiles to Go) |
 | **Frontend** | HTMX + Hyperscript (minimal JS) |
-| **Styling** | Tailwind CSS v4 + DaisyUI v5 |
+| **Styling** | Tailwind CSS v4 + shared `ui-*` primitives |
 | **Database** | SQLite3 with SQLBoiler ORM |
 | **Auth** | WebAuthn (passkeys) + Sessions |
 | **YouTube** | YouTube Data API v3 + Desktop Player API |

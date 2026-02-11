@@ -12,7 +12,9 @@ templ NavProgress() {
 script animateNavProgress() {
 	const progressBar = document.getElementById('nav-progress');
 	const progressBaseStep = 5;
-	const progressRevealDelayMs = 180;
+	const feedbackDelayRaw = getComputedStyle(document.documentElement).getPropertyValue('--delay-feedback');
+	const parsedFeedbackDelayMs = Number.parseFloat(feedbackDelayRaw);
+	const progressRevealDelayMs = Number.isFinite(parsedFeedbackDelayMs) ? parsedFeedbackDelayMs : 260;
 	const progressHideDelayMs = 180;
 
 	const progressRandomStep = () => {
