@@ -21,9 +21,19 @@
     --color-danger: oklch(69% 0.2 24);
     --color-success: oklch(79% 0.13 158);
 
-    --radius-panel: 1rem;
-    --radius-chip: 9999px;
-    --radius-control: 0.75rem;
+    --radius-2xs: 0.5rem;
+    --radius-xs: 0.65rem;
+    --radius-sm: 0.8rem;
+    --radius-md: 1rem;
+    --radius-lg: 1.2rem;
+    --radius-xl: 1.4rem;
+    --radius-pill: 9999px;
+
+    --radius-panel: var(--radius-lg);
+    --radius-chip: var(--radius-pill);
+    --radius-control: var(--radius-sm);
+    --radius-control-compact: var(--radius-xs);
+    --radius-media: var(--radius-xl);
 
     --blur-glass-sm: 10px;
     --blur-glass-md: 20px;
@@ -120,7 +130,7 @@
     }
 
     .ui-btn-sm {
-        @apply rounded-lg px-3 py-2 text-xs;
+        @apply rounded-[var(--radius-control-compact)] px-3 py-2 text-xs;
     }
 
     .ui-btn-md {
@@ -165,7 +175,7 @@
     }
 
     .ui-tab {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-1.5 text-xs font-semibold text-text-primary transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-glass-fill/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 md:text-sm;
+        @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-control-compact)] border border-transparent bg-transparent px-3 py-1.5 text-xs font-semibold text-text-primary transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-glass-fill/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 md:text-sm;
     }
 
     .ui-tab-active {
@@ -185,7 +195,7 @@
     }
 
     .ui-toast {
-        @apply rounded-xl border px-3 py-2 text-sm shadow-lg backdrop-blur-[var(--blur-glass-sm)] transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none;
+        @apply rounded-[var(--radius-md)] border px-3 py-2 text-sm shadow-lg backdrop-blur-[var(--blur-glass-sm)] transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none;
     }
 
     .ui-toast-info {
@@ -221,7 +231,7 @@
     }
 
     .ui-nav-link {
-        @apply inline-flex h-9 w-9 items-center justify-center gap-2 rounded-[0.65rem] border border-transparent bg-transparent p-0 text-sm font-semibold text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-glass-fill/35 hover:text-text-primary active:bg-glass-fill/35 active:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-50 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.7];
+        @apply inline-flex h-9 w-9 items-center justify-center gap-2 rounded-[var(--radius-control-compact)] border border-transparent bg-transparent p-0 text-sm font-semibold text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-glass-fill/35 hover:text-text-primary active:bg-glass-fill/35 active:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-50 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.7];
     }
 
     .ui-nav-link-active {
@@ -267,7 +277,7 @@
     }
 
     .ui-video-card {
-        @apply relative overflow-hidden rounded-xl border border-glass-stroke/16 bg-black/30 shadow-[0_8px_26px_-18px_var(--color-glass-shadow)];
+        @apply relative overflow-hidden rounded-[var(--radius-media)] border border-glass-stroke/16 bg-black/30 shadow-[0_8px_26px_-18px_var(--color-glass-shadow)];
     }
 
     .ui-video-card-actions {
@@ -275,7 +285,7 @@
     }
 
     .ui-video-action-btn {
-        @apply inline-flex h-9 w-9 items-center justify-center rounded-lg border border-glass-stroke/16 bg-black/55 p-1.5 text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/45 hover:text-text-primary active:bg-glass-fill/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:stroke-[1.75] md:h-8 md:w-8;
+        @apply inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/16 bg-black/55 p-1.5 text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/45 hover:text-text-primary active:bg-glass-fill/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:stroke-[1.75] md:h-8 md:w-8;
     }
 
     .ui-video-action-btn-active {
@@ -287,7 +297,7 @@
     }
 
     .ui-video-duration-chip {
-        @apply absolute bottom-5 right-2 z-30 inline-flex items-center justify-center gap-1 rounded-md border border-white/10 bg-black/55 px-1.5 py-0.5 text-xs font-medium text-white md:text-sm;
+        @apply absolute bottom-5 right-2 z-30 inline-flex items-center justify-center gap-1 rounded-[var(--radius-control-compact)] border border-white/10 bg-black/55 px-1.5 py-0.5 text-xs font-medium text-white md:text-sm;
     }
 
     .ui-video-progress-track {
@@ -295,7 +305,7 @@
     }
 
     .ui-video-progress-fill {
-        @apply h-full rounded-full bg-accent/82 shadow-[0_0_6px_rgba(177,128,230,0.35)];
+        @apply h-full rounded-full bg-accent/68 shadow-[0_0_6px_rgba(177,128,230,0.28)];
     }
 
     .ui-video-rail {
@@ -307,7 +317,7 @@
     }
 
     .ui-video-rail-btn {
-        @apply inline-flex h-10 w-10 items-center justify-center rounded-[0.7rem] border border-glass-stroke/18 bg-glass-fill/22 p-0 text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/35 hover:text-text-primary active:bg-glass-fill/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.8];
+        @apply inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/18 bg-glass-fill/22 p-0 text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/35 hover:text-text-primary active:bg-glass-fill/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.8];
     }
 
     .ui-motion-swap {

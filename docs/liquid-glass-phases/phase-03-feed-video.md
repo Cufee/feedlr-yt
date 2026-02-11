@@ -62,6 +62,10 @@ Migrate feed and video experiences to the new component system while preserving 
 - Phase 03 pass 1 polish v3:
 - Softened feed title typography further (lower weight + slightly reduced contrast) to reduce aggressiveness.
 - Increased glass feel on in-card progress treatment via lower-opacity translucent track and less-solid progress fill.
+- Phase 03 pass 1 polish v4:
+- Introduced an explicit radius token scale and applied it consistently to feed/video surfaces and controls.
+- Increased video card/media corner radius using shared `--radius-media`.
+- Reduced progress fill opacity further so the bar reads as layered glass instead of a solid accent stripe.
 - Verification run for this pass:
 - `npm run build` (success)
 - `go generate ./...` (success)

@@ -15,6 +15,7 @@ Use annotated git tags for rollback checkpoints after each completed phase.
 - `checkpoint/liquid-glass-05-phase-03-pass1`
 - `checkpoint/liquid-glass-05-phase-03-polish-v2`
 - `checkpoint/liquid-glass-05-phase-03-polish-v3`
+- `checkpoint/liquid-glass-05-phase-03-polish-v4`
 - `checkpoint/liquid-glass-05-phase-03`
 - `checkpoint/liquid-glass-06-phase-04`
 - `checkpoint/liquid-glass-07-phase-05`
@@ -61,3 +62,4 @@ git reset --hard checkpoint/liquid-glass-XX-name
 - `checkpoint/liquid-glass-05-phase-03-pass1` -> phase 03 pass 1 (feed/video surface styling migration to `ui-*` classes, app dividers/empty states, video rail + toast refresh)
 - `checkpoint/liquid-glass-05-phase-03-polish-v2` -> phase 03 visual polish (lighter feed/overlay typography, roomier action buttons, inset blurred in-card progress bar)
 - `checkpoint/liquid-glass-05-phase-03-polish-v3` -> phase 03 visual polish (softer title contrast/weight + more translucent glass progress track/fill)
+- `checkpoint/liquid-glass-05-phase-03-polish-v4` -> phase 03 visual polish (radius token scale + larger media radius + reduced progress-fill opacity)
