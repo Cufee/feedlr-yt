@@ -1,0 +1,49 @@
+package ui
+
+import (
+	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+)
+
+templ Navbar(path string, authenticated bool) {
+	<div id="nav-indicator" class="ui-nav-shell">
+		if authenticated {
+			@navbarAuthenticated(path)
+		} else {
+			@navbarGuest(path)
+		}
+	</div>
+}
+
+templ navbarAuthenticated(path string) {
+	<div class="flex items-center justify-between gap-3">
+		<a href="/app" class="inline-flex items-center">
+			@shared.Logo("text-xl")
+		</a>
+		<nav class="ui-nav-actions" aria-label="Primary">
+			<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/recent") } href="/app/recent" title="Recent Views">
+				@icons.Clock()
+			</a>
+			<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/subscriptions") } href="/app/subscriptions" title="Manage Subscriptions">
+				@icons.Bookmark()
+			</a>
+			<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/settings") } href="/app/settings" title="App Settings">
+				@icons.Settings()
+			</a>
+		</nav>
+	</div>
+}
+
+templ navbarGuest(path string) {
+	<div class="flex items-center justify-between gap-3">
+		<a href="/" class="inline-flex items-center">
+			@shared.Logo("text-xl")
+		</a>
+		<nav class="ui-nav-actions" aria-label="Primary">
+			<a class={ "ui-nav-login", "nav-btn", templ.KV("ui-nav-link-active", path=="/login") } href="/login" title="Login">
+				Login
+			</a>
+		</nav>
+	</div>
+}
+

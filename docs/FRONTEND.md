@@ -42,7 +42,7 @@ internal/templates/
     └── settings/         # Settings components
 ```
 
-## UI Primitives (Phase 01)
+## UI Primitives (Phase 01-02)
 
 Reusable primitives are now being introduced under `internal/templates/components/ui/`.
 
@@ -55,6 +55,10 @@ Current primitives:
 - `toggle.templ` (`Toggle`, `ToggleWithLabel`)
 - `dialog.templ` (`Dialog`, `DialogBackdropButton`)
 - `toast.templ` (`Toast`)
+- `pageshell.templ` (`PageShellMain`, `PageShellFooter`, `PageShellVideo`)
+- `navbar.templ` (`Navbar`, guest/authed variants)
+- `footer.templ` (`Footer`)
+- `progress.templ` (`NavProgress`)
 
 Supporting helpers:
 

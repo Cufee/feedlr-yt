@@ -47,3 +47,4 @@ git reset --hard checkpoint/liquid-glass-XX-name
 - `checkpoint/liquid-glass-00-base` -> branch baseline before implementation phases
 - `checkpoint/liquid-glass-01-phase-00` -> local CSS runtime, generated CSS untracked, Docker builds styles in image
 - `checkpoint/liquid-glass-02-phase-01` -> tokenized Tailwind foundation + `ui` primitive component package scaffold
+- `checkpoint/liquid-glass-03-phase-02` -> layout shell migrated to `ui` chrome primitives (page shell/navbar/footer/progress)

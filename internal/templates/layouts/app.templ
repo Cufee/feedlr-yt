@@ -2,6 +2,7 @@ package layouts
 
 import (
 	"github.com/cufee/feedlr-yt/internal/server/handler"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/templates/layouts/partials"
 	"github.com/cufee/tpot/brewed"
 )
@@ -13,18 +14,18 @@ var App brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...tem
 templ app(path string, authenticated bool, content ...templ.Component) {
 	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
-		<body class="flex flex-col items-center h-dvh" hx-ext="head-support">
+		<body class="min-h-dvh" hx-ext="head-support">
 			@partials.NavProgressAnimated()
-			<main class="flex flex-col flex-grow w-full gap-2 p-2 pt-0 mx-auto max-w-7xl">
+			@ui.PageShellMain("gap-3 py-2") {
 				@partials.Navbar(path, authenticated)
 				for _, c := range content {
 					@c
 				}
 				{ children... }
-			</main>
-			<div class="w-full p-2 mx-auto md:p-0 max-w-7xl">
+			}
+			@ui.PageShellFooter("") {
 				@partials.Footer()
-			</div>
+			}
 		</body>
 	</html>
 }
