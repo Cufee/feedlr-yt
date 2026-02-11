@@ -26,10 +26,7 @@ templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
 					@icons.Info()
 				</a>
 			</div>
-			<div class="flex items-center gap-2">
-				<span class="ui-badge">Global</span>
-				@GlobalToggleButton(settings.SponsorBlockEnabled)
-			</div>
+			@GlobalToggleButton(settings.SponsorBlockEnabled)
 		</div>
 		<div class="flex w-full flex-row flex-wrap gap-3">
 			for _, cat := range settings.AvailableSponsorBlockCategories {

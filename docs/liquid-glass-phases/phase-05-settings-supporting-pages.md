@@ -68,3 +68,5 @@ Complete migration for settings-heavy and fallback pages with consistent Polar G
 - Reintroduced a lightweight section shell to avoid settings surfaces visually blending together while still avoiding heavy nested cards.
 - SponsorBlock now visually distinguishes global vs per-category toggles (`ui-toggle-global` vs `ui-toggle-category`).
 - SponsorBlock category controls now present clear disabled-state styling when global toggle is off (muted card + disabled toggle treatment).
+- Removed the additional "Global" pill label in SponsorBlock header to reduce redundant labeling.
+- Reduced YouTube sync status badge width (`w-24` -> `w-20`) for tighter metadata balance.
