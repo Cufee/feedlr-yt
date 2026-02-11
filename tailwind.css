@@ -5,11 +5,13 @@
     --font-display: "Space Grotesk", "IBM Plex Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
 
-    --color-canvas: oklch(23% 0.006 255);
-    --color-elev-1: oklch(26% 0.007 255);
-    --color-elev-2: oklch(29% 0.009 255);
-    --color-glass-fill: oklch(30% 0.01 255);
-    --color-glass-stroke: oklch(74% 0.01 255);
+    --color-canvas: oklch(18.8% 0.002 260);
+    --color-elev-1: oklch(21.2% 0.003 260);
+    --color-elev-2: oklch(24.2% 0.004 260);
+    --color-surface: oklch(22.4% 0.004 260);
+    --color-chrome: oklch(19.8% 0.003 260);
+    --color-glass-fill: oklch(24.8% 0.006 260);
+    --color-glass-stroke: oklch(67% 0.008 260);
     --color-glass-shadow: oklch(8% 0.004 255);
     --color-text-primary: oklch(92% 0.008 255);
     --color-text-secondary: oklch(76% 0.01 255);
@@ -80,7 +82,7 @@
     }
 
     .ui-card {
-        @apply rounded-[var(--radius-panel)] border border-white/5 bg-elev-1/92 p-4 text-text-primary shadow-[0_10px_30px_-24px_var(--color-glass-shadow)] md:p-5;
+        @apply rounded-[var(--radius-panel)] border border-white/5 bg-surface/93 p-4 text-text-primary shadow-[0_10px_30px_-24px_var(--color-glass-shadow)] md:p-5;
     }
 
     .ui-section {
@@ -233,11 +235,11 @@
     }
 
     .ui-nav-shell {
-        @apply w-full rounded-[var(--radius-panel)] border border-glass-stroke/24 bg-elev-2/88 px-3 py-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply w-full rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-chrome/92 px-3 py-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
     }
 
     .ui-nav-actions {
-        @apply inline-flex items-center gap-1.5 rounded-[var(--radius-control)] bg-glass-fill/18 px-1.5 py-1;
+        @apply inline-flex items-center gap-1.5 rounded-[var(--radius-control)] bg-glass-fill/14 px-1.5 py-1;
     }
 
     .ui-nav-link {
@@ -253,7 +255,7 @@
     }
 
     .ui-footer-shell {
-        @apply mt-2 rounded-[var(--radius-panel)] border border-glass-stroke/24 bg-elev-2/88 p-3 text-text-primary backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply mt-2 rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-chrome/92 p-3 text-text-primary backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
     }
 
     .ui-feed-divider {
@@ -266,7 +268,7 @@
     }
 
     .ui-feed-divider > span {
-        @apply relative z-10 rounded-full border border-glass-stroke/20 bg-elev-1/95 px-3 py-0.5;
+        @apply relative z-10 rounded-full border border-glass-stroke/20 bg-surface/96 px-3 py-0.5;
     }
 
     .ui-feed-divider-link {
@@ -291,7 +293,7 @@
     }
 
     .ui-channel-card {
-        @apply relative flex flex-grow basis-full overflow-hidden rounded-[var(--radius-panel)] border border-glass-stroke/16 bg-elev-1/94 p-3.5 backdrop-blur-[var(--blur-glass-sm)] shadow-[0_8px_26px_-20px_var(--color-glass-shadow)] transition-all duration-200 ease-[var(--ease-standard)] hover:bg-elev-1 md:basis-[calc(50%-0.75rem)] lg:basis-[calc(33.333%-0.8rem)];
+        @apply relative flex flex-grow basis-full overflow-hidden rounded-[var(--radius-panel)] border border-glass-stroke/16 bg-surface/94 p-3.5 backdrop-blur-[var(--blur-glass-sm)] shadow-[0_8px_26px_-20px_var(--color-glass-shadow)] transition-all duration-200 ease-[var(--ease-standard)] hover:bg-surface md:basis-[calc(50%-0.75rem)] lg:basis-[calc(33.333%-0.8rem)];
     }
 
     .ui-channel-overlay {
@@ -368,7 +370,7 @@
     }
 
     .ui-settings-section {
-        @apply flex w-full flex-col gap-3 rounded-[var(--radius-panel)] border border-glass-stroke/14 bg-elev-2/80 p-3 md:p-4;
+        @apply flex w-full flex-col gap-3 rounded-[var(--radius-panel)] border border-glass-stroke/14 bg-surface/84 p-3 md:p-4;
     }
 
     .ui-settings-header {
@@ -531,7 +533,7 @@
     }
 
     .ui-video-rail {
-        @apply mb-0 flex w-full items-center justify-between gap-2 rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-elev-2/88 p-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply mb-0 flex w-full items-center justify-between gap-2 rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-chrome/92 p-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
     }
 
     .ui-video-rail-actions {

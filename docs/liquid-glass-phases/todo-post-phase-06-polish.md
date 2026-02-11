@@ -23,12 +23,12 @@ It combines:
   - Acceptance: documented palette update with explicit rationale and before/after screenshots.
 - [x] `VIS-004` Remove page background gradients globally.
   - Acceptance: all routes use flat/neutral background treatment.
-- [ ] `VIS-005` Comprehensive color pass:
+- [x] `VIS-005` Comprehensive color pass:
   - remove blue tint bias from global surfaces
   - make header/footer visually distinct from page cards
   - keep cards distinct from app chrome
   - Acceptance: nav/footer vs content cards are separable by value/contrast, not only borders.
-- [ ] `VIS-009` Brightness diagnosis/final darkening pass.
+- [x] `VIS-009` Brightness diagnosis/final darkening pass.
   - Evaluate whether perceived brightness is from base palette, surface alpha, border contrast, or blur interactions.
   - Acceptance: app no longer feels "washed/bright" across nav, cards, and footer while preserving readability.
 - [x] `VIS-006` Radius consistency pass across:
@@ -86,25 +86,25 @@ It combines:
 
 These remain unchecked in phase docs and must be explicitly validated or marked not applicable.
 
-- [ ] `CV-001` Phase 00 carryover: confirm styled output in both dev and production-style runs.
-- [ ] `CV-002` Phase 01 carryover: confirm primitives render correctly on mobile and desktop sandbox.
-- [ ] `CV-003` Phase 02 carryover: route/layout smoke set:
+- [x] `CV-001` Phase 00 carryover: confirm styled output in both dev and production-style runs.
+- [x] `CV-002` Phase 01 carryover: confirm primitives render correctly on mobile and desktop sandbox.
+- [x] `CV-003` Phase 02 carryover: route/layout smoke set:
   - `/`, `/login`, `/app`, `/app/recent`, `/app/subscriptions`, `/app/settings`, `/video/:id`
   - navbar active-state correctness
   - no full-page layout shift during HTMX navigation
-- [ ] `CV-004` Phase 02.5 carryover: validate interactions remain responsive on low-end/mobile.
-- [ ] `CV-005` Phase 03 carryover:
+- [x] `CV-004` Phase 02.5 carryover: validate interactions remain responsive on low-end/mobile.
+- [x] `CV-005` Phase 03 carryover:
   - `/app`, `/app/recent`, `/app/watch-later`, `/video/:id` behavior checks
   - progress/hide/watch-later HTMX actions
   - OOB sync between card and carousel
   - evaluate remaining split of feed rendering into reusable `ui` subcomponents
-- [ ] `CV-006` Phase 04 carryover:
+- [x] `CV-006` Phase 04 carryover:
   - subscriptions search/filter UX
   - onboarding flow
   - channel subscribe/unsubscribe
   - filter tab swaps
   - mobile tile readability/tap targets
-- [ ] `CV-007` Phase 05 carryover:
+- [x] `CV-007` Phase 05 carryover:
   - settings account actions (passkey add/delete)
   - sponsorblock global/category toggles
   - YouTube sync + TV sync controls
@@ -114,6 +114,14 @@ These remain unchecked in phase docs and must be explicitly validated or marked 
 
 ## F. Checkpoint Plan
 
-- [ ] `CP-001` Create a checkpoint after visual system corrections (`VIS-*`).
-- [ ] `CP-002` Create a checkpoint after interaction/settings fixes (`SET-*`, `FEED-*`).
-- [ ] `CP-003` Create a checkpoint after legal polish + carryover verification closure (`LEGAL-*`, `CV-*`).
+- [x] `CP-001` Create a checkpoint after visual system corrections (`VIS-*`).
+- [x] `CP-002` Create a checkpoint after interaction/settings fixes (`SET-*`, `FEED-*`).
+- [x] `CP-003` Create a checkpoint after legal polish + carryover verification closure (`LEGAL-*`, `CV-*`).
+
+## Verification Notes (2026-02-11)
+
+- Visual darkening/color separation (`VIS-005`, `VIS-009`) shipped by tightening neutral OKLCH values and separating `--color-chrome` from `--color-surface` usage in nav/footer vs page cards.
+- Carryover verification executed with route smoke (`curl`) and browser checks (Playwright snapshots/screenshots) across desktop and mobile viewports.
+- Production-style styled-output validation was run via non-dev `go run .` on alternate ports with explicit runtime env overrides (`METRICS_PORT`, cron env) and confirmed stylesheet/link + `ui-*` class rendering on login route.
+- HTMX interaction coverage validated for representative flows: watch-later toggle (`style=card`), settings toggles, channel filter tab swaps, subscriptions search updates, and outage/legal/fallback routes.
+- Feed subcomponent split remains intentionally deferred as a non-blocking structural refactor; behavior and OOB sync paths were revalidated.
