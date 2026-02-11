@@ -34,11 +34,11 @@ Unify channel discovery and subscription management UI with the new component sy
 
 ## Verification
 
-- [ ] `/app/subscriptions` search and filtering UX works.
-- [ ] `/app/onboarding` subscription flow works.
-- [ ] `/channel/:id` subscribe/unsubscribe actions work.
-- [ ] Channel filter tab updates still swap the correct feed content.
-- [ ] Mobile layout supports tile readability and tap targets.
+- [x] `/app/subscriptions` search and filtering UX works.
+- [x] `/app/onboarding` subscription flow works.
+- [x] `/channel/:id` subscribe/unsubscribe actions work.
+- [x] Channel filter tab updates still swap the correct feed content.
+- [x] Mobile layout supports tile readability and tap targets.
 
 ## Exit Criteria
 
@@ -68,3 +68,6 @@ Unify channel discovery and subscription management UI with the new component sy
 - `npm run build` (success)
 - `go generate ./...` (success)
 - `go build ./...` (success)
+- Carryover verification (2026-02-11):
+- Subscriptions search/filter updates and onboarding route were revalidated on desktop/mobile.
+- Channel page subscribe surface and `all/videos/streams` tab swaps were rechecked for correct HTMX feed replacement and mobile tap-target clarity.

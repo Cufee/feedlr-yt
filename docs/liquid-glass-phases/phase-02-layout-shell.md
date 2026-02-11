@@ -35,16 +35,16 @@ Rebuild top-level page shells and app chrome on the new `ui` primitives while pr
 
 ## Verification
 
-- [ ] Routed pages still render with correct layout:
-- [ ] `/`
-- [ ] `/login`
-- [ ] `/app`
-- [ ] `/app/recent`
-- [ ] `/app/subscriptions`
-- [ ] `/app/settings`
-- [ ] `/video/:id`
-- [ ] Navbar state and active route highlighting are correct.
-- [ ] No full-page layout shift during HTMX navigation.
+- [x] Routed pages still render with correct layout:
+- [x] `/`
+- [x] `/login`
+- [x] `/app`
+- [x] `/app/recent`
+- [x] `/app/subscriptions`
+- [x] `/app/settings`
+- [x] `/video/:id`
+- [x] Navbar state and active route highlighting are correct.
+- [x] No full-page layout shift during HTMX navigation.
 
 ## Exit Criteria
 
@@ -84,4 +84,6 @@ Rebuild top-level page shells and app chrome on the new `ui` primitives while pr
 - Fixed footer overlap by removing fixed-height shell behavior in main content wrapper.
 - Switched main/app body wrappers back to flex-column flow for proper footer placement after content.
 - Improved footer responsive alignment for narrow widths.
-- Manual page verification is pending user browser checks on the running dev server.
+- Carryover verification (2026-02-11):
+- Route smoke rechecked for `/`, `/login`, `/app`, `/app/recent`, `/app/subscriptions`, `/app/settings`, and `/video/:id`.
+- Navbar active-state class toggles were validated by route and HTMX nav swaps in desktop and mobile snapshots.

@@ -34,7 +34,7 @@ Define the core design system for Polar Glass and create reusable UI primitives.
 - [x] Tokens are referenced by components (not hardcoded one-off values).
 - [x] Components support responsive and interactive states via Tailwind utilities.
 - [x] `motion-safe:*` and `motion-reduce:*` variants included on animated primitives.
-- [ ] Components render correctly on mobile and desktop in at least one page sandbox.
+- [x] Components render correctly on mobile and desktop in at least one page sandbox.
 
 ## Exit Criteria
 
@@ -57,3 +57,5 @@ Define the core design system for Polar Glass and create reusable UI primitives.
 - `npm run build` (success)
 - `go generate ./...` (success)
 - `go build ./...` (success)
+- Carryover verification (2026-02-11):
+- Desktop and mobile snapshots confirm shared primitives (`ui-btn`, `ui-input`, `ui-card`, `ui-nav-shell`, `ui-footer-shell`, tab/toggle primitives) render consistently.

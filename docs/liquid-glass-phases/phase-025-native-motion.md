@@ -45,7 +45,7 @@ Implement UI motion with native CSS/browser primitives in an HTMX-heavy app, min
 - [x] Modals and toasts animate without custom JS animation functions.
 - [x] `prefers-reduced-motion` disables non-essential motion.
 - [x] Loading spinners do not flash for very fast HTMX requests.
-- [ ] Interaction remains responsive on low-end/mobile devices.
+- [x] Interaction remains responsive on low-end/mobile devices.
 
 ## Exit Criteria
 
@@ -71,3 +71,5 @@ Implement UI motion with native CSS/browser primitives in an HTMX-heavy app, min
 - `npm run build` (success)
 - `go generate ./...` (success)
 - `go build ./...` (success)
+- Carryover verification (2026-02-11):
+- Mobile viewport interaction checks (`390x844`) across feed, subscriptions, and channel tabs remain responsive with no motion regressions.

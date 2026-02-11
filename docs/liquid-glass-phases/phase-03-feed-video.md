@@ -35,12 +35,12 @@ Migrate feed and video experiences to the new component system while preserving 
 
 ## Verification
 
-- [ ] `/app` renders new/watched/watch-later correctly.
-- [ ] `/app/recent` renders and updates correctly.
-- [ ] `/app/watch-later` pagination and empty-state behavior work.
-- [ ] `/video/:id` retains share/open/back/login behavior.
-- [ ] Progress hide/unhide/unwatch/watch actions still work via HTMX.
-- [ ] OOB updates keep card and carousel in sync.
+- [x] `/app` renders new/watched/watch-later correctly.
+- [x] `/app/recent` renders and updates correctly.
+- [x] `/app/watch-later` pagination and empty-state behavior work.
+- [x] `/video/:id` retains share/open/back/login behavior.
+- [x] Progress hide/unhide/unwatch/watch actions still work via HTMX.
+- [x] OOB updates keep card and carousel in sync.
 
 ## Exit Criteria
 
@@ -78,3 +78,7 @@ Migrate feed and video experiences to the new component system while preserving 
 - `npm run build` (success)
 - `go generate ./...` (success)
 - `go build ./...` (success)
+- Carryover verification (2026-02-11):
+- Revalidated `/app`, `/app/recent`, `/app/watch-later`, and `/video/:id` on desktop/mobile.
+- Revalidated HTMX actions (watch-later toggle, watched/unwatched, hide/unhide, progress updates) and server OOB watch-later sync paths.
+- `Split feed rendering into reusable ui subcomponents` remains a deferred structural refactor, not a behavioral blocker.

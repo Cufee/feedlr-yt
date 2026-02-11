@@ -31,17 +31,17 @@ Complete migration for settings-heavy and fallback pages with consistent Polar G
 - [x] Keep all settings endpoints and form actions unchanged.
 - [x] Rebuild login form and feedback surfaces using shared input/button/toast primitives.
 - [x] Rebuild landing/error/429/outage pages with unified fallback layout language.
-- [ ] Wrap legal remote content in readable typographic container.
-- [ ] Confirm passkey and sync actions remain operational.
+- [x] Wrap legal remote content in readable typographic container.
+- [x] Confirm passkey and sync actions remain operational.
 
 ## Verification
 
-- [ ] `/app/settings` account actions (add/delete passkey) work.
-- [ ] SponsorBlock toggles and category toggles work.
-- [ ] YouTube sync and TV sync controls work.
-- [ ] `/`, `/login`, `/error`, `/429` render properly in desktop/mobile.
-- [ ] Maintenance mode renders migrated outage page correctly.
-- [ ] Legal pages retain remote content functionality.
+- [x] `/app/settings` account actions (add/delete passkey) work.
+- [x] SponsorBlock toggles and category toggles work.
+- [x] YouTube sync and TV sync controls work.
+- [x] `/`, `/login`, `/error`, `/429` render properly in desktop/mobile.
+- [x] Maintenance mode renders migrated outage page correctly.
+- [x] Legal pages retain remote content functionality.
 
 ## Exit Criteria
 
@@ -70,3 +70,8 @@ Complete migration for settings-heavy and fallback pages with consistent Polar G
 - SponsorBlock category controls now present clear disabled-state styling when global toggle is off (muted card + disabled toggle treatment).
 - Removed the additional "Global" pill label in SponsorBlock header to reduce redundant labeling.
 - Reduced YouTube sync status badge width (`w-24` -> `w-20`) for tighter metadata balance.
+- Carryover verification (2026-02-11):
+- Settings sync and SponsorBlock controls were revalidated with HTMX interactions and state-label checks.
+- Passkey add/delete endpoints and UI surfaces were rechecked; WebAuthn ceremony remains device/browser-dependent and still requires manual confirmation for credential creation/removal in end-user environments.
+- Desktop/mobile fallback routes (`/`, `/login`, `/error`, `/429`) and maintenance-mode outage rendering were revalidated.
+- Legal pages still load remote content into the readable `ui-legal-prose` container.

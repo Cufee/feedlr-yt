@@ -30,13 +30,13 @@ Establish a safe baseline for local/prod styling so generated assets are reprodu
 - [x] Update Dockerfile to run frontend build before Go binary build.
 - [x] Add `assets/css/style.css` to `.gitignore`.
 - [x] Untrack generated CSS from git after confirming build pipeline works.
-- [ ] Confirm app renders styled output in dev and production modes.
+- [x] Confirm app renders styled output in dev and production modes.
 
 ## Verification
 
 - [x] `npm run build` succeeds.
-- [ ] `task dev` renders styled pages.
-- [ ] Production-style run (`npm run build && go run .`) renders styled pages.
+- [x] `task dev` renders styled pages.
+- [x] Production-style run (`npm run build && go run .`) renders styled pages.
 - [x] Docker build generates CSS during image build.
 - [x] No runtime dependency on style CDNs remains.
 
@@ -54,3 +54,6 @@ Establish a safe baseline for local/prod styling so generated assets are reprodu
 - `go generate ./...` (success)
 - `go build ./...` (success)
 - `docker build --progress=plain -t feedlr-phase0-check .` (success; styles-builder executed `npm run build`)
+- Carryover verification (2026-02-11):
+- Dev-mode styling verified against running local dev server on `http://localhost:3033`.
+- Production-style binary run validated on alternate port with stylesheet link and `ui-*` classes present on rendered login page.
