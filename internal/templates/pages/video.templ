@@ -19,7 +19,7 @@ func durationToString(videoDuration int) string {
 }
 
 templ Video(props types.VideoPlayerProps) {
-	<div class="relative flex flex-col items-center justify-center grow">
+	<div class="relative flex grow flex-col">
 		<div class="ui-video-rail">
 			<div class="ui-video-rail-actions">
 				@buttonChannel(props.Video.Channel.ID)

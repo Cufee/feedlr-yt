@@ -15,4 +15,14 @@ templ Settings(props types.SettingsPageProps) {
 		@settings.YouTubeSyncSettings(props.YouTubeSync, props.YouTubeTVSync)
 		@settings.SponsorBlockSettings(props.SponsorBlock)
 	</div>
+	<script>
+		const savedSettingsScrollY = sessionStorage.getItem('feedlr-settings-scroll-y');
+		if (savedSettingsScrollY !== null) {
+			const scrollY = Number.parseInt(savedSettingsScrollY, 10);
+			if (Number.isFinite(scrollY)) {
+				window.scrollTo({ top: scrollY, behavior: 'auto' });
+			}
+			sessionStorage.removeItem('feedlr-settings-scroll-y');
+		}
+	</script>
 }

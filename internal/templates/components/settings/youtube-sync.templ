@@ -108,7 +108,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 						</div>
 					</div>
 					<div class="flex flex-wrap gap-2 pt-1">
-						<form action="/api/settings/youtube-sync/toggle" method="post">
+						<form action="/api/settings/youtube-sync/toggle" method="post" onsubmit="sessionStorage.setItem('feedlr-settings-scroll-y', String(window.scrollY))">
 							<input type="hidden" name="enabled" value={ fmt.Sprintf("%t", !status.Enabled) }/>
 							<button type="submit" class={ syncToggleButtonClass(status.Enabled) }>
 								{ syncToggleButtonLabel(status.Enabled) }
@@ -172,7 +172,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 						<div class="ui-error-inline">{ tvStatus.LastError }</div>
 					}
 					<div class="flex flex-wrap gap-2 pt-1">
-						<form action="/api/settings/youtube-sync/tv/toggle" method="post">
+						<form action="/api/settings/youtube-sync/tv/toggle" method="post" onsubmit="sessionStorage.setItem('feedlr-settings-scroll-y', String(window.scrollY))">
 							<input type="hidden" name="enabled" value={ fmt.Sprintf("%t", !tvStatus.Enabled) }/>
 							<button type="submit" class={ syncToggleButtonClass(tvStatus.Enabled) }>
 								{ syncToggleButtonLabel(tvStatus.Enabled) }

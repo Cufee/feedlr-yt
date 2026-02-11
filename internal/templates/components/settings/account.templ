@@ -16,8 +16,8 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 		<div class="ui-settings-body">
 			<div class="flex flex-wrap items-center gap-2">
 				<span class="grow text-base font-semibold text-text-primary">Passkeys</span>
-				<div class="flex flex-row items-center gap-2 justify-start">
-					<span id="error" class="ui-error-inline hidden"></span>
+				<div class="flex w-full flex-col gap-2 md:w-auto md:items-end">
+					<span id="error" class="ui-error-inline hidden w-full break-words whitespace-normal md:max-w-72"></span>
 					<button id="addPasskey" type="button" class="ui-btn ui-btn-primary ui-btn-sm">Add a new passkey</button>
 				</div>
 			</div>

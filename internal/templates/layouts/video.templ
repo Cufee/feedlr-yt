@@ -52,7 +52,7 @@ templ videoLayout(video types.VideoProps, content ...templ.Component) {
 			<meta name="twitter:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", video.ID) }/>
 			<meta name="twitter:image:alt" content={ video.Title }/>
 		}
-		<body class="h-svh" hx-ext="head-support">
+		<body class="h-svh bg-black" hx-ext="head-support">
 			@partials.NavProgressAnimated()
 			@ui.PageShellVideo("") {
 				for _, c := range content {

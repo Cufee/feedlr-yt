@@ -5,16 +5,16 @@
     --font-display: "Space Grotesk", "IBM Plex Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
 
-    --color-canvas: oklch(24% 0.02 250);
-    --color-elev-1: oklch(29% 0.024 252);
-    --color-elev-2: oklch(33% 0.028 254);
-    --color-glass-fill: oklch(34% 0.03 250);
-    --color-glass-stroke: oklch(74% 0.02 245);
-    --color-glass-shadow: oklch(8% 0.01 250);
-    --color-text-primary: oklch(92% 0.015 250);
-    --color-text-secondary: oklch(76% 0.02 250);
-    --color-accent: oklch(81% 0.11 205);
-    --color-accent-strong: oklch(75% 0.13 205);
+    --color-canvas: oklch(23% 0.006 255);
+    --color-elev-1: oklch(28% 0.008 255);
+    --color-elev-2: oklch(32% 0.01 255);
+    --color-glass-fill: oklch(33% 0.012 255);
+    --color-glass-stroke: oklch(74% 0.01 255);
+    --color-glass-shadow: oklch(8% 0.004 255);
+    --color-text-primary: oklch(92% 0.008 255);
+    --color-text-secondary: oklch(76% 0.01 255);
+    --color-accent: oklch(74% 0.11 312);
+    --color-accent-strong: oklch(68% 0.13 312);
     --color-danger: oklch(69% 0.2 24);
     --color-success: oklch(79% 0.13 158);
 
@@ -29,9 +29,9 @@
 
     --radius-panel: var(--radius-lg);
     --radius-chip: var(--radius-pill);
-    --radius-control: var(--radius-sm);
-    --radius-control-compact: var(--radius-xs);
-    --radius-media: var(--radius-2xl);
+    --radius-control: var(--radius-md);
+    --radius-control-compact: var(--radius-sm);
+    --radius-media: var(--radius-panel);
 
     --space-video-inset-x: 0.82rem;
     --space-video-inset-y: 0.62rem;
@@ -57,9 +57,7 @@
     body {
         background-color: var(--color-canvas);
         color: var(--color-text-primary);
-        background-image:
-            radial-gradient(64rem 64rem at -10% -10%, color-mix(in oklab, var(--color-accent) 10%, transparent), transparent 70%),
-            radial-gradient(48rem 48rem at 110% -10%, color-mix(in oklab, var(--color-glass-fill) 35%, transparent), transparent 70%);
+        background-image: none;
     }
 
     h1, h2, h3, h4 {
@@ -134,7 +132,7 @@
     }
 
     .ui-btn-sm {
-        @apply rounded-[var(--radius-control-compact)] px-3 py-2 text-xs;
+        @apply rounded-[var(--radius-control)] px-3 py-2 text-xs;
     }
 
     .ui-btn-md {
@@ -235,7 +233,7 @@
     }
 
     .ui-nav-shell {
-        @apply w-full rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-glass-fill/45 px-3 py-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply w-full rounded-[var(--radius-panel)] border border-glass-stroke/28 bg-elev-2/78 px-3 py-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
     }
 
     .ui-nav-actions {
@@ -255,11 +253,11 @@
     }
 
     .ui-footer-shell {
-        @apply mt-2 rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 p-3 text-text-primary backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply mt-2 rounded-[var(--radius-panel)] border border-glass-stroke/28 bg-elev-2/75 p-3 text-text-primary backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
     }
 
     .ui-feed-divider {
-        @apply relative my-1 flex items-center justify-center py-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-secondary/90;
+        @apply relative my-0.5 flex items-center justify-center py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-secondary/90;
     }
 
     .ui-feed-divider::before {
@@ -276,7 +274,7 @@
     }
 
     .ui-feed-title {
-        @apply overflow-hidden text-[1.1rem] font-normal leading-tight text-text-primary/94 line-clamp-2 md:text-[2.15vh];
+        @apply overflow-hidden text-base font-normal leading-snug text-text-primary/94 line-clamp-2 md:text-lg;
         overflow-wrap: anywhere;
     }
 
@@ -293,7 +291,7 @@
     }
 
     .ui-channel-card {
-        @apply relative flex flex-grow basis-full overflow-hidden rounded-[var(--radius-panel)] border border-glass-stroke/18 bg-glass-fill/28 p-3.5 backdrop-blur-[var(--blur-glass-sm)] shadow-[0_8px_26px_-20px_var(--color-glass-shadow)] transition-all duration-200 ease-[var(--ease-standard)] hover:bg-glass-fill/38 md:basis-[calc(50%-0.75rem)] lg:basis-[calc(33.333%-0.8rem)];
+        @apply relative flex flex-grow basis-full overflow-hidden rounded-[var(--radius-panel)] border border-glass-stroke/18 bg-elev-1/88 p-3.5 backdrop-blur-[var(--blur-glass-sm)] shadow-[0_8px_26px_-20px_var(--color-glass-shadow)] transition-all duration-200 ease-[var(--ease-standard)] hover:bg-elev-1 md:basis-[calc(50%-0.75rem)] lg:basis-[calc(33.333%-0.8rem)];
     }
 
     .ui-channel-overlay {
@@ -453,7 +451,7 @@
         @apply inline-flex items-center justify-center border border-glass-stroke/14 bg-black/52 text-text-secondary backdrop-blur-[var(--blur-glass-sm)] transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/40 hover:text-text-primary active:bg-glass-fill/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
         height: var(--size-video-action);
         width: var(--size-video-action);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         padding: 0.3rem;
     }
 
@@ -472,10 +470,10 @@
     }
 
     .ui-video-duration-chip {
-        @apply absolute z-30 inline-flex items-center justify-center gap-1 border border-white/11 bg-black/54 px-1.5 py-0.5 text-xs font-medium text-white md:text-sm;
+        @apply absolute z-30 inline-flex items-center justify-center gap-1 border border-white/11 bg-black/54 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur-[var(--blur-glass-sm)] md:text-sm;
         right: var(--space-video-inset-x);
         bottom: calc(var(--space-video-inset-y) + var(--height-video-progress) + 0.42rem);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
     }
 
     .ui-video-duration-chip-no-progress {
@@ -496,7 +494,7 @@
     }
 
     .ui-video-rail {
-        @apply mb-2 flex w-full items-center justify-between gap-2 rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-glass-fill/45 p-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply mb-0 flex w-full items-center justify-between gap-2 rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-elev-2/88 p-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
     }
 
     .ui-video-rail-actions {

@@ -6,6 +6,7 @@ These files break the main redesign plan into smaller implementation chunks.
 - Working files in this directory are intentionally mutable during implementation.
 - Checkpoint registry: `docs/liquid-glass-phases/CHECKPOINTS.md`
 - Deferred UX polish tracker: `docs/liquid-glass-phases/polish-backlog.md`
+- Post-phase working TODO: `docs/liquid-glass-phases/todo-post-phase-06-polish.md`
 
 ## Phase Order
 
