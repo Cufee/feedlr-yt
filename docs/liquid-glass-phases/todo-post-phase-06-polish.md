@@ -121,6 +121,7 @@ These remain unchecked in phase docs and must be explicitly validated or marked 
 ## Verification Notes (2026-02-11)
 
 - Visual darkening/color separation (`VIS-005`, `VIS-009`) shipped by tightening neutral OKLCH values and separating `--color-chrome` from `--color-surface` usage in nav/footer vs page cards.
+- Video page top control rail now uses plain black with no glass border/background layer, preserving control padding while maximizing video-first presentation.
 - Carryover verification executed with route smoke (`curl`) and browser checks (Playwright snapshots/screenshots) across desktop and mobile viewports.
 - Production-style styled-output validation was run via non-dev `go run .` on alternate ports with explicit runtime env overrides (`METRICS_PORT`, cron env) and confirmed stylesheet/link + `ui-*` class rendering on login route.
 - HTMX interaction coverage validated for representative flows: watch-later toggle (`style=card`), settings toggles, channel filter tab swaps, subscriptions search updates, and outage/legal/fallback routes.

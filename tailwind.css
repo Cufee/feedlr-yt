@@ -533,7 +533,7 @@
     }
 
     .ui-video-rail {
-        @apply mb-0 flex w-full items-center justify-between gap-2 rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-chrome/92 p-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply mb-0 flex w-full items-center justify-between gap-2 rounded-none border-0 bg-black p-2 shadow-none;
     }
 
     .ui-video-rail-actions {

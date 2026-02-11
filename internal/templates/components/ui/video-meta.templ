@@ -1,0 +1,30 @@
+package ui
+
+import "github.com/cufee/feedlr-yt/internal/templates/components/icons"
+
+templ VideoMeta(title, channelURL, channelTitle, relativeTime, videoFilter string, showChannelName bool) {
+	<div class="flex flex-col">
+		<span class="ui-feed-title" title={ title }>
+			{ title }
+		</span>
+		<div class="flex flex-col">
+			if showChannelName {
+				<a href={ templ.URL(channelURL) } class="ui-feed-channel w-fit" hx-boost="true" hx-target="body" title={ channelTitle }>
+					{ channelTitle }
+					if videoFilter == "videos" {
+						<span class="size-3.5 shrink-0">
+							@icons.Clapperboard()
+						</span>
+					} else if videoFilter == "streams" {
+						<span class="size-3.5 shrink-0">
+							@icons.Radio()
+						</span>
+					}
+				</a>
+			}
+			<span class="ui-feed-time w-fit">
+				{ relativeTime }
+			</span>
+		</div>
+	</div>
+}

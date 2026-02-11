@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
 )
@@ -51,30 +52,14 @@ templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedO
 				<a href={ templ.URL(fmt.Sprintf("/video/%s?return=%s", video.ID, returnUrl)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full cursor-pointer group">
 					@videoCardComponent(video, opts)
 				</a>
-				<div class="flex flex-col">
-					<span class="ui-feed-title" title={ video.Title }>
-						{ video.Title }
-					</span>
-					<div class="flex flex-col">
-						if opts.showChannelName {
-							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="ui-feed-channel w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Title }>
-								{ video.Channel.Title }
-								if video.Channel.VideoFilter == types.VideoFilterVideos {
-									<span class="size-3.5 shrink-0">
-										@icons.Clapperboard()
-									</span>
-								} else if video.Channel.VideoFilter == types.VideoFilterStreams {
-									<span class="size-3.5 shrink-0">
-										@icons.Radio()
-									</span>
-								}
-							</a>
-						}
-						<span class="ui-feed-time w-fit">
-							{ utils.RelativeTimeAgo(video.PublishedAt) }
-						</span>
-					</div>
-				</div>
+				@ui.VideoMeta(
+					video.Title,
+					fmt.Sprintf("/channel/%s", video.Channel.ID),
+					video.Channel.Title,
+					utils.RelativeTimeAgo(video.PublishedAt),
+					string(video.Channel.VideoFilter),
+					opts.showChannelName,
+				)
 			</div>
 		}
 	</div>
@@ -196,7 +181,7 @@ func VideoCard(video types.VideoProps, options ...FeedOption) templ.Component {
 }
 
 templ videoCardComponent(video types.VideoProps, opts feedOptions) {
-	<div class="ui-motion-swap ui-video-card aspect-video" id={ fmt.Sprintf("video-card-%s", video.ID) }>
+	@ui.VideoCardShell(fmt.Sprintf("video-card-%s", video.ID)) {
 		if opts.showProgressActions || opts.showWatchLaterButton {
 			<div class="absolute z-20 top-2 left-2 htmx-indicator ui-indicator-delayed" id={ fmt.Sprintf("video-card-%s-indicator", video.ID) }>
 				<span class="ui-spinner size-7 border-[3px] md:size-5 md:border-2"></span>
@@ -261,7 +246,7 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 			}
 		</div>
 		@VideoThumbnail(video.ID, video.Title, video.Hidden)
-	</div>
+	}
 }
 
 templ VideoTile(video types.VideoProps, opts feedOptions) {

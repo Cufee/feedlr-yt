@@ -25,7 +25,7 @@ Migrate feed and video experiences to the new component system while preserving 
 
 ## Work Checklist
 
-- [ ] Split feed rendering into reusable `ui` subcomponents.
+- [x] Split feed rendering into reusable `ui` subcomponents.
 - [x] Preserve existing IDs and HTMX targets used by OOB swaps.
 - [x] Preserve watch-later behavior for feed/video/carousel variants.
 - [x] Rebuild feed section headers/dividers with new primitives.
@@ -81,4 +81,7 @@ Migrate feed and video experiences to the new component system while preserving 
 - Carryover verification (2026-02-11):
 - Revalidated `/app`, `/app/recent`, `/app/watch-later`, and `/video/:id` on desktop/mobile.
 - Revalidated HTMX actions (watch-later toggle, watched/unwatched, hide/unhide, progress updates) and server OOB watch-later sync paths.
-- `Split feed rendering into reusable ui subcomponents` remains a deferred structural refactor, not a behavioral blocker.
+- Feed rendering split completed with shared `ui` subcomponents:
+- `internal/templates/components/ui/video-card.templ` (`VideoCardShell`)
+- `internal/templates/components/ui/video-meta.templ` (`VideoMeta`)
+- `internal/templates/components/feed/video.templ` now composes those shared pieces for card shell and metadata blocks.
