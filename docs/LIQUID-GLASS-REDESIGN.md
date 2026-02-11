@@ -57,6 +57,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Spinner indicators now use delayed reveal for HTMX actions to prevent flicker on sub-perceptual responses.
 - Motion defaults are subtle and short, with clear reduced-motion fallbacks.
 - Feed/video chrome now favors compact glass action chips and consistent metadata rhythm across cards, carousel, and player rail.
+- Feed card typography and control density were softened (lighter title/overlay weight, roomier icon padding, inset blurred progress treatment) to reduce visual heaviness.
 
 ### Visual Principles
 

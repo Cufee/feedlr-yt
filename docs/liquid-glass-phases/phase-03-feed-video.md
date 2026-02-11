@@ -55,6 +55,10 @@ Migrate feed and video experiences to the new component system while preserving 
 - Video card overlays/actions/progress indicators now use tokenized custom classes instead of Daisy-style action/button/progress classes.
 - `/app`, `/app/recent`, `/app/watch-later` section chrome and empty states now use `ui-feed-divider` / `ui.EmptyState`.
 - `/video/:id` rail controls and sponsor-block toast moved to `ui-video-rail-*` and `ui-toast` surfaces.
+- Phase 03 pass 1 polish:
+- Reduced feed title and watched/hidden overlay font weight to improve scanability.
+- Increased video action-button inner padding and reduced glyph scale for better icon balance.
+- Reworked in-card progress bar to an inset, larger, blurred track with rounded fill (iOS-style visual treatment).
 - Verification run for this pass:
 - `npm run build` (success)
 - `go generate ./...` (success)
