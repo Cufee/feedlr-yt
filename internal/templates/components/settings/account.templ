@@ -4,6 +4,7 @@ package settings
 import (
 	"fmt"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"time"
 )
@@ -40,12 +41,21 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 		</div>
 	</div>
 	<script>
-		document.getElementById('addPasskey').addEventListener('click', register);
+			document.getElementById('addPasskey').addEventListener('click', register);
 
-		function showMessage(message, isError = false) {
-      const errorSpan = document.getElementById('error');
-      if (!isError) {
-        errorSpan.classList.add("hidden");
+			function getWebAuthnBrowser() {
+	      const webAuthnBrowser = window.SimpleWebAuthnBrowser;
+	      if (webAuthnBrowser) {
+	        return webAuthnBrowser;
+	      }
+	      showMessage("Passkey library failed to load. Refresh and try again.", true);
+	      return null;
+			}
+
+			function showMessage(message, isError = false) {
+	      const errorSpan = document.getElementById('error');
+	      if (!isError) {
+	        errorSpan.classList.add("hidden");
         errorSpan.innerText = "";
         return;
       }
@@ -65,12 +75,17 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 								throw new Error(msg);
 						}
 
-						// Convert the registration options to JSON.
-						const options = await response.json();
+							// Convert the registration options to JSON.
+							const options = await response.json();
 
-						// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
-						// A new attestation is created. This also means a new public-private-key pair is created.
-						const attestationResponse = await SimpleWebAuthnBrowser.startRegistration(options.publicKey);
+							const webAuthnBrowser = getWebAuthnBrowser();
+							if (!webAuthnBrowser) {
+								return;
+							}
+
+							// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
+							// A new attestation is created. This also means a new public-private-key pair is created.
+							const attestationResponse = await webAuthnBrowser.startRegistration(options.publicKey);
 
 						// Send attestationResponse back to server for verification and storage.
 						const verificationResponse = await fetch('/api/passkeys/add/finish', {
@@ -96,5 +111,5 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 				}
 		}
 	</script>
-	<script src="/assets/js/index.es5.umd.min.js" async></script>
+		@shared.PasskeyBrowserScript()
 }

@@ -7,7 +7,7 @@ import (
 templ ChannelTile(channel youtube.Channel, actionButton templ.Component) {
 	<div class="ui-channel-tile">
 		<div class="ui-channel-thumb">
-			<img src={ channel.Thumbnail } alt={ channel.Title } onload="this.style.display='block'" onerror="this.style.display='none'"/>
+			<img src={ channel.Thumbnail } alt={ channel.Title } loading="lazy"/>
 			<div class="ui-channel-thumb-skeleton"></div>
 		</div>
 		<div class="flex min-h-[5.3rem] w-full flex-col justify-start">
@@ -17,7 +17,7 @@ templ ChannelTile(channel youtube.Channel, actionButton templ.Component) {
 					@actionButton
 				}
 			</div>
-			<span class="ui-channel-description" style="overflow-wrap: anywhere;">
+			<span class="ui-channel-description">
 				if channel.Description != "" {
 					{ channel.Description }
 				} else {

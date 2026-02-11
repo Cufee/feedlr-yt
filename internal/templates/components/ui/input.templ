@@ -1,5 +1,7 @@
 package ui
 
+import "strconv"
+
 type InputVariant string
 
 const (
@@ -8,11 +10,14 @@ const (
 )
 
 type inputOptions struct {
-	inputType   string
-	variant     InputVariant
-	class       string
-	disabled    bool
+	inputType    string
+	variant      InputVariant
+	class        string
+	disabled     bool
 	autocomplete string
+	minLength    string
+	maxLength    string
+	required     bool
 }
 
 type InputOption func(*inputOptions)
@@ -33,7 +38,17 @@ func WithInputAutocomplete(value string) InputOption {
 	return func(o *inputOptions) { o.autocomplete = value }
 }
 
+func WithInputMinLength(value int) InputOption {
+	return func(o *inputOptions) { o.minLength = strconv.Itoa(value) }
+}
+
+func WithInputMaxLength(value int) InputOption {
+	return func(o *inputOptions) { o.maxLength = strconv.Itoa(value) }
+}
+
 var InputDisabled InputOption = func(o *inputOptions) { o.disabled = true }
+
+var InputRequired InputOption = func(o *inputOptions) { o.required = true }
 
 func Input(id, name, value, placeholder string, opts ...InputOption) templ.Component {
 	o := inputOptions{
@@ -76,6 +91,12 @@ templ inputImpl(id, name, value, placeholder string, opts inputOptions) {
 		class={ inputClass(opts) }
 		disabled?={ opts.disabled }
 		autocomplete={ opts.autocomplete }
+		if opts.minLength != "" {
+			minlength={ opts.minLength }
+		}
+		if opts.maxLength != "" {
+			maxlength={ opts.maxLength }
+		}
+		required?={ opts.required }
 	/>
 }
-

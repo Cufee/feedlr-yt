@@ -16,14 +16,14 @@ Reviewed sources:
 - Apple Liquid Glass overview: https://developer.apple.com/documentation/TechnologyOverviews/liquid-glass
 - Apple adopting Liquid Glass: https://developer.apple.com/documentation/TechnologyOverviews/adopting-liquid-glass
 - Apple HIG materials: https://developer.apple.com/design/human-interface-guidelines/materials
-- Tailwind with Vite: https://tailwindcss.com/docs/installation/using-vite
+- Tailwind with CLI build: https://tailwindcss.com/docs/installation/tailwind-cli
 
 Key takeaways used in this plan:
 
 - Liquid Glass emphasizes dynamic translucency, layering, and adaptive behavior based on context.
 - Adoption guidance emphasizes using system conventions, preserving legibility, and avoiding decorative overuse.
 - HIG materials emphasize hierarchy, harmony, and consistency across surfaces.
-- Tailwind + Vite setup should be simple and explicit: install `tailwindcss` and `@tailwindcss/vite`, register the Vite plugin, and import Tailwind in the app CSS entry.
+- Tailwind CLI setup should stay explicit and minimal: keep `tailwind.css` as source and compile to `assets/css/style.css`.
 
 ## Current Frontend Baseline
 
@@ -45,7 +45,7 @@ Key takeaways used in this plan:
 
 Create a "Polar Glass" UI language:
 
-- Cool neutral palette with high contrast text, subtle cyan accents, no purple bias
+- Cool neutral palette with high contrast text and restrained violet accents
 - Frosted translucent panels over soft atmospheric gradients
 - Crisp boundaries (hairline borders) with restrained blur and saturation
 - Utility-first layout prioritizing video scanning speed over decorative density
@@ -135,14 +135,14 @@ Rules:
 - Keep custom CSS small and tokenized; prefer Tailwind classes in templates first.
 - Add custom CSS only for reusable patterns that cannot be expressed readably with Tailwind utilities.
 
-## Tailwind Architecture (Target)
+## Tailwind Architecture
 
-Use Tailwind with a Vite pipeline and local generated assets.
+Use Tailwind CLI with local generated assets.
 
 ### Build Direction
 
 - Keep `tailwind.css` as source of tokens/utilities/components
-- Compile to `assets/css/style.css` via Vite build output or a Tailwind-only Vite entry
+- Compile `tailwind.css` to `assets/css/style.css` via the npm Tailwind CLI script
 - Remove runtime CDN dependencies from `head.templ`:
   - remove DaisyUI CDN links
   - remove `@tailwindcss/browser` script
@@ -206,8 +206,8 @@ Then recompose domain components (`feed`, `settings`, `subscriptions`, `channel`
 - `internal/templates/layouts/video.templ`
 - `internal/templates/layouts/partials/head.templ`
 - `internal/templates/layouts/partials/navbar.templ`
-- `internal/templates/layouts/partials/footer.templ`
-- `internal/templates/layouts/partials/progress.templ`
+- `internal/templates/components/ui/footer.templ`
+- `internal/templates/components/ui/progress.templ`
 
 Actions:
 
@@ -277,7 +277,7 @@ Actions:
 ## Phase 0: Initial Cleanup and Build Safety
 
 1. Remove runtime style CDN usage in `internal/templates/layouts/partials/head.templ`.
-2. Add local stylesheet link (`/assets/css/style.css` or Vite output equivalent).
+2. Add local stylesheet link (`/assets/css/style.css`).
 3. Add generated CSS to `.gitignore`:
    - `assets/css/style.css`
 4. Untrack generated CSS from git:

@@ -16,39 +16,35 @@ var Legal brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...t
 }
 
 templ main(content ...templ.Component) {
-	<html lang="en" data-theme="dim">
-		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
-		<body class="min-h-dvh flex flex-col" hx-ext="head-support">
-			@partials.NavProgressAnimated()
-			@ui.PageShellMain("py-3") {
-				for _, c := range content {
-					@c
-				}
-				{ children... }
-			}
-			@ui.PageShellFooter("") {
-				@partials.Footer()
-			}
-		</body>
-	</html>
+	@pageShell("py-3", nil, content...)
 }
 
 templ legal(content ...templ.Component) {
+	@pageShell("gap-3 py-2", legalNav(), content...)
+}
+
+templ legalNav() {
+	<div class="pt-2">
+		@ui.NavbarLogoOnly("/")
+	</div>
+}
+
+templ pageShell(mainClass string, nav templ.Component, content ...templ.Component) {
 	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
 		<body class="min-h-dvh flex flex-col" hx-ext="head-support">
-			@partials.NavProgressAnimated()
-			@ui.PageShellMain("gap-3 py-2") {
-				<div class="pt-2">
-					@ui.NavbarLogoOnly("/")
-				</div>
+			@ui.NavProgress()
+			@ui.PageShellMain(mainClass) {
+				if nav != nil {
+					@nav
+				}
 				for _, c := range content {
 					@c
 				}
 				{ children... }
 			}
 			@ui.PageShellFooter("") {
-				@partials.Footer()
+				@ui.Footer()
 			}
 		</body>
 	</html>

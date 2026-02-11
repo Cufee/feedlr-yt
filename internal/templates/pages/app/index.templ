@@ -25,15 +25,6 @@ templ VideosFeed(props types.UserVideoFeedProps) {
 		if len(props.New) > 0 && len(props.Watched) > 0 {
 			<div class="ui-feed-divider"><span>watched</span></div>
 		}
-		@feed.VideoFeed(props.Watched, "/app", feed.WithChannelName, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay)
-	</div>
-}
-
-script tilesScrollOnHover() {
-	var tiles = document.querySelectorAll(".video-tile");
-	tiles.forEach((tile) => {
-		tile.addEventListener("mouseenter", () => {
-			tile.scrollIntoView({ block: 'nearest', behavior: "smooth" });
-		});
-	});
+			@feed.VideoFeed(props.Watched, "/app", feed.WithChannelName, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay)
+		</div>
 }
