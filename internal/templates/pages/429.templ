@@ -5,10 +5,12 @@ templ RateLimited() {
     <title>Feedlr</title>
   </head>
 
-  <div class="flex flex-col items-center self-center justify-center h-full">
-    <span class="text-2xl font-bold">Oh snap! Your requests are too powerful!</span>
-    <span>You are seeing this page because you have been rate limited.</span>
-    <span>Try again in a few seconds.</span>
+  <div class="mx-auto my-auto flex w-full max-w-xl flex-col items-center self-center justify-center px-3">
+    <div class="ui-card flex w-full flex-col items-center gap-2 text-center">
+      <span class="text-xl font-semibold md:text-2xl">Oh snap! Your requests are too powerful!</span>
+      <span class="text-sm text-text-secondary">You are seeing this page because you have been rate limited.</span>
+      <span class="text-sm text-text-secondary">Try again in a few seconds.</span>
+    </div>
   </div>
   <script>
     setTimeout(() => {
@@ -16,4 +18,3 @@ templ RateLimited() {
     }, 5000)
   </script>
 }
-

@@ -64,6 +64,9 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Video-card internals now follow a shared inset/size grid so button cluster, duration chip, and progress bar align consistently at every breakpoint.
 - Video cards now use an inset stroke + isolated media layer to avoid corner pixel artifacts while preserving rounded glass edges.
 - Channel discovery and subscriptions surfaces now reuse one tile language (thumbnail, title, description, action slot, overlay states) across search, subscriptions, and channel header contexts.
+- Subscriptions search now sits directly in page flow (no nested card wrapper) and keeps a full-width control footprint for stronger section continuity.
+- Search-result and subscribed channel cards now share the same blurred "Open" overlay interaction language for visual and behavioral parity.
+- Supporting fallback pages (`/`, `/login`, `/error`, `/429`, outage) now reuse the same card/button/input/toast primitives to keep non-app states inside the same material system.
 
 ### Visual Principles
 

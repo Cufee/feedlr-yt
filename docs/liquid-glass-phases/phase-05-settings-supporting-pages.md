@@ -29,8 +29,8 @@ Complete migration for settings-heavy and fallback pages with consistent Polar G
 - [ ] Rebuild settings sections with `ui.Section` + `ui.Card` patterns.
 - [ ] Normalize toggle, badge, status, and action button styles.
 - [ ] Keep all settings endpoints and form actions unchanged.
-- [ ] Rebuild login form and feedback surfaces using shared input/button/toast primitives.
-- [ ] Rebuild landing/error/429/outage pages with unified fallback layout language.
+- [x] Rebuild login form and feedback surfaces using shared input/button/toast primitives.
+- [x] Rebuild landing/error/429/outage pages with unified fallback layout language.
 - [ ] Wrap legal remote content in readable typographic container.
 - [ ] Confirm passkey and sync actions remain operational.
 
@@ -51,4 +51,9 @@ Complete migration for settings-heavy and fallback pages with consistent Polar G
 ## Notes
 
 - Avoid introducing style-only JS in fallback/supporting pages.
-
+- Phase 05 pass 1 started:
+- Migrated `/`, `/login`, `/error`, `/429`, and outage pages to `ui-*` primitives (`ui-card`, `ui-btn`, `ui-input`, `ui-toast`) and removed Daisy-specific button/input/alert class usage from those surfaces.
+- Kept all existing page behavior (including auto-redirect scripts and passkey login/registration handlers) unchanged.
+- Style preferences to carry forward:
+- Prefer integrated full-width controls in section flow over nested card-in-card wrappers.
+- Keep equivalent list/card surfaces visually consistent (hover blur/overlay affordances and interaction copy).

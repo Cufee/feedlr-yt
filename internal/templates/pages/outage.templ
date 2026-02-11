@@ -5,9 +5,11 @@ templ Outage() {
     <title>Feedlr - Down for Maintenance</title>
   </head>
 
-  <div class="flex flex-col items-center self-center justify-center h-full">
-    <span class="text-2xl font-bold">We are currently working on improving Feedlr!</span>
-    <span>This istance is down for maintenance and will be back up shortly.</span>
+  <div class="mx-auto my-auto flex w-full max-w-xl flex-col items-center self-center justify-center px-3">
+    <div class="ui-card flex w-full flex-col items-center gap-2 text-center">
+      <span class="text-xl font-semibold md:text-2xl">We are currently working on improving Feedlr!</span>
+      <span class="text-sm text-text-secondary">This instance is down for maintenance and will be back up shortly.</span>
+    </div>
   </div>
   <script>
     setTimeout(() => {
@@ -15,4 +17,3 @@ templ Outage() {
     }, 5000)
   </script>
 }
-
