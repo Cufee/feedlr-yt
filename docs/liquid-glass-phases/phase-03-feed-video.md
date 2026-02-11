@@ -66,6 +66,10 @@ Migrate feed and video experiences to the new component system while preserving 
 - Introduced an explicit radius token scale and applied it consistently to feed/video surfaces and controls.
 - Increased video card/media corner radius using shared `--radius-media`.
 - Reduced progress fill opacity further so the bar reads as layered glass instead of a solid accent stripe.
+- Phase 03 pass 1 polish v5:
+- Added dedicated video spacing/size tokens (`--space-video-*`, `--size-video-action`, `--height-video-progress`) to align action buttons, duration chip, and progress track to one inset system.
+- Increased media radius to `--radius-2xl` and normalized button/chip curvature to `--radius-sm` for cleaner consistency.
+- Softened progress fill opacity and glow again to keep the glass layer subtle.
 - Verification run for this pass:
 - `npm run build` (success)
 - `go generate ./...` (success)

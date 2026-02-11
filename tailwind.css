@@ -27,13 +27,19 @@
     --radius-md: 1rem;
     --radius-lg: 1.2rem;
     --radius-xl: 1.4rem;
+    --radius-2xl: 1.55rem;
     --radius-pill: 9999px;
 
     --radius-panel: var(--radius-lg);
     --radius-chip: var(--radius-pill);
     --radius-control: var(--radius-sm);
     --radius-control-compact: var(--radius-xs);
-    --radius-media: var(--radius-xl);
+    --radius-media: var(--radius-2xl);
+
+    --space-video-inset: 0.625rem;
+    --space-video-gap: 0.375rem;
+    --size-video-action: 2.15rem;
+    --height-video-progress: 0.55rem;
 
     --blur-glass-sm: 10px;
     --blur-glass-md: 20px;
@@ -281,11 +287,24 @@
     }
 
     .ui-video-card-actions {
-        @apply absolute right-2 top-2 z-20 flex flex-row gap-1;
+        @apply absolute z-20 flex flex-row;
+        top: var(--space-video-inset);
+        right: var(--space-video-inset);
+        gap: var(--space-video-gap);
     }
 
     .ui-video-action-btn {
-        @apply inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/16 bg-black/55 p-1.5 text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/45 hover:text-text-primary active:bg-glass-fill/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:stroke-[1.75] md:h-8 md:w-8;
+        @apply inline-flex items-center justify-center border border-glass-stroke/14 bg-black/52 text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/40 hover:text-text-primary active:bg-glass-fill/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
+        height: var(--size-video-action);
+        width: var(--size-video-action);
+        border-radius: var(--radius-sm);
+        padding: 0.3rem;
+    }
+
+    .ui-video-action-btn > svg {
+        height: 1.02rem;
+        width: 1.02rem;
+        stroke-width: 1.72;
     }
 
     .ui-video-action-btn-active {
@@ -297,15 +316,23 @@
     }
 
     .ui-video-duration-chip {
-        @apply absolute bottom-5 right-2 z-30 inline-flex items-center justify-center gap-1 rounded-[var(--radius-control-compact)] border border-white/10 bg-black/55 px-1.5 py-0.5 text-xs font-medium text-white md:text-sm;
+        @apply absolute z-30 inline-flex items-center justify-center gap-1 border border-white/11 bg-black/54 px-1.5 py-0.5 text-xs font-medium text-white md:text-sm;
+        right: var(--space-video-inset);
+        bottom: calc(var(--space-video-inset) + var(--height-video-progress) + 0.42rem);
+        border-radius: var(--radius-sm);
     }
 
     .ui-video-progress-track {
-        @apply absolute bottom-2 left-2 right-2 z-20 h-2.5 overflow-hidden rounded-full border border-glass-stroke/22 bg-glass-fill/18 shadow-[inset_0_1px_3px_rgba(255,255,255,0.14)] backdrop-blur-md;
+        @apply absolute z-20 overflow-hidden border border-glass-stroke/20 bg-glass-fill/17 shadow-[inset_0_1px_3px_rgba(255,255,255,0.12)] backdrop-blur-md;
+        left: var(--space-video-inset);
+        right: var(--space-video-inset);
+        bottom: var(--space-video-inset);
+        height: var(--height-video-progress);
+        border-radius: var(--radius-pill);
     }
 
     .ui-video-progress-fill {
-        @apply h-full rounded-full bg-accent/68 shadow-[0_0_6px_rgba(177,128,230,0.28)];
+        @apply h-full rounded-full bg-accent/62 shadow-[0_0_5px_rgba(177,128,230,0.22)];
     }
 
     .ui-video-rail {

@@ -60,6 +60,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Feed card typography and control density were softened (lighter title/overlay weight, roomier icon padding, inset blurred progress treatment) to reduce visual heaviness.
 - Glass progress surfaces now use lower-opacity layers and softer fill luminance to keep overlays atmospheric instead of visually dense.
 - Radius handling now uses a shared token scale (`--radius-*`) with media/control-specific aliases to keep curvature consistent across shells, cards, and actions.
+- Video-card internals now follow a shared inset/size grid so button cluster, duration chip, and progress bar align consistently at every breakpoint.
 
 ### Visual Principles
 
