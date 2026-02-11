@@ -53,7 +53,7 @@ templ videoLayout(video types.VideoProps, content ...templ.Component) {
 			<meta name="twitter:image:alt" content={ video.Title }/>
 		}
 		<body class="h-svh bg-black" hx-ext="head-support">
-			@partials.NavProgressAnimated()
+			@ui.NavProgress()
 			@ui.PageShellVideo("") {
 				for _, c := range content {
 					@c

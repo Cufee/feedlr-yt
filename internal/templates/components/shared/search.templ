@@ -5,58 +5,115 @@ import "fmt"
 templ FuseSearch(id string, label string, minLength int) {
 	<div class="flex items-center justify-center w-full" id={ fmt.Sprintf("fuse-search-%s", id) }>
 		<input id={ fmt.Sprintf("search-input-%s", id) } type="text" placeholder={ label } class="ui-input w-full text-center"/>
-		<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2" onload={ fuseSearch(fmt.Sprintf("search-input-%s", id), id, id, minLength) }></script>
 	</div>
+	@EmbedScript(fuseSearch(fmt.Sprintf("search-input-%s", id), id, id, minLength), fmt.Sprintf("search-input-%s", id), id, id, minLength)
 }
 
 script fuseSearch(searchInputId, targetId, parentId string, minLength int) {
-	const displayresults = (target, items) => {
-		if (parentId == targetId) {
-			for (const n of target.children) {
-				if (!items.includes(n.dataset.search)) {
-					n.classList.add("hidden")
-				} else {
-					n.classList.remove("hidden")
-				}
-			}
-		} else {
-			target.innerHTML = ""
-			for (const item of result) {
-				target.appendChild(item.item)
-			}
+	const ensureFuseLoaded = () => {
+		if (window.Fuse) {
+			return Promise.resolve(window.Fuse);
 		}
+		if (window.__feedlrFusePromise) {
+			return window.__feedlrFusePromise;
+		}
+		window.__feedlrFusePromise = new Promise((resolve, reject) => {
+			const script = document.createElement("script");
+			script.src = "https://cdn.jsdelivr.net/npm/fuse.js@6.6.2";
+			script.async = true;
+			script.onload = () => {
+				if (window.Fuse) {
+					resolve(window.Fuse);
+					return;
+				}
+				reject(new Error("Fuse loaded without global export"));
+			};
+			script.onerror = () => reject(new Error("Failed to load Fuse.js"));
+			document.head.appendChild(script);
+		});
+		return window.__feedlrFusePromise;
 	}
 
 	const initSearch = () => {
-		const target = document.getElementById(targetId)
-		const container = document.getElementById(parentId)
-		const input = document.getElementById(searchInputId)
-		const items = [...container.children].map(n => n.dataset.search)
-		const options = { includeScore: false }
+		const target = document.getElementById(targetId);
+		const container = document.getElementById(parentId);
+		const input = document.getElementById(searchInputId);
+		if (!target || !container || !input || input.dataset.fuseInit === "true") {
+			return false;
+		}
+		input.dataset.fuseInit = "true";
 
-		const fuse = new Fuse(items, options)
-		const search = (query) => {
-			if (query.length == 0) {
-				input.classList.remove("ui-input-error")
-				displayresults(target, items)
-				return
-			} else if (query.length >= minLength)  {
-				input.classList.remove("ui-input-error")
-			} else if (query.length < minLength) {
-				input.classList.add("ui-input-error")
-				return
+		ensureFuseLoaded().then((Fuse) => {
+			const entries = [...container.children]
+				.filter((node) => node.dataset.search)
+				.map((node) => ({ key: node.dataset.search, node: node }));
+			const searchableKeys = entries.map((entry) => entry.key);
+			const fuse = new Fuse(entries, {
+				includeScore: false,
+				ignoreLocation: true,
+				keys: ["key"],
+			});
+
+			const displayResults = (keys) => {
+				const visible = new Set(keys);
+				if (parentId == targetId) {
+					for (const node of container.children) {
+						if (!node.dataset.search) {
+							continue;
+						}
+						if (!visible.has(node.dataset.search)) {
+							node.classList.add("hidden");
+							continue;
+						}
+						node.classList.remove("hidden");
+					}
+					return;
+				}
+
+				target.innerHTML = "";
+				for (const entry of entries) {
+					if (!visible.has(entry.key)) {
+						continue;
+					}
+					target.appendChild(entry.node.cloneNode(true));
+				}
+				window.htmx?.process(target);
 			}
 
-			const result = fuse.search(query.length > 1 ? `'"${query}"` : "'"+query)
-			displayresults(target, result.map(i => i.item))
-		}
-		
-		input.addEventListener("input", (e) => {
-			search(e.target.value)
-		})
+			const runSearch = (query) => {
+				const value = query.trim();
+				if (value.length === 0) {
+					input.classList.remove("ui-input-error");
+					displayResults(searchableKeys);
+					return;
+				}
+				if (value.length < minLength) {
+					input.classList.add("ui-input-error");
+					return;
+				}
+				input.classList.remove("ui-input-error");
+				const matches = fuse.search(value).map((result) => result.item.key);
+				displayResults(matches);
+			}
+
+			input.addEventListener("input", (event) => {
+				runSearch(event.target.value || "");
+			});
+			runSearch(input.value || "");
+		}).catch(() => {
+			input.classList.add("ui-input-error");
+		});
+
+		return true;
 	}
 
-	const waitForParent = setTimeout(() => {
-		document.getElementById(parentId) && initSearch() && clearTimeout(waitForParent)
-	}, 100)
+	if (initSearch()) {
+		return;
+	}
+	const observer = new MutationObserver(() => {
+		if (initSearch()) {
+			observer.disconnect();
+		}
+	});
+	observer.observe(document.body, { childList: true, subtree: true });
 }

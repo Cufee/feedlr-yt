@@ -67,14 +67,6 @@ templ buttonShare(id string) {
 	@shared.EmbedScript(shareButtonScript(id), id)
 }
 
-templ buttonViewOnYoutube(id string) {
-	<a href={ templ.URL("https://youtube.com/watch?from=feedler.app&v=" + id) } target="_blank" id="view-on-youtube" class="ui-video-rail-btn">
-		<div class="border border-glass-stroke/30 rounded-lg px-1.5 py-0.5 pl-2">
-			@icons.Play()
-		</div>
-	</a>
-}
-
 script shareButtonScript(id string) {
 	const link = window.location.origin + "/video/" + id
 	document.getElementById("share-video-link-btn").addEventListener("click", () => {

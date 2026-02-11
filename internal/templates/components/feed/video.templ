@@ -74,13 +74,13 @@ func VideoCarousel(videos []types.VideoProps, options ...FeedOption) templ.Compo
 }
 
 templ videoCarouselComponent(videos []types.VideoProps, opts feedOptions) {
-	<div class="watch-later-section relative h-44 md:h-52" id="components-video-carousel">
-		<div class="watch-later-items flex w-full h-full gap-3 overflow-x-auto snap-x snap-mandatory" id="watch-later-items">
+	<div class="ui-watch-later-section" id="components-video-carousel">
+		<div class="ui-watch-later-items" id="watch-later-items">
 			for _, video := range videos {
 				@WatchLaterCarouselItem(video)
 			}
 		</div>
-		<div class="watch-later-placeholder absolute inset-0 flex items-center justify-center">
+		<div class="ui-watch-later-placeholder">
 			<span class="ui-feed-time">Refresh to hide this section</span>
 		</div>
 	</div>
@@ -88,7 +88,7 @@ templ videoCarouselComponent(videos []types.VideoProps, opts feedOptions) {
 
 // WatchLaterCarouselItem - a single carousel item for OOB insertion
 templ WatchLaterCarouselItem(video types.VideoProps) {
-	<div class="watch-later-item ui-motion-swap snap-start shrink-0 w-56 md:w-72 flex flex-col" id={ fmt.Sprintf("carousel-item-%s", video.ID) }>
+	<div class="ui-watch-later-item ui-motion-swap" id={ fmt.Sprintf("carousel-item-%s", video.ID) }>
 		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col h-full cursor-pointer group">
 			<div class="ui-video-card aspect-video">
 				@VideoThumbnail(video.ID, video.Title, false)
@@ -235,37 +235,18 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 				</div>
 			}
 		}
-		<div class={ "ui-video-duration-chip", templ.KV("ui-video-duration-chip-no-progress", !(video.Progress > 0 && opts.showProgressBar)) }>
-			if video.Hidden {
-			} else if video.Type == "live_stream" {
-				<div class="w-2 h-2 bg-red-500 rounded-full"></div> LIVE
-			} else if video.Type == "upcoming_stream" {
-				<div class="w-2 h-2 bg-gray-500 rounded-full"></div> OFFLINE
-			} else {
-				{ secondsToDurationString(video.Duration) }
-			}
+			<div class={ "ui-video-duration-chip", templ.KV("ui-video-duration-chip-no-progress", !(video.Progress > 0 && opts.showProgressBar)) }>
+				if video.Hidden {
+				} else if video.Type == "live_stream" {
+					<div class="ui-video-status-live-dot"></div> LIVE
+				} else if video.Type == "upcoming_stream" {
+					<div class="ui-video-status-offline-dot"></div> OFFLINE
+				} else {
+					{ secondsToDurationString(video.Duration) }
+				}
 		</div>
 		@VideoThumbnail(video.ID, video.Title, video.Hidden)
 	}
-}
-
-templ VideoTile(video types.VideoProps, opts feedOptions) {
-	<div class="relative overflow-hidden video-tile rounded-[var(--radius-media)]">
-		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative group">
-			@videoCardComponent(video, opts)
-		</a>
-	</div>
-}
-
-templ VideoTileWithTitle(video types.VideoProps, opts feedOptions) {
-	<div class="relative overflow-hidden shadow-md group carousel-item rounded-[var(--radius-media)] w-fit" id={ fmt.Sprintf("video-tile-%s", video.ID) }>
-		@VideoTile(video, opts)
-		<div class="pointer-events-none absolute bottom-0 left-0 z-10 flex w-full translate-y-2 flex-col gap-1 bg-black/60 opacity-0 transition-all duration-150 ease-[var(--ease-standard)] md:hidden group-hover:translate-y-0 group-hover:opacity-100">
-			<div class="px-2 py-1 font-bold text-center text-white truncate">
-				{ video.Title }
-			</div>
-		</div>
-	</div>
 }
 
 func secondsToDurationString(seconds int) string {

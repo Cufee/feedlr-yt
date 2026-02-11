@@ -202,10 +202,6 @@
         @apply mx-auto my-6 w-[min(92vw,36rem)] rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 p-5 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-md)] transition-all duration-200 ease-[var(--ease-emphasized)] motion-reduce:transition-none;
     }
 
-    .ui-dialog-backdrop {
-        @apply hidden;
-    }
-
     .ui-toast {
         @apply rounded-[var(--radius-md)] border px-3 py-2 text-sm shadow-lg backdrop-blur-[var(--blur-glass-sm)] transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none;
     }
@@ -313,7 +309,7 @@
     }
 
     .ui-channel-thumb img {
-        @apply relative z-10 hidden h-full w-full object-cover transition-all duration-500 ease-[var(--ease-standard)] group-hover:scale-110;
+        @apply relative z-10 h-full w-full object-cover transition-all duration-500 ease-[var(--ease-standard)] group-hover:scale-110;
     }
 
     .ui-channel-thumb-skeleton {
@@ -326,6 +322,7 @@
 
     .ui-channel-description {
         @apply mt-1 text-sm text-text-secondary line-clamp-2;
+        overflow-wrap: anywhere;
     }
 
     .ui-channel-action-btn {
@@ -367,6 +364,26 @@
 
     .ui-search-results {
         @apply flex w-full flex-row flex-wrap gap-3;
+    }
+
+    .ui-watch-later-section {
+        @apply relative h-44 md:h-52;
+    }
+
+    .ui-watch-later-items {
+        @apply flex h-full w-full gap-3 overflow-x-auto snap-x snap-mandatory;
+    }
+
+    .ui-watch-later-item {
+        @apply snap-start shrink-0 w-56 md:w-72 flex flex-col;
+    }
+
+    .ui-watch-later-placeholder {
+        @apply absolute inset-0 flex items-center justify-center;
+    }
+
+    .ui-watch-later-section:has(.ui-watch-later-item) .ui-watch-later-placeholder {
+        display: none;
     }
 
     .ui-settings-section {
@@ -446,6 +463,10 @@
         @apply rounded-[var(--radius-control-compact)] border border-danger/35 bg-danger/15 px-2 py-1 text-xs text-red-100;
     }
 
+    .ui-overflow-anywhere {
+        overflow-wrap: anywhere;
+    }
+
     .ui-spinner {
         @apply inline-block shrink-0 animate-spin rounded-full border-2 border-glass-stroke/35 border-t-accent/80 motion-reduce:animate-none;
     }
@@ -519,6 +540,14 @@
         bottom: calc(var(--space-video-inset-y) + 0.06rem);
     }
 
+    .ui-video-status-live-dot {
+        @apply h-2 w-2 rounded-full bg-danger;
+    }
+
+    .ui-video-status-offline-dot {
+        @apply h-2 w-2 rounded-full bg-text-secondary/55;
+    }
+
     .ui-video-progress-track {
         @apply absolute z-20 overflow-hidden border border-glass-stroke/20 bg-glass-fill/17 shadow-[inset_0_1px_3px_rgba(255,255,255,0.12)] backdrop-blur-md;
         left: var(--space-video-inset-x);
@@ -542,6 +571,10 @@
 
     .ui-video-rail-btn {
         @apply inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/18 bg-glass-fill/22 p-0 text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/35 hover:text-text-primary active:bg-glass-fill/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.8];
+    }
+
+    .ui-btn-destructive-neutral {
+        @apply border-danger/35 text-red-100 hover:bg-danger/20;
     }
 
     .ui-motion-swap {

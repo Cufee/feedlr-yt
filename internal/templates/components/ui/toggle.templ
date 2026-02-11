@@ -31,11 +31,3 @@ templ toggleImpl(id, name string, checked bool, opts toggleOptions) {
 		disabled?={ opts.disabled }
 	/>
 }
-
-templ ToggleWithLabel(id, name, label string, checked bool, opts ...ToggleOption) {
-	<label class="inline-flex items-center gap-2 cursor-pointer">
-		@Toggle(id, name, checked, opts...)
-		<span class="text-sm text-text-secondary">{ label }</span>
-	</label>
-}
-

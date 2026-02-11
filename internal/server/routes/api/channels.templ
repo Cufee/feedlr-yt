@@ -8,6 +8,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/templates/pages"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/tpot/brewed"
@@ -45,7 +46,7 @@ var SearchChannels brewed.Partial[*handler.Context] = func(ctx *handler.Context)
 }
 
 templ channelsSearchErrorMessage(message string) {
-	<div class="m-auto text-2xl">{ message }</div>
+	@ui.EmptyState(message, "", "w-full py-6")
 }
 
 var CreateSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {

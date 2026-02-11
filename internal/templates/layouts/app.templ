@@ -15,7 +15,7 @@ templ app(path string, authenticated bool, content ...templ.Component) {
 	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
 		<body class="min-h-dvh flex flex-col" hx-ext="head-support">
-			@partials.NavProgressAnimated()
+			@ui.NavProgress()
 			@ui.PageShellMain("gap-3 py-2") {
 				@partials.Navbar(path, authenticated)
 				for _, c := range content {
@@ -24,7 +24,7 @@ templ app(path string, authenticated bool, content ...templ.Component) {
 				{ children... }
 			}
 			@ui.PageShellFooter("") {
-				@partials.Footer()
+				@ui.Footer()
 			}
 		</body>
 	</html>

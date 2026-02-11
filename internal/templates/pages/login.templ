@@ -1,23 +1,36 @@
 package pages
 
-import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
+import (
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
+)
 
 templ Login() {
-	<div class="mx-auto my-auto flex w-full max-w-md flex-col items-center justify-center gap-4 px-3 text-center" id="landing">
-		<a href="/">
-			@shared.Logo("text-2xl")
-		</a>
-		<div class="ui-card flex w-full flex-col gap-3">
-			<div class="text-sm text-text-secondary">
-				We use passkeys exclusively.
-			</div>
-			<div>
-				<input id="username" minlength="3" maxlength="24" type="text" class="ui-input w-full" placeholder="Username"/>
-			</div>
-			<div class="flex flex-row flex-wrap gap-2">
-				<button id="loginButton" type="button" class="ui-btn ui-btn-primary grow basis-1/3">Login</button>
-				<button id="registerButton" type="button" class="ui-btn ui-btn-neutral grow basis-1/3">Register</button>
-			</div>
+		<div class="mx-auto my-auto flex w-full max-w-md flex-col items-center justify-center gap-4 px-3 text-center" id="landing">
+			<a href="/">
+				@shared.Logo("text-2xl")
+			</a>
+			<div class="ui-card flex w-full flex-col gap-3">
+				<div class="text-sm text-text-secondary">
+					We use passkeys exclusively.
+				</div>
+				<div>
+					@ui.Input(
+						"username",
+						"username",
+						"",
+						"Username",
+						ui.WithInputClass("w-full"),
+						ui.WithInputAutocomplete("username"),
+						ui.WithInputType("text"),
+						ui.WithInputMinLength(3),
+						ui.WithInputMaxLength(24),
+					)
+				</div>
+				<div class="flex flex-row flex-wrap gap-2">
+					<button id="loginButton" type="button" class="ui-btn ui-btn-primary grow basis-1/3">Login</button>
+					<button id="registerButton" type="button" class="ui-btn ui-btn-neutral grow basis-1/3">Register</button>
+				</div>
 			<div id="error" class="invisible w-full">
 				<div class="ui-toast ui-toast-danger w-full opacity-95">
 					<span></span>
@@ -31,15 +44,24 @@ templ Login() {
 		document.getElementById('username').addEventListener('keyup', (e) => {
           if (e.keyCode === 13 && e.target.value?.length > 3) login();
 		});
-		document.getElementById('username').addEventListener('input', (e) => {
-		  document.getElementById('error').classList.add("invisible")
-		});
+			document.getElementById('username').addEventListener('input', (e) => {
+			  document.getElementById('error').classList.add("invisible")
+			});
 
-		function showMessage(message, isError = false) {
-				const alert = document.getElementById('error');
-				alert.querySelector("span").innerText = message
-				alert.classList.remove("invisible")
-		}
+			function getWebAuthnBrowser() {
+					const webAuthnBrowser = window.SimpleWebAuthnBrowser;
+					if (webAuthnBrowser) {
+							return webAuthnBrowser;
+					}
+					showMessage('Passkey library failed to load. Refresh and try again.', true);
+					return null;
+			}
+
+			function showMessage(message, isError = false) {
+					const alert = document.getElementById('error');
+					alert.querySelector("span").innerText = message
+					alert.classList.remove("invisible")
+			}
 
 		async function register() {
 				// Retrieve the username from the input field
@@ -58,12 +80,17 @@ templ Login() {
 								throw new Error(msg|| 'Failed to get registration options from server');
 						}
 
-						// Convert the registration options to JSON.
-						const options = await response.json();
+							// Convert the registration options to JSON.
+							const options = await response.json();
 
-						// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
-						// A new attestation is created. This also means a new public-private-key pair is created.
-						const attestationResponse = await SimpleWebAuthnBrowser.startRegistration(options.publicKey);
+							const webAuthnBrowser = getWebAuthnBrowser();
+							if (!webAuthnBrowser) {
+									return;
+							}
+
+							// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
+							// A new attestation is created. This also means a new public-private-key pair is created.
+							const attestationResponse = await webAuthnBrowser.startRegistration(options.publicKey);
 
 						// Send attestationResponse back to server for verification and storage.
 						const verificationResponse = await fetch('/register/finish', {
@@ -104,12 +131,17 @@ templ Login() {
 								const msg = await response.text();
 								throw new Error(msg || 'Failed to get login options from server');
 						}
-						// Convert the login options to JSON.
-						const options = await response.json();
+							// Convert the login options to JSON.
+							const options = await response.json();
 
-						// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
-						// A new assertionResponse is created. This also means that the challenge has been signed.
-						const assertionResponse = await SimpleWebAuthnBrowser.startAuthentication(options.publicKey);
+							const webAuthnBrowser = getWebAuthnBrowser();
+							if (!webAuthnBrowser) {
+									return;
+							}
+
+							// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
+							// A new assertionResponse is created. This also means that the challenge has been signed.
+							const assertionResponse = await webAuthnBrowser.startAuthentication(options.publicKey);
 
 						// Send assertionResponse back to server for verification.
 						const verificationResponse = await fetch('/login/finish', {
@@ -132,6 +164,6 @@ templ Login() {
 						showMessage('Error: ' + error.message, true);
 				}
 		}
-	</script>
-	<script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
-}
+		</script>
+		@shared.PasskeyBrowserScript()
+	}

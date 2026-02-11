@@ -23,11 +23,3 @@ templ tabsImpl(opts tabsOptions) {
 		{ children... }
 	</div>
 }
-
-templ TabButton(label string, active bool, class string) {
-	<button class={ joinClasses("ui-tab", ifClass(active, "ui-tab-active"), class) }>
-		{ label }
-		{ children... }
-	</button>
-}
-

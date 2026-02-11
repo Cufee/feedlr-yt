@@ -27,15 +27,12 @@ templ Head(htmxReplace bool, content ...templ.Component) {
 		<meta charset="UTF-8"/>
 		<meta name="color-scheme" content="dark"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"/>
-		for _, c := range content {
-			@c
-		}
-		{ children... }
-		<link href="/assets/css/style.css" rel="stylesheet"/>
-		<style>
-			.watch-later-section:has(.watch-later-item) .watch-later-placeholder { display: none; }
-		</style>
-		<script src="/assets/js/htmx.min.js"></script>
-		<script src="/assets/js/hyperscript.min.js" async></script>
-	</head>
+			for _, c := range content {
+				@c
+			}
+			{ children... }
+			<link href="/assets/css/style.css" rel="stylesheet"/>
+			<script src="/assets/js/htmx.min.js"></script>
+			<script src="/assets/js/hyperscript.min.js" async></script>
+		</head>
 }

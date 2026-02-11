@@ -2,6 +2,7 @@ package settings
 
 import (
 	"fmt"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"strings"
@@ -82,16 +83,16 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 				if !status.Available {
 					<div class="ui-settings-note">Playlist sync is disabled on this deployment.</div>
 				}
-				if status.Available && !status.Connected {
-					<div class="flex flex-col gap-3">
-						<div class="ui-settings-note leading-relaxed">
-							Connect your YouTube account to keep a private playlist mirrored from your Feedlr home feed.
+					if status.Available && !status.Connected {
+						<div class="flex flex-col gap-3">
+							<div class="ui-settings-note leading-relaxed">
+								Connect your YouTube account to keep a private playlist mirrored from your Feedlr home feed.
+							</div>
+							<form action="/api/settings/youtube-sync/connect/begin" method="post">
+								@ui.Button("Connect YouTube", ui.WithButtonVariant(ui.ButtonPrimary), ui.WithButtonSize(ui.ButtonSmall))
+							</form>
 						</div>
-						<form action="/api/settings/youtube-sync/connect/begin" method="post">
-							<button type="submit" class="ui-btn ui-btn-primary ui-btn-sm">Connect YouTube</button>
-						</form>
-					</div>
-				}
+					}
 				if status.Available && status.Connected {
 					<div class="ui-settings-grid">
 						<div class="ui-settings-stat">
@@ -139,12 +140,12 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 							<button type="submit" class={ syncToggleButtonClass(status.Enabled) }>
 								{ syncToggleButtonLabel(status.Enabled) }
 							</button>
-						</form>
-						<form action="/api/settings/youtube-sync/disconnect" method="post">
-							<button type="submit" class="ui-btn ui-btn-sm ui-btn-neutral w-32 justify-center border-danger/35 text-red-100 hover:bg-danger/20" hx-confirm="Disconnect YouTube sync? This removes stored credentials.">Disconnect</button>
-						</form>
-					</div>
-				}
+							</form>
+							<form action="/api/settings/youtube-sync/disconnect" method="post">
+								<button type="submit" class="ui-btn ui-btn-sm ui-btn-neutral ui-btn-destructive-neutral w-32 justify-center" hx-confirm="Disconnect YouTube sync? This removes stored credentials.">Disconnect</button>
+							</form>
+						</div>
+					}
 			</div>
 			<div class="ui-settings-divider"></div>
 			<div class="flex flex-col gap-4" id="youtube-tv-sync-settings">
@@ -157,18 +158,18 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 				if !tvStatus.Available {
 					<div class="ui-settings-note">TV sync is disabled on this deployment.</div>
 				}
-				if tvStatus.Available && tvStatus.ConnectionState == "" {
-					<form action="/api/settings/youtube-sync/tv/connect" method="post" class="flex flex-col gap-2 md:flex-row md:items-center">
-						<input
-							type="text"
+					if tvStatus.Available && tvStatus.ConnectionState == "" {
+						<form action="/api/settings/youtube-sync/tv/connect" method="post" class="flex flex-col gap-2 md:flex-row md:items-center">
+							<input
+								type="text"
 							name="pairing_code"
 							class="ui-input w-full md:w-64"
-							placeholder="YouTube TV pairing code"
-							required
-						/>
-						<button type="submit" class="ui-btn ui-btn-primary ui-btn-sm w-32 justify-center">Pair TV</button>
-					</form>
-				}
+								placeholder="YouTube TV pairing code"
+								required
+							/>
+							@ui.Button("Pair TV", ui.WithButtonVariant(ui.ButtonPrimary), ui.WithButtonSize(ui.ButtonSmall), ui.WithButtonClass("w-32 justify-center"))
+						</form>
+					}
 				if tvStatus.Available && tvStatus.ConnectionState != "" {
 					<div class="ui-settings-grid">
 						<div class="ui-settings-stat">
@@ -201,12 +202,12 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 							<button type="submit" class={ syncToggleButtonClass(tvStatus.Enabled) }>
 								{ syncToggleButtonLabel(tvStatus.Enabled) }
 							</button>
-						</form>
-						<form action="/api/settings/youtube-sync/tv/disconnect" method="post">
-							<button type="submit" class="ui-btn ui-btn-sm ui-btn-neutral w-32 justify-center border-danger/35 text-red-100 hover:bg-danger/20" hx-confirm="Disconnect TV sync? This removes the paired device token.">Disconnect</button>
-						</form>
-					</div>
-				}
+							</form>
+							<form action="/api/settings/youtube-sync/tv/disconnect" method="post">
+								<button type="submit" class="ui-btn ui-btn-sm ui-btn-neutral ui-btn-destructive-neutral w-32 justify-center" hx-confirm="Disconnect TV sync? This removes the paired device token.">Disconnect</button>
+							</form>
+						</div>
+					}
 			</div>
 		</div>
 	</div>

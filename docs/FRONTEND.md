@@ -24,8 +24,7 @@ internal/templates/
 │   ├── blank.templ       # Minimal layout
 │   └── partials/         # Shared layout parts
 │       ├── head.templ    # CSS/JS includes
-│       ├── navbar.templ  # Navigation bar
-│       └── progress.templ # HTMX progress bar
+│       └── navbar.templ  # Navigation wrapper for app shell
 ├── pages/                # Full pages
 │   ├── landing.templ
 │   ├── login.templ
@@ -51,9 +50,9 @@ Current primitives:
 - `button.templ` (`Button`, variants/sizes)
 - `input.templ` (`Input`, `SearchInput`)
 - `layout.templ` (`Card`, `Section`, `Badge`, `EmptyState`)
-- `tabs.templ` (`Tabs`, `TabButton`)
-- `toggle.templ` (`Toggle`, `ToggleWithLabel`)
-- `dialog.templ` (`Dialog`, `DialogBackdropButton`)
+- `tabs.templ` (`Tabs`)
+- `toggle.templ` (`Toggle`)
+- `dialog.templ` (`Dialog`)
 - `toast.templ` (`Toast`)
 - `pageshell.templ` (`PageShellMain`, `PageShellFooter`, `PageShellVideo`)
 - `navbar.templ` (`Navbar`, guest/authed variants)
@@ -393,8 +392,8 @@ npm run dev    # Watch mode
 // Using templ.KV
 <div class={ "ui-tab", templ.KV("ui-tab-active", isActive) }>
 
-// Using helper function
-<input class={ "ui-input", shared.OptionalClass(!valid, "ui-input-error") } />
+// Conditional class only when invalid
+<input class={ "ui-input", templ.KV("ui-input-error", !valid) } />
 ```
 
 ## File Reference

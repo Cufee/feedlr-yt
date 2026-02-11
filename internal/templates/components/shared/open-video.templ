@@ -1,7 +1,5 @@
 package shared
 
-import "fmt"
-
 templ OpenVideoButton() {
 	<div class="flex w-full justify-center pb-0.5">
 		<div class="flex flex-row gap-2">
@@ -36,49 +34,69 @@ templ OpenVideoInput(url string, valid bool) {
         if #open_video_input.value == ''
           halt"
 	>
-		<input
-			type="text"
-			id="open_video_input"
-			name="link"
-			value={ url }
-			placeholder="https://youtube.com/watch..."
-			class={ fmt.Sprintf("ui-input w-full %s", OptionalClass(!valid, "ui-input-error")) }
-		/>
-		<button type="submit" class="ui-btn ui-btn-primary ui-btn-md shrink-0">Watch</button>
-	</form>
-}
+			<input
+				type="text"
+				id="open_video_input"
+				name="link"
+				value={ url }
+				placeholder="https://youtube.com/watch..."
+				class={ "ui-input", "w-full", templ.KV("ui-input-error", !valid) }
+			/>
+			<button type="submit" class="ui-btn ui-btn-primary ui-btn-md shrink-0">Watch</button>
+		</form>
+	}
 
 script openVideoModalScript() {
-	const modal = document.getElementById("open_video_modal");
-	const modalBox = document.getElementById("open_video_modal_box");
-	const modalButton = document.getElementById("open_video_modal_btn");
-	
-	const openVideoFromText = (text) => {
-		if (!text) {
-			return false;
-		}
-		try {
-			const url = new URL(text);
-			let videoId;
-			if (url.hostname.endsWith('youtube.com')) {
-                videoId = url.searchParams.get('v');
-            } else if (url.hostname === 'youtu.be') {
-                videoId = url.pathname.slice(1);
-			} else if (url.hostname === 'feedlr.app' && url.pathname.includes("/video/")) {
-                videoId = url.pathname.split("/video/").pop();
-            }
-			if (!videoId) {
-				throw "no video id found in clipboard";
+		const modal = document.getElementById("open_video_modal");
+		const modalBox = document.getElementById("open_video_modal_box");
+		const modalButton = document.getElementById("open_video_modal_btn");
+
+		const extractVideoID = (text) => {
+			if (!text) {
+				return "";
 			}
-			window.location.href = "/video/" + videoId;
-			return true;
-		} catch (_error) {
-			return false;
+			try {
+				const parsed = new URL(text);
+				let videoID = parsed.searchParams.get("v") || "";
+				if (!videoID && parsed.pathname) {
+					const parts = parsed.pathname.split("/").filter(Boolean);
+					videoID = parts[parts.length - 1] || "";
+				}
+				videoID = videoID.trim();
+				if (!/^[a-zA-Z0-9_-]{5,}$/.test(videoID)) {
+					return "";
+				}
+				return videoID;
+			} catch (_error) {
+				return "";
+			}
 		}
-	}
-	
-	const openModal = async () => {
-		try {
+		
+		const openVideoFromText = (text) => {
+			const videoID = extractVideoID(text);
+			if (!videoID) {
+				return false;
+			}
+			window.location.href = "/video/" + videoID;
+			return true;
+		}
+
+		const shouldIgnoreEnterHotkey = (event) => {
+			if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
+				return true;
+			}
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) {
+				return false;
+			}
+			if (target.isContentEditable) {
+				return true;
+			}
+			return target.closest("input, textarea, select, button, a, [role='button']") !== null;
+		}
+		
+		const openModal = async () => {
+			try {
 			const text = await navigator.clipboard.readText();
 			if (!openVideoFromText(text)) {
 				throw "failed to open a video from clipboard";
@@ -94,16 +112,15 @@ script openVideoModalScript() {
 
 	// support manually clicking on the button
 	modalButton.addEventListener("click", openModal);
-	modal.addEventListener("click", (e) => {
-		if (e.target === modal) {
-			modal.close();
-		}
-	});
-  	document.addEventListener("keydown", (e) => {
-		if (e.key === "Enter") {
-			if (!modal.open) {
-				openModal();
+		modal.addEventListener("click", (e) => {
+			if (e.target === modal) {
+				modal.close();
 			}
-		}
-	});
-}
+		});
+	  	document.addEventListener("keydown", (e) => {
+			if (e.key !== "Enter" || modal.open || shouldIgnoreEnterHotkey(e)) {
+				return;
+			}
+			openModal();
+		});
+	}
