@@ -34,9 +34,9 @@ It combines:
   - buttons/icon buttons
   - pills/chips
   - Acceptance: radius token usage is consistent and documented; no outlier curvature.
-- [ ] `VIS-007` Navbar icon-button radius consistency correction.
+- [x] `VIS-007` Navbar icon-button radius consistency correction.
   - Acceptance: nav icon buttons use the same compact control radius contract as the rest of the app.
-- [ ] `VIS-008` Header brand/app-name scale tuning.
+- [x] `VIS-008` Header brand/app-name scale tuning.
   - Acceptance: app name in header aligns with overall typography hierarchy and no longer appears oversized.
 
 ## B. Feed and App Page Polish
@@ -58,13 +58,13 @@ It combines:
   - Acceptance: no major horizontal/vertical layout jump when error appears.
 - [x] `SET-002` Prevent scroll-to-top when pausing/unpausing YouTube sync and TV sync.
   - Acceptance: toggle actions preserve current scroll position and context.
-- [ ] `SET-003` Passkeys row label stability regression fix.
+- [x] `SET-003` Passkeys row label stability regression fix.
   - Keep `Passkeys` label anchored when error state appears.
   - Acceptance: label position remains fixed with and without error text.
-- [ ] `SET-004` YouTube/TV sync frontend error messaging simplification.
+- [x] `SET-004` YouTube/TV sync frontend error messaging simplification.
   - Replace raw/technical frontend errors with generic user-friendly messages.
   - Acceptance: UI no longer surfaces backend/network exception text directly in sync sections.
-- [ ] `SET-005` TV sync disabled-state labeling fix.
+- [x] `SET-005` TV sync disabled-state labeling fix.
   - Validate and correct disabled/paused/unavailable labels for TV sync controls and status badges.
   - Acceptance: labels accurately reflect state and match playlist sync wording conventions.
 

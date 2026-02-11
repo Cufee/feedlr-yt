@@ -17,6 +17,16 @@ func syncStatusText(enabled bool) string {
 	return "Paused"
 }
 
+func tvSyncStatusText(status types.YouTubeTVSyncStatusProps) string {
+	if !status.Available {
+		return "Disabled"
+	}
+	if status.Enabled {
+		return "Enabled"
+	}
+	return "Paused"
+}
+
 func syncStatusBadgeClass(enabled bool) string {
 	if enabled {
 		return "ui-badge ui-badge-accent w-20 justify-center"
@@ -122,14 +132,12 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 			</div>
 			<div class="ui-settings-divider"></div>
 			<div class="flex flex-col gap-4" id="youtube-tv-sync-settings">
-				<div class="flex items-center justify-between gap-2">
-					<span class="ui-settings-subtitle">TV Progress Sync</span>
-					if tvStatus.Available {
-						<span class={ syncStatusBadgeClass(tvStatus.Enabled) }>
-							{ syncStatusText(tvStatus.Enabled) }
-						</span>
-					}
-				</div>
+			<div class="flex items-center justify-between gap-2">
+				<span class="ui-settings-subtitle">TV Progress Sync</span>
+				<span class={ syncStatusBadgeClass(tvStatus.Enabled && tvStatus.Available) }>
+					{ tvSyncStatusText(tvStatus) }
+				</span>
+			</div>
 				if !tvStatus.Available {
 					<div class="ui-settings-note">TV sync is disabled on this deployment.</div>
 				}
@@ -169,7 +177,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 						<div class="ui-settings-note">Paired screen: { tvStatus.ScreenName }</div>
 					}
 					if tvStatus.LastError != "" {
-						<div class="ui-error-inline">{ tvStatus.LastError }</div>
+						<div class="ui-error-inline">TV sync encountered an issue. Please retry.</div>
 					}
 					<div class="flex flex-wrap gap-2 pt-1">
 						<form action="/api/settings/youtube-sync/tv/toggle" method="post" onsubmit="sessionStorage.setItem('feedlr-settings-scroll-y', String(window.scrollY))">

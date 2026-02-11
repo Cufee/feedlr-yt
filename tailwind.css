@@ -241,7 +241,7 @@
     }
 
     .ui-nav-link {
-        @apply inline-flex h-9 w-9 items-center justify-center gap-2 rounded-[var(--radius-control-compact)] border border-transparent bg-transparent p-0 text-sm font-semibold text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-glass-fill/35 hover:text-text-primary active:bg-glass-fill/35 active:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-50 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.7];
+        @apply inline-flex h-9 w-9 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-transparent bg-transparent p-0 text-sm font-semibold text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-glass-fill/35 hover:text-text-primary active:bg-glass-fill/35 active:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-50 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.7];
     }
 
     .ui-nav-link-active {
