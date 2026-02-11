@@ -212,15 +212,15 @@
     }
 
     .ui-nav-shell {
-        @apply w-full rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 p-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply w-full rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 px-3 py-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
     }
 
     .ui-nav-actions {
-        @apply inline-flex items-center gap-2;
+        @apply inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-glass-stroke/15 bg-glass-fill/20 px-2 py-1;
     }
 
     .ui-nav-link {
-        @apply inline-flex h-10 w-10 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-glass-stroke/20 bg-glass-fill/25 p-0 text-sm font-semibold text-text-primary transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-glass-fill/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-50;
+        @apply inline-flex h-10 w-10 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-glass-stroke/20 bg-glass-fill/20 p-0 text-sm font-semibold text-text-secondary transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none hover:border-glass-stroke/35 hover:bg-glass-fill/35 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-50 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.75];
     }
 
     .ui-nav-link-active {
@@ -228,7 +228,7 @@
     }
 
     .ui-nav-login {
-        @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-control)] bg-accent px-4 py-2.5 text-sm font-semibold text-slate-950 transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-control)] bg-accent px-4 py-2.5 font-display text-sm font-semibold text-slate-950 tracking-[0.01em] transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-50;
     }
 
     .ui-footer-shell {

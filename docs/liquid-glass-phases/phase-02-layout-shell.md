@@ -69,4 +69,8 @@ Rebuild top-level page shells and app chrome on the new `ui` primitives while pr
 - `npm run build` (success)
 - `go generate ./...` (success)
 - `go build ./...` (success)
+- Phase 02 polish pass:
+- Adjusted logo typography/alignment for nav cohesion.
+- Tuned nav icon color and stroke weight to match shell tone.
+- Normalized nav text hierarchy with display/body font usage.
 - Manual page verification is pending user browser checks on the running dev server.

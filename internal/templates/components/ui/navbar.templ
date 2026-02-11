@@ -17,8 +17,8 @@ templ Navbar(path string, authenticated bool) {
 
 templ navbarAuthenticated(path string) {
 	<div class="flex items-center justify-between gap-3">
-		<a href="/app" class="inline-flex items-center">
-			@shared.Logo("text-xl")
+		<a href="/app" class="inline-flex items-center py-1">
+			@shared.Logo("text-[2rem]")
 		</a>
 		<nav class="ui-nav-actions" aria-label="Primary">
 			<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/recent") } href="/app/recent" title="Recent Views">
@@ -36,8 +36,8 @@ templ navbarAuthenticated(path string) {
 
 templ navbarGuest(path string) {
 	<div class="flex items-center justify-between gap-3">
-		<a href="/" class="inline-flex items-center">
-			@shared.Logo("text-xl")
+		<a href="/" class="inline-flex items-center py-1">
+			@shared.Logo("text-[2rem]")
 		</a>
 		<nav class="ui-nav-actions" aria-label="Primary">
 			<a class={ "ui-nav-login", "nav-btn", templ.KV("ui-nav-link-active", path=="/login") } href="/login" title="Login">
@@ -46,4 +46,3 @@ templ navbarGuest(path string) {
 		</nav>
 	</div>
 }
-

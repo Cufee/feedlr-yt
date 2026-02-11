@@ -3,7 +3,7 @@ package shared
 import "strings"
 
 templ Logo(class ...string) {
-	<div class={ "text-center font-bold text-primary underline underline-offset-4 pointer-events-none", strings.Join(class, " ") }>
+	<div class={ "pointer-events-none inline-flex items-center font-display text-[1.85rem] leading-none font-semibold tracking-[-0.03em] text-text-primary", strings.Join(class, " ") }>
 		feedlr
 	</div>
 }
