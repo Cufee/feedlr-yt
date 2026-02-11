@@ -37,12 +37,14 @@ Implement UI motion with native CSS/browser primitives in an HTMX-heavy app, min
 - [x] Timed progress persistence
 - [x] Add `motion-reduce:*` fallbacks for major animated components.
 - [x] Verify no new Hyperscript is added for visual-only transitions.
+- [x] Delay HTMX spinner indicators to avoid flash on sub-perceptual requests.
 
 ## Verification
 
 - [x] HTMX content enters/exits smoothly with CSS-only effect rules.
 - [x] Modals and toasts animate without custom JS animation functions.
 - [x] `prefers-reduced-motion` disables non-essential motion.
+- [x] Loading spinners do not flash for very fast HTMX requests.
 - [ ] Interaction remains responsive on low-end/mobile devices.
 
 ## Exit Criteria
@@ -57,6 +59,7 @@ Implement UI motion with native CSS/browser primitives in an HTMX-heavy app, min
 - `ui-motion-swap` (HTMX enter/exit/settle)
 - `ui-motion-toast` (toast enter/settle)
 - `ui-motion-modal-panel` (dialog panel open transition)
+- `ui-indicator-delayed` (HTMX indicator reveal delay, 180ms)
 - Updated templates:
 - `internal/templates/components/feed/video.templ`
 - `internal/templates/components/subscriptions/search.templ`

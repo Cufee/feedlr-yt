@@ -11,6 +11,7 @@ Use annotated git tags for rollback checkpoints after each completed phase.
 - `checkpoint/liquid-glass-02-phase-01`
 - `checkpoint/liquid-glass-03-phase-02`
 - `checkpoint/liquid-glass-04-phase-025`
+- `checkpoint/liquid-glass-04-phase-025-polish`
 - `checkpoint/liquid-glass-05-phase-03`
 - `checkpoint/liquid-glass-06-phase-04`
 - `checkpoint/liquid-glass-07-phase-05`
@@ -53,3 +54,4 @@ git reset --hard checkpoint/liquid-glass-XX-name
 - `checkpoint/liquid-glass-03-phase-02-polish-v3` -> phase 02 visual polish iteration 3 (delayed nav progress reveal to avoid fast-request flashing)
 - `checkpoint/liquid-glass-03-phase-02-polish-v4` -> phase 02 visual polish iteration 4 (footer overlap/layout flow fix)
 - `checkpoint/liquid-glass-04-phase-025` -> native motion phase (CSS-first HTMX swap/dialog/toast animations + reduced-motion support)
+- `checkpoint/liquid-glass-04-phase-025-polish` -> delayed HTMX spinner reveal to avoid fast-request flash + docs update; includes limiter max bump to 100

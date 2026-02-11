@@ -84,6 +84,7 @@ Guidance:
 - Use `ui-motion-swap` on swap targets/items.
 - Use `ui-motion-modal-panel` for dialog content transitions.
 - Use `ui-motion-toast` for toast enter transitions.
+- Use `ui-indicator-delayed htmx-indicator` for spinner indicators to avoid fast-request flashing.
 
 ## Adding a New Page
 

@@ -22,7 +22,7 @@ templ SearchResultChannels(channels []types.ChannelSearchResultProps) {
 				<div class="absolute inset-0 z-10 flex items-center justify-center w-full text-lg font-bold uppercase bg-black/50 cursor-default">Subscribed</div>
 			} else {
 				<a hx-boost="true" href={ templ.URL(fmt.Sprintf("/channel/%s", ch.ID)) } class="absolute inset-0 z-10 flex items-center justify-center w-full text-lg font-bold uppercase bg-black/50 max-md:visible md:invisible md:group-hover:visible group-[.htmx-request]:visible" hx-indicator={ fmt.Sprintf("#channel-tile-%s", ch.ID) }>
-					<span class="loading loading-spinner loading-md md:loading-lg invisible group-[.htmx-request]:visible"></span>
+					<span class="loading loading-spinner loading-md md:loading-lg htmx-indicator ui-indicator-delayed"></span>
 					<span class="group-[.htmx-request]:hidden">View</span>
 				</a>
 			}

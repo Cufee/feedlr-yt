@@ -53,6 +53,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Navigation controls use neutral glass states (not accent-heavy fills) to reduce visual noise.
 - Brand mark sizing was reduced and baseline-aligned with nav controls for cleaner rhythm.
 - Progress feedback favors stability over micro-feedback (delayed reveal to avoid flashing on fast requests).
+- Spinner indicators now use delayed reveal for HTMX actions to prevent flicker on sub-perceptual responses.
 - Motion defaults are subtle and short, with clear reduced-motion fallbacks.
 
 ### Visual Principles

@@ -196,7 +196,7 @@ func VideoCard(video types.VideoProps, options ...FeedOption) templ.Component {
 templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 	<div class="ui-motion-swap relative overflow-hidden rounded-lg aspect-video" id={ fmt.Sprintf("video-card-%s", video.ID) }>
 		if opts.showProgressActions || opts.showWatchLaterButton {
-			<div class="absolute z-20 top-2 left-2 htmx-indicator opacity-0" id={ fmt.Sprintf("video-card-%s-indicator", video.ID) }>
+			<div class="absolute z-20 top-2 left-2 htmx-indicator ui-indicator-delayed" id={ fmt.Sprintf("video-card-%s-indicator", video.ID) }>
 				<span class="loading loading-spinner loading-lg md:loading-sm"></span>
 			</div>
 		}

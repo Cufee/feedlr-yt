@@ -30,6 +30,7 @@
 
     --ease-standard: cubic-bezier(0.2, 0.9, 0.2, 1);
     --ease-emphasized: cubic-bezier(0.1, 0.95, 0.2, 1);
+    --delay-feedback: 180ms;
 }
 
 @layer base {
@@ -257,6 +258,17 @@
 
     .ui-motion-toast.htmx-settling {
         @apply opacity-100 translate-y-0;
+    }
+
+    .ui-indicator-delayed.htmx-indicator {
+        @apply invisible opacity-0 transition-opacity duration-150 ease-[var(--ease-standard)] motion-reduce:transition-none;
+    }
+
+    .htmx-request .ui-indicator-delayed.htmx-indicator,
+    .htmx-request.ui-indicator-delayed.htmx-indicator {
+        opacity: 1;
+        visibility: visible;
+        transition-delay: var(--delay-feedback);
     }
 
     dialog .ui-motion-modal-panel {
