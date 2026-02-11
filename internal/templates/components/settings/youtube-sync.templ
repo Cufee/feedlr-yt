@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
+	"strings"
 )
 
 func playlistURL(playlistID string) string {
@@ -25,6 +26,21 @@ func tvSyncStatusText(status types.YouTubeTVSyncStatusProps) string {
 		return "Enabled"
 	}
 	return "Paused"
+}
+
+func tvSyncConnectionText(state string) string {
+	switch strings.TrimSpace(state) {
+	case "":
+		return "Not connected"
+	case "disabled_by_user":
+		return "Disabled by user"
+	case "connected":
+		return "Connected"
+	case "disconnected":
+		return "Disconnected"
+	default:
+		return strings.ReplaceAll(state, "_", " ")
+	}
 }
 
 func syncStatusBadgeClass(enabled bool) string {
@@ -157,7 +173,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 					<div class="ui-settings-grid">
 						<div class="ui-settings-stat">
 							<div class="font-semibold">Connection</div>
-							<div class="text-text-secondary">{ tvStatus.ConnectionState }</div>
+							<div class="text-text-secondary">{ tvSyncConnectionText(tvStatus.ConnectionState) }</div>
 							if tvStatus.StateReason != "" {
 								<div class="mt-1 text-xs text-text-secondary">{ tvStatus.StateReason }</div>
 							}
