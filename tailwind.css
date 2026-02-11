@@ -36,7 +36,8 @@
     --radius-control-compact: var(--radius-xs);
     --radius-media: var(--radius-2xl);
 
-    --space-video-inset: 0.625rem;
+    --space-video-inset-x: 0.82rem;
+    --space-video-inset-y: 0.62rem;
     --space-video-gap: 0.375rem;
     --size-video-action: 2.15rem;
     --height-video-progress: 0.55rem;
@@ -283,18 +284,19 @@
     }
 
     .ui-video-card {
-        @apply relative overflow-hidden rounded-[var(--radius-media)] border border-glass-stroke/16 bg-black/30 shadow-[0_8px_26px_-18px_var(--color-glass-shadow)];
+        @apply relative overflow-hidden rounded-[var(--radius-media)] bg-black/30 shadow-[0_8px_26px_-18px_var(--color-glass-shadow),inset_0_0_0_1px_rgb(255_255_255_/_0.14)];
+        isolation: isolate;
     }
 
     .ui-video-card-actions {
         @apply absolute z-20 flex flex-row;
-        top: var(--space-video-inset);
-        right: var(--space-video-inset);
+        top: var(--space-video-inset-y);
+        right: var(--space-video-inset-x);
         gap: var(--space-video-gap);
     }
 
     .ui-video-action-btn {
-        @apply inline-flex items-center justify-center border border-glass-stroke/14 bg-black/52 text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/40 hover:text-text-primary active:bg-glass-fill/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
+        @apply inline-flex items-center justify-center border border-glass-stroke/14 bg-black/52 text-text-secondary backdrop-blur-[var(--blur-glass-sm)] transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/40 hover:text-text-primary active:bg-glass-fill/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
         height: var(--size-video-action);
         width: var(--size-video-action);
         border-radius: var(--radius-sm);
@@ -317,16 +319,16 @@
 
     .ui-video-duration-chip {
         @apply absolute z-30 inline-flex items-center justify-center gap-1 border border-white/11 bg-black/54 px-1.5 py-0.5 text-xs font-medium text-white md:text-sm;
-        right: var(--space-video-inset);
-        bottom: calc(var(--space-video-inset) + var(--height-video-progress) + 0.42rem);
+        right: var(--space-video-inset-x);
+        bottom: calc(var(--space-video-inset-y) + var(--height-video-progress) + 0.42rem);
         border-radius: var(--radius-sm);
     }
 
     .ui-video-progress-track {
         @apply absolute z-20 overflow-hidden border border-glass-stroke/20 bg-glass-fill/17 shadow-[inset_0_1px_3px_rgba(255,255,255,0.12)] backdrop-blur-md;
-        left: var(--space-video-inset);
-        right: var(--space-video-inset);
-        bottom: var(--space-video-inset);
+        left: var(--space-video-inset-x);
+        right: var(--space-video-inset-x);
+        bottom: var(--space-video-inset-y);
         height: var(--height-video-progress);
         border-radius: var(--radius-pill);
     }

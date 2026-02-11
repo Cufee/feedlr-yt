@@ -61,6 +61,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Glass progress surfaces now use lower-opacity layers and softer fill luminance to keep overlays atmospheric instead of visually dense.
 - Radius handling now uses a shared token scale (`--radius-*`) with media/control-specific aliases to keep curvature consistent across shells, cards, and actions.
 - Video-card internals now follow a shared inset/size grid so button cluster, duration chip, and progress bar align consistently at every breakpoint.
+- Video cards now use an inset stroke + isolated media layer to avoid corner pixel artifacts while preserving rounded glass edges.
 
 ### Visual Principles
 

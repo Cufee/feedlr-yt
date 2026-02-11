@@ -70,6 +70,10 @@ Migrate feed and video experiences to the new component system while preserving 
 - Added dedicated video spacing/size tokens (`--space-video-*`, `--size-video-action`, `--height-video-progress`) to align action buttons, duration chip, and progress track to one inset system.
 - Increased media radius to `--radius-2xl` and normalized button/chip curvature to `--radius-sm` for cleaner consistency.
 - Softened progress fill opacity and glow again to keep the glass layer subtle.
+- Phase 03 pass 1 polish v6:
+- Fixed corner anti-alias artifact by moving card stroke to an inset ring shadow and isolating the media layer.
+- Increased progress track horizontal inset so it no longer feels too close on the X axis.
+- Restored background blur on video action buttons to match glass-material treatment.
 - Verification run for this pass:
 - `npm run build` (success)
 - `go generate ./...` (success)
