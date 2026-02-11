@@ -1,0 +1,103 @@
+package ui
+
+type ButtonVariant string
+
+const (
+	ButtonPrimary ButtonVariant = "primary"
+	ButtonNeutral ButtonVariant = "neutral"
+	ButtonGhost   ButtonVariant = "ghost"
+	ButtonDanger  ButtonVariant = "danger"
+)
+
+type ButtonSize string
+
+const (
+	ButtonSmall  ButtonSize = "sm"
+	ButtonMedium ButtonSize = "md"
+	ButtonLarge  ButtonSize = "lg"
+)
+
+type buttonOptions struct {
+	variant  ButtonVariant
+	size     ButtonSize
+	block    bool
+	iconOnly bool
+	disabled bool
+	class    string
+}
+
+type ButtonOption func(*buttonOptions)
+
+func WithButtonVariant(variant ButtonVariant) ButtonOption {
+	return func(o *buttonOptions) { o.variant = variant }
+}
+
+func WithButtonSize(size ButtonSize) ButtonOption {
+	return func(o *buttonOptions) { o.size = size }
+}
+
+var ButtonBlock ButtonOption = func(o *buttonOptions) { o.block = true }
+
+var ButtonIconOnly ButtonOption = func(o *buttonOptions) { o.iconOnly = true }
+
+var ButtonDisabled ButtonOption = func(o *buttonOptions) { o.disabled = true }
+
+func WithButtonClass(class string) ButtonOption {
+	return func(o *buttonOptions) { o.class = class }
+}
+
+func Button(label string, opts ...ButtonOption) templ.Component {
+	o := buttonOptions{
+		variant: ButtonNeutral,
+		size:    ButtonMedium,
+	}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return buttonImpl(label, o)
+}
+
+func buttonVariantClass(variant ButtonVariant) string {
+	switch variant {
+	case ButtonPrimary:
+		return "ui-btn-primary"
+	case ButtonGhost:
+		return "ui-btn-ghost"
+	case ButtonDanger:
+		return "ui-btn-danger"
+	default:
+		return "ui-btn-neutral"
+	}
+}
+
+func buttonSizeClass(size ButtonSize) string {
+	switch size {
+	case ButtonSmall:
+		return "ui-btn-sm"
+	case ButtonLarge:
+		return "ui-btn-lg"
+	default:
+		return "ui-btn-md"
+	}
+}
+
+func buttonClass(o buttonOptions) string {
+	return joinClasses(
+		"ui-btn",
+		buttonVariantClass(o.variant),
+		buttonSizeClass(o.size),
+		ifClass(o.block, "w-full"),
+		ifClass(o.iconOnly, "ui-btn-icon"),
+		o.class,
+	)
+}
+
+templ buttonImpl(label string, opts buttonOptions) {
+	<button class={ buttonClass(opts) } disabled?={ opts.disabled }>
+		if label != "" {
+			{ label }
+		}
+		{ children... }
+	</button>
+}
+

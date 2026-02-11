@@ -2,3 +2,212 @@
 @plugin "daisyui" {
     themes: dim --default;
 }
+
+@theme {
+    --font-sans: "IBM Plex Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --font-display: "Space Grotesk", "IBM Plex Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+
+    --color-canvas: oklch(24% 0.02 250);
+    --color-elev-1: oklch(29% 0.024 252);
+    --color-elev-2: oklch(33% 0.028 254);
+    --color-glass-fill: oklch(34% 0.03 250);
+    --color-glass-stroke: oklch(74% 0.02 245);
+    --color-glass-shadow: oklch(8% 0.01 250);
+    --color-text-primary: oklch(92% 0.015 250);
+    --color-text-secondary: oklch(76% 0.02 250);
+    --color-accent: oklch(81% 0.11 205);
+    --color-accent-strong: oklch(75% 0.13 205);
+    --color-danger: oklch(69% 0.2 24);
+    --color-success: oklch(79% 0.13 158);
+
+    --radius-panel: 1rem;
+    --radius-chip: 9999px;
+    --radius-control: 0.75rem;
+
+    --blur-glass-sm: 10px;
+    --blur-glass-md: 20px;
+
+    --ease-standard: cubic-bezier(0.2, 0.9, 0.2, 1);
+    --ease-emphasized: cubic-bezier(0.1, 0.95, 0.2, 1);
+}
+
+@layer base {
+    html {
+        font-family: var(--font-sans);
+        background-color: var(--color-canvas);
+        color: var(--color-text-primary);
+    }
+
+    body {
+        background-color: var(--color-canvas);
+        color: var(--color-text-primary);
+        background-image:
+            radial-gradient(64rem 64rem at -10% -10%, color-mix(in oklab, var(--color-accent) 10%, transparent), transparent 70%),
+            radial-gradient(48rem 48rem at 110% -10%, color-mix(in oklab, var(--color-glass-fill) 35%, transparent), transparent 70%);
+    }
+
+    h1, h2, h3, h4 {
+        font-family: var(--font-display);
+        letter-spacing: -0.01em;
+    }
+}
+
+@layer components {
+    .glass-panel {
+        @apply rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+    }
+
+    .glass-chip {
+        @apply rounded-[var(--radius-chip)] border border-glass-stroke/20 bg-glass-fill/35 px-3 py-1.5 text-sm text-text-secondary backdrop-blur-[var(--blur-glass-sm)];
+    }
+
+    .solid-panel {
+        @apply rounded-[var(--radius-panel)] border border-white/5 bg-elev-1 text-text-primary shadow-[0_10px_30px_-24px_var(--color-glass-shadow)];
+    }
+
+    .ui-card {
+        @apply rounded-[var(--radius-panel)] border border-white/5 bg-elev-1 p-4 text-text-primary shadow-[0_10px_30px_-24px_var(--color-glass-shadow)] md:p-5;
+    }
+
+    .ui-section {
+        @apply flex flex-col gap-4;
+    }
+
+    .ui-section-header {
+        @apply flex items-center justify-between gap-2;
+    }
+
+    .ui-section-title {
+        @apply text-lg font-semibold md:text-xl;
+    }
+
+    .ui-badge {
+        @apply inline-flex items-center justify-center rounded-[var(--radius-chip)] border border-glass-stroke/20 bg-glass-fill/35 px-2.5 py-1 text-xs font-semibold text-text-secondary;
+    }
+
+    .ui-badge-accent {
+        @apply border-accent/30 bg-accent/15 text-accent;
+    }
+
+    .ui-badge-danger {
+        @apply border-danger/35 bg-danger/20 text-red-200;
+    }
+
+    .ui-btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-semibold text-text-primary transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .ui-btn-primary {
+        @apply bg-accent text-slate-950 hover:bg-accent-strong;
+    }
+
+    .ui-btn-neutral {
+        @apply border border-glass-stroke/20 bg-glass-fill/25 hover:bg-glass-fill/35;
+    }
+
+    .ui-btn-ghost {
+        @apply border border-transparent bg-transparent hover:bg-glass-fill/25;
+    }
+
+    .ui-btn-danger {
+        @apply bg-danger text-red-50 hover:bg-red-500;
+    }
+
+    .ui-btn-icon {
+        @apply size-10 p-0;
+    }
+
+    .ui-btn-sm {
+        @apply rounded-lg px-3 py-2 text-xs;
+    }
+
+    .ui-btn-md {
+        @apply px-4 py-2.5 text-sm;
+    }
+
+    .ui-btn-lg {
+        @apply px-5 py-3 text-base;
+    }
+
+    .ui-input {
+        @apply w-full rounded-[var(--radius-control)] border border-glass-stroke/20 bg-elev-2/80 px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/80 transition-colors duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/55;
+    }
+
+    .ui-input-search {
+        @apply pl-9;
+    }
+
+    .ui-input-error {
+        @apply border-danger/45 ring-1 ring-danger/35;
+    }
+
+    .ui-toggle {
+        @apply relative h-6 w-11 cursor-pointer appearance-none rounded-full border border-glass-stroke/20 bg-elev-2 transition-colors duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none;
+    }
+
+    .ui-toggle::after {
+        content: "";
+        @apply absolute left-0.5 top-0.5 size-4.5 rounded-full bg-text-secondary transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none;
+    }
+
+    .ui-toggle:checked {
+        @apply bg-accent/35;
+    }
+
+    .ui-toggle:checked::after {
+        @apply translate-x-5 bg-accent;
+    }
+
+    .ui-tabs {
+        @apply inline-flex items-center gap-1 rounded-[var(--radius-control)] border border-glass-stroke/20 bg-glass-fill/25 p-1;
+    }
+
+    .ui-tab {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-1.5 text-xs font-semibold text-text-primary transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none hover:bg-glass-fill/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 md:text-sm;
+    }
+
+    .ui-tab-active {
+        @apply bg-accent/20 text-accent;
+    }
+
+    .ui-dialog {
+        @apply rounded-[var(--radius-panel)] border border-glass-stroke/20 bg-transparent p-0 backdrop:bg-black/45;
+    }
+
+    .ui-dialog-panel {
+        @apply mx-auto my-8 w-[min(92vw,36rem)] rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 p-5 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-md)];
+    }
+
+    .ui-dialog-backdrop {
+        @apply fixed inset-0 bg-transparent;
+    }
+
+    .ui-toast {
+        @apply rounded-xl border px-3 py-2 text-sm shadow-lg backdrop-blur-[var(--blur-glass-sm)];
+    }
+
+    .ui-toast-info {
+        @apply border-accent/35 bg-accent/15 text-accent;
+    }
+
+    .ui-toast-success {
+        @apply border-success/35 bg-success/15 text-green-200;
+    }
+
+    .ui-toast-danger {
+        @apply border-danger/35 bg-danger/15 text-red-200;
+    }
+
+    .ui-empty-state {
+        @apply flex flex-col items-center justify-center gap-2 rounded-[var(--radius-panel)] border border-white/5 bg-elev-1 p-8 text-center text-text-primary shadow-[0_10px_30px_-24px_var(--color-glass-shadow)];
+    }
+
+    .ui-empty-title {
+        @apply text-xl font-semibold;
+    }
+
+    .ui-empty-description {
+        @apply text-sm text-text-secondary;
+    }
+}

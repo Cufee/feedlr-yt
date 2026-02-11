@@ -42,6 +42,41 @@ internal/templates/
     └── settings/         # Settings components
 ```
 
+## UI Primitives (Phase 01)
+
+Reusable primitives are now being introduced under `internal/templates/components/ui/`.
+
+Current primitives:
+
+- `button.templ` (`Button`, variants/sizes)
+- `input.templ` (`Input`, `SearchInput`)
+- `layout.templ` (`Card`, `Section`, `Badge`, `EmptyState`)
+- `tabs.templ` (`Tabs`, `TabButton`)
+- `toggle.templ` (`Toggle`, `ToggleWithLabel`)
+- `dialog.templ` (`Dialog`, `DialogBackdropButton`)
+- `toast.templ` (`Toast`)
+
+Supporting helpers:
+
+- `internal/templates/components/ui/classes.go`
+
+Usage example:
+
+```templ
+import "github.com/cufee/feedlr-yt/internal/templates/components/ui"
+
+@ui.Section("Profile")
+@ui.Card() {
+  @ui.Input("display-name", "display_name", "", "Display name")
+  @ui.Button("Save", ui.WithButtonVariant(ui.ButtonPrimary))
+}
+```
+
+Guidance:
+
+- Prefer Tailwind utility composition and tokenized classes over one-off CSS.
+- Prefer `ui` primitives before creating new ad-hoc component styles.
+
 ## Adding a New Page
 
 ### 1. Create the Template

@@ -1,0 +1,46 @@
+package ui
+
+type ToastTone string
+
+const (
+	ToastInfo    ToastTone = "info"
+	ToastSuccess ToastTone = "success"
+	ToastDanger  ToastTone = "danger"
+)
+
+type toastOptions struct {
+	class string
+}
+
+type ToastOption func(*toastOptions)
+
+func WithToastClass(class string) ToastOption {
+	return func(o *toastOptions) { o.class = class }
+}
+
+func Toast(message string, tone ToastTone, opts ...ToastOption) templ.Component {
+	o := toastOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return toastImpl(message, tone, o)
+}
+
+func toastToneClass(tone ToastTone) string {
+	switch tone {
+	case ToastSuccess:
+		return "ui-toast-success"
+	case ToastDanger:
+		return "ui-toast-danger"
+	default:
+		return "ui-toast-info"
+	}
+}
+
+templ toastImpl(message string, tone ToastTone, opts toastOptions) {
+	<div class={ joinClasses("ui-toast", toastToneClass(tone), opts.class) }>
+		{ message }
+		{ children... }
+	</div>
+}
+

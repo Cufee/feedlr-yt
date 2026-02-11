@@ -20,20 +20,20 @@ Define the core design system for Polar Glass and create reusable UI primitives.
 
 ## Work Checklist
 
-- [ ] Add color, radius, blur, and motion semantic tokens in `tailwind.css`.
-- [ ] Define typography stack and sizing for headings/body/metadata.
-- [ ] Add reusable utility recipes for glass panel, chip, solid panel.
-- [ ] Create `ui.Button` variants (primary, neutral, ghost, danger, icon-only).
-- [ ] Create `ui.Input` and `ui.SearchInput` with error/disabled/focus states.
-- [ ] Create `ui.Card`, `ui.Section`, `ui.Badge`, `ui.Toggle`, `ui.Tabs`.
-- [ ] Create `ui.Dialog`, `ui.Toast`, `ui.EmptyState`.
-- [ ] Add component usage notes in `docs/FRONTEND.md`.
+- [x] Add color, radius, blur, and motion semantic tokens in `tailwind.css`.
+- [x] Define typography stack and sizing for headings/body/metadata.
+- [x] Add reusable utility recipes for glass panel, chip, solid panel.
+- [x] Create `ui.Button` variants (primary, neutral, ghost, danger, icon-only).
+- [x] Create `ui.Input` and `ui.SearchInput` with error/disabled/focus states.
+- [x] Create `ui.Card`, `ui.Section`, `ui.Badge`, `ui.Toggle`, `ui.Tabs`.
+- [x] Create `ui.Dialog`, `ui.Toast`, `ui.EmptyState`.
+- [x] Add component usage notes in `docs/FRONTEND.md`.
 
 ## Verification
 
-- [ ] Tokens are referenced by components (not hardcoded one-off values).
-- [ ] Components support responsive and interactive states via Tailwind utilities.
-- [ ] `motion-safe:*` and `motion-reduce:*` variants included on animated primitives.
+- [x] Tokens are referenced by components (not hardcoded one-off values).
+- [x] Components support responsive and interactive states via Tailwind utilities.
+- [x] `motion-safe:*` and `motion-reduce:*` variants included on animated primitives.
 - [ ] Components render correctly on mobile and desktop in at least one page sandbox.
 
 ## Exit Criteria
@@ -44,4 +44,16 @@ Define the core design system for Polar Glass and create reusable UI primitives.
 ## Notes
 
 - Custom CSS should be limited to reusable abstractions that are unreadable with inline utility composition.
-
+- Implemented files:
+- `internal/templates/components/ui/button.templ`
+- `internal/templates/components/ui/input.templ`
+- `internal/templates/components/ui/layout.templ`
+- `internal/templates/components/ui/tabs.templ`
+- `internal/templates/components/ui/toggle.templ`
+- `internal/templates/components/ui/dialog.templ`
+- `internal/templates/components/ui/toast.templ`
+- `internal/templates/components/ui/classes.go`
+- Build validation run:
+- `npm run build` (success)
+- `go generate ./...` (success)
+- `go build ./...` (success)
