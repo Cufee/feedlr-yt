@@ -29,7 +29,7 @@ For implementation details, see `docs/`.
 - Go 1.25
 - Fiber
 - Templ + HTMX + Hyperscript
-- Tailwind CSS v4 + DaisyUI v5
+- Tailwind CSS v4 + shared `ui-*` primitives
 - SQLite + SQLBoiler
 
 ## Setup Examples

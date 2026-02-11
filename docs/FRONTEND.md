@@ -1,5 +1,7 @@
 # Frontend Development Guide
 
+For the Tailwind-first Liquid Glass redesign direction and full migration inventory/plan, see `docs/LIQUID-GLASS-REDESIGN.md`.
+
 ## Template System (Templ)
 
 This project uses [Templ](https://templ.guide/) - a type-safe templating language for Go that compiles to Go code.
@@ -40,6 +42,50 @@ internal/templates/
     └── settings/         # Settings components
 ```
 
+## UI Primitives (Phase 01-02)
+
+Reusable primitives are now being introduced under `internal/templates/components/ui/`.
+
+Current primitives:
+
+- `button.templ` (`Button`, variants/sizes)
+- `input.templ` (`Input`, `SearchInput`)
+- `layout.templ` (`Card`, `Section`, `Badge`, `EmptyState`)
+- `tabs.templ` (`Tabs`, `TabButton`)
+- `toggle.templ` (`Toggle`, `ToggleWithLabel`)
+- `dialog.templ` (`Dialog`, `DialogBackdropButton`)
+- `toast.templ` (`Toast`)
+- `pageshell.templ` (`PageShellMain`, `PageShellFooter`, `PageShellVideo`)
+- `navbar.templ` (`Navbar`, guest/authed variants)
+- `footer.templ` (`Footer`)
+- `progress.templ` (`NavProgress`)
+
+Supporting helpers:
+
+- `internal/templates/components/ui/classes.go`
+
+Usage example:
+
+```templ
+import "github.com/cufee/feedlr-yt/internal/templates/components/ui"
+
+@ui.Section("Profile")
+@ui.Card() {
+  @ui.Input("display-name", "display_name", "", "Display name")
+  @ui.Button("Save", ui.WithButtonVariant(ui.ButtonPrimary))
+}
+```
+
+Guidance:
+
+- Prefer Tailwind utility composition and tokenized classes over one-off CSS.
+- Prefer `ui` primitives before creating new ad-hoc component styles.
+- For HTMX updates, prefer CSS lifecycle classes over JS effects:
+- Use `ui-motion-swap` on swap targets/items.
+- Use `ui-motion-modal-panel` for dialog content transitions.
+- Use `ui-motion-toast` for toast enter transitions.
+- Use `ui-indicator-delayed htmx-indicator` for spinner indicators to avoid fast-request flashing.
+
 ## Adding a New Page
 
 ### 1. Create the Template
@@ -53,7 +99,7 @@ import "github.com/user/youtube-app/internal/types"
 
 templ MyPage(props types.MyPageProps) {
     <div class="flex flex-col gap-4">
-        <h1 class="text-2xl font-bold">{ props.Title }</h1>
+        <h1 class="text-2xl font-semibold">{ props.Title }</h1>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             for _, item := range props.Items {
                 @itemCard(item)
@@ -63,7 +109,7 @@ templ MyPage(props types.MyPageProps) {
 }
 
 templ itemCard(item types.Item) {
-    <div class="p-4 rounded-lg bg-base-200">
+    <div class="ui-card">
         { item.Name }
     </div>
 }
@@ -98,7 +144,7 @@ import (
     "github.com/user/youtube-app/internal/server/handler"
     "github.com/user/youtube-app/internal/templates/layouts"
     "github.com/user/youtube-app/internal/templates/pages/app"
-    "github.com/a]templ"
+    "github.com/a-h/templ"
     "github.com/vovkos/brewed"
 )
 
@@ -144,7 +190,7 @@ Create `internal/templates/components/shared/badge.templ`:
 package shared
 
 templ Badge(text string) {
-    <span class="badge badge-primary">{ text }</span>
+    <span class="ui-badge ui-badge-accent">{ text }</span>
 }
 ```
 
@@ -189,12 +235,12 @@ func Card(title string, opts ...CardOption) templ.Component {
 }
 
 templ cardImpl(title string, opts cardOptions) {
-    <div class={ "card", templ.KV("card-bordered", opts.highlighted) }>
+    <div class={ "ui-card", templ.KV("border-accent/30", opts.highlighted) }>
         if opts.showIcon {
             @icons.Star()
         }
-        <div class="card-body">
-            <h2 class="card-title">{ title }</h2>
+        <div class="flex items-center gap-2">
+            <h2 class="text-base font-semibold">{ title }</h2>
         </div>
     </div>
 }
@@ -240,10 +286,10 @@ templ VideoPlayer(videoId string, startTime int) {
     hx-target="#result"
     hx-swap="innerHTML"
     hx-indicator="#spinner"
-    class="btn btn-primary">
+    class="ui-btn ui-btn-primary">
     Submit
 </button>
-<span id="spinner" class="loading loading-spinner htmx-indicator"></span>
+<span id="spinner" class="ui-spinner size-5 htmx-indicator ui-indicator-delayed"></span>
 ```
 
 **Form submission:**
@@ -252,8 +298,8 @@ templ VideoPlayer(videoId string, startTime int) {
     hx-post="/api/submit"
     hx-target="#form-container"
     hx-swap="outerHTML">
-    <input name="query" class="input input-bordered" />
-    <button class="btn btn-primary">Search</button>
+    <input name="query" class="ui-input w-full" />
+    <button class="ui-btn ui-btn-primary">Search</button>
 </form>
 ```
 
@@ -279,7 +325,7 @@ templ VideoPlayer(videoId string, startTime int) {
 <form _="on submit if #input.value == '' halt">
 ```
 
-## Styling with Tailwind + DaisyUI
+## Styling with Tailwind + Shared UI Primitives
 
 ### Build CSS
 
@@ -293,68 +339,39 @@ npm run dev    # Watch mode
 `tailwind.css`:
 ```css
 @import "tailwindcss";
-@plugin "daisyui" {
-    themes: dim --default;
-}
 ```
-
-### Theme
-
-The app uses DaisyUI's **"dim"** theme (dark mode only).
-
-Apply via: `<html data-theme="dim">`
 
 ### Common Components
 
 **Buttons:**
 ```html
-<button class="btn btn-primary">Primary</button>
-<button class="btn btn-neutral">Neutral</button>
-<button class="btn btn-ghost btn-sm">Small Ghost</button>
-<button class="btn btn-square"><icon/></button>
+<button class="ui-btn ui-btn-primary">Primary</button>
+<button class="ui-btn ui-btn-neutral">Neutral</button>
+<button class="ui-btn ui-btn-ghost ui-btn-sm">Small Ghost</button>
+<button class="ui-btn ui-btn-ghost ui-btn-icon"><icon/></button>
 ```
 
 **Form inputs:**
 ```html
-<input class="input input-bordered" placeholder="Text" />
-<input class="input input-bordered input-error" /> <!-- Error state -->
-<textarea class="textarea textarea-bordered"></textarea>
-<select class="select select-bordered">
-    <option>Option 1</option>
-</select>
+<input class="ui-input" placeholder="Text" />
+<input class="ui-input ui-input-error" /> <!-- Error state -->
 ```
 
-**Input groups (join):**
+**Surface containers:**
 ```html
-<div class="join">
-    <input class="input input-bordered join-item" />
-    <button class="btn btn-primary join-item">Search</button>
-</div>
+<div class="glass-panel">...</div>
+<div class="ui-card">...</div>
+<div class="solid-panel">...</div>
 ```
 
-**Cards:**
+**Modal/dialog:**
 ```html
-<div class="card bg-base-200">
-    <div class="card-body">
-        <h2 class="card-title">Title</h2>
-        <p>Content</p>
-    </div>
-</div>
-```
-
-**Modal:**
-```html
-<dialog id="my_modal" class="modal modal-top lg:modal-middle">
-    <div class="modal-box">
+<dialog id="my_modal" class="ui-dialog">
+    <div class="ui-dialog-panel ui-motion-modal-panel">
         <h3 class="font-bold text-lg">Title</h3>
         <p>Content</p>
     </div>
-    <form method="dialog" class="modal-backdrop">
-        <button>close</button>
-    </form>
 </dialog>
-
-<!-- Open with: document.getElementById('my_modal').showModal() -->
 ```
 
 ### Responsive Patterns
@@ -374,10 +391,10 @@ Apply via: `<html data-theme="dim">`
 
 ```templ
 // Using templ.KV
-<div class={ "btn", templ.KV("btn-active", isActive) }>
+<div class={ "ui-tab", templ.KV("ui-tab-active", isActive) }>
 
 // Using helper function
-<input class={ "input input-bordered", shared.OptionalClass(!valid, "input-error") } />
+<input class={ "ui-input", shared.OptionalClass(!valid, "ui-input-error") } />
 ```
 
 ## File Reference

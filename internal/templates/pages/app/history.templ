@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
@@ -11,7 +12,7 @@ templ History(props []types.VideoProps) {
 	</head>
 	<div id="app-index" class="flex flex-col gap-4">
 		if len(props) == 0 {
-			<span class="self-center text-xl font-bold">No recent videos yet</span>
+			@ui.EmptyState("No recent videos yet", "", "py-10")
 		}
 		@feed.VideoFeed(props, "/app/recent", feed.WithChannelName, feed.WithProgressBar)
 	</div>

@@ -7,9 +7,22 @@ import (
 
 templ Settings(props types.SettingsPageProps) {
 	<head><title>Feedlr - Settings</title></head>
-	<div class="flex flex-col gap-4">
+	<div class="ui-section">
+		<div class="ui-section-header">
+			<h1 class="ui-section-title">Settings</h1>
+		</div>
 		@settings.ManageAccount(props.Passkeys)
 		@settings.YouTubeSyncSettings(props.YouTubeSync, props.YouTubeTVSync)
 		@settings.SponsorBlockSettings(props.SponsorBlock)
 	</div>
+	<script>
+		const savedSettingsScrollY = sessionStorage.getItem('feedlr-settings-scroll-y');
+		if (savedSettingsScrollY !== null) {
+			const scrollY = Number.parseInt(savedSettingsScrollY, 10);
+			if (Number.isFinite(scrollY)) {
+				window.scrollTo({ top: scrollY, behavior: 'auto' });
+			}
+			sessionStorage.removeItem('feedlr-settings-scroll-y');
+		}
+	</script>
 }

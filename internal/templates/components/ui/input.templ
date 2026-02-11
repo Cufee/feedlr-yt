@@ -1,0 +1,81 @@
+package ui
+
+type InputVariant string
+
+const (
+	InputDefault InputVariant = "default"
+	InputError   InputVariant = "error"
+)
+
+type inputOptions struct {
+	inputType   string
+	variant     InputVariant
+	class       string
+	disabled    bool
+	autocomplete string
+}
+
+type InputOption func(*inputOptions)
+
+func WithInputType(inputType string) InputOption {
+	return func(o *inputOptions) { o.inputType = inputType }
+}
+
+func WithInputVariant(variant InputVariant) InputOption {
+	return func(o *inputOptions) { o.variant = variant }
+}
+
+func WithInputClass(class string) InputOption {
+	return func(o *inputOptions) { o.class = class }
+}
+
+func WithInputAutocomplete(value string) InputOption {
+	return func(o *inputOptions) { o.autocomplete = value }
+}
+
+var InputDisabled InputOption = func(o *inputOptions) { o.disabled = true }
+
+func Input(id, name, value, placeholder string, opts ...InputOption) templ.Component {
+	o := inputOptions{
+		inputType: "text",
+		variant:   InputDefault,
+	}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return inputImpl(id, name, value, placeholder, o)
+}
+
+func SearchInput(id, name, value, placeholder string, opts ...InputOption) templ.Component {
+	o := inputOptions{
+		inputType: "search",
+		variant:   InputDefault,
+	}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	o.class = joinClasses("ui-input-search", o.class)
+	return inputImpl(id, name, value, placeholder, o)
+}
+
+func inputClass(o inputOptions) string {
+	return joinClasses(
+		"ui-input",
+		ifClass(o.variant == InputError, "ui-input-error"),
+		o.class,
+	)
+}
+
+templ inputImpl(id, name, value, placeholder string, opts inputOptions) {
+	<input
+		id={ id }
+		name={ name }
+		type={ opts.inputType }
+		value={ value }
+		placeholder={ placeholder }
+		class={ inputClass(opts) }
+		disabled?={ opts.disabled }
+		autocomplete={ opts.autocomplete }
+	/>
+}
+

@@ -1,15 +1,26 @@
 package app
 
-import 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+import (
+	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
+)
 
 templ Onboarding() {
 	<head><title>Welcome to Feedlr!</title></head>
-	<div class="flex flex-col gap-8">
-		<div id="search" class="flex flex-col gap-4"><span class="self-center text-xl font-bold">Search Channels</span> @subscriptions.SearchChannels()</div>
-		<div id="subscriptions" class="flex flex-col gap-4">
-			<span class="self-center text-xl font-bold">Your Subscriptions</span>
-			<div class="flex flex-row flex-wrap gap-2" id="subscriptions-list"></div>
+	<div class="flex flex-col gap-6">
+		<div id="search" class="ui-section">
+			<div class="ui-section-header justify-center">
+				<h2 class="ui-section-title">Search Channels</h2>
+			</div>
+			@ui.Card(ui.WithCardClass("p-4 md:p-5")) {
+				@subscriptions.SearchChannels()
+			}
+		</div>
+		<div id="subscriptions" class="ui-section">
+			<div class="ui-section-header justify-center">
+				<h2 class="ui-section-title">Your Subscriptions</h2>
+			</div>
+			<div class="ui-channel-grid" id="subscriptions-list"></div>
 		</div>
 	</div>
 }
-

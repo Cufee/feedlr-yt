@@ -1,4 +1,15 @@
-FROM golang:1.25-bookworm as builder
+FROM node:22-bookworm AS styles-builder
+
+WORKDIR /workspace
+
+# cache frontend deps
+COPY package.json package-lock.json tailwind.css ./
+RUN npm ci
+
+COPY . ./
+RUN npm run build
+
+FROM golang:1.25-bookworm AS builder
 
 WORKDIR /workspace
 
@@ -7,6 +18,7 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=$GOPATH/pkg/mod go mod download
 
 COPY . ./
+COPY --from=styles-builder /workspace/assets/css/style.css /workspace/assets/css/style.css
 
 # generate code
 RUN --mount=type=cache,target=$GOPATH/pkg/mod go generate ./...

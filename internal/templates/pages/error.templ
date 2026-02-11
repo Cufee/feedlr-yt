@@ -7,15 +7,15 @@ templ Error(message string) {
 	<head>
 		<title>Feedlr - Error</title>
 	</head>
-	<div id="error" class="flex flex-col items-center self-center justify-center gap-4 m-auto">
+	<div id="error" class="mx-auto my-auto flex w-full max-w-xl flex-col items-center justify-center gap-4 px-3">
 		<a href="/">
 			@shared.Logo("text-2xl")
 		</a>
-		<div class="flex flex-col alert alert-error">
-			<div class="flex flex-row justify-between gap-2">
+		<div class="ui-card flex w-full flex-col gap-3 border-danger/35 bg-danger/10">
+			<div class="flex flex-row items-center gap-2 text-red-100">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="w-6 h-6 stroke-current shrink-0"
+					class="h-5 w-5 shrink-0 stroke-current"
 					fill="none"
 					viewBox="0 0 24 24"
 				>
@@ -26,18 +26,18 @@ templ Error(message string) {
 						d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
 					></path>
 				</svg>
-				<span class="font-bold">Something went wrong</span>
+				<span class="font-semibold">Something went wrong</span>
 			</div>
-			<div class="flex items-start">
+			<div class="flex items-start text-sm text-red-100/90">
 				<span>{ message }</span>
 			</div>
 		</div>
-		<div>
+		<div class="flex flex-wrap items-center justify-center gap-2">
 			<a href="/">
-				<button class="btn btn-primary">Home</button>
+				<button class="ui-btn ui-btn-primary">Home</button>
 			</a>
 			<a href="https://github.com/Cufee/feedlr-yt/issues">
-				<button class="btn btn-dark">Submit an Issue</button>
+				<button class="ui-btn ui-btn-neutral">Submit an Issue</button>
 			</a>
 		</div>
 	</div>

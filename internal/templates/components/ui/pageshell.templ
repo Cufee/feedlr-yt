@@ -1,0 +1,19 @@
+package ui
+
+templ PageShellMain(class string) {
+	<div id="main" class={ joinClasses("mx-auto flex w-full max-w-7xl flex-1 flex-col px-3", class) }>
+		{ children... }
+	</div>
+}
+
+templ PageShellFooter(class string) {
+	<div class={ joinClasses("mx-auto w-full max-w-7xl px-3 pb-3", class) }>
+		{ children... }
+	</div>
+}
+
+templ PageShellVideo(class string) {
+	<div id="main" class={ joinClasses("flex h-svh w-full flex-col", class) }>
+		{ children... }
+	</div>
+}

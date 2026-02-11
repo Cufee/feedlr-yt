@@ -3,6 +3,7 @@ tmp
 .vscode
 **/.DS_Store
 node_modules
+assets/css/style.css
 
 .env
 

@@ -19,7 +19,7 @@ import (
 )
 
 var limiterMiddleware = limiter.New(limiter.Config{
-	Max:        20,
+	Max:        100,
 	Expiration: 30 * time.Second,
 	KeyGenerator: func(c *fiber.Ctx) string {
 		trace := c.Cookies("trace_id")

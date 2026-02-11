@@ -1,0 +1,111 @@
+package ui
+
+type cardOptions struct {
+	solid       bool
+	interactive bool
+	class       string
+}
+
+type CardOption func(*cardOptions)
+
+var CardSolid CardOption = func(o *cardOptions) { o.solid = true }
+
+var CardInteractive CardOption = func(o *cardOptions) { o.interactive = true }
+
+func WithCardClass(class string) CardOption {
+	return func(o *cardOptions) { o.class = class }
+}
+
+func Card(opts ...CardOption) templ.Component {
+	o := cardOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return cardImpl(o)
+}
+
+func cardClass(o cardOptions) string {
+	base := "glass-panel"
+	if o.solid {
+		base = "solid-panel"
+	}
+	return joinClasses(
+		base,
+		"p-4 md:p-5",
+		ifClass(o.interactive, "transition-all duration-200 ease-[var(--ease-standard)] hover:border-glass-stroke/35 hover:bg-glass-fill/55"),
+		o.class,
+	)
+}
+
+templ cardImpl(opts cardOptions) {
+	<div class={ cardClass(opts) }>
+		{ children... }
+	</div>
+}
+
+type sectionOptions struct {
+	class string
+}
+
+type SectionOption func(*sectionOptions)
+
+func WithSectionClass(class string) SectionOption {
+	return func(o *sectionOptions) { o.class = class }
+}
+
+func Section(title string, opts ...SectionOption) templ.Component {
+	o := sectionOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return sectionImpl(title, o)
+}
+
+templ sectionImpl(title string, opts sectionOptions) {
+	<section class={ joinClasses("ui-section", opts.class) }>
+		if title != "" {
+			<div class="ui-section-header">
+				<h2 class="ui-section-title">{ title }</h2>
+			</div>
+		}
+		{ children... }
+	</section>
+}
+
+type BadgeTone string
+
+const (
+	BadgeNeutral BadgeTone = "neutral"
+	BadgeAccent  BadgeTone = "accent"
+	BadgeDanger  BadgeTone = "danger"
+)
+
+func Badge(label string, tone BadgeTone, class string) templ.Component {
+	return badgeImpl(label, tone, class)
+}
+
+func badgeClass(tone BadgeTone, class string) string {
+	toneClass := ""
+	switch tone {
+	case BadgeAccent:
+		toneClass = "ui-badge-accent"
+	case BadgeDanger:
+		toneClass = "ui-badge-danger"
+	}
+	return joinClasses("ui-badge", toneClass, class)
+}
+
+templ badgeImpl(label string, tone BadgeTone, class string) {
+	<span class={ badgeClass(tone, class) }>{ label }</span>
+}
+
+templ EmptyState(title, description, class string) {
+	<div class={ joinClasses("ui-empty-state", class) }>
+		<div class="ui-empty-title">{ title }</div>
+		if description != "" {
+			<div class="ui-empty-description">{ description }</div>
+		}
+		{ children... }
+	</div>
+}
+

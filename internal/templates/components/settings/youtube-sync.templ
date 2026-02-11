@@ -4,48 +4,97 @@ import (
 	"fmt"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
+	"strings"
 )
 
 func playlistURL(playlistID string) string {
 	return fmt.Sprintf("https://www.youtube.com/playlist?list=%s", playlistID)
 }
 
+func syncStatusText(enabled bool) string {
+	if enabled {
+		return "Enabled"
+	}
+	return "Paused"
+}
+
+func tvSyncStatusText(status types.YouTubeTVSyncStatusProps) string {
+	if !status.Available {
+		return "Disabled"
+	}
+	if status.Enabled {
+		return "Enabled"
+	}
+	return "Paused"
+}
+
+func tvSyncConnectionText(state string) string {
+	switch strings.TrimSpace(state) {
+	case "":
+		return "Not connected"
+	case "disabled_by_user":
+		return "Disabled by user"
+	case "connected":
+		return "Connected"
+	case "disconnected":
+		return "Disconnected"
+	default:
+		return strings.ReplaceAll(state, "_", " ")
+	}
+}
+
+func syncStatusBadgeClass(enabled bool) string {
+	if enabled {
+		return "ui-badge ui-badge-accent w-20 justify-center"
+	}
+	return "ui-badge w-20 justify-center"
+}
+
+func syncToggleButtonClass(enabled bool) string {
+	if enabled {
+		return "ui-btn ui-btn-neutral ui-btn-sm w-32 justify-center"
+	}
+	return "ui-btn ui-btn-primary ui-btn-sm w-32 justify-center"
+}
+
+func syncToggleButtonLabel(enabled bool) string {
+	if enabled {
+		return "Pause Sync"
+	}
+	return "Enable Sync"
+}
+
 templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.YouTubeTVSyncStatusProps) {
-	<div class="flex flex-col w-full gap-4 p-3 shadow-inner md:gap-4 md:p-6 bg-base-300 rounded-xl" id="youtube-sync-settings">
-		<div class="flex flex-wrap items-center justify-between w-full gap-2 px-4 text-xl font-bold">
-			<span class="self-center">YouTube Sync</span>
+	<div class="ui-settings-section" id="youtube-sync-settings">
+		<div class="ui-settings-header">
+			<span class="ui-settings-title">YouTube Sync</span>
 		</div>
-		<div class="flex flex-col w-full gap-4 p-4 rounded-lg bg-base-100">
+		<div class="ui-settings-body">
 			<div class="flex flex-col gap-4" id="youtube-playlist-sync-settings">
 				<div class="flex items-center justify-between gap-2">
-					<span class="text-base font-semibold">Playlist Sync</span>
+					<span class="ui-settings-subtitle">Playlist Sync</span>
 					if status.Connected {
-						<span
-							class={ map[bool]string{
-							true:  "badge badge-primary badge-sm text-primary-content w-24 justify-center",
-							false: "badge badge-sm bg-base-200 text-base-content/60 border border-base-content/15 w-24 justify-center",
-						}[status.Enabled] }
-						>
-							{ map[bool]string{true: "Enabled", false: "Paused"}[status.Enabled] }
+						<span class={ syncStatusBadgeClass(status.Enabled) }>
+							{ syncStatusText(status.Enabled) }
 						</span>
 					}
 				</div>
 				if !status.Available {
-					<div class="text-sm opacity-70">Playlist sync is disabled on this deployment.</div>
+					<div class="ui-settings-note">Playlist sync is disabled on this deployment.</div>
 				}
 				if status.Available && !status.Connected {
 					<div class="flex flex-col gap-3">
-						<div class="text-sm leading-relaxed opacity-70">
+						<div class="ui-settings-note leading-relaxed">
 							Connect your YouTube account to keep a private playlist mirrored from your Feedlr home feed.
 						</div>
 						<form action="/api/settings/youtube-sync/connect/begin" method="post">
-							<button type="submit" class="btn btn-sm btn-primary">Connect YouTube</button>
+							<button type="submit" class="ui-btn ui-btn-primary ui-btn-sm">Connect YouTube</button>
 						</form>
 					</div>
 				}
 				if status.Available && status.Connected {
-					<div class="grid gap-2 text-sm sm:grid-cols-2">
-						<div class="p-3 rounded-lg bg-base-200">
+					<div class="ui-settings-grid">
+						<div class="ui-settings-stat">
 							<div class="flex items-center justify-between gap-2">
 								<div class="font-semibold">Status</div>
 								if status.PlaylistID != "" && status.Enabled {
@@ -53,29 +102,29 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 										href={ playlistURL(status.PlaylistID) }
 										target="_blank"
 										rel="noreferrer noopener"
-										class="btn btn-ghost btn-xs btn-square"
+										class="ui-btn ui-btn-ghost ui-btn-sm ui-btn-icon !size-7 text-xs"
 										title="Open synced playlist"
 									>↗</a>
 								} else {
 									<button
 										type="button"
-										class="btn btn-ghost btn-xs btn-square opacity-40"
+										class="ui-btn ui-btn-ghost ui-btn-sm ui-btn-icon !size-7 text-xs opacity-40"
 										title={ map[bool]string{true: "Playlist not created yet", false: "Enable sync to open playlist"}[status.Enabled] }
 										disabled
 									>↗</button>
 								}
 							</div>
-							<div class="opacity-80">{ map[bool]string{true: "Syncing automatically", false: "Paused by user"}[status.Enabled] }</div>
+							<div class="text-text-secondary">{ map[bool]string{true: "Syncing automatically", false: "Paused by user"}[status.Enabled] }</div>
 							if status.LastError != "" {
-								<div class="flex items-center gap-1 mt-1 text-xs text-error">
+								<div class="ui-error-inline mt-2 flex items-center gap-1">
 									<span aria-hidden="true">⚠</span>
 									<span>Sync issue detected</span>
 								</div>
 							}
 						</div>
-						<div class="p-3 rounded-lg bg-base-200">
+						<div class="ui-settings-stat">
 							<div class="font-semibold">Last Sync</div>
-							<div class="opacity-80">
+							<div class="text-text-secondary">
 								if status.LastSyncedAt.IsZero() {
 									Not synced yet
 								} else {
@@ -85,60 +134,53 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 						</div>
 					</div>
 					<div class="flex flex-wrap gap-2 pt-1">
-						<form action="/api/settings/youtube-sync/toggle" method="post">
+						<form action="/api/settings/youtube-sync/toggle" method="post" onsubmit="sessionStorage.setItem('feedlr-settings-scroll-y', String(window.scrollY))">
 							<input type="hidden" name="enabled" value={ fmt.Sprintf("%t", !status.Enabled) }/>
-							<button type="submit" class={ map[bool]string{true: "btn btn-sm btn-outline w-32 justify-center", false: "btn btn-sm btn-primary w-32 justify-center"}[status.Enabled] }>
-								{ map[bool]string{true: "Pause Sync", false: "Enable Sync"}[status.Enabled] }
+							<button type="submit" class={ syncToggleButtonClass(status.Enabled) }>
+								{ syncToggleButtonLabel(status.Enabled) }
 							</button>
 						</form>
 						<form action="/api/settings/youtube-sync/disconnect" method="post">
-							<button type="submit" class="btn btn-sm btn-error btn-outline w-32 justify-center" hx-confirm="Disconnect YouTube sync? This removes stored credentials.">Disconnect</button>
+							<button type="submit" class="ui-btn ui-btn-sm ui-btn-neutral w-32 justify-center border-danger/35 text-red-100 hover:bg-danger/20" hx-confirm="Disconnect YouTube sync? This removes stored credentials.">Disconnect</button>
 						</form>
 					</div>
 				}
 			</div>
-			<div class="w-full h-px bg-base-300"></div>
+			<div class="ui-settings-divider"></div>
 			<div class="flex flex-col gap-4" id="youtube-tv-sync-settings">
-				<div class="flex items-center justify-between gap-2">
-					<span class="text-base font-semibold">TV Progress Sync</span>
-					if tvStatus.Available {
-						<span
-							class={ map[bool]string{
-							true:  "badge badge-primary badge-sm text-primary-content w-24 justify-center",
-							false: "badge badge-sm bg-base-200 text-base-content/60 border border-base-content/15 w-24 justify-center",
-						}[tvStatus.Enabled] }
-						>
-							{ map[bool]string{true: "Enabled", false: "Paused"}[tvStatus.Enabled] }
-						</span>
-					}
-				</div>
+			<div class="flex items-center justify-between gap-2">
+				<span class="ui-settings-subtitle">TV Progress Sync</span>
+				<span class={ syncStatusBadgeClass(tvStatus.Enabled && tvStatus.Available) }>
+					{ tvSyncStatusText(tvStatus) }
+				</span>
+			</div>
 				if !tvStatus.Available {
-					<div class="text-sm opacity-70">TV sync is disabled on this deployment.</div>
+					<div class="ui-settings-note">TV sync is disabled on this deployment.</div>
 				}
 				if tvStatus.Available && tvStatus.ConnectionState == "" {
 					<form action="/api/settings/youtube-sync/tv/connect" method="post" class="flex flex-col gap-2 md:flex-row md:items-center">
 						<input
 							type="text"
 							name="pairing_code"
-							class="input input-bordered input-sm w-full md:w-64"
+							class="ui-input w-full md:w-64"
 							placeholder="YouTube TV pairing code"
 							required
 						/>
-						<button type="submit" class="btn btn-sm btn-primary w-32 justify-center">Pair TV</button>
+						<button type="submit" class="ui-btn ui-btn-primary ui-btn-sm w-32 justify-center">Pair TV</button>
 					</form>
 				}
 				if tvStatus.Available && tvStatus.ConnectionState != "" {
-					<div class="grid gap-2 text-sm sm:grid-cols-2">
-						<div class="p-3 rounded-lg bg-base-200">
+					<div class="ui-settings-grid">
+						<div class="ui-settings-stat">
 							<div class="font-semibold">Connection</div>
-							<div class="opacity-80">{ tvStatus.ConnectionState }</div>
+							<div class="text-text-secondary">{ tvSyncConnectionText(tvStatus.ConnectionState) }</div>
 							if tvStatus.StateReason != "" {
-								<div class="mt-1 text-xs opacity-70">{ tvStatus.StateReason }</div>
+								<div class="mt-1 text-xs text-text-secondary">{ tvStatus.StateReason }</div>
 							}
 						</div>
-						<div class="p-3 rounded-lg bg-base-200">
+						<div class="ui-settings-stat">
 							<div class="font-semibold">Last Event</div>
-							<div class="opacity-80">
+							<div class="text-text-secondary">
 								if tvStatus.LastEventAt.IsZero() {
 									Not available
 								} else {
@@ -148,20 +190,20 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 						</div>
 					</div>
 					if tvStatus.ScreenName != "" {
-						<div class="text-sm opacity-70">Paired screen: { tvStatus.ScreenName }</div>
+						<div class="ui-settings-note">Paired screen: { tvStatus.ScreenName }</div>
 					}
 					if tvStatus.LastError != "" {
-						<div class="text-sm text-error">{ tvStatus.LastError }</div>
+						<div class="ui-error-inline">TV sync encountered an issue. Please retry.</div>
 					}
 					<div class="flex flex-wrap gap-2 pt-1">
-						<form action="/api/settings/youtube-sync/tv/toggle" method="post">
+						<form action="/api/settings/youtube-sync/tv/toggle" method="post" onsubmit="sessionStorage.setItem('feedlr-settings-scroll-y', String(window.scrollY))">
 							<input type="hidden" name="enabled" value={ fmt.Sprintf("%t", !tvStatus.Enabled) }/>
-							<button type="submit" class={ map[bool]string{true: "btn btn-sm btn-outline w-32 justify-center", false: "btn btn-sm btn-primary w-32 justify-center"}[tvStatus.Enabled] }>
-								{ map[bool]string{true: "Pause Sync", false: "Enable Sync"}[tvStatus.Enabled] }
+							<button type="submit" class={ syncToggleButtonClass(tvStatus.Enabled) }>
+								{ syncToggleButtonLabel(tvStatus.Enabled) }
 							</button>
 						</form>
 						<form action="/api/settings/youtube-sync/tv/disconnect" method="post">
-							<button type="submit" class="btn btn-sm btn-error btn-outline w-32 justify-center" hx-confirm="Disconnect TV sync? This removes the paired device token.">Disconnect</button>
+							<button type="submit" class="ui-btn ui-btn-sm ui-btn-neutral w-32 justify-center border-danger/35 text-red-100 hover:bg-danger/20" hx-confirm="Disconnect TV sync? This removes the paired device token.">Disconnect</button>
 						</form>
 					</div>
 				}

@@ -1,0 +1,39 @@
+package ui
+
+type dialogOptions struct {
+	class      string
+	panelClass string
+}
+
+type DialogOption func(*dialogOptions)
+
+func WithDialogClass(class string) DialogOption {
+	return func(o *dialogOptions) { o.class = class }
+}
+
+func WithDialogPanelClass(class string) DialogOption {
+	return func(o *dialogOptions) { o.panelClass = class }
+}
+
+func Dialog(id string, opts ...DialogOption) templ.Component {
+	o := dialogOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return dialogImpl(id, o)
+}
+
+templ dialogImpl(id string, opts dialogOptions) {
+	<dialog id={ id } class={ joinClasses("ui-dialog", opts.class) }>
+		<div class={ joinClasses("ui-dialog-panel motion-safe:duration-200 motion-safe:ease-[var(--ease-emphasized)]", opts.panelClass) }>
+			{ children... }
+		</div>
+	</dialog>
+}
+
+templ DialogBackdropButton(label string) {
+	<form method="dialog" class="ui-dialog-backdrop">
+		<button>{ label }</button>
+	</form>
+}
+

@@ -3,23 +3,23 @@ package pages
 import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
 
 templ Login() {
-	<div class="flex flex-col items-center justify-center h-full gap-4 text-center" id="landing">
+	<div class="mx-auto my-auto flex w-full max-w-md flex-col items-center justify-center gap-4 px-3 text-center" id="landing">
 		<a href="/">
 			@shared.Logo("text-2xl")
 		</a>
-		<div class="flex flex-col gap-2 w-xs">
-			<div>
+		<div class="ui-card flex w-full flex-col gap-3">
+			<div class="text-sm text-text-secondary">
 				We use passkeys exclusively.
 			</div>
 			<div>
-				<input id="username" minlength="3" maxlength="24" type="text" class="w-full input input-bordered" placeholder="Username"/>
+				<input id="username" minlength="3" maxlength="24" type="text" class="ui-input w-full" placeholder="Username"/>
 			</div>
 			<div class="flex flex-row flex-wrap gap-2">
-				<button id="loginButton" type="button" class="grow basis-1/3 btn btn-primary">Login</button>
-				<button id="registerButton" type="button" class="grow basis-1/3 btn">Register</button>
+				<button id="loginButton" type="button" class="ui-btn ui-btn-primary grow basis-1/3">Login</button>
+				<button id="registerButton" type="button" class="ui-btn ui-btn-neutral grow basis-1/3">Register</button>
 			</div>
-			<div id="error" class="toast toast-bottom toast-center invisible max-w-xl">
-				<div class="alert alert-error">
+			<div id="error" class="invisible w-full">
+				<div class="ui-toast ui-toast-danger w-full opacity-95">
 					<span></span>
 				</div>
 			</div>

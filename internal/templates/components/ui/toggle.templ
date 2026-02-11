@@ -1,0 +1,41 @@
+package ui
+
+type toggleOptions struct {
+	class    string
+	disabled bool
+}
+
+type ToggleOption func(*toggleOptions)
+
+func WithToggleClass(class string) ToggleOption {
+	return func(o *toggleOptions) { o.class = class }
+}
+
+var ToggleDisabled ToggleOption = func(o *toggleOptions) { o.disabled = true }
+
+func Toggle(id, name string, checked bool, opts ...ToggleOption) templ.Component {
+	o := toggleOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return toggleImpl(id, name, checked, o)
+}
+
+templ toggleImpl(id, name string, checked bool, opts toggleOptions) {
+	<input
+		id={ id }
+		name={ name }
+		type="checkbox"
+		class={ joinClasses("ui-toggle", opts.class) }
+		checked?={ checked }
+		disabled?={ opts.disabled }
+	/>
+}
+
+templ ToggleWithLabel(id, name, label string, checked bool, opts ...ToggleOption) {
+	<label class="inline-flex items-center gap-2 cursor-pointer">
+		@Toggle(id, name, checked, opts...)
+		<span class="text-sm text-text-secondary">{ label }</span>
+	</label>
+}
+

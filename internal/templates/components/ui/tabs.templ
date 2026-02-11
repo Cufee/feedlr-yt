@@ -1,0 +1,33 @@
+package ui
+
+type tabsOptions struct {
+	class string
+}
+
+type TabsOption func(*tabsOptions)
+
+func WithTabsClass(class string) TabsOption {
+	return func(o *tabsOptions) { o.class = class }
+}
+
+func Tabs(opts ...TabsOption) templ.Component {
+	o := tabsOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
+	return tabsImpl(o)
+}
+
+templ tabsImpl(opts tabsOptions) {
+	<div class={ joinClasses("ui-tabs", opts.class) }>
+		{ children... }
+	</div>
+}
+
+templ TabButton(label string, active bool, class string) {
+	<button class={ joinClasses("ui-tab", ifClass(active, "ui-tab-active"), class) }>
+		{ label }
+		{ children... }
+	</button>
+}
+

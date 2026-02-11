@@ -11,19 +11,19 @@ templ VideosFeed(props types.UserVideoFeedProps) {
 	<div id="app-index" class="flex flex-col gap-4">
 		@shared.OpenVideoButton()
 		if len(props.WatchLater) > 0 {
-			<div id="watch-later-section">
-				<div class="divider uppercase text-xs font-bold">
-					<a href="/app/watch-later" class="link link-hover">watch later</a>
+			<div id="watch-later-section" class="flex flex-col gap-2">
+				<div class="ui-feed-divider">
+					<span><a href="/app/watch-later" class="ui-feed-divider-link">watch later</a></span>
 				</div>
 				@feed.VideoCarousel(props.WatchLater, feed.WithProgressBar, feed.WithWatchLaterButton)
 			</div>
 		}
 		if len(props.New) > 0 {
-			<div class="divider uppercase text-xs font-bold">new</div>
+			<div class="ui-feed-divider"><span>new</span></div>
 		}
 		@feed.VideoFeed(props.New, "/app", feed.WithChannelName, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay)
 		if len(props.New) > 0 && len(props.Watched) > 0 {
-			<div class="divider uppercase text-xs font-bold">watched</div>
+			<div class="ui-feed-divider"><span>watched</span></div>
 		}
 		@feed.VideoFeed(props.Watched, "/app", feed.WithChannelName, feed.WithProgressActions, feed.WithProgressBar, feed.WithProgressOverlay)
 	</div>
