@@ -9,29 +9,27 @@ import (
 )
 
 templ ManageAccount(passkeys []types.PasskeyProps) {
-	<div class="flex flex-col w-full gap-4 p-3 shadow-inner md:gap-4 md:p-6 bg-base-300 rounded-xl" id="manage-account">
-		<div class="flex flex-row items-center w-full gap-2 px-4">
-			<span class="self-center text-xl font-bold">Account</span>
+	<div class="ui-settings-section" id="manage-account">
+		<div class="ui-settings-header">
+			<span class="ui-settings-title">Account</span>
 		</div>
-		<div class="flex flex-col flex-grow w-full gap-2 p-4 rounded-lg bg-base-100">
-			<div class="flex flex-wrap items-center justify-center gap-2">
-				<span class="font-bold grow">Passkeys</span>
-				<div class="flex flex-row items-center gap-1 justify-start">
-					<span id="error" class="hidden text-error tooltip" data-tip="">
-						@icons.Info()
-					</span>
-					<button id="addPasskey" type="button" class="btn btn-sm btn-primary">Add a new passkey</button>
+		<div class="ui-settings-panel flex w-full flex-col gap-3">
+			<div class="flex flex-wrap items-center gap-2">
+				<span class="grow text-base font-semibold text-text-primary">Passkeys</span>
+				<div class="flex flex-row items-center gap-2 justify-start">
+					<span id="error" class="hidden text-xs text-red-200"></span>
+					<button id="addPasskey" type="button" class="ui-btn ui-btn-primary ui-btn-sm">Add a new passkey</button>
 				</div>
 			</div>
 			<div class="flex flex-col gap-2">
 				for _, pk := range passkeys {
-					<div class="flex flex-row items-center gap-2 p-2 rounded-lg bg-base-200 overflow-hidden" id={ fmt.Sprintf("pk-%s", pk.ID) }>
+					<div class="ui-settings-stat flex flex-row items-center gap-2 overflow-hidden" id={ fmt.Sprintf("pk-%s", pk.ID) }>
 						<div class="flex flex-row items-center justify-between gap-2 grow overflow-hidden">
 							<span class="text-nowrap">
 								{ pk.CreatedAt.Format(time.Stamp) }
 							</span>
 						</div>
-						<button type="button" class="btn btn-sm btn-square btn-error" hx-delete={ fmt.Sprintf("/api/passkeys/%s", pk.ID) } hx-target={ fmt.Sprintf("#pk-%s", pk.ID) } hx-swap="delete" hx-confirm="Are you sure you wish to delete a passkey? This cannot be undone.">
+						<button type="button" class="ui-btn ui-btn-danger ui-btn-sm ui-btn-icon !size-8" hx-delete={ fmt.Sprintf("/api/passkeys/%s", pk.ID) } hx-target={ fmt.Sprintf("#pk-%s", pk.ID) } hx-swap="delete" hx-confirm="Are you sure you wish to delete a passkey? This cannot be undone.">
 							@icons.Cross()
 						</button>
 					</div>
@@ -46,11 +44,11 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
       const errorSpan = document.getElementById('error');
       if (!isError) {
         errorSpan.classList.add("hidden");
-        errorSpan.dataset.tip = "";
+        errorSpan.innerText = "";
         return;
       }
       errorSpan.classList.remove("hidden");
-      errorSpan.dataset.tip = message;
+      errorSpan.innerText = message;
 		}
 
 		async function register() {

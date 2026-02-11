@@ -26,9 +26,9 @@ Complete migration for settings-heavy and fallback pages with consistent Polar G
 
 ## Work Checklist
 
-- [ ] Rebuild settings sections with `ui.Section` + `ui.Card` patterns.
-- [ ] Normalize toggle, badge, status, and action button styles.
-- [ ] Keep all settings endpoints and form actions unchanged.
+- [x] Rebuild settings sections with `ui.Section` + `ui.Card` patterns.
+- [x] Normalize toggle, badge, status, and action button styles.
+- [x] Keep all settings endpoints and form actions unchanged.
 - [x] Rebuild login form and feedback surfaces using shared input/button/toast primitives.
 - [x] Rebuild landing/error/429/outage pages with unified fallback layout language.
 - [ ] Wrap legal remote content in readable typographic container.
@@ -57,3 +57,7 @@ Complete migration for settings-heavy and fallback pages with consistent Polar G
 - Style preferences to carry forward:
 - Prefer integrated full-width controls in section flow over nested card-in-card wrappers.
 - Keep equivalent list/card surfaces visually consistent (hover blur/overlay affordances and interaction copy).
+- Phase 05 pass 2:
+- Migrated `ManageAccount`, `YouTubeSyncSettings`, and `SponsorBlockSettings` to shared `ui-*` primitives and tokenized settings surface classes.
+- Replaced Daisy toggle/badge/button/input usage in settings with `ui-toggle`, `ui-badge`, `ui-btn`, and `ui-input` variants.
+- Kept all settings form actions, HTMX endpoints, and confirmations unchanged.

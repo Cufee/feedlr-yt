@@ -10,17 +10,17 @@ import (
 )
 
 templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
-	<div class="flex flex-col items-center w-full gap-4 p-3 shadow-inner md:gap-4 md:p-6 bg-base-300 rounded-xl" id="sponsorblock-settings">
-		<div class="flex flex-row items-center justify-between w-full gap-2 px-4">
+	<div class="ui-settings-section" id="sponsorblock-settings">
+		<div class="ui-settings-header">
 			<div class="flex flex-row items-center gap-2">
-				<span class="self-center text-xl font-bold">SponsorBlock</span>
-				<a href="https://sponsor.ajay.app/" target="_blank">
+				<span class="ui-settings-title">SponsorBlock</span>
+				<a href="https://sponsor.ajay.app/" target="_blank" rel="noopener noreferrer" class="text-text-secondary transition-colors duration-150 hover:text-text-primary">
 					@icons.Info()
 				</a>
 			</div>
 			@GlobalToggleButton(settings.SponsorBlockEnabled)
 		</div>
-		<div class="flex flex-row flex-wrap gap-4">
+		<div class="flex flex-row flex-wrap gap-3">
 			for _, cat := range settings.AvailableSponsorBlockCategories {
 				@CategoryCard(cat, settings.SponsorBlockEnabled && slices.Contains(settings.SelectedSponsorBlockCategories, cat.Value), !settings.SponsorBlockEnabled)
 			}
@@ -29,13 +29,13 @@ templ SponsorBlockSettings(settings types.SponsorBlockSettingsProps) {
 }
 
 templ CategoryCard(category sponsorblock.Category, checked, disabled bool) {
-	<div class="flex flex-col flex-grow gap-2 p-4 rounded-lg bg-base-100 basis-1/2 sm:basis-1/3 lg:basis-1/4">
+	<div class="ui-settings-panel flex flex-grow basis-full flex-col gap-2 sm:basis-[calc(50%-0.4rem)] lg:basis-[calc(33.333%-0.5rem)]">
 		<div class="flex justify-between gap-2">
-			<span class="font-bold">{ category.Name }</span>
+			<span class="text-sm font-semibold text-text-primary">{ category.Name }</span>
 			@CategoryToggleButton(category.Value, checked, disabled)
 		</div>
 		<div class="flex break-words truncate">
-			@shared.Textbox("") {
+			@shared.Textbox("ui-settings-note") {
 				{ category.Description }
 			}
 		</div>
@@ -46,7 +46,7 @@ templ CategoryToggleButton(category string, checked, disabled bool) {
 	<input
 		type="checkbox"
 		id={ fmt.Sprintf("sponsorblock-cat-%s", category) }
-		class="toggle toggle-info toggle-md"
+		class="ui-toggle"
 		checked?={ checked }
 		disabled?={ disabled }
 		hx-post={ fmt.Sprintf("/api/settings/sponsorblock/category?category=%s", category) }
@@ -59,7 +59,7 @@ templ GlobalToggleButton(checked bool) {
 	<input
 		id="sponsorblock"
 		type="checkbox"
-		class="toggle toggle-md toggle-primary"
+		class="ui-toggle"
 		checked?={ checked }
 		hx-post={ fmt.Sprintf("/api/settings/sponsorblock?value=%t", !checked) }
 		hx-target="#sponsorblock-settings"

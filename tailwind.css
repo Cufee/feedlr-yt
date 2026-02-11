@@ -360,6 +360,42 @@
         @apply flex w-full flex-row flex-wrap gap-3;
     }
 
+    .ui-settings-section {
+        @apply flex w-full flex-col gap-4 rounded-[var(--radius-panel)] border border-glass-stroke/22 bg-glass-fill/45 p-4 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-md)] md:p-5;
+    }
+
+    .ui-settings-header {
+        @apply flex flex-wrap items-center justify-between gap-2;
+    }
+
+    .ui-settings-title {
+        @apply text-xl font-semibold text-text-primary;
+    }
+
+    .ui-settings-subtitle {
+        @apply text-base font-semibold text-text-primary;
+    }
+
+    .ui-settings-panel {
+        @apply rounded-[var(--radius-md)] border border-glass-stroke/18 bg-elev-2/65 p-3 md:p-4;
+    }
+
+    .ui-settings-divider {
+        @apply h-px w-full border-t border-glass-stroke/18;
+    }
+
+    .ui-settings-note {
+        @apply text-sm text-text-secondary;
+    }
+
+    .ui-settings-grid {
+        @apply grid gap-2 text-sm sm:grid-cols-2;
+    }
+
+    .ui-settings-stat {
+        @apply rounded-[var(--radius-md)] border border-glass-stroke/16 bg-elev-2/75 p-3;
+    }
+
     .ui-video-card {
         @apply relative overflow-hidden rounded-[var(--radius-media)] bg-black/30 shadow-[0_8px_26px_-18px_var(--color-glass-shadow),inset_0_0_0_1px_rgb(255_255_255_/_0.14)];
         isolation: isolate;

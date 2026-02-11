@@ -67,6 +67,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Subscriptions search now sits directly in page flow (no nested card wrapper) and keeps a full-width control footprint for stronger section continuity.
 - Search-result and subscribed channel cards now share the same blurred "Open" overlay interaction language for visual and behavioral parity.
 - Supporting fallback pages (`/`, `/login`, `/error`, `/429`, outage) now reuse the same card/button/input/toast primitives to keep non-app states inside the same material system.
+- Settings surfaces now use a two-level glass hierarchy (section shell + inner panels/stat tiles) with shared toggle/badge/button/input primitives for consistent operational controls.
 
 ### Visual Principles
 
