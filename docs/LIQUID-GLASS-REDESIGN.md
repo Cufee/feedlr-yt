@@ -274,20 +274,6 @@ Actions:
 
 - Keep icon files, normalize sizing/stroke conventions via wrapper classes in `ui.IconButton`.
 
-## Detailed Migration Plan
-
-Working phase files (mutable implementation trackers) are in `docs/liquid-glass-phases/`.
-
-- `docs/liquid-glass-phases/README.md`
-- `docs/liquid-glass-phases/phase-00-cleanup-build-safety.md`
-- `docs/liquid-glass-phases/phase-01-foundations-tokens.md`
-- `docs/liquid-glass-phases/phase-02-layout-shell.md`
-- `docs/liquid-glass-phases/phase-025-native-motion.md`
-- `docs/liquid-glass-phases/phase-03-feed-video.md`
-- `docs/liquid-glass-phases/phase-04-subscriptions-channel-onboarding.md`
-- `docs/liquid-glass-phases/phase-05-settings-supporting-pages.md`
-- `docs/liquid-glass-phases/phase-06-hardening.md`
-
 ## Phase 0: Initial Cleanup and Build Safety
 
 1. Remove runtime style CDN usage in `internal/templates/layouts/partials/head.templ`.
