@@ -54,6 +54,11 @@ Unify channel discovery and subscription management UI with the new component sy
 - Migrated channel filter tabs to `ui-tab` visuals while preserving `/api/channels/:id/filter` behavior.
 - Reworked `/app/subscriptions`, `/app/onboarding`, and `/channel/:id` page structure to shared section/card conventions.
 - Updated Fuse search input to `ui-input` with `ui-input-error` invalid state class handling.
+- Phase 04 pass 1 polish:
+- Tuned channel action button icon-to-padding ratio for unsubscribe/subscribe controls.
+- Mobile search results now avoid always-on full-card "View" overlays; subscribed state uses a compact badge.
+- Search results container collapses when empty (`empty:hidden`) to remove extra spacing under input.
+- Video duration chip now has a no-progress variant so bottom inset aligns when progress bar is absent.
 - Build verification run:
 - `npm run build` (success)
 - `go generate ./...` (success)

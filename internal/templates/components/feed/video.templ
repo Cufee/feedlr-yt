@@ -250,7 +250,7 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 				</div>
 			}
 		}
-		<div class="ui-video-duration-chip">
+		<div class={ "ui-video-duration-chip", templ.KV("ui-video-duration-chip-no-progress", !(video.Progress > 0 && opts.showProgressBar)) }>
 			if video.Hidden {
 			} else if video.Type == "live_stream" {
 				<div class="w-2 h-2 bg-red-500 rounded-full"></div> LIVE

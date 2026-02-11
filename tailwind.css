@@ -292,7 +292,11 @@
     }
 
     .ui-channel-overlay {
-        @apply absolute inset-0 z-10 flex items-center justify-center bg-black/48 text-base font-semibold uppercase tracking-[0.08em] text-white;
+        @apply absolute inset-0 z-10 flex items-center justify-center bg-black/44 text-base font-semibold uppercase tracking-[0.08em] text-white opacity-0 transition-opacity duration-150 ease-[var(--ease-standard)] backdrop-blur-[2px];
+    }
+
+    .ui-channel-status-badge {
+        @apply absolute left-2 top-2 z-10 rounded-[var(--radius-chip)] border border-accent/28 bg-accent/16 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.09em] text-accent;
     }
 
     .ui-channel-tile {
@@ -320,7 +324,16 @@
     }
 
     .ui-channel-action-btn {
-        @apply inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/20 bg-glass-fill/24 p-0 text-text-secondary backdrop-blur-[var(--blur-glass-sm)] transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/38 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:stroke-[1.75];
+        @apply inline-flex items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/20 bg-glass-fill/24 text-text-secondary backdrop-blur-[var(--blur-glass-sm)] transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/38 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
+        height: 2.1rem;
+        width: 2.1rem;
+        padding: 0.35rem;
+    }
+
+    .ui-channel-action-btn > svg {
+        height: 0.96rem;
+        width: 0.96rem;
+        stroke-width: 1.72;
     }
 
     .ui-channel-action-btn-primary {
@@ -386,6 +399,10 @@
         right: var(--space-video-inset-x);
         bottom: calc(var(--space-video-inset-y) + var(--height-video-progress) + 0.42rem);
         border-radius: var(--radius-sm);
+    }
+
+    .ui-video-duration-chip-no-progress {
+        bottom: calc(var(--space-video-inset-y) + 0.06rem);
     }
 
     .ui-video-progress-track {
