@@ -260,7 +260,7 @@ templ VideoTile(video types.VideoProps, opts feedOptions) {
 templ VideoTileWithTitle(video types.VideoProps, opts feedOptions) {
 	<div class="relative overflow-hidden shadow-md group carousel-item rounded-[var(--radius-media)] w-fit" id={ fmt.Sprintf("video-tile-%s", video.ID) }>
 		@VideoTile(video, opts)
-		<div class="absolute bottom-0 left-0 z-10 flex flex-col w-full gap-1 bg-black md:hidden group-hover:inline-block animate__faster bg-opacity-60 animate__animated animate__slideInUp">
+		<div class="pointer-events-none absolute bottom-0 left-0 z-10 flex w-full translate-y-2 flex-col gap-1 bg-black/60 opacity-0 transition-all duration-150 ease-[var(--ease-standard)] md:hidden group-hover:translate-y-0 group-hover:opacity-100">
 			<div class="px-2 py-1 font-bold text-center text-white truncate">
 				{ video.Title }
 			</div>

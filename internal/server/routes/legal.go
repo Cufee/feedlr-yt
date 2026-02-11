@@ -9,9 +9,9 @@ import (
 )
 
 var TermsOfService brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Layout[*handler.Context], templ.Component, error) {
-	return layouts.Main, shared.RemoteContentPage("https://byvko-dev.github.io/legal/terms-of-service-partial"), nil
+	return layouts.Legal, shared.RemoteContentPage("https://byvko-dev.github.io/legal/terms-of-service-partial"), nil
 }
 
 var PrivacyPolicy brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Layout[*handler.Context], templ.Component, error) {
-	return layouts.Main, shared.RemoteContentPage("https://byvko-dev.github.io/legal/privacy-policy"), nil
+	return layouts.Legal, shared.RemoteContentPage("https://byvko-dev.github.io/legal/privacy-policy"), nil
 }

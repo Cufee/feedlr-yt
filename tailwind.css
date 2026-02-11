@@ -313,11 +313,11 @@
     }
 
     .ui-channel-thumb img {
-        @apply z-10 hidden h-full w-full object-cover transition-all duration-500 ease-[var(--ease-standard)] group-hover:scale-110;
+        @apply relative z-10 hidden h-full w-full object-cover transition-all duration-500 ease-[var(--ease-standard)] group-hover:scale-110;
     }
 
     .ui-channel-thumb-skeleton {
-        @apply absolute inset-0 bg-elev-2 animate-pulse;
+        @apply absolute inset-0 z-0 bg-elev-2;
     }
 
     .ui-channel-title {

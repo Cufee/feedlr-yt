@@ -15,6 +15,16 @@ templ Navbar(path string, authenticated bool) {
 	</div>
 }
 
+templ NavbarLogoOnly(homeURL string) {
+	<div id="nav-indicator" class="ui-nav-shell">
+		<div class="flex min-h-11 items-center">
+			<a href={ homeURL } class="inline-flex items-center py-1">
+				@shared.Logo()
+			</a>
+		</div>
+	</div>
+}
+
 templ navbarAuthenticated(path string) {
 	<div class="flex items-center justify-between gap-3">
 		<a href="/app" class="inline-flex items-center py-1">
