@@ -6,9 +6,9 @@
     --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
 
     --color-canvas: oklch(23% 0.006 255);
-    --color-elev-1: oklch(28% 0.008 255);
-    --color-elev-2: oklch(32% 0.01 255);
-    --color-glass-fill: oklch(33% 0.012 255);
+    --color-elev-1: oklch(26% 0.007 255);
+    --color-elev-2: oklch(29% 0.009 255);
+    --color-glass-fill: oklch(30% 0.01 255);
     --color-glass-stroke: oklch(74% 0.01 255);
     --color-glass-shadow: oklch(8% 0.004 255);
     --color-text-primary: oklch(92% 0.008 255);
@@ -80,7 +80,7 @@
     }
 
     .ui-card {
-        @apply rounded-[var(--radius-panel)] border border-white/5 bg-elev-1 p-4 text-text-primary shadow-[0_10px_30px_-24px_var(--color-glass-shadow)] md:p-5;
+        @apply rounded-[var(--radius-panel)] border border-white/5 bg-elev-1/92 p-4 text-text-primary shadow-[0_10px_30px_-24px_var(--color-glass-shadow)] md:p-5;
     }
 
     .ui-section {
@@ -233,7 +233,7 @@
     }
 
     .ui-nav-shell {
-        @apply w-full rounded-[var(--radius-panel)] border border-glass-stroke/28 bg-elev-2/78 px-3 py-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply w-full rounded-[var(--radius-panel)] border border-glass-stroke/24 bg-elev-2/88 px-3 py-2 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
     }
 
     .ui-nav-actions {
@@ -253,7 +253,7 @@
     }
 
     .ui-footer-shell {
-        @apply mt-2 rounded-[var(--radius-panel)] border border-glass-stroke/28 bg-elev-2/75 p-3 text-text-primary backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+        @apply mt-2 rounded-[var(--radius-panel)] border border-glass-stroke/24 bg-elev-2/88 p-3 text-text-primary backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
     }
 
     .ui-feed-divider {
@@ -291,7 +291,7 @@
     }
 
     .ui-channel-card {
-        @apply relative flex flex-grow basis-full overflow-hidden rounded-[var(--radius-panel)] border border-glass-stroke/18 bg-elev-1/88 p-3.5 backdrop-blur-[var(--blur-glass-sm)] shadow-[0_8px_26px_-20px_var(--color-glass-shadow)] transition-all duration-200 ease-[var(--ease-standard)] hover:bg-elev-1 md:basis-[calc(50%-0.75rem)] lg:basis-[calc(33.333%-0.8rem)];
+        @apply relative flex flex-grow basis-full overflow-hidden rounded-[var(--radius-panel)] border border-glass-stroke/16 bg-elev-1/94 p-3.5 backdrop-blur-[var(--blur-glass-sm)] shadow-[0_8px_26px_-20px_var(--color-glass-shadow)] transition-all duration-200 ease-[var(--ease-standard)] hover:bg-elev-1 md:basis-[calc(50%-0.75rem)] lg:basis-[calc(33.333%-0.8rem)];
     }
 
     .ui-channel-overlay {
@@ -368,7 +368,7 @@
     }
 
     .ui-settings-section {
-        @apply flex w-full flex-col gap-3 rounded-[var(--radius-panel)] border border-glass-stroke/14 bg-glass-fill/12 p-3 md:p-4;
+        @apply flex w-full flex-col gap-3 rounded-[var(--radius-panel)] border border-glass-stroke/14 bg-elev-2/80 p-3 md:p-4;
     }
 
     .ui-settings-header {
@@ -388,7 +388,7 @@
     }
 
     .ui-settings-panel {
-        @apply rounded-[var(--radius-md)] border border-glass-stroke/18 bg-elev-2/65 p-3 md:p-4;
+        @apply rounded-[var(--radius-md)] border border-glass-stroke/18 bg-elev-1/88 p-3 md:p-4;
     }
 
     .ui-settings-divider {
@@ -405,6 +405,39 @@
 
     .ui-settings-stat {
         @apply rounded-[var(--radius-md)] border border-glass-stroke/16 bg-elev-2/75 p-3;
+    }
+
+    .ui-legal-prose {
+        @apply text-[0.95rem] leading-7 text-text-secondary;
+    }
+
+    .ui-legal-prose h1 {
+        @apply mb-4 text-2xl font-semibold text-text-primary;
+    }
+
+    .ui-legal-prose h2 {
+        @apply mb-3 mt-8 text-xl font-semibold text-text-primary;
+    }
+
+    .ui-legal-prose h3 {
+        @apply mb-2 mt-6 text-lg font-semibold text-text-primary;
+    }
+
+    .ui-legal-prose p {
+        @apply mb-4;
+    }
+
+    .ui-legal-prose ul,
+    .ui-legal-prose ol {
+        @apply mb-4 ml-6;
+    }
+
+    .ui-legal-prose li {
+        @apply mb-1;
+    }
+
+    .ui-legal-prose a {
+        @apply text-accent underline underline-offset-2 hover:text-accent-strong;
     }
 
     .ui-error-inline {

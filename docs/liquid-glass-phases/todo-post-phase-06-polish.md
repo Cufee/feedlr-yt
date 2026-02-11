@@ -28,6 +28,9 @@ It combines:
   - make header/footer visually distinct from page cards
   - keep cards distinct from app chrome
   - Acceptance: nav/footer vs content cards are separable by value/contrast, not only borders.
+- [ ] `VIS-009` Brightness diagnosis/final darkening pass.
+  - Evaluate whether perceived brightness is from base palette, surface alpha, border contrast, or blur interactions.
+  - Acceptance: app no longer feels "washed/bright" across nav, cards, and footer while preserving readability.
 - [x] `VIS-006` Radius consistency pass across:
   - header/footer containers
   - video cards
@@ -71,10 +74,11 @@ It combines:
 ### Notes
 
 - `VIS-005` has an initial implementation pass (global tint reduced and nav/footer separated from content cards), but remains open for final polish iteration.
+- Added an extra brightness-focused follow-up (`VIS-009`) to capture uncertainty between color values vs material treatment.
 
 ## D. Legal Pages
 
-- [ ] `LEGAL-001` Polish privacy policy and terms pages.
+- [x] `LEGAL-001` Polish privacy policy and terms pages.
   - Apply readable typographic container and consistent spacing hierarchy.
   - Acceptance: long-form content has stable line length, heading hierarchy, and paragraph rhythm.
 

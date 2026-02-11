@@ -1,8 +1,12 @@
 package shared
 
 templ RemoteContentPage(url string) {
-	<div id="page-content" class="px-4">
-		JavaScript is required to load this page.
+	<div class="mx-auto w-full max-w-5xl px-3 py-2 md:px-0">
+		<div class="ui-card">
+			<article id="page-content" class="ui-legal-prose">
+				JavaScript is required to load this page.
+			</article>
+		</div>
 	</div>
 	@EmbedScript(loadContent(url), url)
 }

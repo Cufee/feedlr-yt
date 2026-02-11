@@ -33,6 +33,7 @@ Use annotated git tags for rollback checkpoints after each completed phase.
 - `checkpoint/liquid-glass-08-phase-06-final`
 - `checkpoint/liquid-glass-09-post-phase06-pass1`
 - `checkpoint/liquid-glass-09-post-phase06-pass2`
+- `checkpoint/liquid-glass-09-post-phase06-pass3`
 - `checkpoint/liquid-glass-05-phase-03`
 - `checkpoint/liquid-glass-06-phase-04`
 - `checkpoint/liquid-glass-07-phase-05`
@@ -97,3 +98,4 @@ git reset --hard checkpoint/liquid-glass-XX-name
 - `checkpoint/liquid-glass-08-phase-06-final` -> phase 06 final hardening (removed remaining Daisy dependency/classes, unified delayed loader timing token across nav + HTMX indicators, deleted unused shared link component, and finalized docs/checklists)
 - `checkpoint/liquid-glass-09-post-phase06-pass1` -> post-phase polish pass 1 (video/feed typography+radius+blur updates, gradient removal, app/video spacing cleanup, settings passkey error stabilization, and sync toggle scroll restoration)
 - `checkpoint/liquid-glass-09-post-phase06-pass2` -> post-phase polish pass 2 (navbar radius consistency, smaller header logo scale, passkey label anchoring, generic TV sync error copy, and corrected TV disabled/paused labeling)
+- `checkpoint/liquid-glass-09-post-phase06-pass3` -> post-phase polish pass 3 (added brightness-diagnosis backlog item, darkened app/nav/footer/card surfaces, and polished legal pages with readable prose container styling)
