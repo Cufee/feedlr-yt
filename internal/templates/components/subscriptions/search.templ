@@ -9,7 +9,7 @@ import (
 templ SearchChannels() {
 	<div id="search" class="ui-search-shell">
 		<div class="ui-search-box group" id="search-box">
-			<input type="search" placeholder="Enter Channel Name" name="search" minlength="5" maxlength="64" _="on clear send clear to #search-results on load set my value to '' then" class="ui-input w-full max-w-full text-center md:max-w-sm" hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML" hx-trigger="keyup changed delay:750ms" hx-sync="this:replace" id="search-input"/>
+			<input type="search" placeholder="Enter Channel Name" name="search" minlength="5" maxlength="64" _="on clear send clear to #search-results on load set my value to '' then" class="ui-input w-full" hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML" hx-trigger="keyup changed delay:750ms" hx-sync="this:replace" id="search-input"/>
 		</div>
 		<div id="search-results" class="ui-search-results empty:hidden"></div>
 	</div>

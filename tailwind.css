@@ -349,15 +349,15 @@
     }
 
     .ui-search-shell {
-        @apply flex flex-col gap-3;
+        @apply flex w-full flex-col gap-3;
     }
 
     .ui-search-box {
-        @apply flex items-center justify-center;
+        @apply flex w-full items-center;
     }
 
     .ui-search-results {
-        @apply flex w-full flex-row flex-wrap gap-3 text-center;
+        @apply flex w-full flex-row flex-wrap gap-3;
     }
 
     .ui-video-card {

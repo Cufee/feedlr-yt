@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
-	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
@@ -14,9 +13,7 @@ templ Subscriptions(channels []types.ChannelProps) {
 			<div class="ui-section-header justify-center">
 				<h2 class="ui-section-title">Find More Channels</h2>
 			</div>
-			@ui.Card(ui.WithCardClass("p-4 md:p-5")) {
-				@subscriptions.SearchChannels()
-			}
+			@subscriptions.SearchChannels()
 		</div>
 		<div id="subscriptions" class="ui-section">
 			<div class="ui-section-header justify-center">
