@@ -48,16 +48,16 @@ templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedO
 	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3" id="components-video-feed">
 		for _, video := range videos {
 			<div class="ui-motion-swap flex flex-col gap-1" id={ fmt.Sprintf("video-item-%s", video.ID) }>
-				<a href={ templ.URL(fmt.Sprintf("/video/%s?return=%s", video.ID, returnUrl)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full cursor-pointer rounded-box group">
+				<a href={ templ.URL(fmt.Sprintf("/video/%s?return=%s", video.ID, returnUrl)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full cursor-pointer group">
 					@videoCardComponent(video, opts)
 				</a>
 				<div class="flex flex-col">
-					<span class={ "overflow-hidden", "text-lg", "leading-tight", "truncate", "whitespace-normal", "line-clamp-2" } style="overflow-wrap: anywhere;" title={ video.Title }>
+					<span class="ui-feed-title" title={ video.Title }>
 						{ video.Title }
 					</span>
 					<div class="flex flex-col">
 						if opts.showChannelName {
-							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="flex items-center gap-1 overflow-hidden text-gray-500 truncate text-md w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Title }>
+							<a href={ templ.URL(fmt.Sprintf("/channel/%s", video.Channel.ID)) } class="ui-feed-channel w-fit" hx-boost="true" hx-target="body" title={ video.Channel.Title }>
 								{ video.Channel.Title }
 								if video.Channel.VideoFilter == types.VideoFilterVideos {
 									<span class="size-3.5 shrink-0">
@@ -70,7 +70,7 @@ templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedO
 								}
 							</a>
 						}
-						<span class="text-sm text-gray-500 w-fit">
+						<span class="ui-feed-time w-fit">
 							{ utils.RelativeTimeAgo(video.PublishedAt) }
 						</span>
 					</div>
@@ -89,14 +89,14 @@ func VideoCarousel(videos []types.VideoProps, options ...FeedOption) templ.Compo
 }
 
 templ videoCarouselComponent(videos []types.VideoProps, opts feedOptions) {
-	<div class="watch-later-section h-44 md:h-52 relative" id="components-video-carousel">
+	<div class="watch-later-section relative h-44 md:h-52" id="components-video-carousel">
 		<div class="watch-later-items flex w-full h-full gap-3 overflow-x-auto snap-x snap-mandatory" id="watch-later-items">
 			for _, video := range videos {
 				@WatchLaterCarouselItem(video)
 			}
 		</div>
 		<div class="watch-later-placeholder absolute inset-0 flex items-center justify-center">
-			<span class="text-sm text-gray-500">Refresh to hide this section</span>
+			<span class="ui-feed-time">Refresh to hide this section</span>
 		</div>
 	</div>
 }
@@ -105,17 +105,19 @@ templ videoCarouselComponent(videos []types.VideoProps, opts feedOptions) {
 templ WatchLaterCarouselItem(video types.VideoProps) {
 	<div class="watch-later-item ui-motion-swap snap-start shrink-0 w-56 md:w-72 flex flex-col" id={ fmt.Sprintf("carousel-item-%s", video.ID) }>
 		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col h-full cursor-pointer group">
-			<div class="relative overflow-hidden rounded-lg aspect-video">
+			<div class="ui-video-card aspect-video">
 				@VideoThumbnail(video.ID, video.Title, false)
 				if video.Progress > 0 {
-					<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-xl font-bold uppercase bg-black opacity-70">Watched</div>
-					<progress class="absolute bottom-0 left-0 z-20 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(utils.MaxInt(video.Duration, video.Progress)) }></progress>
+					<div class="ui-video-state-overlay text-xl">Watched</div>
+					<div class="ui-video-progress-track">
+						<div class="ui-video-progress-fill" style={ fmt.Sprintf("width:%d%%", progressPercent(video.Progress, video.Duration)) }></div>
+					</div>
 				}
 				<div class="absolute z-20 top-2 right-2">
 					@WatchLaterButton(video.ID, true, WatchLaterCarousel)
 				</div>
 			</div>
-			<span class="mt-1 text-sm leading-tight line-clamp-2 h-9 overflow-hidden hover:underline">
+			<span class="mt-1 line-clamp-2 h-9 overflow-hidden text-sm leading-tight text-text-primary hover:underline">
 				{ video.Title }
 			</span>
 		</a>
@@ -179,8 +181,8 @@ templ VideoCardWithCarouselRemove(video types.VideoProps, opts ...FeedOption) {
 
 templ VideoThumbnail(videoID, alt string, hidden bool) {
 	<div class={ "absolute", "inset-0", "overflow-hidden", "pointer-events-none", templ.KV("blur-xl", hidden) }>
-		<object tabindex="-1" class="absolute object-cover w-full h-full transition-all duration-500 pointer-events-none bg-base-100 group-hover:scale-110" data={ fmt.Sprintf("https://i.ytimg.com/vi/%s/sddefault.jpg", videoID) } type="image/jpeg">
-			<img class="absolute object-cover w-full h-full transition-all duration-500 pointer-events-none bg-base-100 group-hover:scale-110" src={ fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", videoID) } alt={ alt }/>
+		<object tabindex="-1" class="absolute object-cover w-full h-full transition-all duration-500 pointer-events-none bg-elev-1 group-hover:scale-110" data={ fmt.Sprintf("https://i.ytimg.com/vi/%s/sddefault.jpg", videoID) } type="image/jpeg">
+			<img class="absolute object-cover w-full h-full transition-all duration-500 pointer-events-none bg-elev-1 group-hover:scale-110" src={ fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", videoID) } alt={ alt }/>
 		</object>
 	</div>
 }
@@ -194,7 +196,7 @@ func VideoCard(video types.VideoProps, options ...FeedOption) templ.Component {
 }
 
 templ videoCardComponent(video types.VideoProps, opts feedOptions) {
-	<div class="ui-motion-swap relative overflow-hidden rounded-lg aspect-video" id={ fmt.Sprintf("video-card-%s", video.ID) }>
+	<div class="ui-motion-swap ui-video-card aspect-video" id={ fmt.Sprintf("video-card-%s", video.ID) }>
 		if opts.showProgressActions || opts.showWatchLaterButton {
 			<div class="absolute z-20 top-2 left-2 htmx-indicator ui-indicator-delayed" id={ fmt.Sprintf("video-card-%s-indicator", video.ID) }>
 				<span class="loading loading-spinner loading-lg md:loading-sm"></span>
@@ -206,30 +208,30 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 			</div>
 		}
 		if opts.showProgressActions {
-			<div class="flex flex-row gap-2 absolute z-20 top-2 right-2">
+			<div class="ui-video-card-actions">
 				if video.Hidden {
-					<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Show" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v&hidden=false", video.ID, video.Progress) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+					<button _="on click halt" class="ui-video-action-btn" title="Show" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v&hidden=false", video.ID, video.Progress) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
 						@icons.Eye()
 					</button>
 				} else {
 					if video.InWatchLater {
-						<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=card", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+						<button _="on click halt" class="ui-video-action-btn ui-video-action-btn-active" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=card", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
 							@icons.PinOff()
 						</button>
 					} else {
-						<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Add to Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=card", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+						<button _="on click halt" class="ui-video-action-btn" title="Add to Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=card", video.ID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
 							@icons.Pin()
 						</button>
 					}
-					<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Hide" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v&hidden=true", video.ID, video.Progress) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+					<button _="on click halt" class="ui-video-action-btn" title="Hide" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v&hidden=true", video.ID, video.Progress) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
 						@icons.EyeClosed()
 					</button>
 					if video.Progress > 0 {
-						<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Mark as unwatched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=0&hidden=%t", video.ID, video.Hidden) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+						<button _="on click halt" class="ui-video-action-btn" title="Mark as unwatched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=0&hidden=%t", video.ID, video.Hidden) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
 							@icons.Refresh()
 						</button>
 					} else {
-						<button _="on click halt" class="btn btn-dark btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Mark as watched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v&hidden=%t", video.ID, video.Duration+1, video.Hidden) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
+						<button _="on click halt" class="ui-video-action-btn" title="Mark as watched" hx-post={ fmt.Sprintf("/api/videos/%s/progress?progress=%v&hidden=%t", video.ID, video.Duration+1, video.Hidden) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#video-card-%s", video.ID) } hx-indicator={ fmt.Sprintf("#video-card-%s-indicator", video.ID) }>
 							@icons.Check()
 						</button>
 					}
@@ -237,16 +239,18 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 			</div>
 		}
 		if video.Hidden {
-			<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-4xl">Hidden</div>
+			<div class="ui-video-state-overlay">Hidden</div>
 		} else if video.Progress > 0 {
 			if opts.showProgressOverlay {
-				<div class="absolute top-0 left-0 z-10 flex items-center justify-center w-full h-full text-4xl font-bold uppercase bg-black opacity-70 md:text-4xl">Watched</div>
+				<div class="ui-video-state-overlay">Watched</div>
 			}
 			if opts.showProgressBar {
-				<progress class="absolute bottom-0 left-0 z-10 w-full h-1 progress progress-primary" value={ fmt.Sprint(video.Progress) } max={ fmt.Sprint(utils.MaxInt(video.Duration, video.Progress)) }></progress>
+				<div class="ui-video-progress-track">
+					<div class="ui-video-progress-fill" style={ fmt.Sprintf("width:%d%%", progressPercent(video.Progress, video.Duration)) }></div>
+				</div>
 			}
 		}
-		<div class="absolute z-30 flex items-center justify-center gap-1 px-1 text-sm bg-black bg-opacity-50 rounded-md bottom-2 right-2">
+		<div class="ui-video-duration-chip">
 			if video.Hidden {
 			} else if video.Type == "live_stream" {
 				<div class="w-2 h-2 bg-red-500 rounded-full"></div> LIVE
@@ -305,29 +309,44 @@ templ WatchLaterButton(videoID string, inWatchLater bool, variant WatchLaterVari
 	if variant == WatchLaterVideo {
 		// Video page style - uses text-primary for active state to color the icon stroke, always shows Pin icon
 		if inWatchLater {
-			<button id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="btn btn-square opacity-70 hover:opacity-100 text-primary" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=video", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
+			<button id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="ui-video-rail-btn ui-video-action-btn-active" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=video", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
 				@icons.Pin()
 			</button>
 		} else {
-			<button id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="btn btn-square opacity-70 hover:opacity-100" title="Add to Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=video", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
+			<button id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="ui-video-rail-btn" title="Add to Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=video", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
 				@icons.Pin()
 			</button>
 		}
 	} else if variant == WatchLaterCarousel {
 		// Carousel style - always shows remove (PinOff), targets parent carousel item for removal
-		<button _="on click halt" id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="btn btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=carousel", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#carousel-item-%s", videoID) }>
+		<button _="on click halt" id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="ui-video-action-btn" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=carousel", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#carousel-item-%s", videoID) }>
 			@icons.PinOff()
 		</button>
 	} else {
 		// Feed style (default) - icon swap based on state
 		if inWatchLater {
-			<button _="on click halt" id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="btn btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=feed", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
+			<button _="on click halt" id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="ui-video-action-btn ui-video-action-btn-active" title="Remove from Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=feed", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
 				@icons.PinOff()
 			</button>
 		} else {
-			<button _="on click halt" id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="btn btn-square opacity-70 hover:opacity-100 md:btn-sm" title="Add to Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=feed", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
+			<button _="on click halt" id={ fmt.Sprintf("watch-later-btn-%s", videoID) } class="ui-video-action-btn" title="Add to Watch Later" hx-post={ fmt.Sprintf("/api/videos/%s/watch-later?style=feed", videoID) } hx-swap="outerHTML" hx-target={ fmt.Sprintf("#watch-later-btn-%s", videoID) }>
 				@icons.Pin()
 			</button>
 		}
 	}
+}
+
+func progressPercent(progress, duration int) int {
+	max := utils.MaxInt(duration, progress)
+	if max <= 0 {
+		return 0
+	}
+	pct := (progress * 100) / max
+	if pct < 0 {
+		return 0
+	}
+	if pct > 100 {
+		return 100
+	}
+	return pct
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
@@ -18,21 +19,18 @@ templ WatchLater(props WatchLaterPageProps) {
 	</head>
 	<div id="app-watch-later" class="flex flex-col gap-4">
 		if len(props.Videos) == 0 {
-			<div class="flex flex-col items-center gap-4 py-8">
-				<span class="text-xl font-bold">Your Watch Later list is empty</span>
-				<span class="text-gray-500">Videos you add to Watch Later will appear here</span>
-			</div>
+			@ui.EmptyState("Your Watch Later list is empty", "Videos you add to Watch Later will appear here", "py-10")
 		} else {
 			@feed.VideoFeed(props.Videos, "/app/watch-later", feed.WithChannelName, feed.WithProgressBar, feed.WithWatchLaterButton)
 			if props.HasMore || props.Page > 1 {
 				<div class="flex justify-center gap-4 mt-4">
 					if props.Page > 1 {
-						<a href={ templ.URL(fmt.Sprintf("/app/watch-later?page=%d", props.Page-1)) } class="btn btn-neutral" hx-boost="true" hx-target="body">
+						<a href={ templ.URL(fmt.Sprintf("/app/watch-later?page=%d", props.Page-1)) } class="ui-btn ui-btn-neutral ui-btn-sm" hx-boost="true" hx-target="body">
 							Previous
 						</a>
 					}
 					if props.HasMore {
-						<a href={ templ.URL(fmt.Sprintf("/app/watch-later?page=%d", props.Page+1)) } class="btn btn-neutral" hx-boost="true" hx-target="body">
+						<a href={ templ.URL(fmt.Sprintf("/app/watch-later?page=%d", props.Page+1)) } class="ui-btn ui-btn-neutral ui-btn-sm" hx-boost="true" hx-target="body">
 							Next
 						</a>
 					}

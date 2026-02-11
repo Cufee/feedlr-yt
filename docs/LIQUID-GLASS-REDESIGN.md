@@ -34,6 +34,7 @@ Key takeaways used in this plan:
 - Docker build now includes a styles build stage before Go compile
 - Phase 01 foundations are in place (`tailwind.css` tokens + `internal/templates/components/ui/*` primitives)
 - Phase 02 shell migration is in place (layout/navbar/footer/progress on `ui` chrome primitives)
+- Phase 03 pass 1 is in place (feed/video surface styling migrated to tokenized `ui-*` classes; behavior preserved)
 
 ## Design Direction: "Polar Glass"
 
@@ -55,6 +56,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Progress feedback favors stability over micro-feedback (delayed reveal to avoid flashing on fast requests).
 - Spinner indicators now use delayed reveal for HTMX actions to prevent flicker on sub-perceptual responses.
 - Motion defaults are subtle and short, with clear reduced-motion fallbacks.
+- Feed/video chrome now favors compact glass action chips and consistent metadata rhythm across cards, carousel, and player rail.
 
 ### Visual Principles
 

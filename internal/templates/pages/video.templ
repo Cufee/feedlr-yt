@@ -20,15 +20,15 @@ func durationToString(videoDuration int) string {
 
 templ Video(props types.VideoPlayerProps) {
 	<div class="relative flex flex-col items-center justify-center grow">
-		<div class="w-full flex gap-2 p-2 bg-black justify-between">
-			<div class="flex gap-2">
+		<div class="ui-video-rail">
+			<div class="ui-video-rail-actions">
 				@buttonChannel(props.Video.Channel.ID)
 				@buttonShare(props.Video.ID)
 				if props.Authenticated {
 					@feed.WatchLaterButton(props.Video.ID, props.Video.InWatchLater, feed.WatchLaterVideo)
 				}
 			</div>
-			<div class="flex gap-2">
+			<div class="ui-video-rail-actions">
 				if (props.Authenticated) {
 					@buttonBack(props.ReturnURL)
 				} else {
@@ -37,7 +37,7 @@ templ Video(props types.VideoPlayerProps) {
 			</div>
 		</div>
 		<div class="grow w-full flex flex-col relative">
-			<div class="absolute flex items-center justify-center w-full h-full bg-black" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
+			<div class="absolute inset-0 z-20 flex items-center justify-center bg-canvas/95" id="player-loading"><span class="w-12 h-12 loading loading-spinner"></span></div>
 			@videoPlayer(props)
 		</div>
 		<div id="notification-toast" class="opacity-0 pointer-events-none">
@@ -55,21 +55,21 @@ templ videoPlayer(player types.VideoPlayerProps) {
 }
 
 templ buttonChannel(id string) {
-	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="opacity-75 hover:opacity-100 btn btn-square">
+	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="ui-video-rail-btn">
 		@icons.Profile()
 	</a>
 }
 
 templ buttonShare(id string) {
-	<button id="share-video-link-btn" class="opacity-75 hover:opacity-100 btn btn-square">
+	<button id="share-video-link-btn" class="ui-video-rail-btn">
 		@icons.Share()
 	</button>
 	@shared.EmbedScript(shareButtonScript(id), id)
 }
 
 templ buttonViewOnYoutube(id string) {
-	<a href={ templ.URL("https://youtube.com/watch?from=feedler.app&v=" + id) } target="_blank" id="view-on-youtube" class="opacity-75 hover:opacity-100 btn btn-square">
-		<div class="border border-neutral-content rounded-lg px-1.5 py-0.5 pl-2">
+	<a href={ templ.URL("https://youtube.com/watch?from=feedler.app&v=" + id) } target="_blank" id="view-on-youtube" class="ui-video-rail-btn">
+		<div class="border border-glass-stroke/30 rounded-lg px-1.5 py-0.5 pl-2">
 			@icons.Play()
 		</div>
 	</a>
@@ -90,18 +90,18 @@ script shareButtonScript(id string) {
 }
 
 templ buttonLogin() {
-	<a class="opacity-75 close-button hover:opacity-100 btn btn-primary" href="/login" id="close-button">Login</a>
+	<a class="close-button ui-btn ui-btn-primary ui-btn-sm" href="/login" id="close-button">Login</a>
 }
 
 templ buttonBack(url string) {
-	<a class="opacity-75 close-button hover:opacity-100 btn btn-primary btn-square" href={ templ.URL(url) } id="close-button">
+	<a class="close-button ui-video-rail-btn bg-accent text-slate-950 hover:bg-accent-strong" href={ templ.URL(url) } id="close-button">
 		@icons.Cross()
 	</a>
 }
 
 templ notificationToast(message string) {
-	<div class="toast toast-center toast-bottom">
-		<div class="ui-motion-toast px-3 py-2 alert alert-info opacity-80"><span>{ message }</span></div>
+	<div class="fixed left-1/2 bottom-4 z-40 -translate-x-1/2">
+		<div class="ui-motion-toast ui-toast ui-toast-info opacity-90"><span>{ message }</span></div>
 	</div>
 }
 
