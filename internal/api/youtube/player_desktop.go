@@ -59,18 +59,26 @@ type DesktopPlayerVideoDetails struct {
 
 // isShortsURL checks if YouTube serves the /shorts/ URL for this video (200 = short, 303 redirect = not)
 func (c *client) isShortsURL(videoID string) bool {
-	client := c.httpClientWithTimeout(5 * time.Second)
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	httpClient := c.httpClientWithTimeout(5 * time.Second)
+	httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
 
-	resp, err := client.Head("https://www.youtube.com/shorts/" + videoID)
+	shortsURL := "https://www.youtube.com/shorts/" + videoID
+
+	status, err := probeShortsURL(httpClient, http.MethodHead, shortsURL)
 	metrics.ObserveYouTubeAPICall("player", "shorts_head_probe", err)
-	if err != nil {
+	if err == nil && status == http.StatusOK {
+		return true
+	}
+	if err == nil && status == http.StatusSeeOther {
 		return false
 	}
-	resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
+
+	// Some proxies mishandle HEAD requests. Fall back to a lightweight GET probe.
+	status, err = probeShortsURL(httpClient, http.MethodGet, shortsURL)
+	metrics.ObserveYouTubeAPICall("player", "shorts_get_probe", err)
+	return err == nil && status == http.StatusOK
 }
 
 func (c *client) httpClientWithTimeout(timeout time.Duration) *http.Client {
@@ -81,6 +89,23 @@ func (c *client) httpClientWithTimeout(timeout time.Duration) *http.Client {
 	cloned := *c.http
 	cloned.Timeout = timeout
 	return &cloned
+}
+
+func probeShortsURL(client *http.Client, method, shortsURL string) (int, error) {
+	req, err := http.NewRequest(method, shortsURL, nil)
+	if err != nil {
+		return 0, err
+	}
+	if method == http.MethodGet {
+		req.Header.Set("Range", "bytes=0-0")
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode, nil
 }
 
 // isThumbnailPortrait checks if any thumbnail has portrait orientation (width < height)
