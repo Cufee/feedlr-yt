@@ -3,24 +3,31 @@ package app
 import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
 templ Subscriptions(channels []types.ChannelProps) {
 	<head><title>Feedlr - Subscriptions</title></head>
-	<div class="flex flex-col gap-4">
-		<div id="search" class="flex flex-col gap-4">
-			<span class="self-center text-xl font-bold">Find More Channels</span>
-			@subscriptions.SearchChannels()
+	<div class="flex flex-col gap-6">
+		<div id="search" class="ui-section">
+			<div class="ui-section-header justify-center">
+				<h2 class="ui-section-title">Find More Channels</h2>
+			</div>
+			@ui.Card(ui.WithCardClass("p-4 md:p-5")) {
+				@subscriptions.SearchChannels()
+			}
 		</div>
-		<div id="subscriptions" class="flex flex-col items-center gap-4">
-			<span class="self-center text-xl font-bold">Your Subscriptions</span>
+		<div id="subscriptions" class="ui-section">
+			<div class="ui-section-header justify-center">
+				<h2 class="ui-section-title">Your Subscriptions</h2>
+			</div>
 			if len(channels) > 6 {
-				<div class="flex w-full max-w-full md:max-w-xs">
+				<div class="mx-auto flex w-full max-w-full md:max-w-sm">
 					@shared.FuseSearch("subscriptions-list", "Filter Subscriptions", 1)
 				</div>
 			}
-			<div class="flex flex-row flex-wrap gap-2 w-full" id="subscriptions-list">
+			<div class="ui-channel-grid" id="subscriptions-list">
 				for _, channel := range channels {
 					@subscriptions.SubscribedChannelTile(channel)
 				}

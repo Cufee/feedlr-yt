@@ -11,7 +11,7 @@ import (
 templ SubscribedChannelTile(props types.ChannelProps) {
 	<a
 		data-search={ props.Title }
-		class="relative flex flex-grow p-4 overflow-hidden basis-1/2 md:basis-1/3 group rounded-xl bg-base-300 hover:bg-base-200 channel-btn grow"
+		class="ui-motion-swap ui-channel-card group channel-btn"
 		href={ templ.URL(fmt.Sprintf("/channel/%s", props.ID)) }
 		hx-target="body"
 		hx-boost="true"
@@ -41,7 +41,7 @@ func UnsubscribeButtonSmall(channelId string, opts ...SubscribeButtonOption) tem
 templ unsubscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 	<button
 		type="button"
-		class="btn btn-square"
+		class="ui-channel-action-btn"
 		hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe?type=button", channelId) }
 		if opts.refreshPage {
 			hx-on::after-request="window.location.reload()"
@@ -66,7 +66,7 @@ func SubscribeButtonSmall(channelId string, opts ...SubscribeButtonOption) templ
 templ subscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 	<button
 		type="button"
-		class="btn btn-primary btn-square"
+		class="ui-channel-action-btn ui-channel-action-btn-primary"
 		hx-post={ fmt.Sprintf("/api/channels/%s/subscribe?type=button", channelId) }
 		if opts.refreshPage {
 			hx-on::after-request="window.location.reload()"
@@ -81,8 +81,8 @@ templ subscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 }
 
 templ VideoFilterTabs(channelID string, current types.VideoFilter) {
-	<div id="video-filter-toggle" class="flex justify-center w-full">
-		<div class="inline-flex rounded-lg bg-base-300 p-1 gap-1">
+	<div id="video-filter-toggle" class="ui-filter-tabs-wrap">
+		<div class="ui-filter-tabs">
 			@filterTab(channelID, types.VideoFilterAll, current, "All", nil)
 			@filterTab(channelID, types.VideoFilterVideos, current, "Videos", icons.Clapperboard())
 			@filterTab(channelID, types.VideoFilterStreams, current, "Streams", icons.Radio())
@@ -93,9 +93,8 @@ templ VideoFilterTabs(channelID string, current types.VideoFilter) {
 templ filterTab(channelID string, filter, current types.VideoFilter, label string, icon templ.Component) {
 	<button
 		class={
-			"btn btn-sm px-4",
-			templ.KV("btn-primary", filter == current),
-			templ.KV("btn-ghost", filter != current),
+			"ui-tab",
+			templ.KV("ui-tab-active", filter == current),
 		}
 		hx-post={ fmt.Sprintf("/api/channels/%s/filter?filter=%s", channelID, filter) }
 		hx-target="#channel-video-feed"

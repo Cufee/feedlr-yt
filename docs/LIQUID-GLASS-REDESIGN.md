@@ -35,6 +35,7 @@ Key takeaways used in this plan:
 - Phase 01 foundations are in place (`tailwind.css` tokens + `internal/templates/components/ui/*` primitives)
 - Phase 02 shell migration is in place (layout/navbar/footer/progress on `ui` chrome primitives)
 - Phase 03 pass 1 is in place (feed/video surface styling migrated to tokenized `ui-*` classes; behavior preserved)
+- Phase 04 pass 1 is in place (subscriptions/channel/onboarding surfaces migrated to channel/search/filter `ui-*` patterns)
 
 ## Design Direction: "Polar Glass"
 
@@ -62,6 +63,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Radius handling now uses a shared token scale (`--radius-*`) with media/control-specific aliases to keep curvature consistent across shells, cards, and actions.
 - Video-card internals now follow a shared inset/size grid so button cluster, duration chip, and progress bar align consistently at every breakpoint.
 - Video cards now use an inset stroke + isolated media layer to avoid corner pixel artifacts while preserving rounded glass edges.
+- Channel discovery and subscriptions surfaces now reuse one tile language (thumbnail, title, description, action slot, overlay states) across search, subscriptions, and channel header contexts.
 
 ### Visual Principles
 

@@ -2,29 +2,28 @@ package channel
 
 import (
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
-	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 )
 
 templ ChannelTile(channel youtube.Channel, actionButton templ.Component) {
-	<div class="flex flex-row items-center gap-4 h-fit text-start">
-		<div class="min-w-[6rem] w-[6rem] h-[6rem] rounded-lg overflow-hidden relative">
-			<img class="z-10 hidden object-cover w-full h-full transition-all duration-500 group-hover:scale-125" src={ channel.Thumbnail } alt={ channel.Title } onload="this.style.display='block'" onerror="this.style.display='none'"/>
-			<div class="absolute w-full h-full bg-base-100 animate-pulse"></div>
+	<div class="ui-channel-tile">
+		<div class="ui-channel-thumb">
+			<img src={ channel.Thumbnail } alt={ channel.Title } onload="this.style.display='block'" onerror="this.style.display='none'"/>
+			<div class="ui-channel-thumb-skeleton"></div>
 		</div>
-		<div class="flex flex-col justify-start w-full min-h-[6rem]">
-			<div class="flex items-start justify-between h-full gap-1">
-				<div class="my-auto text-2xl font-bold whitespace-normal line-clamp-1 break-all">{ channel.Title }</div>
+		<div class="flex min-h-[5.3rem] w-full flex-col justify-start">
+			<div class="flex h-full items-start justify-between gap-2">
+				<div class="my-auto ui-channel-title">{ channel.Title }</div>
 				if actionButton != nil {
 					@actionButton
 				}
 			</div>
-			@shared.Textbox("line-clamp-2") {
+			<span class="ui-channel-description" style="overflow-wrap: anywhere;">
 				if channel.Description != "" {
 					{ channel.Description }
 				} else {
 					We don't know much about them, but we're sure they are great.
 				}
-			}
+			</span>
 		</div>
 	</div>
 }

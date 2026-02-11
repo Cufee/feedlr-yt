@@ -283,6 +283,70 @@
         @apply text-xs text-text-secondary/90 md:text-sm;
     }
 
+    .ui-channel-grid {
+        @apply flex w-full flex-row flex-wrap gap-3;
+    }
+
+    .ui-channel-card {
+        @apply relative flex flex-grow basis-full overflow-hidden rounded-[var(--radius-panel)] border border-glass-stroke/18 bg-glass-fill/28 p-3.5 backdrop-blur-[var(--blur-glass-sm)] shadow-[0_8px_26px_-20px_var(--color-glass-shadow)] transition-all duration-200 ease-[var(--ease-standard)] hover:bg-glass-fill/38 md:basis-[calc(50%-0.75rem)] lg:basis-[calc(33.333%-0.8rem)];
+    }
+
+    .ui-channel-overlay {
+        @apply absolute inset-0 z-10 flex items-center justify-center bg-black/48 text-base font-semibold uppercase tracking-[0.08em] text-white;
+    }
+
+    .ui-channel-tile {
+        @apply flex w-full items-center gap-3.5 text-left;
+    }
+
+    .ui-channel-thumb {
+        @apply relative h-[5.3rem] w-[5.3rem] shrink-0 overflow-hidden rounded-[var(--radius-md)];
+    }
+
+    .ui-channel-thumb img {
+        @apply z-10 hidden h-full w-full object-cover transition-all duration-500 ease-[var(--ease-standard)] group-hover:scale-110;
+    }
+
+    .ui-channel-thumb-skeleton {
+        @apply absolute inset-0 bg-elev-2 animate-pulse;
+    }
+
+    .ui-channel-title {
+        @apply text-xl font-semibold text-text-primary line-clamp-1 break-all;
+    }
+
+    .ui-channel-description {
+        @apply mt-1 text-sm text-text-secondary line-clamp-2;
+    }
+
+    .ui-channel-action-btn {
+        @apply inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/20 bg-glass-fill/24 p-0 text-text-secondary backdrop-blur-[var(--blur-glass-sm)] transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/38 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:stroke-[1.75];
+    }
+
+    .ui-channel-action-btn-primary {
+        @apply bg-accent/82 border-accent/40 text-slate-950 hover:bg-accent-strong;
+    }
+
+    .ui-filter-tabs-wrap {
+        @apply flex w-full justify-center;
+    }
+
+    .ui-filter-tabs {
+        @apply inline-flex items-center gap-1 rounded-[var(--radius-control)] border border-glass-stroke/20 bg-glass-fill/25 p-1;
+    }
+
+    .ui-search-shell {
+        @apply flex flex-col gap-3;
+    }
+
+    .ui-search-box {
+        @apply flex items-center justify-center;
+    }
+
+    .ui-search-results {
+        @apply flex w-full flex-row flex-wrap gap-3 text-center;
+    }
+
     .ui-video-card {
         @apply relative overflow-hidden rounded-[var(--radius-media)] bg-black/30 shadow-[0_8px_26px_-18px_var(--color-glass-shadow),inset_0_0_0_1px_rgb(255_255_255_/_0.14)];
         isolation: isolate;

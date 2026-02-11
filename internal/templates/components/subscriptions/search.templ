@@ -7,21 +7,21 @@ import (
 )
 
 templ SearchChannels() {
-	<div id="search" class="flex flex-col gap-2">
-		<div class="flex items-center justify-center gap-2 group" id="search-box">
-			<input type="search" placeholder="Enter Channel Name" name="search" minlength="5" maxlength="64" _="on clear send clear to #search-results on load set my value to '' then" class="self-center w-full max-w-full md:max-w-xs bg-base-200 placeholder:text-center input input-bordered font-control" hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML" hx-trigger="keyup changed delay:750ms" hx-sync="this:replace" id="search-input"/>
+	<div id="search" class="ui-search-shell">
+		<div class="ui-search-box group" id="search-box">
+			<input type="search" placeholder="Enter Channel Name" name="search" minlength="5" maxlength="64" _="on clear send clear to #search-results on load set my value to '' then" class="ui-input w-full max-w-full text-center md:max-w-sm" hx-get="/api/channels/search" hx-target="#search-results" hx-swap="innerHTML" hx-trigger="keyup changed delay:750ms" hx-sync="this:replace" id="search-input"/>
 		</div>
-		<div id="search-results" class="flex flex-row flex-wrap justify-center gap-2 text-center"></div>
+		<div id="search-results" class="ui-search-results"></div>
 	</div>
 }
 
 templ SearchResultChannels(channels []types.ChannelSearchResultProps) {
 	for _, ch := range channels {
-		<div class="ui-motion-swap relative flex-grow p-4 overflow-hidden group md:basis-1/3 rounded-xl bg-base-300 channel-btn" id={ fmt.Sprintf("channel-tile-%s", ch.ID) }>
+		<div class="ui-motion-swap ui-channel-card group channel-btn" id={ fmt.Sprintf("channel-tile-%s", ch.ID) }>
 			if ch.Subscribed {
-				<div class="absolute inset-0 z-10 flex items-center justify-center w-full text-lg font-bold uppercase bg-black/50 cursor-default">Subscribed</div>
+				<div class="ui-channel-overlay cursor-default">Subscribed</div>
 			} else {
-				<a hx-boost="true" href={ templ.URL(fmt.Sprintf("/channel/%s", ch.ID)) } class="absolute inset-0 z-10 flex items-center justify-center w-full text-lg font-bold uppercase bg-black/50 max-md:visible md:invisible md:group-hover:visible group-[.htmx-request]:visible" hx-indicator={ fmt.Sprintf("#channel-tile-%s", ch.ID) }>
+				<a hx-boost="true" href={ templ.URL(fmt.Sprintf("/channel/%s", ch.ID)) } class="ui-channel-overlay max-md:visible md:invisible md:group-hover:visible group-[.htmx-request]:visible" hx-indicator={ fmt.Sprintf("#channel-tile-%s", ch.ID) }>
 					<span class="loading loading-spinner loading-md md:loading-lg htmx-indicator ui-indicator-delayed"></span>
 					<span class="group-[.htmx-request]:hidden">View</span>
 				</a>

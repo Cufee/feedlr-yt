@@ -4,7 +4,7 @@ import "fmt"
 
 templ FuseSearch(id string, label string, minLength int) {
 	<div class="flex items-center justify-center w-full" id={ fmt.Sprintf("fuse-search-%s", id) }>
-		<input id={ fmt.Sprintf("search-input-%s", id) } type="text" placeholder={ label } class="w-full input input-bordered placeholder:text-center bg-base-200"/>
+		<input id={ fmt.Sprintf("search-input-%s", id) } type="text" placeholder={ label } class="ui-input w-full text-center"/>
 		<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2" onload={ fuseSearch(fmt.Sprintf("search-input-%s", id), id, id, minLength) }></script>
 	</div>
 }
@@ -37,13 +37,13 @@ script fuseSearch(searchInputId, targetId, parentId string, minLength int) {
 		const fuse = new Fuse(items, options)
 		const search = (query) => {
 			if (query.length == 0) {
-				input.classList.remove("input-error")
+				input.classList.remove("ui-input-error")
 				displayresults(target, items)
 				return
 			} else if (query.length >= minLength)  {
-				input.classList.remove("input-error")
+				input.classList.remove("ui-input-error")
 			} else if (query.length < minLength) {
-				input.classList.add("input-error")
+				input.classList.add("ui-input-error")
 				return
 			}
 

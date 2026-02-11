@@ -25,12 +25,12 @@ Unify channel discovery and subscription management UI with the new component sy
 
 ## Work Checklist
 
-- [ ] Rebuild channel tile using shared card and media primitives.
-- [ ] Rebuild search input/results with consistent form and tile styles.
-- [ ] Rebuild channel header section and subscribe action placement.
-- [ ] Rebuild filter tab visuals (`all/videos/streams`) while keeping endpoint behavior.
-- [ ] Keep search result overlays and loading indicators compatible with HTMX requests.
-- [ ] Align onboarding and subscriptions page structure to shared sections.
+- [x] Rebuild channel tile using shared card and media primitives.
+- [x] Rebuild search input/results with consistent form and tile styles.
+- [x] Rebuild channel header section and subscribe action placement.
+- [x] Rebuild filter tab visuals (`all/videos/streams`) while keeping endpoint behavior.
+- [x] Keep search result overlays and loading indicators compatible with HTMX requests.
+- [x] Align onboarding and subscriptions page structure to shared sections.
 
 ## Verification
 
@@ -47,4 +47,14 @@ Unify channel discovery and subscription management UI with the new component sy
 ## Notes
 
 - Reuse one channel tile primitive across all channel contexts to avoid drift.
-
+- Phase 04 pass 1 completed:
+- Added shared channel/search surface classes in `tailwind.css` (`ui-channel-*`, `ui-search-*`, `ui-filter-tabs`).
+- Migrated subscription and search tiles to consistent glass cards while preserving HTMX boost/targets/indicators.
+- Migrated subscribe/unsubscribe controls to tokenized channel action button styles.
+- Migrated channel filter tabs to `ui-tab` visuals while preserving `/api/channels/:id/filter` behavior.
+- Reworked `/app/subscriptions`, `/app/onboarding`, and `/channel/:id` page structure to shared section/card conventions.
+- Updated Fuse search input to `ui-input` with `ui-input-error` invalid state class handling.
+- Build verification run:
+- `npm run build` (success)
+- `go generate ./...` (success)
+- `go build ./...` (success)
