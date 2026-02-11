@@ -31,10 +31,8 @@ templ Head(htmxReplace bool, content ...templ.Component) {
 			@c
 		}
 		{ children... }
+		<link href="/assets/css/style.css" rel="stylesheet"/>
 		<link href="/assets/css/animate.min.css" rel="stylesheet"/>
-		<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css"/>
-		<link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css"/>
-		<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 		<style>
 			.watch-later-section:has(.watch-later-item) .watch-later-placeholder { display: none; }
 		</style>
