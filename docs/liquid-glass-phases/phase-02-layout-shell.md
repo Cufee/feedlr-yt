@@ -80,4 +80,8 @@ Rebuild top-level page shells and app chrome on the new `ui` primitives while pr
 - Phase 02 polish pass (feedback iteration 3):
 - Added delayed nav progress reveal (180ms threshold) to prevent flash on sub-100ms requests.
 - Preserved existing request lifecycle behavior once progress is visible.
+- Phase 02 polish pass (feedback iteration 4):
+- Fixed footer overlap by removing fixed-height shell behavior in main content wrapper.
+- Switched main/app body wrappers back to flex-column flow for proper footer placement after content.
+- Improved footer responsive alignment for narrow widths.
 - Manual page verification is pending user browser checks on the running dev server.

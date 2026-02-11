@@ -14,7 +14,7 @@ var App brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...tem
 templ app(path string, authenticated bool, content ...templ.Component) {
 	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
-		<body class="min-h-dvh" hx-ext="head-support">
+		<body class="min-h-dvh flex flex-col" hx-ext="head-support">
 			@partials.NavProgressAnimated()
 			@ui.PageShellMain("gap-3 py-2") {
 				@partials.Navbar(path, authenticated)

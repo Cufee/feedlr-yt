@@ -1,7 +1,7 @@
 package ui
 
 templ PageShellMain(class string) {
-	<div id="main" class={ joinClasses("mx-auto flex h-full w-full max-w-7xl grow flex-col px-3", class) }>
+	<div id="main" class={ joinClasses("mx-auto flex w-full max-w-7xl flex-1 flex-col px-3", class) }>
 		{ children... }
 	</div>
 }
@@ -17,4 +17,3 @@ templ PageShellVideo(class string) {
 		{ children... }
 	</div>
 }
-

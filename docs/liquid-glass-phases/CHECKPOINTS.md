@@ -51,3 +51,4 @@ git reset --hard checkpoint/liquid-glass-XX-name
 - `checkpoint/liquid-glass-03-phase-02-polish` -> phase 02 cohesion polish (logo alignment, nav icon stroke/color, nav typography)
 - `checkpoint/liquid-glass-03-phase-02-polish-v2` -> phase 02 visual polish iteration 2 (smaller nav logo, reduced icon framing, no hover/click flash)
 - `checkpoint/liquid-glass-03-phase-02-polish-v3` -> phase 02 visual polish iteration 3 (delayed nav progress reveal to avoid fast-request flashing)
+- `checkpoint/liquid-glass-03-phase-02-polish-v4` -> phase 02 visual polish iteration 4 (footer overlap/layout flow fix)
