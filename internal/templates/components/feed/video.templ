@@ -47,7 +47,7 @@ func VideoFeed(videos []types.VideoProps, returnUrl string, options ...FeedOptio
 templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedOptions) {
 	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3" id="components-video-feed">
 		for _, video := range videos {
-			<div class="flex flex-col gap-1" id={ fmt.Sprintf("video-item-%s", video.ID) }>
+			<div class="ui-motion-swap flex flex-col gap-1" id={ fmt.Sprintf("video-item-%s", video.ID) }>
 				<a href={ templ.URL(fmt.Sprintf("/video/%s?return=%s", video.ID, returnUrl)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full cursor-pointer rounded-box group">
 					@videoCardComponent(video, opts)
 				</a>
@@ -103,7 +103,7 @@ templ videoCarouselComponent(videos []types.VideoProps, opts feedOptions) {
 
 // WatchLaterCarouselItem - a single carousel item for OOB insertion
 templ WatchLaterCarouselItem(video types.VideoProps) {
-	<div class="watch-later-item snap-start shrink-0 w-56 md:w-72 flex flex-col" id={ fmt.Sprintf("carousel-item-%s", video.ID) }>
+	<div class="watch-later-item ui-motion-swap snap-start shrink-0 w-56 md:w-72 flex flex-col" id={ fmt.Sprintf("carousel-item-%s", video.ID) }>
 		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col h-full cursor-pointer group">
 			<div class="relative overflow-hidden rounded-lg aspect-video">
 				@VideoThumbnail(video.ID, video.Title, false)
@@ -194,7 +194,7 @@ func VideoCard(video types.VideoProps, options ...FeedOption) templ.Component {
 }
 
 templ videoCardComponent(video types.VideoProps, opts feedOptions) {
-	<div class="relative overflow-hidden rounded-lg aspect-video" id={ fmt.Sprintf("video-card-%s", video.ID) }>
+	<div class="ui-motion-swap relative overflow-hidden rounded-lg aspect-video" id={ fmt.Sprintf("video-card-%s", video.ID) }>
 		if opts.showProgressActions || opts.showWatchLaterButton {
 			<div class="absolute z-20 top-2 left-2 htmx-indicator opacity-0" id={ fmt.Sprintf("video-card-%s-indicator", video.ID) }>
 				<span class="loading loading-spinner loading-lg md:loading-sm"></span>

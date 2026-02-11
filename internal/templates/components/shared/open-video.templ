@@ -10,7 +10,7 @@ templ OpenVideoButton() {
 			</button>
 		</div>
 		<dialog id="open_video_modal" class="bg-black bg-opacity-50 modal modal-top lg:modal-middle">
-			<div class="flex flex-col items-center justify-center gap-4 lg:!bg-transparent modal-box group" id="open_video_modal_box">
+			<div class="ui-motion-modal-panel flex flex-col items-center justify-center gap-4 lg:!bg-transparent modal-box group" id="open_video_modal_box">
 				<div class="flex flex-col items-center justify-center w-full">
 					@OpenVideoInput("", true)
 				</div>
@@ -28,7 +28,7 @@ templ OpenVideoButton() {
 
 templ OpenVideoInput(url string, valid bool) {
 	<form
-		class="flex w-full m-0 join"
+		class="ui-motion-swap flex w-full m-0 join"
 		id="open_video_modal_form"
 		hx-post="/api/videos/open"
 		hx-indicator="#open_video_modal"

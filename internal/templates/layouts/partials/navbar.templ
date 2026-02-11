@@ -5,7 +5,7 @@ import (
 )
 
 templ Navbar(path string, authenticated bool) {
-	<div class="pt-2" id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator" hx-swap="innerHTML show:window:top">
+	<div class="ui-motion-swap pt-2" id="components-navbar" hx-boost="true" hx-push-url="true" hx-indicator="#nav-indicator" hx-swap="innerHTML show:window:top">
 		@ui.Navbar(path, authenticated)
 	</div>
 }

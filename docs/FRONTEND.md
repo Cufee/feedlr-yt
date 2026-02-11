@@ -80,6 +80,10 @@ Guidance:
 
 - Prefer Tailwind utility composition and tokenized classes over one-off CSS.
 - Prefer `ui` primitives before creating new ad-hoc component styles.
+- For HTMX updates, prefer CSS lifecycle classes over JS effects:
+- Use `ui-motion-swap` on swap targets/items.
+- Use `ui-motion-modal-panel` for dialog content transitions.
+- Use `ui-motion-toast` for toast enter transitions.
 
 ## Adding a New Page
 

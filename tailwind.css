@@ -176,7 +176,7 @@
     }
 
     .ui-dialog-panel {
-        @apply mx-auto my-8 w-[min(92vw,36rem)] rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 p-5 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-md)];
+        @apply mx-auto my-8 w-[min(92vw,36rem)] rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 p-5 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-md)] transition-all duration-200 ease-[var(--ease-emphasized)] motion-reduce:transition-none;
     }
 
     .ui-dialog-backdrop {
@@ -184,7 +184,7 @@
     }
 
     .ui-toast {
-        @apply rounded-xl border px-3 py-2 text-sm shadow-lg backdrop-blur-[var(--blur-glass-sm)];
+        @apply rounded-xl border px-3 py-2 text-sm shadow-lg backdrop-blur-[var(--blur-glass-sm)] transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none;
     }
 
     .ui-toast-info {
@@ -233,5 +233,37 @@
 
     .ui-footer-shell {
         @apply mt-2 rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 p-3 text-text-primary backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+    }
+
+    .ui-motion-swap {
+        @apply transition-all duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none;
+    }
+
+    .ui-motion-swap.htmx-swapping {
+        @apply opacity-0 translate-y-1.5;
+    }
+
+    .ui-motion-swap.htmx-added {
+        @apply opacity-0 translate-y-1.5;
+    }
+
+    .ui-motion-swap.htmx-settling {
+        @apply opacity-100 translate-y-0;
+    }
+
+    .ui-motion-toast.htmx-added {
+        @apply opacity-0 translate-y-2;
+    }
+
+    .ui-motion-toast.htmx-settling {
+        @apply opacity-100 translate-y-0;
+    }
+
+    dialog .ui-motion-modal-panel {
+        @apply opacity-0 translate-y-2 scale-[0.99] transition-all duration-200 ease-[var(--ease-emphasized)] motion-reduce:transition-none;
+    }
+
+    dialog[open] .ui-motion-modal-panel {
+        @apply opacity-100 translate-y-0 scale-100;
     }
 }

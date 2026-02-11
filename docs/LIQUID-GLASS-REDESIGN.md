@@ -29,9 +29,11 @@ Key takeaways used in this plan:
 
 - Server-rendered Go + Templ
 - HTMX + Hyperscript interactions
-- Tailwind dependency exists, but runtime head currently uses CDN `@tailwindcss/browser` and DaisyUI CDN styles
-- Generated CSS file exists at `assets/css/style.css` but is not linked from `head.templ`
-- Docker build currently does not run Tailwind build, so tracked generated CSS is implicitly relied on
+- Runtime styling now uses local generated CSS (`/assets/css/style.css`) instead of Tailwind/Daisy CDN runtime injection
+- Generated CSS output (`assets/css/style.css`) is gitignored and rebuilt via frontend build pipeline
+- Docker build now includes a styles build stage before Go compile
+- Phase 01 foundations are in place (`tailwind.css` tokens + `internal/templates/components/ui/*` primitives)
+- Phase 02 shell migration is in place (layout/navbar/footer/progress on `ui` chrome primitives)
 
 ## Design Direction: "Polar Glass"
 
@@ -43,6 +45,15 @@ Create a "Polar Glass" UI language:
 - Frosted translucent panels over soft atmospheric gradients
 - Crisp boundaries (hairline borders) with restrained blur and saturation
 - Utility-first layout prioritizing video scanning speed over decorative density
+
+### Direction Updates From Implementation
+
+Implemented refinements that slightly narrow the original aesthetic:
+
+- Navigation controls use neutral glass states (not accent-heavy fills) to reduce visual noise.
+- Brand mark sizing was reduced and baseline-aligned with nav controls for cleaner rhythm.
+- Progress feedback favors stability over micro-feedback (delayed reveal to avoid flashing on fast requests).
+- Motion defaults are subtle and short, with clear reduced-motion fallbacks.
 
 ### Visual Principles
 

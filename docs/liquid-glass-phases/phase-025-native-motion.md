@@ -27,22 +27,22 @@ Implement UI motion with native CSS/browser primitives in an HTMX-heavy app, min
 
 ## Work Checklist
 
-- [ ] Add reusable Tailwind motion recipes for cards, panels, toasts, and modal surfaces.
-- [ ] Attach HTMX swap-state classes and transitions to list/feed update containers.
-- [ ] Remove script-driven animation where CSS can replace it.
-- [ ] Preserve script usage only for behavioral logic:
-- [ ] WebAuthn flows
-- [ ] YouTube player API integration
-- [ ] Clipboard/share APIs
-- [ ] Timed progress persistence
-- [ ] Add `motion-reduce:*` fallbacks for major animated components.
-- [ ] Verify no new Hyperscript is added for visual-only transitions.
+- [x] Add reusable Tailwind motion recipes for cards, panels, toasts, and modal surfaces.
+- [x] Attach HTMX swap-state classes and transitions to list/feed update containers.
+- [x] Remove script-driven animation where CSS can replace it.
+- [x] Preserve script usage only for behavioral logic:
+- [x] WebAuthn flows
+- [x] YouTube player API integration
+- [x] Clipboard/share APIs
+- [x] Timed progress persistence
+- [x] Add `motion-reduce:*` fallbacks for major animated components.
+- [x] Verify no new Hyperscript is added for visual-only transitions.
 
 ## Verification
 
-- [ ] HTMX content enters/exits smoothly with CSS-only effect rules.
-- [ ] Modals and toasts animate without custom JS animation functions.
-- [ ] `prefers-reduced-motion` disables non-essential motion.
+- [x] HTMX content enters/exits smoothly with CSS-only effect rules.
+- [x] Modals and toasts animate without custom JS animation functions.
+- [x] `prefers-reduced-motion` disables non-essential motion.
 - [ ] Interaction remains responsive on low-end/mobile devices.
 
 ## Exit Criteria
@@ -53,4 +53,18 @@ Implement UI motion with native CSS/browser primitives in an HTMX-heavy app, min
 ## Notes
 
 - If one-off custom CSS is needed, promote it into reusable tokenized patterns instead of per-component ad-hoc rules.
-
+- Implemented motion classes:
+- `ui-motion-swap` (HTMX enter/exit/settle)
+- `ui-motion-toast` (toast enter/settle)
+- `ui-motion-modal-panel` (dialog panel open transition)
+- Updated templates:
+- `internal/templates/components/feed/video.templ`
+- `internal/templates/components/subscriptions/search.templ`
+- `internal/templates/pages/channel.templ`
+- `internal/templates/components/shared/open-video.templ`
+- `internal/templates/pages/video.templ`
+- `internal/templates/layouts/partials/navbar.templ`
+- Build verification run:
+- `npm run build` (success)
+- `go generate ./...` (success)
+- `go build ./...` (success)
