@@ -59,6 +59,9 @@ Migrate feed and video experiences to the new component system while preserving 
 - Reduced feed title and watched/hidden overlay font weight to improve scanability.
 - Increased video action-button inner padding and reduced glyph scale for better icon balance.
 - Reworked in-card progress bar to an inset, larger, blurred track with rounded fill (iOS-style visual treatment).
+- Phase 03 pass 1 polish v3:
+- Softened feed title typography further (lower weight + slightly reduced contrast) to reduce aggressiveness.
+- Increased glass feel on in-card progress treatment via lower-opacity translucent track and less-solid progress fill.
 - Verification run for this pass:
 - `npm run build` (success)
 - `go generate ./...` (success)

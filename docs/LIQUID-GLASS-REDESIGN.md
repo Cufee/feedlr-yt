@@ -58,6 +58,7 @@ Implemented refinements that slightly narrow the original aesthetic:
 - Motion defaults are subtle and short, with clear reduced-motion fallbacks.
 - Feed/video chrome now favors compact glass action chips and consistent metadata rhythm across cards, carousel, and player rail.
 - Feed card typography and control density were softened (lighter title/overlay weight, roomier icon padding, inset blurred progress treatment) to reduce visual heaviness.
+- Glass progress surfaces now use lower-opacity layers and softer fill luminance to keep overlays atmospheric instead of visually dense.
 
 ### Visual Principles
 

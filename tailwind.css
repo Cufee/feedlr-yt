@@ -254,7 +254,7 @@
     }
 
     .ui-feed-title {
-        @apply overflow-hidden text-base font-medium leading-tight text-text-primary line-clamp-2 md:text-lg;
+        @apply overflow-hidden text-[1.1rem] font-normal leading-tight text-text-primary/94 line-clamp-2 md:text-[2.15vh];
         overflow-wrap: anywhere;
     }
 
@@ -291,11 +291,11 @@
     }
 
     .ui-video-progress-track {
-        @apply absolute bottom-2 left-2 right-2 z-20 h-2.5 overflow-hidden rounded-full border border-white/14 bg-black/35 shadow-[inset_0_1px_2px_rgba(255,255,255,0.12)] backdrop-blur-sm;
+        @apply absolute bottom-2 left-2 right-2 z-20 h-2.5 overflow-hidden rounded-full border border-glass-stroke/22 bg-glass-fill/18 shadow-[inset_0_1px_3px_rgba(255,255,255,0.14)] backdrop-blur-md;
     }
 
     .ui-video-progress-fill {
-        @apply h-full rounded-full bg-accent;
+        @apply h-full rounded-full bg-accent/82 shadow-[0_0_6px_rgba(177,128,230,0.35)];
     }
 
     .ui-video-rail {
