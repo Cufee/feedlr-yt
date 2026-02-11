@@ -348,11 +348,11 @@
     }
 
     .ui-filter-tabs {
-        @apply inline-flex items-center gap-1 rounded-[var(--radius-control)] border border-glass-stroke/20 bg-glass-fill/25 p-1;
+        @apply inline-flex items-center gap-1 rounded-[var(--radius-control-compact)] border border-glass-stroke/20 bg-glass-fill/25 p-1;
     }
 
     .ui-filter-tabs .ui-tab {
-        @apply rounded-[var(--radius-control)];
+        @apply rounded-[var(--radius-control-compact)];
     }
 
     .ui-search-shell {
