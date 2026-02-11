@@ -12,6 +12,8 @@ templ NavProgress() {
 script animateNavProgress() {
 	const progressBar = document.getElementById('nav-progress');
 	const progressBaseStep = 5;
+	const progressRevealDelayMs = 180;
+	const progressHideDelayMs = 180;
 
 	const progressRandomStep = () => {
 		return Math.floor(progressBaseStep * Math.random()) + progressBaseStep;
@@ -20,51 +22,69 @@ script animateNavProgress() {
 		return Math.floor(Math.random() * 2);
 	}
 
-	document.body.addEventListener('load', () => {
+	let stopAnimation;
+	let revealTimer;
+	let shownForCurrentRequest = false;
+
+	const resetProgress = () => {
 		progressBar.value = 0;
-		progressBar.style.width = progressBar.value + "%"
+		progressBar.style.width = "0%";
 		progressBar.classList.add('invisible');
+		if (stopAnimation) {
+			clearInterval(stopAnimation);
+			stopAnimation = null;
+		}
+		if (revealTimer) {
+			clearTimeout(revealTimer);
+			revealTimer = null;
+		}
+		shownForCurrentRequest = false;
+	}
+
+	document.body.addEventListener('load', () => {
+		resetProgress();
 		document.querySelectorAll('.nav-btn').forEach((btn) => {
 			btn.removeAttribute('disabled');
 		});
-		if (stopAnimation) {
-			clearInterval(stopAnimation);
-			stopAnimation = null;
-		}
 	});
 
 	document.body.addEventListener('htmx:afterRequest', () => {
-		setTimeout(() => {
-			progressBar.classList.add('invisible');
-			progressBar.value = 0;
-			progressBar.style.width = progressBar.value + "%"
-		}, 250);
+		if (revealTimer) {
+			clearTimeout(revealTimer);
+			revealTimer = null;
+		}
+		if (!shownForCurrentRequest) {
+			return;
+		}
 		progressBar.value = 100;
-		progressBar.style.width = progressBar.value + "%"
+		progressBar.style.width = progressBar.value + "%";
 		if (stopAnimation) {
 			clearInterval(stopAnimation);
 			stopAnimation = null;
 		}
+		setTimeout(resetProgress, progressHideDelayMs);
 	});
 
-	let stopAnimation;
 	document.body.addEventListener('htmx:beforeSend', () => {
-		progressBar.value = progressRandomStep()
-		progressBar.style.width = progressBar.value + "%"
-		progressBar.classList.remove('invisible');
+		resetProgress();
+		revealTimer = setTimeout(() => {
+			shownForCurrentRequest = true;
+			progressBar.value = progressRandomStep();
+			progressBar.style.width = progressBar.value + "%";
+			progressBar.classList.remove('invisible');
 
-		stopAnimation = setInterval(() => {
-			if (progressBar.value <= 65) {
-				progressBar.value += progressRandomStep()
-				progressBar.style.width = progressBar.value + "%"
-			} else if (progressBar.value <= 85) {
-				progressBar.value += progressSlowStep()
-				progressBar.style.width = progressBar.value + "%"
-			} else if (progressBar.value <= 95){
-				progressBar.value += 1
-				progressBar.style.width = progressBar.value + "%"
-			}
-		}, 50);
+			stopAnimation = setInterval(() => {
+				if (progressBar.value <= 65) {
+					progressBar.value += progressRandomStep();
+					progressBar.style.width = progressBar.value + "%";
+				} else if (progressBar.value <= 85) {
+					progressBar.value += progressSlowStep();
+					progressBar.style.width = progressBar.value + "%";
+				} else if (progressBar.value <= 95) {
+					progressBar.value += 1;
+					progressBar.style.width = progressBar.value + "%";
+				}
+			}, 50);
+		}, progressRevealDelayMs);
 	});
 }
-

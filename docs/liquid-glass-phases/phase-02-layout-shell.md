@@ -77,4 +77,7 @@ Rebuild top-level page shells and app chrome on the new `ui` primitives while pr
 - Reduced nav logo size to better match shell rhythm.
 - Reduced icon button framing/border density for cleaner controls.
 - Aligned hover/active/selected icon states to remove click flash and purple state shift.
+- Phase 02 polish pass (feedback iteration 3):
+- Added delayed nav progress reveal (180ms threshold) to prevent flash on sub-100ms requests.
+- Preserved existing request lifecycle behavior once progress is visible.
 - Manual page verification is pending user browser checks on the running dev server.
