@@ -1,6 +1,6 @@
 # Liquid Glass Checkpoints
 
-This branch (`ai-slop/finish-todo-polish`) is the rollout base.
+This branch (`ai-slop/finalize-todo-pr`) is the rollout base.
 
 Use annotated git tags for rollback checkpoints after each completed phase.
 
@@ -36,6 +36,7 @@ Use annotated git tags for rollback checkpoints after each completed phase.
 - `checkpoint/liquid-glass-09-post-phase06-pass3`
 - `checkpoint/liquid-glass-09-post-phase06-pass4`
 - `checkpoint/liquid-glass-09-post-phase06-pass5`
+- `checkpoint/liquid-glass-09-post-phase06-pass6`
 - `checkpoint/liquid-glass-05-phase-03`
 - `checkpoint/liquid-glass-06-phase-04`
 - `checkpoint/liquid-glass-07-phase-05`
@@ -103,3 +104,4 @@ git reset --hard checkpoint/liquid-glass-XX-name
 - `checkpoint/liquid-glass-09-post-phase06-pass3` -> post-phase polish pass 3 (added brightness-diagnosis backlog item, darkened app/nav/footer/card surfaces, and polished legal pages with readable prose container styling)
 - `checkpoint/liquid-glass-09-post-phase06-pass4` -> post-phase polish pass 4 (final color/brightness pass reducing blue tint bias, stronger chrome-vs-card separation, and completion of visual-system TODO closure)
 - `checkpoint/liquid-glass-09-post-phase06-pass5` -> post-phase polish pass 5 (carryover verification closeout across phases 00-05, checklist consolidation, and post-phase TODO/checkpoint closure)
+- `checkpoint/liquid-glass-09-post-phase06-pass6` -> post-phase polish pass 6 (completed feed ui subcomponent split and simplified video-page top rail to plain black, then finalized todo closure for PR handoff)
