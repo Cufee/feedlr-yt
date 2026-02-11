@@ -11,12 +11,37 @@ var Main brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...te
 	return main(body...), nil
 }
 
+var Legal brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...templ.Component) (templ.Component, error) {
+	return legal(body...), nil
+}
+
 templ main(content ...templ.Component) {
 	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
 		<body class="min-h-dvh flex flex-col" hx-ext="head-support">
 			@partials.NavProgressAnimated()
 			@ui.PageShellMain("py-3") {
+				for _, c := range content {
+					@c
+				}
+				{ children... }
+			}
+			@ui.PageShellFooter("") {
+				@partials.Footer()
+			}
+		</body>
+	</html>
+}
+
+templ legal(content ...templ.Component) {
+	<html lang="en" data-theme="dim">
+		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
+		<body class="min-h-dvh flex flex-col" hx-ext="head-support">
+			@partials.NavProgressAnimated()
+			@ui.PageShellMain("gap-3 py-2") {
+				<div class="pt-2">
+					@ui.NavbarLogoOnly("/")
+				</div>
 				for _, c := range content {
 					@c
 				}
