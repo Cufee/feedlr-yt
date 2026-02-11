@@ -1,0 +1,47 @@
+# Phase 01: Foundations and Tokens
+
+## Objective
+
+Define the core design system for Polar Glass and create reusable UI primitives.
+
+## Scope
+
+- Semantic tokens in Tailwind/CSS.
+- Base typography and spacing scales.
+- Foundational `ui` components for layout and controls.
+- Tailwind-first utility patterns.
+
+## Target Files
+
+- `tailwind.css`
+- `internal/templates/components/ui/*.templ` (new)
+- `internal/templates/components/ui/*.go` (optional helpers)
+- `docs/FRONTEND.md` (update component contracts)
+
+## Work Checklist
+
+- [ ] Add color, radius, blur, and motion semantic tokens in `tailwind.css`.
+- [ ] Define typography stack and sizing for headings/body/metadata.
+- [ ] Add reusable utility recipes for glass panel, chip, solid panel.
+- [ ] Create `ui.Button` variants (primary, neutral, ghost, danger, icon-only).
+- [ ] Create `ui.Input` and `ui.SearchInput` with error/disabled/focus states.
+- [ ] Create `ui.Card`, `ui.Section`, `ui.Badge`, `ui.Toggle`, `ui.Tabs`.
+- [ ] Create `ui.Dialog`, `ui.Toast`, `ui.EmptyState`.
+- [ ] Add component usage notes in `docs/FRONTEND.md`.
+
+## Verification
+
+- [ ] Tokens are referenced by components (not hardcoded one-off values).
+- [ ] Components support responsive and interactive states via Tailwind utilities.
+- [ ] `motion-safe:*` and `motion-reduce:*` variants included on animated primitives.
+- [ ] Components render correctly on mobile and desktop in at least one page sandbox.
+
+## Exit Criteria
+
+- Core primitive set is sufficient to replace current ad-hoc style usage.
+- New work can compose UI from `ui` primitives without DaisyUI classes.
+
+## Notes
+
+- Custom CSS should be limited to reusable abstractions that are unreadable with inline utility composition.
+

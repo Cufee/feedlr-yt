@@ -1,5 +1,7 @@
 # Frontend Development Guide
 
+For the Tailwind-first Liquid Glass redesign direction and full migration inventory/plan, see `docs/LIQUID-GLASS-REDESIGN.md`.
+
 ## Template System (Templ)
 
 This project uses [Templ](https://templ.guide/) - a type-safe templating language for Go that compiles to Go code.
