@@ -18,9 +18,6 @@ templ OpenVideoButton() {
 					Press <span class="ui-badge">Enter</span> to open this window and <span class="ui-badge">Esc</span> to close it.
 				</div>
 			</div>
-			<form method="dialog" class="ui-dialog-backdrop">
-				<button id="open_video_close">close</button>
-			</form>
 		</dialog>
 		@EmbedScript(openVideoModalScript())
 	</div>
@@ -97,6 +94,11 @@ script openVideoModalScript() {
 
 	// support manually clicking on the button
 	modalButton.addEventListener("click", openModal);
+	modal.addEventListener("click", (e) => {
+		if (e.target === modal) {
+			modal.close();
+		}
+	});
   	document.addEventListener("keydown", (e) => {
 		if (e.key === "Enter") {
 			if (!modal.open) {

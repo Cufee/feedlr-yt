@@ -190,15 +190,23 @@
     }
 
     .ui-dialog {
-        @apply rounded-[var(--radius-panel)] border border-glass-stroke/20 bg-transparent p-0 backdrop:bg-black/45;
+        @apply m-0 h-screen w-screen max-h-none max-w-none border-0 bg-transparent p-0;
+    }
+
+    .ui-dialog[open] {
+        @apply fixed inset-0 z-50 flex items-start justify-center md:items-center;
+    }
+
+    .ui-dialog::backdrop {
+        @apply bg-black/45;
     }
 
     .ui-dialog-panel {
-        @apply mx-auto my-8 w-[min(92vw,36rem)] rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 p-5 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-md)] transition-all duration-200 ease-[var(--ease-emphasized)] motion-reduce:transition-none;
+        @apply mx-auto my-6 w-[min(92vw,36rem)] rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 p-5 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-md)] transition-all duration-200 ease-[var(--ease-emphasized)] motion-reduce:transition-none;
     }
 
     .ui-dialog-backdrop {
-        @apply fixed inset-0 bg-transparent;
+        @apply hidden;
     }
 
     .ui-toast {

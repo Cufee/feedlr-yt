@@ -51,3 +51,6 @@ Remove legacy styling debt, confirm consistency, and finalize documentation.
 - Phase 06 pass 1:
 - Migrated `internal/templates/components/shared/open-video.templ` from legacy Daisy modal/join/input/button classes to shared `ui-dialog`, `ui-input`, and `ui-btn` primitives.
 - Kept modal/open-video behavior intact while removing stale class usage and a duplicate `showModal()` call in the open-modal fallback path.
+- Phase 06 pass 2:
+- Fixed open-video modal rendering regression by restoring proper full-viewport dialog positioning/layering (`ui-dialog`) and removing the legacy backdrop form node that surfaced as visible "close" content.
+- Added click-outside close behavior directly on the native dialog container to preserve expected dismissal behavior without Daisy modal helpers.
