@@ -1,9 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-    --font-sans: "IBM Plex Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
-    --font-display: "Space Grotesk", "IBM Plex Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
-    --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+    --font-sans:
+        "IBM Plex Sans", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --font-display:
+        "Space Grotesk", "IBM Plex Sans", "Avenir Next", "Segoe UI", system-ui,
+        sans-serif;
+    --font-mono:
+        "IBM Plex Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
 
     --color-canvas: oklch(18.8% 0.002 260);
     --color-elev-1: oklch(21.2% 0.003 260);
@@ -62,7 +66,10 @@
         background-image: none;
     }
 
-    h1, h2, h3, h4 {
+    h1,
+    h2,
+    h3,
+    h4 {
         font-family: var(--font-display);
         letter-spacing: -0.01em;
     }
@@ -382,7 +389,8 @@
         @apply absolute inset-0 flex items-center justify-center;
     }
 
-    .ui-watch-later-section:has(.ui-watch-later-item) .ui-watch-later-placeholder {
+    .ui-watch-later-section:has(.ui-watch-later-item)
+        .ui-watch-later-placeholder {
         display: none;
     }
 
@@ -526,13 +534,15 @@
     }
 
     .ui-video-state-overlay {
-        @apply absolute inset-0 z-10 flex items-center justify-center bg-black/60 text-[2rem] font-semibold uppercase tracking-[0.035em] text-white md:text-[2.4rem];
+        @apply absolute inset-0 z-10 flex items-center justify-center bg-black/85 text-[2rem] font-semibold uppercase tracking-[0.035em] text-white md:text-[2.4rem];
     }
 
     .ui-video-duration-chip {
         @apply absolute z-30 inline-flex items-center justify-center gap-1 border border-white/11 bg-black/54 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur-[var(--blur-glass-sm)] md:text-sm;
         right: var(--space-video-inset-x);
-        bottom: calc(var(--space-video-inset-y) + var(--height-video-progress) + 0.42rem);
+        bottom: calc(
+            var(--space-video-inset-y) + var(--height-video-progress) + 0.42rem
+        );
         border-radius: var(--radius-control);
     }
 
