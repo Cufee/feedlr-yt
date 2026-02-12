@@ -8,30 +8,28 @@ import (
 )
 
 var Main brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...templ.Component) (templ.Component, error) {
-	return main(body...), nil
+	return main(ctx.Request().URL.Path, ctx.Authenticated(), body...), nil
 }
 
 var Legal brewed.Layout[*handler.Context] = func(ctx *handler.Context, body ...templ.Component) (templ.Component, error) {
-	return legal(body...), nil
+	return legal(ctx.Request().URL.Path, ctx.Authenticated(), body...), nil
 }
 
-templ main(content ...templ.Component) {
-	@pageShell("py-3", nil, content...)
+templ main(path string, authenticated bool, content ...templ.Component) {
+	@pageShell(path, authenticated, "py-3", content...)
 }
 
-templ legal(content ...templ.Component) {
-	@pageShell("gap-3 py-2", ui.Navbar("/legal/", false), content...)
+templ legal(path string, authenticated bool, content ...templ.Component) {
+	@pageShell(path, authenticated, "gap-3 py-2", content...)
 }
 
-templ pageShell(mainClass string, nav templ.Component, content ...templ.Component) {
+templ pageShell(path string, authenticated bool, mainClass string, content ...templ.Component) {
 	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.AppManifest(), partials.GenericOgMetadata())
 		<body class="min-h-dvh flex flex-col" hx-ext="head-support">
 			@ui.NavProgress()
 			@ui.PageShellMain(mainClass) {
-				if nav != nil {
-					@nav
-				}
+				@partials.Navbar(path, authenticated)
 				for _, c := range content {
 					@c
 				}
