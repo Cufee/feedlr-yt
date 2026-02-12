@@ -34,17 +34,17 @@ templ OpenVideoInput(url string, valid bool) {
         if #open_video_input.value == ''
           halt"
 	>
-			<input
-				type="text"
-				id="open_video_input"
-				name="link"
-				value={ url }
-				placeholder="https://youtube.com/watch..."
-				class={ "ui-input", "w-full", templ.KV("ui-input-error", !valid) }
-			/>
-			<button type="submit" class="ui-btn ui-btn-primary ui-btn-md shrink-0">Watch</button>
-		</form>
-	}
+		<input
+			type="text"
+			id="open_video_input"
+			name="link"
+			value={ url }
+			placeholder="https://youtube.com/watch..."
+			class={ "ui-input", "w-full", templ.KV("ui-input-error", !valid) }
+		/>
+		<button type="submit" class="ui-btn ui-btn-primary ui-btn-md shrink-0">Watch</button>
+	</form>
+}
 
 script openVideoModalScript() {
 		const modal = document.getElementById("open_video_modal");
@@ -71,7 +71,7 @@ script openVideoModalScript() {
 				return "";
 			}
 		}
-		
+
 		const openVideoFromText = (text) => {
 			const videoID = extractVideoID(text);
 			if (!videoID) {
@@ -94,7 +94,7 @@ script openVideoModalScript() {
 			}
 			return target.closest("input, textarea, select, button, a, [role='button']") !== null;
 		}
-		
+
 		const openModal = async () => {
 			try {
 			const text = await navigator.clipboard.readText();

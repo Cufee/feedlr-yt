@@ -1,14 +1,19 @@
 package channel
 
-import (
-	"github.com/cufee/feedlr-yt/internal/api/youtube"
-)
+import "github.com/cufee/feedlr-yt/internal/api/youtube"
 
 templ ChannelTile(channel youtube.Channel, actionButton templ.Component) {
 	<div class="ui-channel-tile">
 		<div class="ui-channel-thumb">
-			<img src={ channel.Thumbnail } alt={ channel.Title } loading="lazy"/>
 			<div class="ui-channel-thumb-skeleton"></div>
+			<img
+				class="hidden"
+				onerror="this.remove()"
+				onload="this.classList.remove('hidden')"
+				src={ channel.Thumbnail }
+				alt={ channel.Title }
+				loading="lazy"
+			/>
 		</div>
 		<div class="flex min-h-[5.3rem] w-full flex-col justify-start">
 			<div class="flex h-full items-start justify-between gap-2">
