@@ -6,18 +6,18 @@ import (
 )
 
 templ Navbar(path string, authenticated bool) {
-	<div id="nav-indicator" class="ui-nav-shell">
+	<div id="nav-indicator" class="ui-nav-shell h-14">
 		if authenticated {
-			@navbarRow("/app", "h-12", navbarAuthenticatedActions(path))
+			@navbarRow("/app", navbarAuthenticatedActions(path))
 		} else {
-			@navbarRow("/", "h-12", navbarGuestActions(path))
+			@navbarRow("/", navbarGuestActions(path))
 		}
 	</div>
 }
 
-templ navbarRow(homeURL, rowClass string, actions templ.Component) {
-	<div class={ "flex items-center justify-between gap-3", rowClass }>
-		<a href={ templ.URL(homeURL) } class="inline-flex items-center py-1">
+templ navbarRow(homeURL string, actions templ.Component) {
+	<div class="flex items-center justify-between gap-3">
+		<a href={ templ.URL(homeURL) } class="inline-flex items-center pl-0.5">
 			@shared.Logo()
 		</a>
 		if actions != nil {
@@ -28,22 +28,22 @@ templ navbarRow(homeURL, rowClass string, actions templ.Component) {
 
 templ navbarAuthenticatedActions(path string) {
 	<nav class="flex items-center gap-1.5" aria-label="Primary">
-				<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/recent") } href={ templ.URL("/app/recent") } title="Recent Views">
-					@icons.Clock()
-				</a>
-				<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/subscriptions") } href={ templ.URL("/app/subscriptions") } title="Manage Subscriptions">
-					@icons.Bookmark()
-				</a>
-				<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/settings") } href={ templ.URL("/app/settings") } title="App Settings">
-					@icons.Settings()
-				</a>
+		<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/recent") } href={ templ.URL("/app/recent") } title="Recent Views">
+			@icons.Clock()
+		</a>
+		<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/subscriptions") } href={ templ.URL("/app/subscriptions") } title="Manage Subscriptions">
+			@icons.Bookmark()
+		</a>
+		<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/settings") } href={ templ.URL("/app/settings") } title="App Settings">
+			@icons.Settings()
+		</a>
 	</nav>
 }
 
 templ navbarGuestActions(path string) {
 	<nav class="ui-nav-actions" aria-label="Primary">
-				<a class={ "ui-nav-login", "nav-btn", templ.KV("ui-nav-link-active", path=="/login") } href={ templ.URL("/login") } title="Login">
-					Login
-				</a>
+		<a class={ "ui-nav-login", "nav-btn", templ.KV("ui-nav-link-active", path=="/login") } href={ templ.URL("/login") } title="Login">
+			Login
+		</a>
 	</nav>
 }
