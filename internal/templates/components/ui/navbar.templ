@@ -3,34 +3,34 @@ package ui
 import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"strings"
 )
 
 templ Navbar(path string, authenticated bool) {
 	<div id="nav-indicator" class="ui-nav-shell">
-		if authenticated {
-			@navbarAuthenticated(path)
+		if strings.HasPrefix(path, "/legal/") {
+			@navbarRow("/", "h-11", nil)
+		} else if authenticated {
+			@navbarRow("/app", "h-12", navbarAuthenticatedActions(path))
 		} else {
-			@navbarGuest(path)
+			@navbarRow("/", "h-12", navbarGuestActions(path))
 		}
 	</div>
 }
 
-templ NavbarLogoOnly(homeURL string) {
-	<div id="nav-indicator" class="ui-nav-shell">
-		<div class="flex h-11 items-center">
-			<a href={ homeURL } class="inline-flex items-center py-1">
-				@shared.Logo()
-			</a>
-		</div>
+templ navbarRow(homeURL, rowClass string, actions templ.Component) {
+	<div class={ "flex items-center justify-between gap-3", rowClass }>
+		<a href={ homeURL } class="inline-flex items-center py-1">
+			@shared.Logo()
+		</a>
+		if actions != nil {
+			@actions
+		}
 	</div>
 }
 
-templ navbarAuthenticated(path string) {
-	<div class="flex h-12 items-center justify-between gap-3">
-		<a href="/app" class="inline-flex items-center py-1">
-			@shared.Logo()
-		</a>
-		<nav class="ui-nav-actions" aria-label="Primary">
+templ navbarAuthenticatedActions(path string) {
+	<nav class="flex items-center gap-1.5" aria-label="Primary">
 			<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/recent") } href="/app/recent" title="Recent Views">
 				@icons.Clock()
 			</a>
@@ -40,19 +40,13 @@ templ navbarAuthenticated(path string) {
 			<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/settings") } href="/app/settings" title="App Settings">
 				@icons.Settings()
 			</a>
-		</nav>
-	</div>
+	</nav>
 }
 
-templ navbarGuest(path string) {
-	<div class="flex h-12 items-center justify-between gap-3">
-		<a href="/" class="inline-flex items-center py-1">
-			@shared.Logo()
-		</a>
-		<nav class="ui-nav-actions" aria-label="Primary">
+templ navbarGuestActions(path string) {
+	<nav class="ui-nav-actions" aria-label="Primary">
 			<a class={ "ui-nav-login", "nav-btn", templ.KV("ui-nav-link-active", path=="/login") } href="/login" title="Login">
 				Login
 			</a>
-		</nav>
-	</div>
+	</nav>
 }

@@ -20,13 +20,7 @@ templ main(content ...templ.Component) {
 }
 
 templ legal(content ...templ.Component) {
-	@pageShell("gap-3 py-2", legalNav(), content...)
-}
-
-templ legalNav() {
-	<div class="pt-2">
-		@ui.NavbarLogoOnly("/")
-	</div>
+	@pageShell("gap-3 py-2", ui.Navbar("/legal/", false), content...)
 }
 
 templ pageShell(mainClass string, nav templ.Component, content ...templ.Component) {
