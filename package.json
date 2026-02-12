@@ -1,4 +1,5 @@
 {
+  "name": "feedlr",
   "scripts": {
     "build": "npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css",
     "dev": "npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css --watch"
