@@ -42,7 +42,7 @@ templ navbarAuthenticatedActions(path string) {
 
 templ navbarGuestActions(path string) {
 	<nav class="ui-nav-actions" aria-label="Primary">
-		<a class={ "ui-nav-login", "nav-btn", templ.KV("ui-nav-link-active", path=="/login") } href={ templ.URL("/login") } title="Login">
+		<a class={ "ui-nav-login", "nav-btn" } href={ templ.URL("/login") } title="Login">
 			Login
 		</a>
 	</nav>

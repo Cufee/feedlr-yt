@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/metrics"
@@ -50,20 +51,41 @@ var staticWithCacheMiddleware = func(path string, assets fs.FS) func(*fiber.Ctx)
 		Root:       http.FS(assets),
 		Browse:     true,
 		PathPrefix: path,
-		MaxAge:     86400,
+		MaxAge:     0,
 	})
 
 	return func(c *fiber.Ctx) error {
-		if c.Get("If-None-Match") == hashes[c.Path()] {
+		hash, ok := hashes[c.Path()]
+		if !ok {
+			return handler(c)
+		}
+
+		etag := fmt.Sprintf(`"%s"`, hash)
+		c.Set("Vary", "Accept-Encoding")
+		c.Set("Cache-Control", "public, no-cache, must-revalidate")
+		c.Set("ETag", etag)
+
+		if ifNoneMatchMatches(c.Get(fiber.HeaderIfNoneMatch), etag) {
 			return c.SendStatus(fiber.StatusNotModified)
 		}
-		err := handler(c)
-		if hash, ok := hashes[c.Path()]; ok {
-			c.Set("Vary", "Accept-Encoding")
-			c.Set("ETag", hash)
-		}
-		return err
+
+		return handler(c)
 	}
+}
+
+func ifNoneMatchMatches(header, etag string) bool {
+	if header == "" {
+		return false
+	}
+
+	for _, candidate := range strings.Split(header, ",") {
+		token := strings.TrimSpace(candidate)
+		if token == "*" || token == etag || token == "W/"+etag {
+			return true
+		}
+	}
+
+	return false
 }
 
 func getAssetsHashes(assets fs.FS) map[string]string {
