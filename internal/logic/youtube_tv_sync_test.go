@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -202,5 +203,14 @@ func TestTVSyncRuntimePlaybackSnapshotAndReset(t *testing.T) {
 	videoID, state = runtime.currentPlaybackSnapshot()
 	if videoID != "" || state != "" {
 		t.Fatalf("expected cleared playback snapshot, got video=%q state=%q", videoID, state)
+	}
+}
+
+func TestIsUnknownVideoProgressError(t *testing.T) {
+	if !isUnknownVideoProgressError(errors.New("FOREIGN KEY constraint failed")) {
+		t.Fatal("expected foreign key error to be treated as unknown video")
+	}
+	if isUnknownVideoProgressError(errors.New("disk I/O error")) {
+		t.Fatal("did not expect unrelated database error to be treated as unknown video")
 	}
 }
