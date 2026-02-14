@@ -10,7 +10,10 @@ import (
 )
 
 func testAuthClient() (*Client, error) {
-	client := NewClient(&mock.AuthStore{})
+	client, err := NewClient(&mock.AuthStore{})
+	if err != nil {
+		return nil, err
+	}
 	authed, err := client.Authenticate(context.Background(), true)
 	if err != nil {
 		return nil, err

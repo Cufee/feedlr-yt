@@ -40,7 +40,10 @@ func main() {
 	logic.DefaultYouTubeTVSync = youtubeTVSync
 
 	// YouTube API setup
-	authClient := auth.NewClient(db)
+	authClient, err := auth.NewClient(db)
+	if err != nil {
+		panic(err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	done, err := authClient.Authenticate(ctx, os.Getenv("YOUTUBE_API_SKIP_AUTH_CACHE") == "true")
 	if err != nil {
