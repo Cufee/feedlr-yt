@@ -42,7 +42,6 @@ const (
 	tvSyncWorkerStopTimeout         = 2 * time.Second
 	tvSyncConnectionKickTimeout     = 15 * time.Second
 	tvSyncNowPlayingPollInterval    = 15 * time.Second
-	tvSyncVideoCacheRetryInterval   = 1 * time.Minute
 	tvSyncConnectionStateConnectMsg = "Establishing TV session"
 	tvSyncNoEventsReason            = "No TV events received"
 	tvSyncDeviceName                = "Feedlr TV Sync"
@@ -72,13 +71,11 @@ type tvSyncSegment struct {
 
 type tvSyncVideoRuntime struct {
 	lastProgressWrite time.Time
-	lastVideoCacheTry time.Time
 	lastState         string
 	sponsorLoaded     bool
 	sponsorSegments   []tvSyncSegment
 	skippedSegments   map[int]bool
 	lastSponsorSkipAt time.Time
-	videoCached       bool
 }
 
 type tvSyncRuntime struct {
@@ -223,11 +220,6 @@ type youTubeTVSyncStore interface {
 type watchLaterCleanupDB interface {
 	database.PlaylistsClient
 	database.VideosClient
-}
-
-type tvSyncVideoCacheDB interface {
-	database.VideosClient
-	database.ChannelsClient
 }
 
 type tvSyncMetrics struct {
@@ -873,14 +865,13 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 			s.processSponsorSkip(ctx, account.UserID, videoID, videoRuntime, playback, session, now, runtime.sponsorCategories)
 		}
 
-		progressWriteAllowed := true
-		if cacheDB, ok := s.db.(tvSyncVideoCacheDB); ok {
-			progressWriteAllowed = s.ensureVideoCachedForProgress(ctx, cacheDB, account.UserID, videoID, videoRuntime, now)
-		}
-
-		if progressWriteAllowed && shouldWriteProgress(playback.State, now, videoRuntime.lastProgressWrite) {
+		if shouldWriteProgress(playback.State, now, videoRuntime.lastProgressWrite) {
 			resolved, err := UpdateViewProgress(ctx, s.db, account.UserID, videoID, observedSecond)
 			if err != nil {
+				if isUnknownVideoProgressError(err) {
+					log.Debug().Str("userID", account.UserID).Str("videoID", videoID).Msg("skipping tv progress sync for unknown video")
+					return nil
+				}
 				log.Warn().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Msg("failed to sync tv progress")
 			} else {
 				s.recordProgressUpdate(account.UserID, videoID, observedSecond, resolved)
@@ -979,22 +970,11 @@ func (s *YouTubeTVSyncService) getStoredProgress(ctx context.Context, userID, vi
 	return 0
 }
 
-func (s *YouTubeTVSyncService) ensureVideoCachedForProgress(ctx context.Context, cacheDB tvSyncVideoCacheDB, userID, videoID string, state *tvSyncVideoRuntime, now time.Time) bool {
-	if state.videoCached {
-		return true
-	}
-	if !state.lastVideoCacheTry.IsZero() && now.Sub(state.lastVideoCacheTry) < tvSyncVideoCacheRetryInterval {
+func isUnknownVideoProgressError(err error) bool {
+	if err == nil {
 		return false
 	}
-	state.lastVideoCacheTry = now
-
-	if err := EnsureVideoCached(ctx, cacheDB, videoID); err != nil {
-		log.Warn().Err(err).Str("userID", userID).Str("videoID", videoID).Msg("failed to cache tv video before progress sync")
-		return false
-	}
-
-	state.videoCached = true
-	return true
+	return strings.Contains(strings.ToLower(err.Error()), "foreign key constraint failed")
 }
 
 func (s *YouTubeTVSyncService) processSponsorSkip(ctx context.Context, userID, videoID string, state *tvSyncVideoRuntime, playback lounge.PlaybackEvent, session *lounge.Session, now time.Time, categories []sponsorblock.Category) {
