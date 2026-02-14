@@ -45,8 +45,11 @@ func NewClient(apiKey string, auth *auth.Client) (*client, error) {
 	}
 
 	c := &client{auth: auth, http: httpClient}
-	opts := option.WithAPIKey(apiKey)
-	service, err := youtube.NewService(context.Background(), opts)
+	service, err := youtube.NewService(
+		context.Background(),
+		option.WithAPIKey(apiKey),
+		option.WithHTTPClient(httpClient),
+	)
 	metrics.ObserveYouTubeAPICall("data_v3", "new_service", err)
 	if err != nil {
 		return nil, err

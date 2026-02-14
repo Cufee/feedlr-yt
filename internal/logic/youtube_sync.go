@@ -12,6 +12,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/metrics"
+	"github.com/cufee/feedlr-yt/internal/netproxy"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/pkg/errors"
@@ -79,7 +80,13 @@ func (s *YouTubeSyncService) OAuthAuthURL(state string) string {
 }
 
 func (s *YouTubeSyncService) CompleteOAuth(ctx context.Context, userID, code string) error {
-	token, err := s.oauthConfig.Exchange(ctx, code)
+	proxyHTTPClient, err := netproxy.NewYouTubeHTTPClient(0)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize youtube sync http client")
+	}
+	oauthCtx := context.WithValue(ctx, oauth2.HTTPClient, proxyHTTPClient)
+
+	token, err := s.oauthConfig.Exchange(oauthCtx, code)
 	metrics.ObserveYouTubeOAuthCall("playlist_sync_oauth_exchange", err)
 	if err != nil {
 		return errors.Wrap(err, "oauth exchange failed")
@@ -373,12 +380,18 @@ func (s *YouTubeSyncService) youtubeServiceForAccount(ctx context.Context, accou
 		}
 	}()
 
-	tokenSource := s.oauthConfig.TokenSource(ctx, &oauth2.Token{
+	proxyHTTPClient, err := netproxy.NewYouTubeHTTPClient(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize youtube sync http client")
+	}
+	oauthCtx := context.WithValue(ctx, oauth2.HTTPClient, proxyHTTPClient)
+
+	tokenSource := s.oauthConfig.TokenSource(oauthCtx, &oauth2.Token{
 		RefreshToken: string(refreshToken),
 	})
 
-	httpClient := oauth2.NewClient(ctx, tokenSource)
-	service, err := ytv3.NewService(ctx, option.WithHTTPClient(httpClient))
+	httpClient := oauth2.NewClient(oauthCtx, tokenSource)
+	service, err := ytv3.NewService(oauthCtx, option.WithHTTPClient(httpClient))
 	metrics.ObserveYouTubeAPICall("playlist_sync", "new_service", err)
 	if err != nil {
 		return nil, err

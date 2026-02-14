@@ -19,18 +19,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func NewClient(store database.ConfigurationClient) *Client {
+func NewClient(store database.ConfigurationClient) (*Client, error) {
 	httpClient, err := netproxy.NewYouTubeHTTPClient(0)
 	if err != nil {
-		log.Warn().Err(err).Msg("failed to initialize youtube proxy transport, falling back to default http client")
-		httpClient = http.DefaultClient
+		return nil, errors.Wrap(err, "failed to initialize youtube proxy transport")
 	}
 
 	return &Client{
 		http:   httpClient,
 		authMx: &sync.Mutex{},
 		store:  store,
-	}
+	}, nil
 }
 
 func (c *Client) Close() error {
