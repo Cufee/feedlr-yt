@@ -13,3 +13,6 @@ assets/css/style.css
 *.db
 *.sqlite
 *.sqlite3
+
+.codex
+.cursor
