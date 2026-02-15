@@ -38,6 +38,26 @@ func (s DesktopPlayabilityStatus) inferPrivate() bool {
 	return false
 }
 
+func (s DesktopPlayabilityStatus) inferLoginRequiredError() bool {
+	if s.Status != "LOGIN_REQUIRED" {
+		return false
+	}
+
+	checks := append([]string{s.Reason}, s.Messages...)
+	for _, check := range checks {
+		normalized := strings.ToLower(strings.TrimSpace(check))
+		normalized = strings.ReplaceAll(normalized, "’", "'")
+		normalized = strings.ReplaceAll(normalized, "‘", "'")
+
+		if strings.Contains(normalized, "confirm you're not a bot") ||
+			strings.Contains(normalized, "confirm you are not a bot") {
+			return true
+		}
+	}
+
+	return false
+}
+
 type DesktopPlayerVideoDetails struct {
 	VideoID           string    `json:"videoId"`
 	Title             string    `json:"title"`
@@ -228,6 +248,9 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	// Some other issue, not a private video explicitly
 	if details.PlayabilityStatus.Status == "LOGIN_REQUIRED" {
 		log.Warn().Str("video", videoId).Str("reason", details.PlayabilityStatus.Reason).Strs("messages", details.PlayabilityStatus.Messages).Msg("login required to view content")
+		if details.PlayabilityStatus.inferLoginRequiredError() {
+			return nil, ErrLoginRequired
+		}
 		fullDetails.Type = VideoTypeFailed
 		return &fullDetails, nil
 	}
