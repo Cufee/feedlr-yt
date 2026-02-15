@@ -2,8 +2,10 @@ package root
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/cufee/feedlr-yt/internal/database"
@@ -16,11 +18,36 @@ const (
 	thumbnailEdgeCacheHeader = "public, max-age=604800, stale-while-revalidate=86400"
 )
 
+var thumbnailClient = &http.Client{Timeout: 10 * time.Second}
+
 func setThumbnailCacheHeaders(ctx *handler.Context) {
 	// Keep browser caching modest while allowing CDN/Cloudflare to cache more aggressively.
 	ctx.Set("Cache-Control", thumbnailCacheControl)
 	ctx.Set("CDN-Cache-Control", thumbnailEdgeCacheHeader)
 	ctx.Set("Cloudflare-CDN-Cache-Control", thumbnailEdgeCacheHeader)
+}
+
+// proxyImage fetches the image and streams it back so Cloudflare can cache the actual content.
+func proxyImage(ctx *handler.Context, imageURL string) error {
+	req, err := http.NewRequestWithContext(ctx.Context(), http.MethodGet, imageURL, nil)
+	if err != nil {
+		return ctx.SendStatus(http.StatusInternalServerError)
+	}
+
+	resp, err := thumbnailClient.Do(req)
+	if err != nil {
+		return ctx.SendStatus(http.StatusBadGateway)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ctx.SendStatus(http.StatusNotFound)
+	}
+
+	setThumbnailCacheHeaders(ctx)
+	ctx.Set("Content-Type", resp.Header.Get("Content-Type"))
+	_, err = io.Copy(ctx.Writer(), resp.Body)
+	return err
 }
 
 func videoThumbnailFile(variant string) (string, bool) {
@@ -56,8 +83,7 @@ var VideoThumbnail brewed.Partial[*handler.Context] = func(ctx *handler.Context)
 		return nil, ctx.SendStatus(http.StatusInternalServerError)
 	}
 
-	setThumbnailCacheHeaders(ctx)
-	return nil, ctx.Redirect(fmt.Sprintf("https://i.ytimg.com/vi/%s/%s", videoID, file), http.StatusFound)
+	return nil, proxyImage(ctx, fmt.Sprintf("https://i.ytimg.com/vi/%s/%s", videoID, file))
 }
 
 var ChannelThumbnail brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
@@ -79,6 +105,5 @@ var ChannelThumbnail brewed.Partial[*handler.Context] = func(ctx *handler.Contex
 		return nil, ctx.SendStatus(http.StatusNotFound)
 	}
 
-	setThumbnailCacheHeaders(ctx)
-	return nil, ctx.Redirect(thumbnailURL, http.StatusFound)
+	return nil, proxyImage(ctx, thumbnailURL)
 }
