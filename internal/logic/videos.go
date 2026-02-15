@@ -234,19 +234,18 @@ func GetVideoByID(ctx context.Context, db interface {
 }
 
 func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *youtube.VideoDetails) error {
+	existing, err := db.GetVideoByID(ctx, video.ID)
+	if err != nil && !database.IsErrNotFound(err) {
+		return err
+	}
+
 	existingTitle := ""
-	if strings.TrimSpace(video.Title) == "" {
-		existing, err := db.GetVideoByID(ctx, video.ID)
-		if err != nil && !database.IsErrNotFound(err) {
-			return err
-		}
-		if existing != nil {
-			existingTitle = existing.Title
-		}
+	if existing != nil {
+		existingTitle = existing.Title
 	}
 	title := resolveVideoTitle(video.Title, existingTitle, video.ID, video.Type)
 
-	err := db.UpsertVideos(ctx, &models.Video{
+	update := &models.Video{
 		ID:          video.ID,
 		ChannelID:   video.ChannelID,
 		Type:        string(video.Type),
@@ -255,8 +254,24 @@ func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *yout
 		Description: video.Description,
 		Duration:    int64(video.Duration),
 		Private:     video.Type == youtube.VideoTypePrivate,
-	})
-	return err
+	}
+
+	// Guard against overwriting good cached data with degraded API responses
+	if existing != nil {
+		if existing.Duration > 0 && update.Duration == 0 {
+			update.Duration = existing.Duration
+		}
+		if existing.Type != string(youtube.VideoTypeFailed) {
+			if update.Type == string(youtube.VideoTypeFailed) {
+				update.Type = existing.Type
+			}
+			if existing.Type == string(youtube.VideoTypeShort) && update.Type == string(youtube.VideoTypeVideo) {
+				update.Type = existing.Type
+			}
+		}
+	}
+
+	return db.UpsertVideos(ctx, update)
 }
 
 func EnsureVideoCached(ctx context.Context, db interface {

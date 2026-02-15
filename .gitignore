@@ -14,7 +14,7 @@ assets/css/style.css
 *.sqlite
 *.sqlite3
 
-.scratch
+scratch
 
 .codex
 .cursor
