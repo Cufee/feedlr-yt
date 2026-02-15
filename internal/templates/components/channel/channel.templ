@@ -1,8 +1,16 @@
 package channel
 
-import "github.com/cufee/feedlr-yt/internal/api/youtube"
+import (
+	"fmt"
 
-templ ChannelTile(channel youtube.Channel, actionButton templ.Component) {
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
+)
+
+func ChannelThumbnailProxyURL(channelID string) string {
+	return fmt.Sprintf("/thumb/channel/%s", channelID)
+}
+
+templ ChannelTile(channel youtube.Channel, thumbnailURL string, actionButton templ.Component) {
 	<div class="ui-channel-tile">
 		<div class="ui-channel-thumb">
 			<div class="ui-channel-thumb-skeleton"></div>
@@ -10,7 +18,7 @@ templ ChannelTile(channel youtube.Channel, actionButton templ.Component) {
 				class="invisible"
 				onload="this.classList.remove('invisible')"
 				onerror="this.remove()"
-				src={ channel.Thumbnail }
+				src={ thumbnailURL }
 				alt={ channel.Title }
 				loading="eager"
 				decoding="async"

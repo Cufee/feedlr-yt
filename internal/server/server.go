@@ -93,6 +93,8 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		// Routes with unique auth handlers
 		server.Get("/video/:id", toFiber(root.Video))
 		server.Get("/channel/:id", toFiber(root.Channel))
+		server.Get("/thumb/video/:id/:variant", toFiber(root.VideoThumbnail))
+		server.Get("/thumb/channel/:id", toFiber(root.ChannelThumbnail))
 
 		api := server.Group("/api").Use(limiterMiddleware).Use(authMw)
 		api.Post("/passkeys/add/begin", toFiber(login.AdditionalPasskeyBegin))

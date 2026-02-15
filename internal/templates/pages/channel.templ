@@ -26,17 +26,17 @@ templ Channel(props types.ChannelPageProps) {
 		<meta property="og:title" content={ props.Channel.Title }/>
 		<meta property="og:type" content="profile"/>
 		<meta property="og:description" content={ props.Channel.Description }/>
-		<meta property="og:image" content={ props.Channel.Thumbnail }/>
+		<meta property="og:image" content={ channel.ChannelThumbnailProxyURL(props.Channel.ID) }/>
 		<meta name="twitter:card" content="summary_large_image"/>
 		<meta name="twitter:title" content={ props.Channel.Title }/>
 		<meta name="twitter:description" content={ props.Channel.Description }/>
-		<meta name="twitter:image" content={ props.Channel.Thumbnail }/>
+		<meta name="twitter:image" content={ channel.ChannelThumbnailProxyURL(props.Channel.ID) }/>
 		<meta name="twitter:image:alt" content={ props.Channel.Title }/>
 	</head>
 	<div class="relative flex w-full flex-col gap-4">
 		@ui.Card(ui.WithCardClass("w-full p-4 md:p-5")) {
 			<div class="grow">
-				@channel.ChannelTile(props.Channel.Channel, subscribeButton(props.Channel.ID, props.Authenticated, props.Subscribed))
+				@channel.ChannelTile(props.Channel.Channel, channel.ChannelThumbnailProxyURL(props.Channel.ID), subscribeButton(props.Channel.ID, props.Authenticated, props.Subscribed))
 			</div>
 		}
 		if props.Authenticated && props.Subscribed {

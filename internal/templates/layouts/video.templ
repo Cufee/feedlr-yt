@@ -34,6 +34,10 @@ func secondsToISO8601Duration(seconds int) string {
 	return fmt.Sprintf("P%dDT%dH%dM%dS", days, hours, minutes, secs)
 }
 
+func VideoThumbnailProxyURL(videoID, variant string) string {
+	return fmt.Sprintf("/thumb/video/%s/%s", videoID, variant)
+}
+
 templ videoLayout(video types.VideoProps, content ...templ.Component) {
 	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.HeadlessManifest()) {
@@ -44,12 +48,12 @@ templ videoLayout(video types.VideoProps, content ...templ.Component) {
 			<meta property="og:description" content={ video.Description }/>
 			<meta property="video:duration" content={ fmt.Sprint(video.Duration) }/>
 			<meta property="og:video:duration" content={ fmt.Sprint(video.Duration) }/>
-			<meta property="og:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", video.ID) }/>
+			<meta property="og:image" content={ VideoThumbnailProxyURL(video.ID, "maxresdefault") }/>
 			<meta itemprop="duration" content={ secondsToISO8601Duration(video.Duration) }/>
 			<meta name="twitter:card" content="summary_large_image"/>
 			<meta name="twitter:title" content={ video.Title }/>
 			<meta name="twitter:description" content={ video.Description }/>
-			<meta name="twitter:image" content={ fmt.Sprintf("https://i.ytimg.com/vi/%s/maxresdefault.jpg", video.ID) }/>
+			<meta name="twitter:image" content={ VideoThumbnailProxyURL(video.ID, "maxresdefault") }/>
 			<meta name="twitter:image:alt" content={ video.Title }/>
 		}
 		<body class="h-svh bg-black" hx-ext="head-support">
