@@ -117,6 +117,9 @@ func GetRecentVideosProps(ctx context.Context, db interface {
 	if err != nil && !database.IsErrNotFound(err) {
 		return nil, errors.Wrap(err, "GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views")
 	}
+	if len(views) == 0 {
+		return nil, nil
+	}
 
 	var videoIDs []string
 	progress := make(map[string]*models.View)
