@@ -1,6 +1,7 @@
 package youtube
 
 import (
+	"strings"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/metrics"
@@ -26,7 +27,27 @@ type Video struct {
 }
 
 func (v Video) isShort() bool {
-	return v.Type == VideoTypeShort || (v.Type == VideoTypeVideo && v.Duration < 61 && v.Duration > 0)
+	if v.Type == VideoTypeShort {
+		return true
+	}
+	if v.Type != VideoTypeVideo || v.Duration <= 0 {
+		return false
+	}
+	if v.Duration <= 60 {
+		return true
+	}
+	// Shorts can be longer now; use explicit metadata markers to avoid false positives.
+	return v.Duration <= 180 && looksLikeShortsMetadata(v.Title, v.Description)
+}
+
+func looksLikeShortsMetadata(values ...string) bool {
+	for _, value := range values {
+		lower := strings.ToLower(value)
+		if strings.Contains(lower, "#shorts") || strings.Contains(lower, "#short") || strings.Contains(lower, "/shorts/") {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *client) SearchChannels(query string, limit int) ([]Channel, error) {

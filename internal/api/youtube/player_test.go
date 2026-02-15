@@ -18,6 +18,7 @@ func TestVideoTypeDetection(t *testing.T) {
 		{"aARsNGL-Xwc", "regular video", VideoTypeVideo},
 		{"KeLmi62DmjU", "short", VideoTypeShort},
 		{"H4iECWYllc4", "short with landscape thumbnail", VideoTypeShort},
+		{"1GA8AngP758", "recent regression", VideoTypeShort},
 	}
 
 	for _, v := range videos {

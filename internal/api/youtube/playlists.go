@@ -50,6 +50,7 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 	var videoDetails = make(chan *VideoDetails, 50)
 
 	for _, item := range res.Items {
+		playlistItem := item
 		if slices.Contains(skipVideoIds, item.Snippet.ResourceId.VideoId) {
 			continue
 		}
@@ -59,12 +60,16 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 				return nil
 			}
 
-			publishedAt, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+			if playlistItemLikelyShort(playlistItem) {
+				return nil
+			}
+
+			publishedAt, _ := time.Parse(time.RFC3339, playlistItem.Snippet.PublishedAt)
 			if publishedAt.Before(uploadedAfter) {
 				return nil
 			}
 
-			details, err := c.GetVideoPlayerDetails(item.Snippet.ResourceId.VideoId, 2)
+			details, err := c.GetVideoPlayerDetails(playlistItem.Snippet.ResourceId.VideoId, 2)
 			if err != nil {
 				return err
 			}
@@ -72,9 +77,9 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 				return nil
 			}
 
-			details.Title = item.Snippet.Title
-			details.ChannelID = item.Snippet.ChannelId
-			details.Description = item.Snippet.Description
+			details.Title = playlistItem.Snippet.Title
+			details.ChannelID = playlistItem.Snippet.ChannelId
+			details.Description = playlistItem.Snippet.Description
 			details.PublishedAt = publishedAt
 			videoDetails <- details
 			return nil
@@ -107,4 +112,36 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 	})
 
 	return videos, nil
+}
+
+func playlistItemLikelyShort(item *youtube.PlaylistItem) bool {
+	if item == nil || item.Snippet == nil {
+		return false
+	}
+	if looksLikeShortsMetadata(item.Snippet.Title, item.Snippet.Description) {
+		return true
+	}
+	return thumbnailDetailsPortrait(item.Snippet.Thumbnails)
+}
+
+func thumbnailDetailsPortrait(details *youtube.ThumbnailDetails) bool {
+	if details == nil {
+		return false
+	}
+	thumbnails := []*youtube.Thumbnail{
+		details.Default,
+		details.Medium,
+		details.High,
+		details.Standard,
+		details.Maxres,
+	}
+	for _, thumbnail := range thumbnails {
+		if thumbnail == nil {
+			continue
+		}
+		if thumbnail.Width > 0 && thumbnail.Height > 0 && thumbnail.Width < thumbnail.Height {
+			return true
+		}
+	}
+	return false
 }
