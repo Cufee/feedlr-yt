@@ -559,7 +559,7 @@
     }
 
     .ui-video-progress-track {
-        @apply absolute z-20 overflow-hidden border border-glass-stroke/20 bg-glass-fill/17 shadow-[inset_0_1px_3px_rgba(255,255,255,0.12)] backdrop-blur-md;
+        @apply absolute z-20 overflow-hidden border border-white/20 bg-black/36 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] backdrop-blur-[var(--blur-glass-sm)];
         left: var(--space-video-inset-x);
         right: var(--space-video-inset-x);
         bottom: var(--space-video-inset-y);
@@ -568,7 +568,7 @@
     }
 
     .ui-video-progress-fill {
-        @apply h-full rounded-full bg-accent/62 shadow-[0_0_5px_rgba(177,128,230,0.22)];
+        @apply h-full rounded-full border border-accent/32 bg-gradient-to-r from-accent/62 to-accent-strong/68 shadow-[0_0_6px_rgba(177,128,230,0.2)];
     }
 
     .ui-video-rail {
