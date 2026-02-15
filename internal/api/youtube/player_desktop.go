@@ -260,12 +260,6 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		}
 	}
 
-	// Fallback: check thumbnail aspect ratio for Shorts (9:16, e.g., 405x720)
-	if isThumbnailPortrait(details.PlayerVideoDetails.Thumbnail) {
-		fullDetails.Type = VideoTypeShort
-		return &fullDetails, nil
-	}
-
 	// Fallback: check if /shorts/{id} URL resolves (200 = short, 303 = not short)
 	if fullDetails.Duration > 0 && fullDetails.Duration <= 180 {
 		if c.isShortsURL(videoId) {

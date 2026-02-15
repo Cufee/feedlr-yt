@@ -221,6 +221,21 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 		Private:     video.Type == youtube.VideoTypePrivate,
 	}
 
+	// Guard against overwriting good cached data with degraded API responses
+	if current != nil {
+		if current.Duration > 0 && update.Duration == 0 {
+			update.Duration = current.Duration
+		}
+		if current.Type != string(youtube.VideoTypeFailed) {
+			if update.Type == string(youtube.VideoTypeFailed) {
+				update.Type = current.Type
+			}
+			if current.Type == string(youtube.VideoTypeShort) && update.Type == string(youtube.VideoTypeVideo) {
+				update.Type = current.Type
+			}
+		}
+	}
+
 	if err := db.UpsertVideos(ctx, update); err != nil {
 		metrics.ObserveVideoRefresh("refresh_video_cache", err)
 		log.Warn().Err(err).Str("videoID", videoID).Msg("failed to upsert video during cache refresh")
