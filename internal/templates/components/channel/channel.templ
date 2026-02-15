@@ -7,12 +7,13 @@ templ ChannelTile(channel youtube.Channel, actionButton templ.Component) {
 		<div class="ui-channel-thumb">
 			<div class="ui-channel-thumb-skeleton"></div>
 			<img
-				class="hidden"
+				class="invisible"
+				onload="this.classList.remove('invisible')"
 				onerror="this.remove()"
-				onload="this.classList.remove('hidden')"
 				src={ channel.Thumbnail }
 				alt={ channel.Title }
-				loading="lazy"
+				loading="eager"
+				decoding="async"
 			/>
 		</div>
 		<div class="flex min-h-[5.3rem] w-full flex-col justify-start">

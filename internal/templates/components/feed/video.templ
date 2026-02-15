@@ -167,7 +167,7 @@ templ VideoCardWithCarouselRemove(video types.VideoProps, opts ...FeedOption) {
 templ VideoThumbnail(videoID, alt string, hidden bool) {
 	<div class={ "absolute", "inset-0", "overflow-hidden", "pointer-events-none", templ.KV("blur-xl", hidden) }>
 		<object tabindex="-1" class="absolute object-cover w-full h-full transition-all duration-500 pointer-events-none bg-elev-1 group-hover:scale-110" data={ fmt.Sprintf("https://i.ytimg.com/vi/%s/sddefault.jpg", videoID) } type="image/jpeg">
-			<img class="absolute object-cover w-full h-full transition-all duration-500 pointer-events-none bg-elev-1 group-hover:scale-110" src={ fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", videoID) } alt={ alt }/>
+			<img class="absolute object-cover w-full h-full transition-all duration-500 pointer-events-none bg-elev-1 group-hover:scale-110" src={ fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", videoID) } alt={ alt } loading="eager" decoding="async"/>
 		</object>
 	</div>
 }
