@@ -2,7 +2,6 @@ package channel
 
 import (
 	"fmt"
-
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 )
 
@@ -20,7 +19,7 @@ templ ChannelTile(channel youtube.Channel, thumbnailURL string, actionButton tem
 				onerror="this.remove()"
 				src={ thumbnailURL }
 				alt={ channel.Title }
-				loading="eager"
+				loading="lazy"
 				decoding="async"
 			/>
 		</div>
