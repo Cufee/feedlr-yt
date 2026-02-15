@@ -32,7 +32,7 @@ func cardClass(o cardOptions) string {
 	return joinClasses(
 		base,
 		"p-4 md:p-5",
-		ifClass(o.interactive, "transition-all duration-200 ease-[var(--ease-standard)] hover:border-glass-stroke/35 hover:bg-glass-fill/55"),
+		ifClass(o.interactive, "transition-[background-color,border-color] duration-200 ease-[var(--ease-standard)] hover:border-glass-stroke/35 hover:bg-glass-fill/55"),
 		o.class,
 	)
 }
