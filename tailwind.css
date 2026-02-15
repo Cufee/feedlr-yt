@@ -583,6 +583,10 @@
         @apply inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/18 bg-glass-fill/22 p-0 text-text-secondary transition-all duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/35 hover:text-text-primary active:bg-glass-fill/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.8];
     }
 
+    .ui-video-rail-btn-active {
+        @apply border-accent/40 bg-accent/16 text-accent shadow-[0_0_0_1px_rgba(177,128,230,0.2)] hover:bg-accent/22 hover:text-accent active:bg-accent/22;
+    }
+
     .ui-btn-destructive-neutral {
         @apply border-danger/35 text-red-100 hover:bg-danger/20;
     }

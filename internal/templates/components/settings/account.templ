@@ -3,7 +3,6 @@ package settings
 
 import (
 	"fmt"
-	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"time"
@@ -31,8 +30,8 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 									{ pk.CreatedAt.Format(time.Stamp) }
 								</span>
 							</div>
-							<button type="button" class="ui-btn ui-btn-danger ui-btn-sm ui-btn-icon !size-8" hx-delete={ fmt.Sprintf("/api/passkeys/%s", pk.ID) } hx-target={ fmt.Sprintf("#pk-%s", pk.ID) } hx-swap="delete" hx-confirm="Are you sure you wish to delete a passkey? This cannot be undone.">
-								@icons.Cross()
+							<button type="button" class="ui-btn ui-btn-sm ui-btn-neutral ui-btn-destructive-neutral" hx-delete={ fmt.Sprintf("/api/passkeys/%s", pk.ID) } hx-target={ fmt.Sprintf("#pk-%s", pk.ID) } hx-swap="delete" hx-confirm="Are you sure you wish to delete a passkey? This cannot be undone.">
+								Remove
 							</button>
 						</div>
 					}
