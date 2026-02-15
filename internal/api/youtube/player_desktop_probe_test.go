@@ -14,12 +14,15 @@ func TestIsShortsURL_HeadStatusOK(t *testing.T) {
 				if req.Method != http.MethodHead {
 					t.Fatalf("expected HEAD request, got %s", req.Method)
 				}
+				if ua := req.Header.Get("User-Agent"); ua != "test-ua" {
+					t.Fatalf("expected User-Agent %q, got %q", "test-ua", ua)
+				}
 				return mockResponse(http.StatusOK), nil
 			}),
 		},
 	}
 
-	if !c.isShortsURL("video-id") {
+	if !c.isShortsURL("video-id", "test-ua") {
 		t.Fatal("expected short to be detected")
 	}
 	if calls != 1 {
@@ -49,7 +52,7 @@ func TestIsShortsURL_FallsBackToGetWhenHeadIsUnsupported(t *testing.T) {
 		},
 	}
 
-	if !c.isShortsURL("video-id") {
+	if !c.isShortsURL("video-id", "test-ua") {
 		t.Fatal("expected short to be detected via GET fallback")
 	}
 	if calls != 2 {
@@ -71,7 +74,7 @@ func TestIsShortsURL_HeadStatusSeeOther(t *testing.T) {
 		},
 	}
 
-	if c.isShortsURL("video-id") {
+	if c.isShortsURL("video-id", "test-ua") {
 		t.Fatal("expected non-short for 303 redirect")
 	}
 	if calls != 1 {
