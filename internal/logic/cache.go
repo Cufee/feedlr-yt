@@ -204,17 +204,10 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 		log.Warn().Str("videoID", videoID).Msg("cannot refresh uncached private video without channel id")
 		return
 	}
-	currentTitle := ""
-	if current != nil {
-		currentTitle = current.Title
-	}
-	title := resolveVideoTitle(video.Title, currentTitle, video.ID, video.Type)
-
 	update := &models.Video{
 		ChannelID:   video.ChannelID,
 		ID:          video.ID,
 		Type:        string(video.Type),
-		Title:       title,
 		Duration:    int64(video.Duration),
 		Description: video.Description,
 		PublishedAt: video.PublishedAt,
@@ -235,6 +228,13 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 			}
 		}
 	}
+
+	// Resolve title AFTER type guard so the corrected type is used
+	currentTitle := ""
+	if current != nil {
+		currentTitle = current.Title
+	}
+	update.Title = resolveVideoTitle(video.Title, currentTitle, video.ID, youtube.VideoType(update.Type))
 
 	if err := db.UpsertVideos(ctx, update); err != nil {
 		metrics.ObserveVideoRefresh("refresh_video_cache", err)

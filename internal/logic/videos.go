@@ -239,18 +239,11 @@ func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *yout
 		return err
 	}
 
-	existingTitle := ""
-	if existing != nil {
-		existingTitle = existing.Title
-	}
-	title := resolveVideoTitle(video.Title, existingTitle, video.ID, video.Type)
-
 	update := &models.Video{
 		ID:          video.ID,
 		ChannelID:   video.ChannelID,
 		Type:        string(video.Type),
 		PublishedAt: video.PublishedAt,
-		Title:       title,
 		Description: video.Description,
 		Duration:    int64(video.Duration),
 		Private:     video.Type == youtube.VideoTypePrivate,
@@ -270,6 +263,13 @@ func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *yout
 			}
 		}
 	}
+
+	// Resolve title AFTER type guard so the corrected type is used
+	existingTitle := ""
+	if existing != nil {
+		existingTitle = existing.Title
+	}
+	update.Title = resolveVideoTitle(video.Title, existingTitle, video.ID, youtube.VideoType(update.Type))
 
 	return db.UpsertVideos(ctx, update)
 }
