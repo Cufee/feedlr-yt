@@ -9,6 +9,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/netproxy"
 	"github.com/pkg/errors"
+	googletransport "google.golang.org/api/googleapi/transport"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -45,10 +46,15 @@ func NewClient(apiKey string, auth *auth.Client) (*client, error) {
 	}
 
 	c := &client{auth: auth, http: httpClient}
+	serviceHTTPClient := *httpClient
+	serviceHTTPClient.Transport = &googletransport.APIKey{
+		Transport: serviceHTTPClient.Transport,
+		Key:       apiKey,
+	}
+
 	service, err := youtube.NewService(
 		context.Background(),
-		option.WithAPIKey(apiKey),
-		option.WithHTTPClient(httpClient),
+		option.WithHTTPClient(&serviceHTTPClient),
 	)
 	metrics.ObserveYouTubeAPICall("data_v3", "new_service", err)
 	if err != nil {
