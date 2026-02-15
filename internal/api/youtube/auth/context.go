@@ -39,13 +39,15 @@ func (c *Client) newWebPlayerRequestContext() (*WebPlayerRequestContext, error) 
 	tz, tzOffset := time.Now().Zone()
 	context := WebPlayerRequestContext{
 		VisitorID: randomString(11),
+		UserAgent: userAgents[rand.Intn(len(userAgents))],
 	}
 
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Accept-Language", "en-US")
 	req.Header.Set("Referer", youtubeBaseURL+"/sw.js")
-	req.Header.Set("User-Agent", userAgents[rand.Intn(len(userAgents))])
-	req.Header.Set("Cookie", fmt.Sprintf("PREF=tz=%s;VISITOR_INFO1_LIVE=%s", strings.ReplaceAll(tz, "/", "."), context.VisitorID))
+	req.Header.Set("User-Agent", context.UserAgent)
+	req.Header.Set("Cookie", fmt.Sprintf("PREF=tz=%s;VISITOR_INFO1_LIVE=%s;CONSENT=PENDING+%d",
+		strings.ReplaceAll(tz, "/", "."), context.VisitorID, 100+rand.Intn(900)))
 
 	res, err := c.http.Do(req)
 	metrics.ObserveYouTubeOAuthCall("fetch_sw_js_data", err)
@@ -101,6 +103,7 @@ func (c *Client) newWebPlayerRequestContext() (*WebPlayerRequestContext, error) 
 
 	clientOverwrites := map[string]any{
 		"timeZone":         tz,
+		"browserVersion":   extractChromeVersion(context.UserAgent),
 		"remoteHost":       deviceInfo[3],
 		"visitorData":      deviceInfo[13],
 		"clientVersion":    deviceInfo[16],
@@ -122,7 +125,15 @@ func (c *Client) newWebPlayerRequestContext() (*WebPlayerRequestContext, error) 
 type WebPlayerRequestContext struct {
 	ApiKey    string
 	VisitorID string
+	UserAgent string
 	data      map[string]any
+}
+
+// SetHeaders sets common YouTube browser request headers.
+func (c WebPlayerRequestContext) SetHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", c.UserAgent)
+	req.Header.Set("Origin", "https://www.youtube.com")
+	req.Header.Set("Referer", "https://www.youtube.com/")
 }
 
 func (c WebPlayerRequestContext) ForVideo(token string, id string) (io.Reader, error) {
@@ -143,7 +154,7 @@ func newWebPlayerClient(overwrites map[string]any) map[string]any {
 		"clientName":         "WEB",
 		"platform":           "DESKTOP",
 		"browserName":        "Chrome",
-		"browserVersion":     "109.0.0.0",
+		"browserVersion":     "144.0.0.0",
 		"screenDensityFloat": 1,
 		"screenHeightPoints": 1440,
 		"screenPixelDensity": 1,
@@ -192,31 +203,25 @@ func randomString(length int) string {
 	return string(b)
 }
 
+// https://www.whatismybrowser.com/guides/the-latest-user-agent/chrome
 var userAgents = []string{
-	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36 Edg/109.0.1518.61",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.2 Safari/605.1.15",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+}
+
+func extractChromeVersion(ua string) string {
+	const prefix = "Chrome/"
+	idx := strings.Index(ua, prefix)
+	if idx == -1 {
+		return "144.0.0.0"
+	}
+	rest := ua[idx+len(prefix):]
+	if end := strings.IndexByte(rest, ' '); end != -1 {
+		return rest[:end]
+	}
+	return rest
 }

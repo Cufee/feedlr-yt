@@ -78,7 +78,7 @@ type DesktopPlayerVideoDetails struct {
 }
 
 // isShortsURL checks if YouTube serves the /shorts/ URL for this video (200 = short, 303 redirect = not)
-func (c *client) isShortsURL(videoID string) bool {
+func (c *client) isShortsURL(videoID string, userAgent string) bool {
 	httpClient := c.httpClientWithTimeout(5 * time.Second)
 	httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
@@ -86,7 +86,7 @@ func (c *client) isShortsURL(videoID string) bool {
 
 	shortsURL := "https://www.youtube.com/shorts/" + videoID
 
-	status, err := probeShortsURL(httpClient, http.MethodHead, shortsURL)
+	status, err := probeShortsURL(httpClient, http.MethodHead, shortsURL, userAgent)
 	metrics.ObserveYouTubeAPICall("player", "shorts_head_probe", err)
 	if err == nil && status == http.StatusOK {
 		return true
@@ -96,7 +96,7 @@ func (c *client) isShortsURL(videoID string) bool {
 	}
 
 	// Some proxies mishandle HEAD requests. Fall back to a lightweight GET probe.
-	status, err = probeShortsURL(httpClient, http.MethodGet, shortsURL)
+	status, err = probeShortsURL(httpClient, http.MethodGet, shortsURL, userAgent)
 	metrics.ObserveYouTubeAPICall("player", "shorts_get_probe", err)
 	return err == nil && status == http.StatusOK
 }
@@ -111,11 +111,13 @@ func (c *client) httpClientWithTimeout(timeout time.Duration) *http.Client {
 	return &cloned
 }
 
-func probeShortsURL(client *http.Client, method, shortsURL string) (int, error) {
+func probeShortsURL(client *http.Client, method, shortsURL, userAgent string) (int, error) {
 	req, err := http.NewRequest(method, shortsURL, nil)
 	if err != nil {
 		return 0, err
 	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Referer", "https://www.youtube.com/")
 	if method == http.MethodGet {
 		req.Header.Set("Range", "bytes=0-0")
 	}
@@ -168,6 +170,7 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	bodyContext.SetHeaders(req)
 
 	res, err := client.Do(req)
 	metrics.ObserveYouTubeAPICall("player", "player_request", err)
@@ -285,7 +288,7 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 
 	// Fallback: check if /shorts/{id} URL resolves (200 = short, 303 = not short)
 	if fullDetails.Duration > 0 && fullDetails.Duration <= 180 {
-		if c.isShortsURL(videoId) {
+		if c.isShortsURL(videoId, bodyContext.UserAgent) {
 			fullDetails.Type = VideoTypeShort
 			return &fullDetails, nil
 		}
