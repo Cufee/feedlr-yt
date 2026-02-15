@@ -69,11 +69,12 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 
 			var updated bool
 			for _, video := range recentVideos {
+				title := resolveVideoTitle(video.Title, "", video.ID, video.Type)
 				updates = append(updates, &models.Video{
 					ChannelID:   c,
 					ID:          video.ID,
 					Type:        string(video.Type),
-					Title:       video.Title,
+					Title:       title,
 					Duration:    int64(video.Duration),
 					Description: video.Description,
 					PublishedAt: video.PublishedAt,
@@ -203,12 +204,17 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 		log.Warn().Str("videoID", videoID).Msg("cannot refresh uncached private video without channel id")
 		return
 	}
+	currentTitle := ""
+	if current != nil {
+		currentTitle = current.Title
+	}
+	title := resolveVideoTitle(video.Title, currentTitle, video.ID, video.Type)
 
 	update := &models.Video{
 		ChannelID:   video.ChannelID,
 		ID:          video.ID,
 		Type:        string(video.Type),
-		Title:       video.Title,
+		Title:       title,
 		Duration:    int64(video.Duration),
 		Description: video.Description,
 		PublishedAt: video.PublishedAt,

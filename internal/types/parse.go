@@ -8,6 +8,7 @@ import (
 )
 
 func VideoToProps(video youtube.Video, channel ChannelProps) VideoProps {
+	video.Title = NormalizeVideoTitle(video.Title, video.Type, video.ID)
 	return VideoProps{
 		Video:   video,
 		Channel: channel,
@@ -19,7 +20,7 @@ func VideoModelToProps(video *models.Video, channel ChannelProps) VideoProps {
 		Video: youtube.Video{
 			Type:        youtube.VideoType(video.Type),
 			ID:          video.ID,
-			Title:       video.Title,
+			Title:       NormalizeVideoTitle(video.Title, youtube.VideoType(video.Type), video.ID),
 			Duration:    int(video.Duration),
 			Thumbnail:   fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", video.ID),
 			Description: video.Description,

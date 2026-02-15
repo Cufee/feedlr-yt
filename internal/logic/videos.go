@@ -215,6 +215,7 @@ func GetVideoByID(ctx context.Context, db interface {
 	if details.ChannelID == "" {
 		return types.VideoProps{}, errors.New("failed to get video details, channel id is blank")
 	}
+	details.Title = resolveVideoTitle(details.Title, "", details.ID, details.Type)
 
 	channel, _, err := CacheChannel(ctx, db, details.ChannelID)
 	if err != nil {
@@ -233,12 +234,24 @@ func GetVideoByID(ctx context.Context, db interface {
 }
 
 func UpdateVideoCache(ctx context.Context, db database.VideosClient, video *youtube.VideoDetails) error {
+	existingTitle := ""
+	if strings.TrimSpace(video.Title) == "" {
+		existing, err := db.GetVideoByID(ctx, video.ID)
+		if err != nil && !database.IsErrNotFound(err) {
+			return err
+		}
+		if existing != nil {
+			existingTitle = existing.Title
+		}
+	}
+	title := resolveVideoTitle(video.Title, existingTitle, video.ID, video.Type)
+
 	err := db.UpsertVideos(ctx, &models.Video{
 		ID:          video.ID,
 		ChannelID:   video.ChannelID,
 		Type:        string(video.Type),
 		PublishedAt: video.PublishedAt,
-		Title:       video.Title,
+		Title:       title,
 		Description: video.Description,
 		Duration:    int64(video.Duration),
 		Private:     video.Type == youtube.VideoTypePrivate,
