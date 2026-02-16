@@ -1,11 +1,13 @@
 package youtube
 
 import (
+	"context"
 	"errors"
 	"net/url"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/metrics"
+	"github.com/sethvargo/go-retry"
 )
 
 var (
@@ -133,14 +135,25 @@ type PlayerVideoDetails struct {
 
 var playerURL, _ = url.Parse("https://www.youtube.com/youtubei/v1/player")
 
-var playerLimiter = time.NewTicker(time.Second / 5)
+var playerLimiter = time.NewTicker(time.Second / 25)
 
-func (c *client) GetVideoPlayerDetails(videoId string, tries ...int) (*VideoDetails, error) {
-	<-playerLimiter.C
-	details, err := c.getDesktopPlayerDetails(videoId, tries...)
+func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
+	var result *VideoDetails
+	b := retry.WithMaxRetries(3, retry.NewConstant(500*time.Millisecond))
+
+	err := retry.Do(context.Background(), b, func(_ context.Context) error {
+		<-playerLimiter.C
+		details, err := c.getDesktopPlayerDetails(videoId)
+		if err != nil {
+			if errors.Is(err, ErrLoginRequired) {
+				metrics.ObserveYouTubeAPICall("player", "bot_detection", err)
+			}
+			return retry.RetryableError(err)
+		}
+		result = details
+		return nil
+	})
+
 	metrics.ObserveYouTubeAPICall("player", "get_video_player_details", err)
-	if err != nil {
-		return nil, err
-	}
-	return details, nil
+	return result, err
 }

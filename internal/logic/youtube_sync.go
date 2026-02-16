@@ -17,6 +17,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/sethvargo/go-retry"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/googleapi"
@@ -639,30 +640,22 @@ func listPlaylistItems(ctx context.Context, service *ytv3.Service, playlistID st
 }
 
 func listPlaylistItemsWithRetry(ctx context.Context, service *ytv3.Service, playlistID string, maxResults int64) ([]playlistRemoteItem, error) {
-	var lastErr error
+	var result []playlistRemoteItem
+	b := retry.WithMaxRetries(youtubeSyncListRetryAttempts, retry.NewConstant(250*time.Millisecond))
 
-	for attempt := 1; attempt <= youtubeSyncListRetryAttempts; attempt++ {
+	err := retry.Do(ctx, b, func(ctx context.Context) error {
 		items, err := listPlaylistItems(ctx, service, playlistID, maxResults)
-		if err == nil {
-			return items, nil
+		if err != nil {
+			if isYouTubePlaylistNotFound(err) {
+				return retry.RetryableError(err)
+			}
+			return err
 		}
-		lastErr = err
+		result = items
+		return nil
+	})
 
-		if !isYouTubePlaylistNotFound(err) || attempt == youtubeSyncListRetryAttempts {
-			return nil, err
-		}
-
-		delay := time.Duration(attempt) * 250 * time.Millisecond
-		timer := time.NewTimer(delay)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return nil, ctx.Err()
-		case <-timer.C:
-		}
-	}
-
-	return nil, lastErr
+	return result, err
 }
 
 func insertVideoIntoPlaylist(ctx context.Context, service *ytv3.Service, playlistID, videoID string, position int64) error {
