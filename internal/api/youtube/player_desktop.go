@@ -141,7 +141,7 @@ func isThumbnailPortrait(thumbnail Thumbnail) bool {
 	return false
 }
 
-func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDetails, error) {
+func (c *client) getDesktopPlayerDetails(videoId string) (*VideoDetails, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -175,9 +175,6 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	res, err := client.Do(req)
 	metrics.ObserveYouTubeAPICall("player", "player_request", err)
 	if err != nil {
-		if len(tries) > 0 && tries[0] > 0 {
-			return c.getDesktopPlayerDetails(videoId, tries[0]-1)
-		}
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -189,9 +186,6 @@ func (c *client) getDesktopPlayerDetails(videoId string, tries ...int) (*VideoDe
 	}
 	if res.StatusCode != 200 {
 		metrics.ObserveYouTubeAPICall("player", "player_status", errors.New("non_200_status"))
-		if len(tries) > 0 && tries[0] > 0 {
-			return c.getDesktopPlayerDetails(videoId, tries[0]-1)
-		}
 		log.Debug().Str("body", string(responseBody)).Int("status", res.StatusCode).Msg("invalid response")
 		return nil, errors.New("bad response status code")
 	}

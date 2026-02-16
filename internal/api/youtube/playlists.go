@@ -45,7 +45,7 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 	}
 
 	var group errgroup.Group
-	group.SetLimit(3)
+	group.SetLimit(5)
 
 	var videoDetails = make(chan *VideoDetails, 50)
 
@@ -69,7 +69,7 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 				return nil
 			}
 
-			details, err := c.GetVideoPlayerDetails(playlistItem.Snippet.ResourceId.VideoId, 2)
+			details, err := c.GetVideoPlayerDetails(playlistItem.Snippet.ResourceId.VideoId)
 			if err != nil {
 				return err
 			}

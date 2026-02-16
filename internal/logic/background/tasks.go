@@ -25,7 +25,7 @@ func CacheAllChannelsWithVideos(db database.Client) error {
 	}
 
 	var group errgroup.Group
-	group.SetLimit(3)
+	group.SetLimit(10)
 
 	for _, c := range channels {
 		id := c
