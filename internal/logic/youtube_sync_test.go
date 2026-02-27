@@ -1,9 +1,12 @@
 package logic
 
 import (
+	"context"
+	stdErrors "errors"
 	"testing"
 
 	"github.com/matryer/is"
+	"golang.org/x/oauth2"
 )
 
 func TestYouTubeSyncCryptoRoundTrip(t *testing.T) {
@@ -107,4 +110,72 @@ func TestBuildPlaylistSyncPlanInsertPositionsIgnoreItemsPlannedForDelete(t *test
 	is.Equal(len(plan.ToAdd), 1)
 	is.Equal(plan.ToAdd[0].VideoID, "n1")
 	is.Equal(plan.ToAdd[0].Position, int64(0))
+}
+
+type fixedTokenSource struct {
+	token *oauth2.Token
+	err   error
+}
+
+func (s *fixedTokenSource) Token() (*oauth2.Token, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.token, nil
+}
+
+func TestPersistingRefreshTokenSourceSkipsPersistWhenRefreshTokenUnchanged(t *testing.T) {
+	is := is.New(t)
+
+	calls := 0
+	src := &persistingRefreshTokenSource{
+		next:                &fixedTokenSource{token: &oauth2.Token{RefreshToken: "same"}},
+		ctx:                 context.Background(),
+		currentRefreshToken: "same",
+		onRefreshToken: func(context.Context, string) error {
+			calls++
+			return nil
+		},
+	}
+
+	_, err := src.Token()
+	is.NoErr(err)
+	is.Equal(calls, 0)
+}
+
+func TestPersistingRefreshTokenSourcePersistsOnRotation(t *testing.T) {
+	is := is.New(t)
+
+	var gotToken string
+	src := &persistingRefreshTokenSource{
+		next:                &fixedTokenSource{token: &oauth2.Token{RefreshToken: "new"}},
+		ctx:                 context.Background(),
+		currentRefreshToken: "old",
+		onRefreshToken: func(_ context.Context, refreshToken string) error {
+			gotToken = refreshToken
+			return nil
+		},
+	}
+
+	_, err := src.Token()
+	is.NoErr(err)
+	is.Equal(gotToken, "new")
+	is.Equal(src.currentRefreshToken, "new")
+}
+
+func TestPersistingRefreshTokenSourceReturnsPersistError(t *testing.T) {
+	is := is.New(t)
+
+	persistErr := stdErrors.New("persist failed")
+	src := &persistingRefreshTokenSource{
+		next:                &fixedTokenSource{token: &oauth2.Token{RefreshToken: "new"}},
+		ctx:                 context.Background(),
+		currentRefreshToken: "old",
+		onRefreshToken: func(context.Context, string) error {
+			return persistErr
+		},
+	}
+
+	_, err := src.Token()
+	is.True(stdErrors.Is(err, persistErr))
 }
