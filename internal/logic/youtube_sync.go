@@ -46,6 +46,31 @@ type YouTubeSyncService struct {
 	maxUsersPerTick          int
 }
 
+type persistingRefreshTokenSource struct {
+	next                oauth2.TokenSource
+	ctx                 context.Context
+	currentRefreshToken string
+	onRefreshToken      func(context.Context, string) error
+}
+
+func (s *persistingRefreshTokenSource) Token() (*oauth2.Token, error) {
+	token, err := s.next.Token()
+	if err != nil {
+		return nil, err
+	}
+
+	if token == nil || token.RefreshToken == "" || token.RefreshToken == s.currentRefreshToken {
+		return token, nil
+	}
+
+	if err := s.onRefreshToken(s.ctx, token.RefreshToken); err != nil {
+		return nil, err
+	}
+
+	s.currentRefreshToken = token.RefreshToken
+	return token, nil
+}
+
 func NewYouTubeSyncService(db database.Client) (*YouTubeSyncService, error) {
 	service := &YouTubeSyncService{
 		db: db,
@@ -375,6 +400,7 @@ func (s *YouTubeSyncService) youtubeServiceForAccount(ctx context.Context, accou
 	if err != nil {
 		return nil, err
 	}
+	currentRefreshToken := string(refreshToken)
 	defer func() {
 		for i := range refreshToken {
 			refreshToken[i] = 0
@@ -387,9 +413,25 @@ func (s *YouTubeSyncService) youtubeServiceForAccount(ctx context.Context, accou
 	}
 	oauthCtx := context.WithValue(ctx, oauth2.HTTPClient, proxyHTTPClient)
 
-	tokenSource := s.oauthConfig.TokenSource(oauthCtx, &oauth2.Token{
-		RefreshToken: string(refreshToken),
-	})
+	tokenSource := s.oauthConfig.TokenSource(oauthCtx, &oauth2.Token{RefreshToken: currentRefreshToken})
+	tokenSource = &persistingRefreshTokenSource{
+		next:                tokenSource,
+		ctx:                 oauthCtx,
+		currentRefreshToken: currentRefreshToken,
+		onRefreshToken: func(ctx context.Context, newRefreshToken string) error {
+			encrypted, err := s.crypto.Encrypt([]byte(newRefreshToken), account.UserID)
+			if err != nil {
+				return errors.Wrap(err, "failed to encrypt rotated refresh token")
+			}
+
+			err = s.db.UpdateYouTubeSyncRefreshToken(ctx, account.UserID, encrypted, s.crypto.secretHash)
+			if err != nil {
+				return errors.Wrap(err, "failed to persist rotated refresh token")
+			}
+
+			return nil
+		},
+	}
 
 	httpClient := oauth2.NewClient(oauthCtx, tokenSource)
 	service, err := ytv3.NewService(oauthCtx, option.WithHTTPClient(httpClient))

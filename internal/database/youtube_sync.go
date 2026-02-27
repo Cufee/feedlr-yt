@@ -15,6 +15,7 @@ import (
 type YouTubeSyncClient interface {
 	GetYouTubeSyncAccountByUserID(ctx context.Context, userID string) (*models.YoutubeSyncAccount, error)
 	UpsertYouTubeSyncCredentials(ctx context.Context, userID string, encryptedRefreshToken []byte, secretHash string) error
+	UpdateYouTubeSyncRefreshToken(ctx context.Context, userID string, encryptedRefreshToken []byte, secretHash string) error
 	SetYouTubeSyncAccountEnabled(ctx context.Context, userID string, enabled bool) error
 	DeleteYouTubeSyncAccount(ctx context.Context, userID string) error
 	ListEnabledYouTubeSyncAccounts(ctx context.Context, limit int) ([]*models.YoutubeSyncAccount, error)
@@ -69,6 +70,23 @@ func (c *sqliteClient) SetYouTubeSyncAccountEnabled(ctx context.Context, userID 
 		models.YoutubeSyncAccountWhere.UserID.EQ(userID),
 	).UpdateAll(ctx, c.db, models.M{
 		models.YoutubeSyncAccountColumns.SyncEnabled: enabled,
+	})
+	if err != nil {
+		return err
+	}
+	if updated == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (c *sqliteClient) UpdateYouTubeSyncRefreshToken(ctx context.Context, userID string, encryptedRefreshToken []byte, secretHash string) error {
+	updated, err := models.YoutubeSyncAccounts(
+		models.YoutubeSyncAccountWhere.UserID.EQ(userID),
+	).UpdateAll(ctx, c.db, models.M{
+		models.YoutubeSyncAccountColumns.RefreshTokenEnc: encryptedRefreshToken,
+		models.YoutubeSyncAccountColumns.EncSecretHash:   secretHash,
+		models.YoutubeSyncAccountColumns.UpdatedAt:       time.Now().UTC(),
 	})
 	if err != nil {
 		return err
