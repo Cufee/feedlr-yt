@@ -1,0 +1,51 @@
+package app
+
+import (
+	"fmt"
+	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
+	"github.com/cufee/feedlr-yt/internal/templates/components/playlist"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
+	"github.com/cufee/feedlr-yt/internal/types"
+)
+
+templ PlaylistDetail(props logic.PlaylistPageProps) {
+	<head>
+		<title>{ fmt.Sprintf("Feedlr - %s", props.Playlist.Name) }</title>
+	</head>
+	<div class="relative flex w-full flex-col gap-4">
+		@ui.Card(ui.WithCardClass("w-full p-4 md:p-5")) {
+			<div class="grow">
+				@playlist.PlaylistHeader(props.Playlist, playlist.PlaylistActions(props.Playlist))
+			</div>
+		}
+		@PlaylistVideoFeed(props)
+		@playlist.EditPlaylistDialog(props.Playlist)
+		@dialogCloseScript()
+	</div>
+}
+
+templ PlaylistVideoFeed(props logic.PlaylistPageProps) {
+	<div id="playlist-video-feed" class="ui-motion-swap w-full flex flex-col gap-4">
+		if len(props.New) == 0 && len(props.Watched) == 0 {
+			@ui.EmptyState("No videos yet", "Add videos from any video page using the playlist dropdown", "")
+		} else {
+			if len(props.New) > 0 {
+				<div class="ui-feed-divider"><span>new</span></div>
+			}
+			@feed.VideoFeed(props.New, playlistReturnURL(props.Playlist.ID), feed.WithChannelName, feed.WithProgressBar, feed.WithProgressOverlay, feed.WithPlaylistActions(props.Playlist.ID))
+			if len(props.New) > 0 && len(props.Watched) > 0 {
+				<div class="ui-feed-divider"><span>watched</span></div>
+			}
+			if len(props.Watched) > 0 {
+				@feed.VideoFeed(props.Watched, playlistReturnURL(props.Playlist.ID), feed.WithChannelName, feed.WithProgressBar, feed.WithProgressOverlay, feed.WithPlaylistActions(props.Playlist.ID))
+			}
+		}
+	</div>
+}
+
+func playlistReturnURL(id string) string {
+	return fmt.Sprintf("/app/playlist/%s", id)
+}
+
+var _ = types.PlaylistProps{}

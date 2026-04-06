@@ -1,0 +1,47 @@
+package app
+
+import (
+	"github.com/cufee/feedlr-yt/internal/templates/components/playlist"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
+	"github.com/cufee/feedlr-yt/internal/types"
+)
+
+type PlaylistsPageProps struct {
+	Playlists []types.PlaylistProps
+}
+
+templ PlaylistsIndex(props PlaylistsPageProps) {
+	<head><title>Feedlr - Playlists</title></head>
+	<div id="app-playlists" class="flex flex-col gap-4">
+		<div class="flex w-full justify-center gap-2 pb-0.5">
+			<button class="ui-btn ui-btn-ghost ui-btn-sm px-4" onclick="document.getElementById('create-playlist-modal').showModal()">
+				New Playlist
+			</button>
+			<button class="ui-btn ui-btn-ghost ui-btn-sm px-4" onclick="document.getElementById('import-playlist-modal').showModal()">
+				Import from YouTube
+			</button>
+		</div>
+		if len(props.Playlists) == 0 {
+			@ui.EmptyState("No playlists yet", "Create a playlist or import one from YouTube", "")
+		} else {
+			<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3">
+				for _, p := range props.Playlists {
+					<div class="ui-motion-swap">
+						@playlist.PlaylistCard(p)
+					</div>
+				}
+			</div>
+		}
+		@playlist.CreatePlaylistDialog()
+		@playlist.ImportPlaylistDialog()
+		@dialogCloseScript()
+	</div>
+}
+
+script dialogCloseScript() {
+	document.querySelectorAll('.ui-dialog').forEach(modal => {
+		modal.addEventListener('click', (e) => {
+			if (e.target === modal) modal.close();
+		});
+	});
+}

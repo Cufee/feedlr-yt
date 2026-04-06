@@ -50,6 +50,20 @@ func SubscriptionChannelModelToProps(sub *models.Subscription) ChannelProps {
 	return c
 }
 
+func PlaylistModelToProps(p *models.Playlist, count int, progress int, thumbnailVideoID string) PlaylistProps {
+	return PlaylistProps{
+		ID:                p.ID,
+		Name:              p.Name,
+		Description:       p.Description,
+		Slug:              p.Slug,
+		VideoCount:        count,
+		Progress:          progress,
+		ThumbnailVideoID:  thumbnailVideoID,
+		YouTubePlaylistID: p.YoutubePlaylistID.String,
+		UpdatedAt:         p.UpdatedAt,
+	}
+}
+
 func PasskeyToProps(record *models.Passkey) PasskeyProps {
 	return PasskeyProps{
 		ID:        record.ID,

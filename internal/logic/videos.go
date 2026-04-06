@@ -467,6 +467,36 @@ func VideoIDFromURL(link string) (string, bool) {
 	return "", false
 }
 
+func PlaylistIDFromURL(link string) (string, bool) {
+	link = strings.TrimSpace(link)
+	if link == "" {
+		return "", false
+	}
+
+	parsed, err := url.Parse(link)
+	if err != nil {
+		return "", false
+	}
+
+	// Try extracting from ?list= query param
+	id := parsed.Query().Get("list")
+
+	// If no list param, treat the whole input as a bare playlist ID
+	if id == "" {
+		id = link
+	}
+
+	id = strings.TrimSpace(id)
+	if len(id) < 10 {
+		return "", false
+	}
+	// Validate playlist ID format (alphanumeric, hyphens, underscores)
+	if matched, _ := regexp.MatchString(`^[a-zA-Z0-9_-]+$`, id); !matched {
+		return "", false
+	}
+	return id, true
+}
+
 func trimVideoList(limit, batchSize int, videos []types.VideoProps) []types.VideoProps {
 	if len(videos) > limit {
 		return videos[:limit]

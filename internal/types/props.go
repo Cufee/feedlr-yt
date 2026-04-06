@@ -127,6 +127,18 @@ type SegmentProps struct {
 	End   int `json:"end"`
 }
 
+type PlaylistProps struct {
+	ID                string
+	Name              string
+	Description       string
+	Slug              string
+	VideoCount        int
+	Progress          int // 0-100 percentage of videos watched
+	ThumbnailVideoID  string
+	YouTubePlaylistID string
+	UpdatedAt         time.Time
+}
+
 type VideoPlayerProps struct {
 	Authenticated bool `json:"authenticated"`
 
@@ -139,6 +151,9 @@ type VideoPlayerProps struct {
 	SkipSegmentsJSON string         `json:"skipSegmentsJSON"`
 
 	ReturnURL string `json:"returnURL"`
+
+	UserPlaylists      []PlaylistProps    `json:"-"`
+	VideoInPlaylistIDs map[string]bool    `json:"-"`
 }
 
 func (v *VideoPlayerProps) AddSegments(segments ...sponsorblock.Segment) error {

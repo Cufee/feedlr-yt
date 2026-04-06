@@ -236,6 +236,11 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 	}
 	update.Title = resolveVideoTitle(video.Title, currentTitle, video.ID, youtube.VideoType(update.Type))
 
+	// Ensure channel exists before upserting video (FK constraint on channel_id)
+	if _, _, err := CacheChannel(ctx, db, video.ChannelID); err != nil {
+		log.Warn().Err(err).Str("videoID", videoID).Str("channelID", video.ChannelID).Msg("failed to cache channel before video upsert")
+	}
+
 	if err := db.UpsertVideos(ctx, update); err != nil {
 		metrics.ObserveVideoRefresh("refresh_video_cache", err)
 		log.Warn().Err(err).Str("videoID", videoID).Msg("failed to upsert video during cache refresh")

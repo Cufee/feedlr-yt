@@ -840,7 +840,7 @@ func testPlaylistsSelect(t *testing.T) {
 }
 
 var (
-	playlistDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `UserID`: `TEXT`, `Slug`: `TEXT`, `Name`: `TEXT`, `System`: `BOOLEAN`, `TTLDays`: `INTEGER`, `MaxSize`: `INTEGER`}
+	playlistDBTypes = map[string]string{`ID`: `TEXT`, `CreatedAt`: `DATE`, `UpdatedAt`: `DATE`, `UserID`: `TEXT`, `Slug`: `TEXT`, `Name`: `TEXT`, `System`: `BOOLEAN`, `TTLDays`: `INTEGER`, `MaxSize`: `INTEGER`, `Description`: `TEXT`, `YoutubePlaylistID`: `TEXT`}
 	_               = bytes.MinRead
 )
 

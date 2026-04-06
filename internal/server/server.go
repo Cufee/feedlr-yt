@@ -105,6 +105,16 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		api.Post("/videos/:id/watch-later", toFiber(rapi.ToggleWatchLater))
 		api.Post("/videos/open", toFiber(rapi.OpenVideo))
 
+		api.Post("/playlists", toFiber(rapi.CreatePlaylist))
+		api.Post("/playlists/import", toFiber(rapi.ImportPlaylist))
+		api.Post("/playlists/add-video", toFiber(rapi.AddVideoToPlaylist))
+		api.Post("/playlists/:id", toFiber(rapi.UpdatePlaylist))
+		api.Delete("/playlists/:id", toFiber(rapi.DeletePlaylist))
+		api.Post("/playlists/:id/sync", toFiber(rapi.SyncPlaylist))
+		api.Post("/playlists/:id/videos/:videoID/progress", toFiber(rapi.UpdatePlaylistVideoProgress))
+		api.Post("/playlists/:id/videos/:videoID/remove", toFiber(rapi.RemoveVideoFromPlaylist))
+		api.Post("/playlists/:id/videos/:videoID/move", toFiber(rapi.MovePlaylistItem))
+
 		api.Get("/channels/search", toFiber(rapi.SearchChannels))
 		api.Post("/channels/:id/subscribe", toFiber(rapi.CreateSubscription))
 		api.Post("/channels/:id/unsubscribe", toFiber(rapi.RemoveSubscription))
@@ -128,6 +138,9 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		app.All("/settings", toFiber(rapp.Settings))
 		app.All("/onboarding", toFiber(rapp.Onboarding))
 		app.All("/subscriptions", toFiber(rapp.Subscriptions))
+		app.All("/playlists", toFiber(rapp.PlaylistsIndex))
+		app.All("/playlist/:id", toFiber(rapp.PlaylistDetail))
+		app.Get("/playlist/:id/feed", toFiber(rapp.PlaylistFeed))
 
 		// This last handler is a catch-all for any routes that don't exist
 		server.Use(func(c *fiber.Ctx) error {

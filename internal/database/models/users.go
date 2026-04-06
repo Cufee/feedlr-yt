@@ -79,26 +79,29 @@ var UserWhere = struct {
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	YoutubeSyncAccount string
-	Playlists          string
-	Settings           string
-	Subscriptions      string
-	Views              string
+	YoutubeSyncAccount   string
+	YoutubeTVSyncAccount string
+	Playlists            string
+	Settings             string
+	Subscriptions        string
+	Views                string
 }{
-	YoutubeSyncAccount: "YoutubeSyncAccount",
-	Playlists:          "Playlists",
-	Settings:           "Settings",
-	Subscriptions:      "Subscriptions",
-	Views:              "Views",
+	YoutubeSyncAccount:   "YoutubeSyncAccount",
+	YoutubeTVSyncAccount: "YoutubeTVSyncAccount",
+	Playlists:            "Playlists",
+	Settings:             "Settings",
+	Subscriptions:        "Subscriptions",
+	Views:                "Views",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	YoutubeSyncAccount *YoutubeSyncAccount `boil:"YoutubeSyncAccount" json:"YoutubeSyncAccount" toml:"YoutubeSyncAccount" yaml:"YoutubeSyncAccount"`
-	Playlists          PlaylistSlice       `boil:"Playlists" json:"Playlists" toml:"Playlists" yaml:"Playlists"`
-	Settings           SettingSlice        `boil:"Settings" json:"Settings" toml:"Settings" yaml:"Settings"`
-	Subscriptions      SubscriptionSlice   `boil:"Subscriptions" json:"Subscriptions" toml:"Subscriptions" yaml:"Subscriptions"`
-	Views              ViewSlice           `boil:"Views" json:"Views" toml:"Views" yaml:"Views"`
+	YoutubeSyncAccount   *YoutubeSyncAccount   `boil:"YoutubeSyncAccount" json:"YoutubeSyncAccount" toml:"YoutubeSyncAccount" yaml:"YoutubeSyncAccount"`
+	YoutubeTVSyncAccount *YoutubeTVSyncAccount `boil:"YoutubeTVSyncAccount" json:"YoutubeTVSyncAccount" toml:"YoutubeTVSyncAccount" yaml:"YoutubeTVSyncAccount"`
+	Playlists            PlaylistSlice         `boil:"Playlists" json:"Playlists" toml:"Playlists" yaml:"Playlists"`
+	Settings             SettingSlice          `boil:"Settings" json:"Settings" toml:"Settings" yaml:"Settings"`
+	Subscriptions        SubscriptionSlice     `boil:"Subscriptions" json:"Subscriptions" toml:"Subscriptions" yaml:"Subscriptions"`
+	Views                ViewSlice             `boil:"Views" json:"Views" toml:"Views" yaml:"Views"`
 }
 
 // NewStruct creates a new relationship struct
@@ -120,6 +123,22 @@ func (r *userR) GetYoutubeSyncAccount() *YoutubeSyncAccount {
 	}
 
 	return r.YoutubeSyncAccount
+}
+
+func (o *User) GetYoutubeTVSyncAccount() *YoutubeTVSyncAccount {
+	if o == nil {
+		return nil
+	}
+
+	return o.R.GetYoutubeTVSyncAccount()
+}
+
+func (r *userR) GetYoutubeTVSyncAccount() *YoutubeTVSyncAccount {
+	if r == nil {
+		return nil
+	}
+
+	return r.YoutubeTVSyncAccount
 }
 
 func (o *User) GetPlaylists() PlaylistSlice {
@@ -513,6 +532,17 @@ func (o *User) YoutubeSyncAccount(mods ...qm.QueryMod) youtubeSyncAccountQuery {
 	return YoutubeSyncAccounts(queryMods...)
 }
 
+// YoutubeTVSyncAccount pointed to by the foreign key.
+func (o *User) YoutubeTVSyncAccount(mods ...qm.QueryMod) youtubeTVSyncAccountQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"user_id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	return YoutubeTVSyncAccounts(queryMods...)
+}
+
 // Playlists retrieves all the playlist's Playlists with an executor.
 func (o *User) Playlists(mods ...qm.QueryMod) playlistQuery {
 	var queryMods []qm.QueryMod
@@ -676,6 +706,123 @@ func (userL) LoadYoutubeSyncAccount(ctx context.Context, e boil.ContextExecutor,
 				local.R.YoutubeSyncAccount = foreign
 				if foreign.R == nil {
 					foreign.R = &youtubeSyncAccountR{}
+				}
+				foreign.R.User = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadYoutubeTVSyncAccount allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (userL) LoadYoutubeTVSyncAccount(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser any, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		var ok bool
+		object, ok = maybeUser.(*User)
+		if !ok {
+			object = new(User)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeUser)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUser))
+			}
+		}
+	} else {
+		s, ok := maybeUser.(*[]*User)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeUser)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUser))
+			}
+		}
+	}
+
+	args := make(map[any]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args[object.ID] = struct{}{}
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			args[obj.ID] = struct{}{}
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	argsSlice := make([]any, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
+	}
+
+	query := NewQuery(
+		qm.From(`youtube_tv_sync_accounts`),
+		qm.WhereIn(`youtube_tv_sync_accounts.user_id in ?`, argsSlice...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load YoutubeTVSyncAccount")
+	}
+
+	var resultSlice []*YoutubeTVSyncAccount
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice YoutubeTVSyncAccount")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for youtube_tv_sync_accounts")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for youtube_tv_sync_accounts")
+	}
+
+	if len(youtubeTVSyncAccountAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.YoutubeTVSyncAccount = foreign
+		if foreign.R == nil {
+			foreign.R = &youtubeTVSyncAccountR{}
+		}
+		foreign.R.User = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.UserID {
+				local.R.YoutubeTVSyncAccount = foreign
+				if foreign.R == nil {
+					foreign.R = &youtubeTVSyncAccountR{}
 				}
 				foreign.R.User = local
 				break
@@ -1180,6 +1327,56 @@ func (o *User) SetYoutubeSyncAccount(ctx context.Context, exec boil.ContextExecu
 
 	if related.R == nil {
 		related.R = &youtubeSyncAccountR{
+			User: o,
+		}
+	} else {
+		related.R.User = o
+	}
+	return nil
+}
+
+// SetYoutubeTVSyncAccount of the user to the related item.
+// Sets o.R.YoutubeTVSyncAccount to related.
+// Adds o to related.R.User.
+func (o *User) SetYoutubeTVSyncAccount(ctx context.Context, exec boil.ContextExecutor, insert bool, related *YoutubeTVSyncAccount) error {
+	var err error
+
+	if insert {
+		related.UserID = o.ID
+
+		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"youtube_tv_sync_accounts\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 0, []string{"user_id"}),
+			strmangle.WhereClause("\"", "\"", 0, youtubeTVSyncAccountPrimaryKeyColumns),
+		)
+		values := []any{o.ID, related.ID}
+
+		if boil.IsDebug(ctx) {
+			writer := boil.DebugWriterFrom(ctx)
+			fmt.Fprintln(writer, updateQuery)
+			fmt.Fprintln(writer, values)
+		}
+		if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.UserID = o.ID
+	}
+
+	if o.R == nil {
+		o.R = &userR{
+			YoutubeTVSyncAccount: related,
+		}
+	} else {
+		o.R.YoutubeTVSyncAccount = related
+	}
+
+	if related.R == nil {
+		related.R = &youtubeTVSyncAccountR{
 			User: o,
 		}
 	} else {

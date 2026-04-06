@@ -24,62 +24,72 @@ import (
 
 // Playlist is an object representing the database table.
 type Playlist struct {
-	ID        string     `boil:"id" json:"id" toml:"id" yaml:"id"`
-	CreatedAt time.Time  `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt time.Time  `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	UserID    string     `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
-	Slug      string     `boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Name      string     `boil:"name" json:"name" toml:"name" yaml:"name"`
-	System    bool       `boil:"system" json:"system" toml:"system" yaml:"system"`
-	TTLDays   null.Int64 `boil:"ttl_days" json:"ttl_days,omitempty" toml:"ttl_days" yaml:"ttl_days,omitempty"`
-	MaxSize   null.Int64 `boil:"max_size" json:"max_size,omitempty" toml:"max_size" yaml:"max_size,omitempty"`
+	ID                string      `boil:"id" json:"id" toml:"id" yaml:"id"`
+	CreatedAt         time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt         time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	UserID            string      `boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	Slug              string      `boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Name              string      `boil:"name" json:"name" toml:"name" yaml:"name"`
+	System            bool        `boil:"system" json:"system" toml:"system" yaml:"system"`
+	TTLDays           null.Int64  `boil:"ttl_days" json:"ttl_days,omitempty" toml:"ttl_days" yaml:"ttl_days,omitempty"`
+	MaxSize           null.Int64  `boil:"max_size" json:"max_size,omitempty" toml:"max_size" yaml:"max_size,omitempty"`
+	Description       string      `boil:"description" json:"description" toml:"description" yaml:"description"`
+	YoutubePlaylistID null.String `boil:"youtube_playlist_id" json:"youtube_playlist_id,omitempty" toml:"youtube_playlist_id" yaml:"youtube_playlist_id,omitempty"`
 
 	R *playlistR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playlistL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PlaylistColumns = struct {
-	ID        string
-	CreatedAt string
-	UpdatedAt string
-	UserID    string
-	Slug      string
-	Name      string
-	System    string
-	TTLDays   string
-	MaxSize   string
+	ID                string
+	CreatedAt         string
+	UpdatedAt         string
+	UserID            string
+	Slug              string
+	Name              string
+	System            string
+	TTLDays           string
+	MaxSize           string
+	Description       string
+	YoutubePlaylistID string
 }{
-	ID:        "id",
-	CreatedAt: "created_at",
-	UpdatedAt: "updated_at",
-	UserID:    "user_id",
-	Slug:      "slug",
-	Name:      "name",
-	System:    "system",
-	TTLDays:   "ttl_days",
-	MaxSize:   "max_size",
+	ID:                "id",
+	CreatedAt:         "created_at",
+	UpdatedAt:         "updated_at",
+	UserID:            "user_id",
+	Slug:              "slug",
+	Name:              "name",
+	System:            "system",
+	TTLDays:           "ttl_days",
+	MaxSize:           "max_size",
+	Description:       "description",
+	YoutubePlaylistID: "youtube_playlist_id",
 }
 
 var PlaylistTableColumns = struct {
-	ID        string
-	CreatedAt string
-	UpdatedAt string
-	UserID    string
-	Slug      string
-	Name      string
-	System    string
-	TTLDays   string
-	MaxSize   string
+	ID                string
+	CreatedAt         string
+	UpdatedAt         string
+	UserID            string
+	Slug              string
+	Name              string
+	System            string
+	TTLDays           string
+	MaxSize           string
+	Description       string
+	YoutubePlaylistID string
 }{
-	ID:        "playlists.id",
-	CreatedAt: "playlists.created_at",
-	UpdatedAt: "playlists.updated_at",
-	UserID:    "playlists.user_id",
-	Slug:      "playlists.slug",
-	Name:      "playlists.name",
-	System:    "playlists.system",
-	TTLDays:   "playlists.ttl_days",
-	MaxSize:   "playlists.max_size",
+	ID:                "playlists.id",
+	CreatedAt:         "playlists.created_at",
+	UpdatedAt:         "playlists.updated_at",
+	UserID:            "playlists.user_id",
+	Slug:              "playlists.slug",
+	Name:              "playlists.name",
+	System:            "playlists.system",
+	TTLDays:           "playlists.ttl_days",
+	MaxSize:           "playlists.max_size",
+	Description:       "playlists.description",
+	YoutubePlaylistID: "playlists.youtube_playlist_id",
 }
 
 // Generated where
@@ -131,26 +141,74 @@ func (w whereHelpernull_Int64) NIN(slice []int64) qm.QueryMod {
 func (w whereHelpernull_Int64) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_Int64) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
+type whereHelpernull_String struct{ field string }
+
+func (w whereHelpernull_String) EQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_String) NEQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_String) LT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_String) LTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_String) GT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+func (w whereHelpernull_String) LIKE(x null.String) qm.QueryMod {
+	return qm.Where(w.field+" LIKE ?", x)
+}
+func (w whereHelpernull_String) NLIKE(x null.String) qm.QueryMod {
+	return qm.Where(w.field+" NOT LIKE ?", x)
+}
+func (w whereHelpernull_String) IN(slice []string) qm.QueryMod {
+	values := make([]any, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
+}
+func (w whereHelpernull_String) NIN(slice []string) qm.QueryMod {
+	values := make([]any, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
+}
+
+func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
 var PlaylistWhere = struct {
-	ID        whereHelperstring
-	CreatedAt whereHelpertime_Time
-	UpdatedAt whereHelpertime_Time
-	UserID    whereHelperstring
-	Slug      whereHelperstring
-	Name      whereHelperstring
-	System    whereHelperbool
-	TTLDays   whereHelpernull_Int64
-	MaxSize   whereHelpernull_Int64
+	ID                whereHelperstring
+	CreatedAt         whereHelpertime_Time
+	UpdatedAt         whereHelpertime_Time
+	UserID            whereHelperstring
+	Slug              whereHelperstring
+	Name              whereHelperstring
+	System            whereHelperbool
+	TTLDays           whereHelpernull_Int64
+	MaxSize           whereHelpernull_Int64
+	Description       whereHelperstring
+	YoutubePlaylistID whereHelpernull_String
 }{
-	ID:        whereHelperstring{field: "\"playlists\".\"id\""},
-	CreatedAt: whereHelpertime_Time{field: "\"playlists\".\"created_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"playlists\".\"updated_at\""},
-	UserID:    whereHelperstring{field: "\"playlists\".\"user_id\""},
-	Slug:      whereHelperstring{field: "\"playlists\".\"slug\""},
-	Name:      whereHelperstring{field: "\"playlists\".\"name\""},
-	System:    whereHelperbool{field: "\"playlists\".\"system\""},
-	TTLDays:   whereHelpernull_Int64{field: "\"playlists\".\"ttl_days\""},
-	MaxSize:   whereHelpernull_Int64{field: "\"playlists\".\"max_size\""},
+	ID:                whereHelperstring{field: "\"playlists\".\"id\""},
+	CreatedAt:         whereHelpertime_Time{field: "\"playlists\".\"created_at\""},
+	UpdatedAt:         whereHelpertime_Time{field: "\"playlists\".\"updated_at\""},
+	UserID:            whereHelperstring{field: "\"playlists\".\"user_id\""},
+	Slug:              whereHelperstring{field: "\"playlists\".\"slug\""},
+	Name:              whereHelperstring{field: "\"playlists\".\"name\""},
+	System:            whereHelperbool{field: "\"playlists\".\"system\""},
+	TTLDays:           whereHelpernull_Int64{field: "\"playlists\".\"ttl_days\""},
+	MaxSize:           whereHelpernull_Int64{field: "\"playlists\".\"max_size\""},
+	Description:       whereHelperstring{field: "\"playlists\".\"description\""},
+	YoutubePlaylistID: whereHelpernull_String{field: "\"playlists\".\"youtube_playlist_id\""},
 }
 
 // PlaylistRels is where relationship names are stored.
@@ -209,9 +267,9 @@ func (r *playlistR) GetPlaylistItems() PlaylistItemSlice {
 type playlistL struct{}
 
 var (
-	playlistAllColumns            = []string{"id", "created_at", "updated_at", "user_id", "slug", "name", "system", "ttl_days", "max_size"}
+	playlistAllColumns            = []string{"id", "created_at", "updated_at", "user_id", "slug", "name", "system", "ttl_days", "max_size", "description", "youtube_playlist_id"}
 	playlistColumnsWithoutDefault = []string{"id", "created_at", "updated_at", "user_id", "slug", "name"}
-	playlistColumnsWithDefault    = []string{"system", "ttl_days", "max_size"}
+	playlistColumnsWithDefault    = []string{"system", "ttl_days", "max_size", "description", "youtube_playlist_id"}
 	playlistPrimaryKeyColumns     = []string{"id"}
 	playlistGeneratedColumns      = []string{}
 )

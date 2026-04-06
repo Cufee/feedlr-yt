@@ -1,0 +1,54 @@
+package shared
+
+import (
+	"fmt"
+	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/types"
+)
+
+func anyInPlaylist(ids map[string]bool) bool {
+	for _, v := range ids {
+		if v {
+			return true
+		}
+	}
+	return false
+}
+
+templ AddToPlaylistSelect(videoID string, playlists []types.PlaylistProps, inPlaylistIDs map[string]bool) {
+	<div id={ fmt.Sprintf("add-to-playlist-%s", videoID) } class="relative">
+		<button
+			type="button"
+			class={ "ui-video-rail-btn cursor-pointer", templ.KV("ui-video-rail-btn-active", anyInPlaylist(inPlaylistIDs)) }
+			title="Add to playlist"
+			_="on click toggle .hidden on the next .ui-playlist-menu then halt"
+		>
+			@icons.Playlist()
+		</button>
+		<div class="ui-playlist-menu hidden"
+			_="on click from elsewhere add .hidden to me
+			   on keydown[key=='Escape'] from window add .hidden to me">
+			for _, p := range playlists {
+				<button
+					type="button"
+					class="ui-playlist-menu-item"
+					hx-post={ fmt.Sprintf("/api/playlists/add-video?videoID=%s&playlistID=%s", videoID, p.ID) }
+					hx-target={ fmt.Sprintf("#add-to-playlist-%s", videoID) }
+					hx-swap="outerHTML"
+				>
+					if inPlaylistIDs[p.ID] {
+						<span class="shrink-0 text-accent">
+							@icons.Check()
+						</span>
+						<span class="truncate">{ p.Name }</span>
+					} else {
+						<span class="shrink-0 w-6 h-6 opacity-0">
+							@icons.Check()
+						</span>
+						<span class="truncate">{ p.Name }</span>
+					}
+				</button>
+			}
+		</div>
+	</div>
+}

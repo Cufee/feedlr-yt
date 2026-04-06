@@ -29,4 +29,6 @@ func TestUpsert(t *testing.T) {
 	t.Run("Views", testViewsUpsert)
 
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsUpsert)
+
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsUpsert)
 }

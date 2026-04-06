@@ -24,6 +24,7 @@ func TestParent(t *testing.T) {
 	t.Run("Videos", testVideos)
 	t.Run("Views", testViews)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccounts)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccounts)
 }
 
 func TestDelete(t *testing.T) {
@@ -39,6 +40,7 @@ func TestDelete(t *testing.T) {
 	t.Run("Videos", testVideosDelete)
 	t.Run("Views", testViewsDelete)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsDelete)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsDelete)
 }
 
 func TestQueryDeleteAll(t *testing.T) {
@@ -54,6 +56,7 @@ func TestQueryDeleteAll(t *testing.T) {
 	t.Run("Videos", testVideosQueryDeleteAll)
 	t.Run("Views", testViewsQueryDeleteAll)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsQueryDeleteAll)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsQueryDeleteAll)
 }
 
 func TestSliceDeleteAll(t *testing.T) {
@@ -69,6 +72,7 @@ func TestSliceDeleteAll(t *testing.T) {
 	t.Run("Videos", testVideosSliceDeleteAll)
 	t.Run("Views", testViewsSliceDeleteAll)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsSliceDeleteAll)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsSliceDeleteAll)
 }
 
 func TestExists(t *testing.T) {
@@ -84,6 +88,7 @@ func TestExists(t *testing.T) {
 	t.Run("Videos", testVideosExists)
 	t.Run("Views", testViewsExists)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsExists)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsExists)
 }
 
 func TestFind(t *testing.T) {
@@ -99,6 +104,7 @@ func TestFind(t *testing.T) {
 	t.Run("Videos", testVideosFind)
 	t.Run("Views", testViewsFind)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsFind)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsFind)
 }
 
 func TestBind(t *testing.T) {
@@ -114,6 +120,7 @@ func TestBind(t *testing.T) {
 	t.Run("Videos", testVideosBind)
 	t.Run("Views", testViewsBind)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsBind)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsBind)
 }
 
 func TestOne(t *testing.T) {
@@ -129,6 +136,7 @@ func TestOne(t *testing.T) {
 	t.Run("Videos", testVideosOne)
 	t.Run("Views", testViewsOne)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsOne)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsOne)
 }
 
 func TestAll(t *testing.T) {
@@ -144,6 +152,7 @@ func TestAll(t *testing.T) {
 	t.Run("Videos", testVideosAll)
 	t.Run("Views", testViewsAll)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsAll)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsAll)
 }
 
 func TestCount(t *testing.T) {
@@ -159,6 +168,7 @@ func TestCount(t *testing.T) {
 	t.Run("Videos", testVideosCount)
 	t.Run("Views", testViewsCount)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsCount)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsCount)
 }
 
 func TestHooks(t *testing.T) {
@@ -174,6 +184,7 @@ func TestHooks(t *testing.T) {
 	t.Run("Videos", testVideosHooks)
 	t.Run("Views", testViewsHooks)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsHooks)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsHooks)
 }
 
 func TestInsert(t *testing.T) {
@@ -201,6 +212,8 @@ func TestInsert(t *testing.T) {
 	t.Run("Views", testViewsInsertWhitelist)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsInsert)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsInsertWhitelist)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsInsert)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsInsertWhitelist)
 }
 
 func TestReload(t *testing.T) {
@@ -216,6 +229,7 @@ func TestReload(t *testing.T) {
 	t.Run("Videos", testVideosReload)
 	t.Run("Views", testViewsReload)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsReload)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsReload)
 }
 
 func TestReloadAll(t *testing.T) {
@@ -231,6 +245,7 @@ func TestReloadAll(t *testing.T) {
 	t.Run("Videos", testVideosReloadAll)
 	t.Run("Views", testViewsReloadAll)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsReloadAll)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsReloadAll)
 }
 
 func TestSelect(t *testing.T) {
@@ -246,6 +261,7 @@ func TestSelect(t *testing.T) {
 	t.Run("Videos", testVideosSelect)
 	t.Run("Views", testViewsSelect)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsSelect)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsSelect)
 }
 
 func TestUpdate(t *testing.T) {
@@ -261,6 +277,7 @@ func TestUpdate(t *testing.T) {
 	t.Run("Videos", testVideosUpdate)
 	t.Run("Views", testViewsUpdate)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsUpdate)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsUpdate)
 }
 
 func TestSliceUpdateAll(t *testing.T) {
@@ -276,4 +293,5 @@ func TestSliceUpdateAll(t *testing.T) {
 	t.Run("Videos", testVideosSliceUpdateAll)
 	t.Run("Views", testViewsSliceUpdateAll)
 	t.Run("YoutubeSyncAccounts", testYoutubeSyncAccountsSliceUpdateAll)
+	t.Run("YoutubeTVSyncAccounts", testYoutubeTVSyncAccountsSliceUpdateAll)
 }

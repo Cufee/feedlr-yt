@@ -1,0 +1,236 @@
+package playlist
+
+import (
+	"fmt"
+	"time"
+	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
+	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
+	"github.com/cufee/feedlr-yt/internal/types"
+	"github.com/cufee/feedlr-yt/internal/utils"
+)
+
+templ PlaylistCard(props types.PlaylistProps) {
+	<a href={ templ.URL(fmt.Sprintf("/app/playlist/%s", props.ID)) } hx-boost="true" hx-target="body" class="flex flex-col gap-1 group">
+		@ui.VideoCardShell(fmt.Sprintf("playlist-card-%s", props.ID)) {
+			if props.ThumbnailVideoID != "" {
+				@feed.VideoThumbnail(props.ThumbnailVideoID, props.Name, false)
+			} else {
+				<div class="absolute inset-0 flex items-center justify-center bg-elev-1">
+					<div class="text-text-secondary opacity-40">
+						@icons.Playlist()
+					</div>
+				</div>
+			}
+			if props.Progress > 0 {
+				<div class="ui-video-progress-track">
+					<div class="ui-video-progress-fill" style={ fmt.Sprintf("width:%d%%", props.Progress) }></div>
+				</div>
+			}
+			<div class={ "ui-video-duration-chip", templ.KV("ui-video-duration-chip-no-progress", props.Progress == 0) }>
+				{ fmt.Sprintf("%d videos", props.VideoCount) }
+			</div>
+		}
+		<span class="mt-1 line-clamp-2 text-sm font-medium leading-tight text-text-primary group-hover:underline">
+			{ props.Name }
+		</span>
+		if props.Description != "" {
+			<span class="line-clamp-1 text-xs text-text-secondary">
+				{ props.Description }
+			</span>
+		}
+	</a>
+}
+
+templ PlaylistHeader(props types.PlaylistProps, actions templ.Component) {
+	<div class="flex gap-4 items-start">
+		<div class="flex-1 min-w-0">
+			<h1 class="text-lg font-semibold text-text-primary leading-tight">{ props.Name }</h1>
+			if props.Description != "" {
+				<p class="mt-1 text-sm text-text-secondary line-clamp-3">{ props.Description }</p>
+			}
+			<div class="mt-2 flex items-center gap-3 text-xs text-text-secondary">
+				<span>{ fmt.Sprintf("%d videos", props.VideoCount) }</span>
+				if props.Progress > 0 {
+					<span>{ fmt.Sprintf("%d%% watched", props.Progress) }</span>
+				}
+				if props.YouTubePlaylistID != "" {
+					<span>Imported from YouTube</span>
+				}
+			</div>
+		</div>
+		if actions != nil {
+			<div class="flex items-center gap-1.5 shrink-0">
+				@actions
+			</div>
+		}
+	</div>
+}
+
+templ CreatePlaylistDialog() {
+	<dialog id="create-playlist-modal" class="ui-dialog">
+		<div class="ui-dialog-panel ui-motion-modal-panel flex flex-col items-center justify-center gap-4" id="create-playlist-modal-box">
+			<h2 class="text-base font-semibold text-text-primary">New Playlist</h2>
+			@CreatePlaylistForm("")
+		</div>
+	</dialog>
+}
+
+templ CreatePlaylistForm(errMsg string) {
+	<form
+		class="ui-motion-swap flex w-full flex-col gap-3"
+		id="create-playlist-form"
+		hx-post="/api/playlists"
+		hx-target="#create-playlist-form"
+		hx-swap="outerHTML"
+	>
+		<input
+			type="text"
+			name="name"
+			placeholder="Playlist name"
+			class={ "ui-input w-full", templ.KV("ui-input-error", errMsg != "") }
+			required
+		/>
+		<input
+			type="text"
+			name="description"
+			placeholder="Description (optional)"
+			class="ui-input w-full"
+		/>
+		if errMsg != "" {
+			<span class="text-xs text-danger">{ errMsg }</span>
+		}
+		<button type="submit" class="ui-btn ui-btn-primary ui-btn-md w-full">Create</button>
+	</form>
+}
+
+templ ImportPlaylistDialog() {
+	<dialog id="import-playlist-modal" class="ui-dialog">
+		<div class="ui-dialog-panel ui-motion-modal-panel flex flex-col items-center justify-center gap-4" id="import-playlist-modal-box">
+			<h2 class="text-base font-semibold text-text-primary">Import from YouTube</h2>
+			@ImportPlaylistForm("", true)
+			<div class="text-center text-xs text-text-secondary">
+				Paste a YouTube playlist URL to import all its videos.
+			</div>
+		</div>
+	</dialog>
+}
+
+templ ImportPlaylistForm(url string, valid bool) {
+	<form
+		class="ui-motion-swap m-0 flex w-full items-center gap-2"
+		id="import-playlist-form"
+		hx-post="/api/playlists/import"
+		hx-target="#import-playlist-form"
+		hx-swap="outerHTML"
+		hx-indicator="#import-playlist-spinner"
+	>
+		<input
+			type="text"
+			name="link"
+			value={ url }
+			placeholder="https://youtube.com/playlist?list=..."
+			class={ "ui-input w-full", templ.KV("ui-input-error", !valid) }
+		/>
+		<button type="submit" class="ui-btn ui-btn-primary ui-btn-md shrink-0">Import</button>
+		<span class="htmx-indicator ui-indicator-delayed" id="import-playlist-spinner">
+			<span class="ui-spinner size-5 border-2"></span>
+		</span>
+	</form>
+}
+
+templ EditPlaylistDialog(props types.PlaylistProps) {
+	<dialog id="edit-playlist-modal" class="ui-dialog">
+		<div class="ui-dialog-panel ui-motion-modal-panel flex flex-col items-center justify-center gap-4" id="edit-playlist-modal-box">
+			<h2 class="text-base font-semibold text-text-primary">Edit Playlist</h2>
+			@EditPlaylistForm(props, "")
+		</div>
+	</dialog>
+}
+
+templ EditPlaylistForm(props types.PlaylistProps, errMsg string) {
+	<form
+		class="ui-motion-swap flex w-full flex-col gap-3"
+		id="edit-playlist-form"
+		hx-post={ fmt.Sprintf("/api/playlists/%s", props.ID) }
+		hx-target="#edit-playlist-form"
+		hx-swap="outerHTML"
+	>
+		<input
+			type="text"
+			name="name"
+			value={ props.Name }
+			placeholder="Playlist name"
+			class={ "ui-input w-full", templ.KV("ui-input-error", errMsg != "") }
+			required
+		/>
+		<input
+			type="text"
+			name="description"
+			value={ props.Description }
+			placeholder="Description (optional)"
+			class="ui-input w-full"
+		/>
+		if errMsg != "" {
+			<span class="text-xs text-danger">{ errMsg }</span>
+		}
+		<button type="submit" class="ui-btn ui-btn-primary ui-btn-md w-full">Save</button>
+	</form>
+}
+
+templ SyncButton(playlistID string, disabled bool) {
+	<button
+		id={ fmt.Sprintf("sync-btn-%s", playlistID) }
+		class={ "ui-channel-action-btn cursor-pointer", templ.KV("opacity-50", disabled) }
+		title={ syncButtonTitle(disabled) }
+		hx-post={ fmt.Sprintf("/api/playlists/%s/sync", playlistID) }
+		hx-target={ fmt.Sprintf("#sync-btn-%s", playlistID) }
+		hx-swap="outerHTML"
+		hx-indicator={ fmt.Sprintf("#sync-btn-%s", playlistID) }
+	>
+		@icons.CloudSync()
+	</button>
+}
+
+func syncButtonTitle(disabled bool) string {
+	if disabled {
+		return "Synced recently, please wait"
+	}
+	return "Sync with YouTube"
+}
+
+templ DeleteButton(playlistID string) {
+	<button
+		class="ui-channel-action-btn cursor-pointer"
+		title="Delete playlist"
+		hx-delete={ fmt.Sprintf("/api/playlists/%s", playlistID) }
+		hx-confirm="Delete this playlist? This cannot be undone."
+	>
+		@icons.Trash()
+	</button>
+}
+
+templ EditButton() {
+	<button
+		class="ui-channel-action-btn cursor-pointer"
+		title="Edit playlist"
+		onclick="document.getElementById('edit-playlist-modal').showModal()"
+	>
+		@icons.Pencil()
+	</button>
+}
+
+templ PlaylistActions(props types.PlaylistProps) {
+	@EditButton()
+	if props.YouTubePlaylistID != "" {
+		@SyncButton(props.ID, !canSync(props.UpdatedAt) && props.VideoCount > 0)
+	}
+	@DeleteButton(props.ID)
+}
+
+func canSync(updatedAt time.Time) bool {
+	return time.Since(updatedAt) >= time.Hour
+}
+
+// unused import guard
+var _ = utils.RelativeTimeAgo

@@ -114,6 +114,65 @@ func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, l
 	return videos, nil
 }
 
+// GetPlaylistMetadata returns the title and description for a YouTube playlist.
+func (c *client) GetPlaylistMetadata(playlistID string) (string, string, error) {
+	res, err := c.service.Playlists.List([]string{"snippet"}).Id(playlistID).MaxResults(1).Do()
+	metrics.ObserveYouTubeAPICall("data_v3", "get_playlist_metadata", err)
+	if err != nil {
+		return "", "", errors.Wrap(err, "playlists list failed")
+	}
+	if len(res.Items) == 0 {
+		return "", "", errors.New("playlist not found")
+	}
+	return res.Items[0].Snippet.Title, res.Items[0].Snippet.Description, nil
+}
+
+// GetAllPlaylistVideoIDs returns all video IDs in a YouTube playlist, in order.
+// Paginates through all pages. Returns at most maxVideos entries.
+func (c *client) GetAllPlaylistVideoIDs(playlistID string, maxVideos int) ([]string, error) {
+	if playlistID == "" {
+		return nil, errors.New("playlist id cannot be blank")
+	}
+	if maxVideos <= 0 {
+		maxVideos = 500
+	}
+
+	var videoIDs []string
+	pageToken := ""
+
+	for {
+		req := c.service.PlaylistItems.List([]string{"snippet"}).
+			PlaylistId(playlistID).
+			MaxResults(50)
+		if pageToken != "" {
+			req = req.PageToken(pageToken)
+		}
+
+		res, err := req.Do()
+		metrics.ObserveYouTubeAPICall("data_v3", "list_playlist_items_import", err)
+		if err != nil {
+			return videoIDs, errors.Wrap(err, "playlist items list failed")
+		}
+
+		for _, item := range res.Items {
+			if item.Snippet == nil || item.Snippet.ResourceId == nil {
+				continue
+			}
+			videoIDs = append(videoIDs, item.Snippet.ResourceId.VideoId)
+			if len(videoIDs) >= maxVideos {
+				return videoIDs, nil
+			}
+		}
+
+		pageToken = res.NextPageToken
+		if pageToken == "" {
+			break
+		}
+	}
+
+	return videoIDs, nil
+}
+
 func playlistItemLikelyShort(item *youtube.PlaylistItem) bool {
 	if item == nil || item.Snippet == nil {
 		return false

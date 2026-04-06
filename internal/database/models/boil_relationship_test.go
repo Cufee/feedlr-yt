@@ -18,12 +18,14 @@ func TestToOne(t *testing.T) {
 	t.Run("ViewToVideoUsingVideo", testViewToOneVideoUsingVideo)
 	t.Run("ViewToUserUsingUser", testViewToOneUserUsingUser)
 	t.Run("YoutubeSyncAccountToUserUsingUser", testYoutubeSyncAccountToOneUserUsingUser)
+	t.Run("YoutubeTVSyncAccountToUserUsingUser", testYoutubeTVSyncAccountToOneUserUsingUser)
 }
 
 // TestOneToOne tests cannot be run in parallel
 // or deadlocks can occur.
 func TestOneToOne(t *testing.T) {
 	t.Run("UserToYoutubeSyncAccountUsingYoutubeSyncAccount", testUserOneToOneYoutubeSyncAccountUsingYoutubeSyncAccount)
+	t.Run("UserToYoutubeTVSyncAccountUsingYoutubeTVSyncAccount", testUserOneToOneYoutubeTVSyncAccountUsingYoutubeTVSyncAccount)
 }
 
 // TestToMany tests cannot be run in parallel
@@ -53,6 +55,7 @@ func TestToOneSet(t *testing.T) {
 	t.Run("ViewToVideoUsingViews", testViewToOneSetOpVideoUsingVideo)
 	t.Run("ViewToUserUsingViews", testViewToOneSetOpUserUsingUser)
 	t.Run("YoutubeSyncAccountToUserUsingYoutubeSyncAccount", testYoutubeSyncAccountToOneSetOpUserUsingUser)
+	t.Run("YoutubeTVSyncAccountToUserUsingYoutubeTVSyncAccount", testYoutubeTVSyncAccountToOneSetOpUserUsingUser)
 }
 
 // TestToOneRemove tests cannot be run in parallel
@@ -63,6 +66,7 @@ func TestToOneRemove(t *testing.T) {}
 // or deadlocks can occur.
 func TestOneToOneSet(t *testing.T) {
 	t.Run("UserToYoutubeSyncAccountUsingYoutubeSyncAccount", testUserOneToOneSetOpYoutubeSyncAccountUsingYoutubeSyncAccount)
+	t.Run("UserToYoutubeTVSyncAccountUsingYoutubeTVSyncAccount", testUserOneToOneSetOpYoutubeTVSyncAccountUsingYoutubeTVSyncAccount)
 }
 
 // TestOneToOneRemove tests cannot be run in parallel

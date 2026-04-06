@@ -596,6 +596,14 @@
         @apply border-danger/35 text-red-100 hover:bg-danger/20;
     }
 
+    .ui-playlist-menu {
+        @apply absolute top-full left-0 mt-1 z-50 min-w-40 max-w-64 rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-elev-2 py-1 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+    }
+
+    .ui-playlist-menu-item {
+        @apply flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text-primary transition-colors duration-150 cursor-pointer hover:bg-glass-fill/35;
+    }
+
     .ui-motion-swap {
         @apply transition-[opacity,transform] duration-200 ease-[var(--ease-standard)] motion-reduce:transition-none;
     }

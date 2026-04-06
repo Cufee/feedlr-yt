@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 )
@@ -30,6 +31,9 @@ templ navbarAuthenticatedActions(path string) {
 	<nav class="flex items-center gap-1.5" aria-label="Primary">
 		<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/recent") } href={ templ.URL("/app/recent") } title="Recent Views">
 			@icons.Clock()
+		</a>
+		<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", strings.HasPrefix(path, "/app/playlist")) } href={ templ.URL("/app/playlists") } title="Playlists">
+			@icons.Playlist()
 		</a>
 		<a class={ "ui-nav-link", "nav-btn", templ.KV("ui-nav-link-active", path=="/app/subscriptions") } href={ templ.URL("/app/subscriptions") } title="Manage Subscriptions">
 			@icons.Bookmark()

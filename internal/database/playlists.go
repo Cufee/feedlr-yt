@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/aarondl/null/v8"
 	"github.com/aarondl/sqlboiler/v4/boil"
@@ -13,23 +14,33 @@ import (
 
 type PlaylistsClient interface {
 	GetPlaylistBySlug(ctx context.Context, userID, slug string) (*models.Playlist, error)
+	GetPlaylistByID(ctx context.Context, playlistID string) (*models.Playlist, error)
+	GetUserPlaylists(ctx context.Context, userID string) ([]*models.Playlist, error)
 	CreatePlaylist(ctx context.Context, playlist *models.Playlist) error
+	UpdatePlaylist(ctx context.Context, playlist *models.Playlist) error
+	DeletePlaylist(ctx context.Context, playlistID string) error
 	AddPlaylistItem(ctx context.Context, playlistID, videoID string) error
+	AddPlaylistItemAtPosition(ctx context.Context, playlistID, videoID string, position int) error
 	RemovePlaylistItem(ctx context.Context, playlistID, videoID string) error
 	GetPlaylistItems(ctx context.Context, playlistID string, o ...PlaylistItemQuery) ([]*models.PlaylistItem, error)
+	GetPlaylistItemCount(ctx context.Context, playlistID string) (int64, error)
+	GetPlaylistFirstVideoID(ctx context.Context, playlistID string) (string, error)
+	GetPlaylistItemByVideoID(ctx context.Context, playlistID, videoID string) (*models.PlaylistItem, error)
+	SwapPlaylistItemPositions(ctx context.Context, playlistID, videoID, direction string) error
 	IsVideoInPlaylist(ctx context.Context, playlistID, videoID string) (bool, error)
 	CleanupExpiredPlaylistItems(ctx context.Context) (int64, error)
+	GetMaxPlaylistItemPosition(ctx context.Context, playlistID string) (int, error)
 }
-
 
 // PlaylistItemQuery options
 type PlaylistItemQuery func(o *playlistItemQuery)
 
 type playlistItemQuery struct {
-	limit       int
-	offset      int
-	withVideo   bool
-	withChannel bool
+	limit           int
+	offset          int
+	withVideo       bool
+	withChannel     bool
+	orderByPosition bool
 }
 
 type playlistItemQuerySlice []PlaylistItemQuery
@@ -70,6 +81,12 @@ func (playlistItem) WithChannel() PlaylistItemQuery {
 	}
 }
 
+func (playlistItem) OrderByPosition() PlaylistItemQuery {
+	return func(o *playlistItemQuery) {
+		o.orderByPosition = true
+	}
+}
+
 func (c *sqliteClient) GetPlaylistBySlug(ctx context.Context, userID, slug string) (*models.Playlist, error) {
 	playlist, err := models.Playlists(
 		qm.Where(models.PlaylistColumns.UserID+"=?", userID),
@@ -82,8 +99,39 @@ func (c *sqliteClient) GetPlaylistBySlug(ctx context.Context, userID, slug strin
 	return playlist, nil
 }
 
+func (c *sqliteClient) GetPlaylistByID(ctx context.Context, playlistID string) (*models.Playlist, error) {
+	return models.FindPlaylist(ctx, c.db, playlistID)
+}
+
+func (c *sqliteClient) GetUserPlaylists(ctx context.Context, userID string) ([]*models.Playlist, error) {
+	return models.Playlists(
+		qm.Where(models.PlaylistColumns.UserID+"=?", userID),
+		qm.Where(models.PlaylistColumns.System+"=?", false),
+		qm.OrderBy(models.PlaylistColumns.UpdatedAt+" DESC"),
+	).All(ctx, c.db)
+}
+
 func (c *sqliteClient) CreatePlaylist(ctx context.Context, playlist *models.Playlist) error {
 	return playlist.Insert(ctx, c.db, boil.Infer())
+}
+
+func (c *sqliteClient) UpdatePlaylist(ctx context.Context, playlist *models.Playlist) error {
+	_, err := playlist.Update(ctx, c.db, boil.Whitelist(
+		models.PlaylistColumns.Name,
+		models.PlaylistColumns.Description,
+		models.PlaylistColumns.YoutubePlaylistID,
+		models.PlaylistColumns.UpdatedAt,
+	))
+	return err
+}
+
+func (c *sqliteClient) DeletePlaylist(ctx context.Context, playlistID string) error {
+	playlist, err := models.FindPlaylist(ctx, c.db, playlistID)
+	if err != nil {
+		return errors.Wrap(err, "failed to find playlist")
+	}
+	_, err = playlist.Delete(ctx, c.db)
+	return err
 }
 
 func (c *sqliteClient) AddPlaylistItem(ctx context.Context, playlistID, videoID string) error {
@@ -122,13 +170,27 @@ func (c *sqliteClient) AddPlaylistItem(ctx context.Context, playlistID, videoID 
 		}
 	}
 
-	// Add the new item
+	// Compute next position
+	maxPos, err := c.GetMaxPlaylistItemPosition(ctx, playlistID)
+	if err != nil {
+		return errors.Wrap(err, "failed to get max position")
+	}
+
 	item := &models.PlaylistItem{
 		PlaylistID: playlistID,
 		VideoID:    videoID,
-		Position:   0,
+		Position:   int64(maxPos + 1),
 	}
 	return item.Insert(ctx, c.db, boil.Infer())
+}
+
+func (c *sqliteClient) AddPlaylistItemAtPosition(ctx context.Context, playlistID, videoID string, position int) error {
+	// Use INSERT OR IGNORE for idempotent imports
+	_, err := c.db.ExecContext(ctx,
+		"INSERT OR IGNORE INTO playlist_items (id, created_at, updated_at, playlist_id, video_id, position) VALUES (?, datetime('now'), datetime('now'), ?, ?, ?)",
+		ensureID(""), playlistID, videoID, position,
+	)
+	return err
 }
 
 func (c *sqliteClient) RemovePlaylistItem(ctx context.Context, playlistID, videoID string) error {
@@ -142,27 +204,31 @@ func (c *sqliteClient) RemovePlaylistItem(ctx context.Context, playlistID, video
 func (c *sqliteClient) GetPlaylistItems(ctx context.Context, playlistID string, o ...PlaylistItemQuery) ([]*models.PlaylistItem, error) {
 	opts := playlistItemQuerySlice(o).opts()
 
-	sql := sqlbuilder.
+	sb := sqlbuilder.
 		Select("*").
 		From(models.TableNames.PlaylistItems).
-		Where(models.PlaylistItemColumns.PlaylistID + "=?").
-		OrderBy(models.PlaylistItemColumns.CreatedAt).Desc()
+		Where(models.PlaylistItemColumns.PlaylistID + "=?")
+
+	if opts.orderByPosition {
+		sb = sb.OrderBy(models.PlaylistItemColumns.Position).Asc()
+	} else {
+		sb = sb.OrderBy(models.PlaylistItemColumns.CreatedAt).Desc()
+	}
 
 	if opts.limit > 0 {
-		sql = sql.Limit(opts.limit)
+		sb = sb.Limit(opts.limit)
 	}
 	if opts.offset > 0 {
-		sql = sql.Offset(opts.offset)
+		sb = sb.Offset(opts.offset)
 	}
 
-	q, _ := sql.Build()
+	q, _ := sb.Build()
 	items, err := models.PlaylistItems(qm.SQL(q, playlistID)).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
 
 	if opts.withVideo {
-		// Convert to the expected pointer type for the loader
 		itemsSlice := []*models.PlaylistItem(items)
 		err := models.PlaylistItem{}.L.LoadVideo(ctx, c.db, false, &itemsSlice, nil)
 		if err != nil {
@@ -170,7 +236,6 @@ func (c *sqliteClient) GetPlaylistItems(ctx context.Context, playlistID string, 
 		}
 
 		if opts.withChannel {
-			// Load channels for each video
 			var videos []*models.Video
 			for _, item := range items {
 				if item.R != nil && item.R.Video != nil {
@@ -189,6 +254,100 @@ func (c *sqliteClient) GetPlaylistItems(ctx context.Context, playlistID string, 
 	return items, nil
 }
 
+func (c *sqliteClient) GetPlaylistItemCount(ctx context.Context, playlistID string) (int64, error) {
+	return models.PlaylistItems(
+		qm.Where(models.PlaylistItemColumns.PlaylistID+"=?", playlistID),
+	).Count(ctx, c.db)
+}
+
+func (c *sqliteClient) GetPlaylistFirstVideoID(ctx context.Context, playlistID string) (string, error) {
+	item, err := models.PlaylistItems(
+		qm.Where(models.PlaylistItemColumns.PlaylistID+"=?", playlistID),
+		qm.OrderBy(models.PlaylistItemColumns.Position+" ASC"),
+		qm.Limit(1),
+	).One(ctx, c.db)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	return item.VideoID, nil
+}
+
+func (c *sqliteClient) GetPlaylistItemByVideoID(ctx context.Context, playlistID, videoID string) (*models.PlaylistItem, error) {
+	return models.PlaylistItems(
+		qm.Where(models.PlaylistItemColumns.PlaylistID+"=?", playlistID),
+		qm.Where(models.PlaylistItemColumns.VideoID+"=?", videoID),
+	).One(ctx, c.db)
+}
+
+func (c *sqliteClient) GetMaxPlaylistItemPosition(ctx context.Context, playlistID string) (int, error) {
+	var maxPos sql.NullInt64
+	err := c.db.QueryRowContext(ctx,
+		"SELECT MAX(position) FROM playlist_items WHERE playlist_id = ?",
+		playlistID,
+	).Scan(&maxPos)
+	if err != nil {
+		return 0, err
+	}
+	if !maxPos.Valid {
+		return 0, nil
+	}
+	return int(maxPos.Int64), nil
+}
+
+func (c *sqliteClient) SwapPlaylistItemPositions(ctx context.Context, playlistID, videoID, direction string) error {
+	// Find the item being moved
+	item, err := c.GetPlaylistItemByVideoID(ctx, playlistID, videoID)
+	if err != nil {
+		return errors.Wrap(err, "failed to find playlist item")
+	}
+
+	// Find the neighbor to swap with
+	var neighbor *models.PlaylistItem
+	if direction == "up" {
+		neighbor, err = models.PlaylistItems(
+			qm.Where(models.PlaylistItemColumns.PlaylistID+"=?", playlistID),
+			qm.Where(models.PlaylistItemColumns.Position+"<?", item.Position),
+			qm.OrderBy(models.PlaylistItemColumns.Position+" DESC"),
+			qm.Limit(1),
+		).One(ctx, c.db)
+	} else {
+		neighbor, err = models.PlaylistItems(
+			qm.Where(models.PlaylistItemColumns.PlaylistID+"=?", playlistID),
+			qm.Where(models.PlaylistItemColumns.Position+">?", item.Position),
+			qm.OrderBy(models.PlaylistItemColumns.Position+" ASC"),
+			qm.Limit(1),
+		).One(ctx, c.db)
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil // Already at the edge, nothing to swap
+		}
+		return errors.Wrap(err, "failed to find neighbor item")
+	}
+
+	// Swap positions in a transaction
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "failed to begin transaction")
+	}
+	defer tx.Rollback()
+
+	// Use a temporary position to avoid unique constraint issues if any
+	_, err = tx.ExecContext(ctx, "UPDATE playlist_items SET position = ? WHERE id = ?", neighbor.Position, item.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to update item position")
+	}
+	_, err = tx.ExecContext(ctx, "UPDATE playlist_items SET position = ? WHERE id = ?", item.Position, neighbor.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to update neighbor position")
+	}
+
+	return tx.Commit()
+}
+
 func (c *sqliteClient) IsVideoInPlaylist(ctx context.Context, playlistID, videoID string) (bool, error) {
 	exists, err := models.PlaylistItems(
 		qm.Where(models.PlaylistItemColumns.PlaylistID+"=?", playlistID),
@@ -198,7 +357,6 @@ func (c *sqliteClient) IsVideoInPlaylist(ctx context.Context, playlistID, videoI
 }
 
 func (c *sqliteClient) CleanupExpiredPlaylistItems(ctx context.Context) (int64, error) {
-	// Get all playlists with TTL
 	playlists, err := models.Playlists(
 		qm.Where(models.PlaylistColumns.TTLDays+" IS NOT NULL"),
 	).All(ctx, c.db)
@@ -212,8 +370,6 @@ func (c *sqliteClient) CleanupExpiredPlaylistItems(ctx context.Context) (int64, 
 			continue
 		}
 
-		// Delete items older than TTL
-		// SQLite: date('now', '-X days')
 		result, err := c.db.ExecContext(ctx,
 			"DELETE FROM playlist_items WHERE playlist_id = ? AND created_at < date('now', '-' || ? || ' days')",
 			playlist.ID, playlist.TTLDays.Int64,

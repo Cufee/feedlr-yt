@@ -4,29 +4,31 @@
 package models
 
 var TableNames = struct {
-	AppConfiguration    string
-	Channels            string
-	Passkeys            string
-	PlaylistItems       string
-	Playlists           string
-	Sessions            string
-	Settings            string
-	Subscriptions       string
-	Users               string
-	Videos              string
-	Views               string
-	YoutubeSyncAccounts string
+	AppConfiguration      string
+	Channels              string
+	Passkeys              string
+	PlaylistItems         string
+	Playlists             string
+	Sessions              string
+	Settings              string
+	Subscriptions         string
+	Users                 string
+	Videos                string
+	Views                 string
+	YoutubeSyncAccounts   string
+	YoutubeTVSyncAccounts string
 }{
-	AppConfiguration:    "app_configuration",
-	Channels:            "channels",
-	Passkeys:            "passkeys",
-	PlaylistItems:       "playlist_items",
-	Playlists:           "playlists",
-	Sessions:            "sessions",
-	Settings:            "settings",
-	Subscriptions:       "subscriptions",
-	Users:               "users",
-	Videos:              "videos",
-	Views:               "views",
-	YoutubeSyncAccounts: "youtube_sync_accounts",
+	AppConfiguration:      "app_configuration",
+	Channels:              "channels",
+	Passkeys:              "passkeys",
+	PlaylistItems:         "playlist_items",
+	Playlists:             "playlists",
+	Sessions:              "sessions",
+	Settings:              "settings",
+	Subscriptions:         "subscriptions",
+	Users:                 "users",
+	Videos:                "videos",
+	Views:                 "views",
+	YoutubeSyncAccounts:   "youtube_sync_accounts",
+	YoutubeTVSyncAccounts: "youtube_tv_sync_accounts",
 }

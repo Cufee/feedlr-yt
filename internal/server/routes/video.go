@@ -51,6 +51,14 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 		inWatchLater, _ := logic.IsInWatchLater(pctx, ctx.Database(), uid, video)
 		props.Video.InWatchLater = inWatchLater
 
+		// Populate user playlists for "add to playlist" dropdown
+		userPlaylists, _ := logic.GetUserPlaylistsProps(pctx, ctx.Database(), uid)
+		props.UserPlaylists = userPlaylists
+		if len(userPlaylists) > 0 {
+			videoInPlaylists, _ := logic.GetVideoPlaylistMembership(pctx, ctx.Database(), uid, video)
+			props.VideoInPlaylistIDs = videoInPlaylists
+		}
+
 		props.ReturnURL = ctx.Query("return", "/app")
 		return layouts.Video(props.Video), pages.Video(props), nil
 	}

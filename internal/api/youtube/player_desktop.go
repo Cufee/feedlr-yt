@@ -203,8 +203,13 @@ func (c *client) getDesktopPlayerDetails(videoId string) (*VideoDetails, error) 
 	if duration == 0 {
 		duration, _ = strconv.Atoi(details.Microformat.PlayerMicroformatRenderer.LengthSeconds)
 	}
+	// Get channel ID from primary source, fallback to microformat
+	channelID := details.PlayerVideoDetails.ChannelID
+	if channelID == "" {
+		channelID = details.Microformat.PlayerMicroformatRenderer.ExternalChannelID
+	}
 	fullDetails := VideoDetails{
-		ChannelID: details.PlayerVideoDetails.ChannelID,
+		ChannelID: channelID,
 		Duration:  duration,
 		Video: Video{
 			Type:        VideoTypeVideo,
