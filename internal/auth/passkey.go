@@ -58,9 +58,10 @@ func (u *User) AddCredential(credential webauthn.Credential) error {
 }
 
 func (u *User) UpdateCredential(credential webauthn.Credential) error {
-	for _, c := range u.credentials {
-		if string(c.Credential.ID) == string(credential.ID) {
-			c.Credential = credential
+	for i := range u.credentials {
+		if string(u.credentials[i].Credential.ID) == string(credential.ID) {
+			u.credentials[i].Credential = credential
+			u.credentials[i].updated = true
 			return nil
 		}
 	}

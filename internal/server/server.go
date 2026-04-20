@@ -89,6 +89,8 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		server.Post("/login/finish", toFiber(login.LoginFinish))
 		server.Post("/register/begin", toFiber(login.RegistrationBegin))
 		server.Post("/register/finish", toFiber(login.RegistrationFinish))
+		server.Post("/login/discoverable/begin", toFiber(login.DiscoverableLoginBegin))
+		server.Post("/login/discoverable/finish", toFiber(login.DiscoverableLoginFinish))
 
 		// Routes with unique auth handlers
 		server.Get("/video/:id", toFiber(root.Video))
