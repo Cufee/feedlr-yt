@@ -122,7 +122,7 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 	defer cancel()
 
 	existing, err := db.GetChannel(dctx, channelID)
-	if err == nil && existing.UploadsPlaylistID != "" {
+	if err == nil && existing.UploadsPlaylistID != "" && time.Since(existing.UpdatedAt) < 7*24*time.Hour {
 		metrics.ObserveVideoRefresh("cache_channel", nil)
 		return existing, true, nil
 	}
@@ -147,6 +147,11 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 		UploadsPlaylistID: uploadsPlaylist,
 	}
 
+	// Preserve FeedUpdatedAt from the existing row when refreshing stale metadata
+	if existing != nil {
+		record.FeedUpdatedAt = existing.FeedUpdatedAt
+	}
+
 	uctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
@@ -157,7 +162,8 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 	}
 
 	metrics.ObserveVideoRefresh("cache_channel", nil)
-	return record, false, nil
+	// Return cached=true when refreshing an existing channel (only metadata changed)
+	return record, existing != nil, nil
 }
 
 func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) {
