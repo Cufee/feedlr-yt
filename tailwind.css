@@ -539,6 +539,7 @@
 
     .ui-video-state-overlay {
         @apply absolute -inset-px z-10 flex items-center justify-center bg-black/85 text-[2rem] font-semibold uppercase tracking-[0.035em] text-white md:text-[2.4rem];
+        box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.85);
     }
 
     .ui-video-duration-chip {
