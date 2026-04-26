@@ -522,6 +522,10 @@
         border-radius: inherit;
     }
 
+    .ui-video-card:has(.ui-video-state-overlay) .ui-video-thumbnail > * {
+        filter: brightness(0.15);
+    }
+
     .ui-video-card-actions {
         @apply absolute z-20 flex flex-row;
         top: var(--space-video-inset-y);
@@ -548,8 +552,7 @@
     }
 
     .ui-video-state-overlay {
-        @apply absolute -inset-px z-10 flex items-center justify-center bg-black/85 text-[2rem] font-semibold uppercase tracking-[0.035em] text-white md:text-[2.4rem];
-        box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.85);
+        @apply absolute inset-0 z-10 flex items-center justify-center text-[2rem] font-semibold uppercase tracking-[0.035em] text-white md:text-[2.4rem];
     }
 
     .ui-video-duration-chip {
