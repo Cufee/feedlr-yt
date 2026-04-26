@@ -539,7 +539,6 @@
 
     .ui-video-state-overlay {
         @apply absolute inset-0 z-10 flex items-center justify-center bg-black/85 text-[2rem] font-semibold uppercase tracking-[0.035em] text-white md:text-[2.4rem];
-        border-radius: inherit;
     }
 
     .ui-video-duration-chip {
