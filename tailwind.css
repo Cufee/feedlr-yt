@@ -506,10 +506,20 @@
     }
 
     .ui-video-card {
-        @apply relative overflow-hidden rounded-[var(--radius-media)] bg-black/30 shadow-[0_8px_26px_-18px_var(--color-glass-shadow),inset_0_0_0_1px_rgb(255_255_255_/_0.14)];
+        @apply relative overflow-hidden rounded-[var(--radius-media)] bg-black/30 shadow-[0_8px_26px_-18px_var(--color-glass-shadow)];
         isolation: isolate;
         content-visibility: auto;
         contain-intrinsic-size: auto 300px;
+    }
+
+    .ui-video-card::after {
+        content: "";
+        pointer-events: none;
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        border: 1px solid rgb(255 255 255 / 0.18);
+        border-radius: inherit;
     }
 
     .ui-video-card-actions {
