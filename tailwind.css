@@ -314,7 +314,7 @@
     }
 
     .ui-channel-thumb {
-        @apply relative h-[5.3rem] w-[5.3rem] shrink-0 overflow-hidden rounded-[var(--radius-md)];
+        @apply pointer-events-none relative h-[5.3rem] w-[5.3rem] shrink-0 overflow-hidden rounded-[var(--radius-md)];
     }
 
     .ui-channel-thumb img {
