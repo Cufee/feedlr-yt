@@ -5,13 +5,14 @@ import (
 	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/playlist"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
 templ PlaylistDetail(props logic.PlaylistPageProps) {
 	<head>
-		<title>{ fmt.Sprintf("Feedlr - %s", props.Playlist.Name) }</title>
+		<title>{ fmt.Sprintf("Feedlr - %s", shared.YouTubeString(props.Playlist.Name)) }</title>
 	</head>
 	<div class="relative flex w-full flex-col gap-4">
 		@ui.Card(ui.WithCardClass("w-full p-4 md:p-5")) {

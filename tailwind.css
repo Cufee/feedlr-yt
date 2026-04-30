@@ -334,6 +334,10 @@
         overflow-wrap: anywhere;
     }
 
+    .ui-header-meta {
+        @apply mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary;
+    }
+
     .ui-channel-action-btn {
         @apply inline-flex items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/20 bg-glass-fill/24 text-text-secondary backdrop-blur-[var(--blur-glass-sm)] transition-[background-color,color] duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/38 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
         height: 2.1rem;
@@ -609,12 +613,24 @@
         @apply border-danger/35 text-red-100 hover:bg-danger/20;
     }
 
-    .ui-playlist-menu {
-        @apply absolute top-full left-0 mt-1 z-50 min-w-40 max-w-64 rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-elev-2 py-1 shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
+    .ui-playlist-dialog[open] {
+        @apply items-end md:items-center;
     }
 
-    .ui-playlist-menu-item {
-        @apply flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text-primary transition-colors duration-150 cursor-pointer hover:bg-glass-fill/35;
+    .ui-playlist-dialog-panel {
+        @apply mb-0 max-h-[82vh] w-full max-w-none overflow-hidden rounded-b-none p-0 md:mb-6 md:w-[min(92vw,24rem)] md:rounded-[var(--radius-panel)];
+    }
+
+    .ui-playlist-picker-list {
+        @apply flex max-h-[64vh] flex-col gap-1 overflow-y-auto p-2;
+    }
+
+    .ui-playlist-picker-item {
+        @apply flex w-full cursor-pointer items-center gap-3 rounded-[var(--radius-control-compact)] bg-glass-fill/18 px-3 py-3 text-left transition-colors duration-150 hover:bg-glass-fill/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
+    }
+
+    .ui-playlist-picker-item-active {
+        @apply bg-accent/12 hover:bg-accent/18;
     }
 
     .ui-motion-swap {

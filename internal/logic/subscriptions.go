@@ -46,6 +46,7 @@ func NewSubscription(ctx context.Context, db database.Client, userId, channelId 
 	props.Thumbnail = channel.Thumbnail
 	props.Description = channel.Description
 	props.Favorite = false
+	props.FeedUpdatedAt = channel.FeedUpdatedAt
 
 	return &props, nil
 }

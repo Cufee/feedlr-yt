@@ -21,34 +21,41 @@ templ AddToPlaylistSelect(videoID string, playlists []types.PlaylistProps, inPla
 			type="button"
 			class={ "ui-video-rail-btn cursor-pointer", templ.KV("ui-video-rail-btn-active", anyInPlaylist(inPlaylistIDs)) }
 			title="Add to playlist"
-			_="on click toggle .hidden on the next .ui-playlist-menu then halt"
+			onclick="this.nextElementSibling.showModal()"
 		>
 			@icons.Playlist()
 		</button>
-		<div class="ui-playlist-menu hidden"
-			_="on click from elsewhere add .hidden to me
-			   on keydown[key=='Escape'] from window add .hidden to me">
-			for _, p := range playlists {
-				<button
-					type="button"
-					class="ui-playlist-menu-item"
-					hx-post={ fmt.Sprintf("/api/playlists/add-video?videoID=%s&playlistID=%s", videoID, p.ID) }
-					hx-target={ fmt.Sprintf("#add-to-playlist-%s", videoID) }
-					hx-swap="outerHTML"
-				>
-					if inPlaylistIDs[p.ID] {
-						<span class="shrink-0 text-accent">
-							@icons.Check()
-						</span>
-						<span class="truncate">{ p.Name }</span>
-					} else {
-						<span class="shrink-0 w-6 h-6 opacity-0">
-							@icons.Check()
-						</span>
-						<span class="truncate">{ p.Name }</span>
+		<dialog id={ fmt.Sprintf("add-to-playlist-dialog-%s", videoID) } class="ui-dialog ui-playlist-dialog" onclick="if (event.target === this) this.close()">
+			<div class="ui-dialog-panel ui-playlist-dialog-panel">
+				<div class="flex items-center justify-between gap-3 border-b border-glass-stroke/15 px-4 py-3">
+					<h2 class="text-sm font-semibold text-text-primary">Add to playlist</h2>
+					<button
+						type="button"
+						class="ui-channel-action-btn cursor-pointer"
+						title="Close"
+						onclick="this.closest('dialog').close()"
+					>
+						@icons.Cross()
+					</button>
+				</div>
+				<div class="ui-playlist-picker-list">
+					for _, p := range playlists {
+						<button
+							type="button"
+							class={ "ui-playlist-picker-item", templ.KV("ui-playlist-picker-item-active", inPlaylistIDs[p.ID]) }
+							hx-post={ fmt.Sprintf("/api/playlists/add-video?videoID=%s&playlistID=%s", videoID, p.ID) }
+							hx-target={ fmt.Sprintf("#add-to-playlist-%s", videoID) }
+							hx-swap="outerHTML"
+							hx-on::after-request="this.closest('dialog')?.close()"
+						>
+							<span class="min-w-0 flex-1">
+								<span class="block truncate text-sm font-medium text-text-primary">@YouTubeText(p.Name)</span>
+								<span class="block text-xs text-text-secondary">{ fmt.Sprintf("%d videos", p.VideoCount) }</span>
+							</span>
+						</button>
 					}
-				</button>
-			}
-		</div>
+				</div>
+			</div>
+		</dialog>
 	</div>
 }

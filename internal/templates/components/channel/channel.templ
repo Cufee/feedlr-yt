@@ -3,6 +3,7 @@ package channel
 import (
 	"fmt"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 )
 
 func ChannelThumbnailProxyURL(channelID string) string {
@@ -18,21 +19,21 @@ templ ChannelTile(channel youtube.Channel, thumbnailURL string, actionButton tem
 				onload="this.classList.remove('invisible')"
 				onerror="this.remove()"
 				src={ thumbnailURL }
-				alt={ channel.Title }
+				alt={ shared.YouTubeString(channel.Title) }
 				loading="lazy"
 				decoding="async"
 			/>
 		</div>
 		<div class="flex min-h-[5.3rem] w-full flex-col justify-start">
 			<div class="flex h-full items-start justify-between gap-2">
-				<div class="my-auto ui-channel-title">{ channel.Title }</div>
+				<div class="my-auto ui-channel-title">@shared.YouTubeText(channel.Title)</div>
 				if actionButton != nil {
 					@actionButton
 				}
 			</div>
 			<span class="ui-channel-description">
 				if channel.Description != "" {
-					{ channel.Description }
+					@shared.YouTubeText(channel.Description)
 				} else {
 					We don't know much about them, but we're sure they are great.
 				}

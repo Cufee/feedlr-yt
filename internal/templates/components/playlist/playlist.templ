@@ -2,19 +2,18 @@ package playlist
 
 import (
 	"fmt"
-	"time"
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
-	"github.com/cufee/feedlr-yt/internal/utils"
 )
 
 templ PlaylistCard(props types.PlaylistProps) {
 	<a href={ templ.URL(fmt.Sprintf("/app/playlist/%s", props.ID)) } hx-boost="true" hx-target="body" class="flex flex-col gap-1 group">
 		@ui.VideoCardShell(fmt.Sprintf("playlist-card-%s", props.ID)) {
 			if props.ThumbnailVideoID != "" {
-				@feed.VideoThumbnail(props.ThumbnailVideoID, props.Name, false)
+				@feed.VideoThumbnail(props.ThumbnailVideoID, shared.YouTubeString(props.Name), false)
 			} else {
 				<div class="absolute inset-0 flex items-center justify-center bg-elev-1">
 					<div class="text-text-secondary opacity-40">
@@ -32,39 +31,71 @@ templ PlaylistCard(props types.PlaylistProps) {
 			</div>
 		}
 		<span class="mt-1 line-clamp-2 text-sm font-medium leading-tight text-text-primary group-hover:underline">
-			{ props.Name }
+			@shared.YouTubeText(props.Name)
 		</span>
 		if props.Description != "" {
 			<span class="line-clamp-1 text-xs text-text-secondary">
-				{ props.Description }
+				@shared.YouTubeText(props.Description)
 			</span>
 		}
 	</a>
 }
 
 templ PlaylistHeader(props types.PlaylistProps, actions templ.Component) {
-	<div class="flex gap-4 items-start">
-		<div class="flex-1 min-w-0">
-			<h1 class="text-lg font-semibold text-text-primary leading-tight">{ props.Name }</h1>
-			if props.Description != "" {
-				<p class="mt-1 text-sm text-text-secondary line-clamp-3">{ props.Description }</p>
+	<div class="ui-channel-tile">
+		<div class="ui-channel-thumb">
+			if props.ThumbnailVideoID != "" {
+				@PlaylistHeaderThumbnail(props.ThumbnailVideoID, shared.YouTubeString(props.Name))
+			} else {
+				<div class="absolute inset-0 flex items-center justify-center bg-elev-1">
+					<div class="text-text-secondary opacity-40">
+						@icons.Playlist()
+					</div>
+				</div>
 			}
-			<div class="mt-2 flex items-center gap-3 text-xs text-text-secondary">
-				<span>{ fmt.Sprintf("%d videos", props.VideoCount) }</span>
-				if props.Progress > 0 {
-					<span>{ fmt.Sprintf("%d%% watched", props.Progress) }</span>
-				}
-				if props.YouTubePlaylistID != "" {
-					<span>Imported from YouTube</span>
-				}
-			</div>
 		</div>
-		if actions != nil {
-			<div class="flex items-center gap-1.5 shrink-0">
-				@actions
+		<div class="flex min-h-[5.3rem] w-full flex-col justify-start">
+			<div class="flex items-start justify-between gap-3">
+				<div class="min-w-0">
+					<h1 class="ui-channel-title">@shared.YouTubeText(props.Name)</h1>
+					<div class="mt-1 text-xs text-text-secondary">
+						@shared.UpdatedAtText(props.UpdatedAt)
+					</div>
+					<div class="ui-header-meta">
+						if props.VideoCount > 0 {
+							<span>{ fmt.Sprintf("%d/%d watched", watchedVideoCount(props), props.VideoCount) }</span>
+						} else {
+							<span>0 videos</span>
+						}
+						if props.YouTubePlaylistID != "" {
+							<span>Imported from YouTube</span>
+						}
+					</div>
+				</div>
+				if actions != nil {
+					<div class="flex shrink-0 items-center gap-1.5">
+						@actions
+					</div>
+				}
 			</div>
-		}
+			if props.Description != "" {
+				<p class="ui-channel-description">@shared.YouTubeText(props.Description)</p>
+			}
+		</div>
 	</div>
+}
+
+templ PlaylistHeaderThumbnail(videoID, alt string) {
+	<object tabindex="-1" class="absolute inset-0 h-full w-full object-cover bg-elev-1" data={ feed.VideoThumbnailProxyURL(videoID, "maxresdefault") } type="image/jpeg">
+		<img class="absolute inset-0 h-full w-full object-cover bg-elev-1" src={ feed.VideoThumbnailProxyURL(videoID, "sddefault") } alt={ shared.YouTubeString(alt) } loading="lazy" decoding="async"/>
+	</object>
+}
+
+func watchedVideoCount(props types.PlaylistProps) int {
+	if props.VideoCount <= 0 || props.Progress <= 0 {
+		return 0
+	}
+	return (props.VideoCount*props.Progress + 50) / 100
 }
 
 templ CreatePlaylistDialog() {
@@ -159,7 +190,7 @@ templ EditPlaylistForm(props types.PlaylistProps, errMsg string) {
 		<input
 			type="text"
 			name="name"
-			value={ props.Name }
+			value={ shared.YouTubeString(props.Name) }
 			placeholder="Playlist name"
 			class={ "ui-input w-full", templ.KV("ui-input-error", errMsg != "") }
 			required
@@ -167,7 +198,7 @@ templ EditPlaylistForm(props types.PlaylistProps, errMsg string) {
 		<input
 			type="text"
 			name="description"
-			value={ props.Description }
+			value={ shared.YouTubeString(props.Description) }
 			placeholder="Description (optional)"
 			class="ui-input w-full"
 		/>
@@ -176,27 +207,6 @@ templ EditPlaylistForm(props types.PlaylistProps, errMsg string) {
 		}
 		<button type="submit" class="ui-btn ui-btn-primary ui-btn-md w-full">Save</button>
 	</form>
-}
-
-templ SyncButton(playlistID string, disabled bool) {
-	<button
-		id={ fmt.Sprintf("sync-btn-%s", playlistID) }
-		class={ "ui-channel-action-btn cursor-pointer", templ.KV("opacity-50", disabled) }
-		title={ syncButtonTitle(disabled) }
-		hx-post={ fmt.Sprintf("/api/playlists/%s/sync", playlistID) }
-		hx-target={ fmt.Sprintf("#sync-btn-%s", playlistID) }
-		hx-swap="outerHTML"
-		hx-indicator={ fmt.Sprintf("#sync-btn-%s", playlistID) }
-	>
-		@icons.CloudSync()
-	</button>
-}
-
-func syncButtonTitle(disabled bool) string {
-	if disabled {
-		return "Synced recently, please wait"
-	}
-	return "Sync with YouTube"
 }
 
 templ DeleteButton(playlistID string) {
@@ -221,16 +231,9 @@ templ EditButton() {
 }
 
 templ PlaylistActions(props types.PlaylistProps) {
-	@EditButton()
 	if props.YouTubePlaylistID != "" {
-		@SyncButton(props.ID, !canSync(props.UpdatedAt) && props.VideoCount > 0)
+		@shared.RefreshButton(fmt.Sprintf("/api/playlists/%s/sync", props.ID), props.UpdatedAt)
 	}
+	@EditButton()
 	@DeleteButton(props.ID)
 }
-
-func canSync(updatedAt time.Time) bool {
-	return time.Since(updatedAt) >= time.Hour
-}
-
-// unused import guard
-var _ = utils.RelativeTimeAgo

@@ -39,7 +39,8 @@ func ChannelModelToProps(channel *models.Channel) ChannelProps {
 			Thumbnail:   channel.Thumbnail,
 			Description: channel.Description,
 		},
-		Favorite: false, // This requires an additional query to subscriptions
+		Favorite:      false, // This requires an additional query to subscriptions
+		FeedUpdatedAt: channel.FeedUpdatedAt,
 	}
 }
 

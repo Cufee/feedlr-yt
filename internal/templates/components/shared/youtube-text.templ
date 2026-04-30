@@ -1,0 +1,11 @@
+package shared
+
+import "html"
+
+func YouTubeString(text string) string {
+	return html.UnescapeString(text)
+}
+
+templ YouTubeText(text string) {
+	{ YouTubeString(text) }
+}

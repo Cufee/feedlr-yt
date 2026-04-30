@@ -78,8 +78,9 @@ const (
 
 type ChannelProps struct {
 	youtube.Channel
-	Favorite    bool
-	VideoFilter VideoFilter
+	Favorite      bool
+	VideoFilter   VideoFilter
+	FeedUpdatedAt time.Time
 }
 
 type ChannelSearchResultProps struct {
@@ -152,8 +153,8 @@ type VideoPlayerProps struct {
 
 	ReturnURL string `json:"returnURL"`
 
-	UserPlaylists      []PlaylistProps    `json:"-"`
-	VideoInPlaylistIDs map[string]bool    `json:"-"`
+	UserPlaylists      []PlaylistProps `json:"-"`
+	VideoInPlaylistIDs map[string]bool `json:"-"`
 }
 
 func (v *VideoPlayerProps) AddSegments(segments ...sponsorblock.Segment) error {

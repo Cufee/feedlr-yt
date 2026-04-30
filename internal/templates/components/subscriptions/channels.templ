@@ -5,13 +5,14 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/templates/components/channel"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
 templ SubscribedChannelTile(props types.ChannelProps) {
 	<div
 		id={ fmt.Sprintf("subscribed-channel-tile-%s", props.ID) }
-		data-search={ props.Title }
+		data-search={ shared.YouTubeString(props.Title) }
 		class="ui-motion-swap ui-channel-card group channel-btn"
 	>
 		<a

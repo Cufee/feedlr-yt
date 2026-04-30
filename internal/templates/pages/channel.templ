@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/cufee/feedlr-yt/internal/templates/components/channel"
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
 	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
@@ -22,21 +23,21 @@ func propsToOptions(props types.ChannelPageProps) []feed.FeedOption {
 
 templ Channel(props types.ChannelPageProps) {
 	<head>
-		<title>Feedlr - { props.Channel.Title }</title>
-		<meta property="og:title" content={ props.Channel.Title }/>
+		<title>Feedlr - { shared.YouTubeString(props.Channel.Title) }</title>
+		<meta property="og:title" content={ shared.YouTubeString(props.Channel.Title) }/>
 		<meta property="og:type" content="profile"/>
-		<meta property="og:description" content={ props.Channel.Description }/>
+		<meta property="og:description" content={ shared.YouTubeString(props.Channel.Description) }/>
 		<meta property="og:image" content={ channel.ChannelThumbnailProxyURL(props.Channel.ID) }/>
 		<meta name="twitter:card" content="summary_large_image"/>
-		<meta name="twitter:title" content={ props.Channel.Title }/>
-		<meta name="twitter:description" content={ props.Channel.Description }/>
+		<meta name="twitter:title" content={ shared.YouTubeString(props.Channel.Title) }/>
+		<meta name="twitter:description" content={ shared.YouTubeString(props.Channel.Description) }/>
 		<meta name="twitter:image" content={ channel.ChannelThumbnailProxyURL(props.Channel.ID) }/>
-		<meta name="twitter:image:alt" content={ props.Channel.Title }/>
+		<meta name="twitter:image:alt" content={ shared.YouTubeString(props.Channel.Title) }/>
 	</head>
 	<div class="relative flex w-full flex-col gap-4">
 		@ui.Card(ui.WithCardClass("w-full p-4 md:p-5")) {
 			<div class="grow">
-				@channel.ChannelTile(props.Channel.Channel, channel.ChannelThumbnailProxyURL(props.Channel.ID), subscribeButton(props.Channel.ID, props.Authenticated, props.Subscribed))
+				@ChannelHeader(props)
 			</div>
 		}
 		if props.Authenticated && props.Subscribed {
@@ -52,10 +53,54 @@ templ ChannelVideoFeed(props types.ChannelPageProps) {
 	</div>
 }
 
+templ ChannelHeader(props types.ChannelPageProps) {
+	<div class="ui-channel-tile">
+		<div class="ui-channel-thumb">
+			<div class="ui-channel-thumb-skeleton"></div>
+			<img
+				class="invisible"
+				onload="this.classList.remove('invisible')"
+				onerror="this.remove()"
+				src={ channel.ChannelThumbnailProxyURL(props.Channel.ID) }
+				alt={ shared.YouTubeString(props.Channel.Title) }
+				loading="lazy"
+				decoding="async"
+			/>
+		</div>
+		<div class="flex min-h-[5.3rem] w-full flex-col justify-start">
+			<div class="flex items-start justify-between gap-3">
+				<div class="min-w-0">
+					<h1 class="ui-channel-title">@shared.YouTubeText(props.Channel.Title)</h1>
+					<div class="mt-1 text-xs text-text-secondary">
+						@shared.UpdatedAtText(props.Channel.FeedUpdatedAt)
+					</div>
+				</div>
+				@channelActions(props)
+			</div>
+			<span class="ui-channel-description">
+				if props.Channel.Description != "" {
+					@shared.YouTubeText(props.Channel.Description)
+				} else {
+					We don't know much about them, but we're sure they are great.
+				}
+			</span>
+		</div>
+	</div>
+}
+
 templ subscribeButton(id string, authenticated, subscribed bool) {
 	if authenticated && subscribed {
 		@subscriptions.UnsubscribeButtonSmall(id, subscriptions.WithRefresh)
 	} else if authenticated {
 		@subscriptions.SubscribeButtonSmall(id, subscriptions.WithRefresh)
+	}
+}
+
+templ channelActions(props types.ChannelPageProps) {
+	if props.Authenticated {
+		<div class="flex shrink-0 items-center gap-1.5">
+			@shared.RefreshButton(fmt.Sprintf("/api/channels/%s/refresh", props.Channel.ID), props.Channel.FeedUpdatedAt)
+			@subscribeButton(props.Channel.ID, props.Authenticated, props.Subscribed)
+		</div>
 	}
 }

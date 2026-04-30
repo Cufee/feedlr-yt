@@ -131,8 +131,11 @@ var SyncPlaylist brewed.Partial[*handler.Context] = func(ctx *handler.Context) (
 
 	_, err := logic.SyncYouTubePlaylist(syncCtx, ctx.Database(), userID, playlistID)
 	if err != nil {
-		// Return disabled sync button (either too soon or error)
-		return playlist.SyncButton(playlistID, true), nil
+		p, findErr := ctx.Database().GetPlaylistByID(ctx.Context(), playlistID)
+		if findErr != nil || p.UserID != userID {
+			return nil, ctx.SendStatus(http.StatusInternalServerError)
+		}
+		return shared.RefreshButton(fmt.Sprintf("/api/playlists/%s/sync", playlistID), p.UpdatedAt), nil
 	}
 
 	return nil, ctx.Redirect(fmt.Sprintf("/app/playlist/%s", playlistID), http.StatusSeeOther)

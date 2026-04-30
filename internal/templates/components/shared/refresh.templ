@@ -1,0 +1,50 @@
+package shared
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/utils"
+)
+
+const refreshCooldown = time.Hour
+
+templ RefreshButton(endpoint string, updatedAt time.Time) {
+	<div id={ refreshControlID(endpoint) }>
+		if !refreshDisabled(updatedAt) {
+			<button
+				type="button"
+				class="ui-channel-action-btn cursor-pointer"
+				title="Refresh from YouTube"
+				hx-post={ endpoint }
+				hx-target={ fmt.Sprintf("#%s", refreshControlID(endpoint)) }
+				hx-swap="outerHTML"
+				hx-indicator={ fmt.Sprintf("#%s", refreshControlID(endpoint)) }
+			>
+				@icons.CloudSync()
+			</button>
+		}
+	</div>
+}
+
+templ UpdatedAtText(updatedAt time.Time) {
+	<span class="whitespace-nowrap" title={ refreshUpdatedText(updatedAt) }>{ refreshUpdatedText(updatedAt) }</span>
+}
+
+func refreshDisabled(updatedAt time.Time) bool {
+	return !updatedAt.IsZero() && time.Since(updatedAt) < refreshCooldown
+}
+
+func refreshUpdatedText(updatedAt time.Time) string {
+	if updatedAt.IsZero() {
+		return "Never updated"
+	}
+	return "Updated " + utils.RelativeTimeAgo(updatedAt)
+}
+
+func refreshControlID(endpoint string) string {
+	id := strings.NewReplacer("/", "-", "?", "-", "=", "-", "&", "-").Replace(strings.Trim(endpoint, "/"))
+	return fmt.Sprintf("refresh-control-%s", id)
+}

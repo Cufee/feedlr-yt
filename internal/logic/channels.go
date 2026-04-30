@@ -2,9 +2,9 @@ package logic
 
 import (
 	"context"
-
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/ssoroka/slice"
 )
+
+var ErrRefreshTooSoon = errors.New("channel feed was refreshed recently")
 
 /*
 Returns a list of channel props for all user subscriptions
@@ -105,6 +107,26 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 	}
 
 	return &props, nil
+}
+
+func RefreshChannelFeed(ctx context.Context, db database.Client, channelID string) (time.Time, error) {
+	channel, _, err := CacheChannel(ctx, db, channelID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if !channel.FeedUpdatedAt.IsZero() && time.Since(channel.FeedUpdatedAt) < time.Hour {
+		return channel.FeedUpdatedAt, ErrRefreshTooSoon
+	}
+
+	if _, err := CacheChannelVideos(ctx, db, 12, channelID); err != nil {
+		return channel.FeedUpdatedAt, err
+	}
+
+	updatedAt := time.Now()
+	if err := db.SetChannelFeedUpdatedAt(ctx, channelID, updatedAt); err != nil {
+		return updatedAt, errors.Wrap(err, "failed to update channel refresh time")
+	}
+	return updatedAt, nil
 }
 
 func SearchChannels(

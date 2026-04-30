@@ -3,6 +3,7 @@ package layouts
 import (
 	"fmt"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/templates/layouts/partials"
 	"github.com/cufee/feedlr-yt/internal/types"
@@ -41,20 +42,20 @@ func VideoThumbnailProxyURL(videoID, variant string) string {
 templ videoLayout(video types.VideoProps, content ...templ.Component) {
 	<html lang="en" data-theme="dim">
 		@partials.Head(false, partials.HeadlessManifest()) {
-			<title>Feedlr - { video.Title }</title>
-			<meta name="author" content={ video.Channel.Title }/>
-			<meta property="og:title" content={ video.Title }/>
+			<title>Feedlr - { shared.YouTubeString(video.Title) }</title>
+			<meta name="author" content={ shared.YouTubeString(video.Channel.Title) }/>
+			<meta property="og:title" content={ shared.YouTubeString(video.Title) }/>
 			<meta property="og:type" content="video.episode"/>
-			<meta property="og:description" content={ video.Description }/>
+			<meta property="og:description" content={ shared.YouTubeString(video.Description) }/>
 			<meta property="video:duration" content={ fmt.Sprint(video.Duration) }/>
 			<meta property="og:video:duration" content={ fmt.Sprint(video.Duration) }/>
 			<meta property="og:image" content={ VideoThumbnailProxyURL(video.ID, "maxresdefault") }/>
 			<meta itemprop="duration" content={ secondsToISO8601Duration(video.Duration) }/>
 			<meta name="twitter:card" content="summary_large_image"/>
-			<meta name="twitter:title" content={ video.Title }/>
-			<meta name="twitter:description" content={ video.Description }/>
+			<meta name="twitter:title" content={ shared.YouTubeString(video.Title) }/>
+			<meta name="twitter:description" content={ shared.YouTubeString(video.Description) }/>
 			<meta name="twitter:image" content={ VideoThumbnailProxyURL(video.ID, "maxresdefault") }/>
-			<meta name="twitter:image:alt" content={ video.Title }/>
+			<meta name="twitter:image:alt" content={ shared.YouTubeString(video.Title) }/>
 		}
 		<body class="h-svh bg-black" hx-ext="head-support">
 			@ui.NavProgress()

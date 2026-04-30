@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/feedlr-yt/internal/utils"
@@ -116,7 +117,7 @@ templ WatchLaterCarouselItem(video types.VideoProps) {
 				</div>
 			</div>
 			<span class="mt-1 line-clamp-2 h-9 overflow-hidden text-sm leading-tight text-text-primary hover:underline">
-				{ video.Title }
+				@shared.YouTubeText(video.Title)
 			</span>
 		</a>
 	</div>
@@ -180,7 +181,7 @@ templ VideoCardWithCarouselRemove(video types.VideoProps, opts ...FeedOption) {
 templ VideoThumbnail(videoID, alt string, hidden bool) {
 	<div class={ "ui-video-thumbnail", "absolute", "inset-0", "pointer-events-none", templ.KV("blur-xl", hidden) }>
 		<object tabindex="-1" class="absolute object-cover w-full h-full transition-transform duration-500 pointer-events-none bg-elev-1 group-hover:scale-110" data={ VideoThumbnailProxyURL(videoID, "sddefault") } type="image/jpeg">
-			<img class="absolute object-cover w-full h-full transition-transform duration-500 pointer-events-none bg-elev-1 group-hover:scale-110" src={ VideoThumbnailProxyURL(videoID, "0") } alt={ alt } loading="lazy" decoding="async"/>
+			<img class="absolute object-cover w-full h-full transition-transform duration-500 pointer-events-none bg-elev-1 group-hover:scale-110" src={ VideoThumbnailProxyURL(videoID, "0") } alt={ shared.YouTubeString(alt) } loading="lazy" decoding="async"/>
 		</object>
 	</div>
 }
