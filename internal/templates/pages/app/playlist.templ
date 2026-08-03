@@ -22,25 +22,18 @@ templ PlaylistDetail(props logic.PlaylistPageProps) {
 		}
 		@PlaylistVideoFeed(props)
 		@playlist.EditPlaylistDialog(props.Playlist)
+		@playlist.AddVideoDialog(props.Playlist.ID)
+		<div id="playlist-toast"></div>
 		@dialogCloseScript()
 	</div>
 }
 
 templ PlaylistVideoFeed(props logic.PlaylistPageProps) {
 	<div id="playlist-video-feed" class="ui-motion-swap w-full flex flex-col gap-4">
-		if len(props.New) == 0 && len(props.Watched) == 0 {
-			@ui.EmptyState("No videos yet", "Add videos from any video page using the playlist dropdown", "")
+		if len(props.Videos) == 0 {
+			@ui.EmptyState("No videos yet", "Add a video with the URL button above, or from any video page using the playlist dropdown", "")
 		} else {
-			if len(props.New) > 0 {
-				<div class="ui-feed-divider"><span>new</span></div>
-			}
-			@feed.VideoFeed(props.New, playlistReturnURL(props.Playlist.ID), feed.WithChannelName, feed.WithProgressBar, feed.WithProgressOverlay, feed.WithPlaylistActions(props.Playlist.ID))
-			if len(props.New) > 0 && len(props.Watched) > 0 {
-				<div class="ui-feed-divider"><span>watched</span></div>
-			}
-			if len(props.Watched) > 0 {
-				@feed.VideoFeed(props.Watched, playlistReturnURL(props.Playlist.ID), feed.WithChannelName, feed.WithProgressBar, feed.WithProgressOverlay, feed.WithPlaylistActions(props.Playlist.ID))
-			}
+			@feed.VideoFeed(props.Videos, playlistReturnURL(props.Playlist.ID), feed.WithChannelName, feed.WithProgressBar, feed.WithProgressOverlay, feed.WithPlaylistActions(props.Playlist.ID))
 		}
 	</div>
 }

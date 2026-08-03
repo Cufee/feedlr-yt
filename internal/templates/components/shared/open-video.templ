@@ -17,7 +17,7 @@ templ OpenVideoButton() {
 				</div>
 			</div>
 		</dialog>
-		@EmbedScript(openVideoModalScript())
+		@EmbedScript(PasteLinkModalScript("open_video_modal", "open_video_modal_box", "open_video_modal_btn", "open_video_input", "open_video_modal_form", true), "open_video_modal", "open_video_modal_box", "open_video_modal_btn", "open_video_input", "open_video_modal_form", true)
 	</div>
 }
 
@@ -46,10 +46,10 @@ templ OpenVideoInput(url string, valid bool) {
 	</form>
 }
 
-script openVideoModalScript() {
-		const modal = document.getElementById("open_video_modal");
-		const modalBox = document.getElementById("open_video_modal_box");
-		const modalButton = document.getElementById("open_video_modal_btn");
+script PasteLinkModalScript(modalID string, boxID string, buttonID string, inputID string, formID string, enableHotkey bool) {
+		const modal = document.getElementById(modalID);
+		const modalBox = document.getElementById(boxID);
+		const modalButton = document.getElementById(buttonID);
 
 		const extractVideoID = (text) => {
 			if (!text) {
@@ -72,12 +72,18 @@ script openVideoModalScript() {
 			}
 		}
 
-		const openVideoFromText = (text) => {
+		const submitVideoLink = (text) => {
 			const videoID = extractVideoID(text);
 			if (!videoID) {
 				return false;
 			}
-			window.location.href = "/video/" + videoID;
+			const input = document.getElementById(inputID);
+			const form = document.getElementById(formID);
+			if (!input || !form) {
+				return false;
+			}
+			input.value = text;
+			form.requestSubmit();
 			return true;
 		}
 
@@ -98,12 +104,12 @@ script openVideoModalScript() {
 		const openModal = async () => {
 			try {
 			const text = await navigator.clipboard.readText();
-			if (!openVideoFromText(text)) {
-				throw "failed to open a video from clipboard";
+			if (!submitVideoLink(text)) {
+				throw "failed to submit a video from clipboard";
 			}
 		} catch (_error) {
 			modal.showModal();
-			const input = modalBox.querySelector("#open_video_input")
+			const input = modalBox.querySelector("#" + inputID)
 			input.classList.remove("ui-input-error");
 			input.value = "";
 			input.focus();
@@ -117,10 +123,12 @@ script openVideoModalScript() {
 				modal.close();
 			}
 		});
+		if (enableHotkey) {
 	  	document.addEventListener("keydown", (e) => {
-			if (e.key !== "Enter" || modal.open || shouldIgnoreEnterHotkey(e)) {
-				return;
-			}
-			openModal();
-		});
+				if (e.key !== "Enter" || modal.open || shouldIgnoreEnterHotkey(e)) {
+					return;
+				}
+				openModal();
+			});
+		}
 	}

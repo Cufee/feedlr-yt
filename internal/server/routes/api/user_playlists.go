@@ -9,6 +9,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/templates/components/playlist"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
@@ -165,6 +166,64 @@ var AddVideoToPlaylist brewed.Partial[*handler.Context] = func(ctx *handler.Cont
 	playlists, _ := logic.GetUserPlaylistsProps(ctx.Context(), ctx.Database(), userID)
 	membership, _ = logic.GetVideoPlaylistMembership(ctx.Context(), ctx.Database(), userID, videoID)
 	return shared.AddToPlaylistSelect(videoID, playlists, membership), nil
+}
+
+var AddVideoToPlaylistFromURL brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
+	if !ok {
+		metrics.IncUserAction("playlist_add_video_url", "unauthorized")
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
+	}
+
+	playlistID := ctx.Params("id")
+	if playlistID == "" {
+		metrics.IncUserAction("playlist_add_video_url", "invalid_request")
+		return nil, ctx.SendStatus(http.StatusBadRequest)
+	}
+
+	link, err := ctx.FormValue("link")
+	if err != nil {
+		metrics.IncUserAction("playlist_add_video_url", "invalid_request")
+		return playlist.AddVideoForm(playlistID, "", false, "Invalid request"), nil
+	}
+
+	videoID, valid := logic.VideoIDFromURL(link)
+	if !valid {
+		metrics.IncUserAction("playlist_add_video_url", "invalid_url")
+		return playlist.AddVideoForm(playlistID, link, false, "Invalid YouTube video URL"), nil
+	}
+
+	// Verify ownership before doing any expensive work
+	pl, err := ctx.Database().GetPlaylistByID(ctx.Context(), playlistID)
+	if err != nil || pl.UserID != userID || pl.System {
+		metrics.IncUserAction("playlist_add_video_url", "not_found")
+		return nil, ctx.SendStatus(http.StatusNotFound)
+	}
+
+	// Duplicate check - keep the dialog open and show a toast
+	inPlaylist, err := ctx.Database().IsVideoInPlaylist(ctx.Context(), playlistID, videoID)
+	if err == nil && inPlaylist {
+		metrics.IncUserAction("playlist_add_video_url", "duplicate")
+		return templ.Join(
+			playlist.AddVideoForm(playlistID, "", true, ""),
+			playlist.AddVideoToastOOB("Video is already in this playlist"),
+		), nil
+	}
+
+	// Ensure the video is cached in our DB (FK constraint on playlist_items)
+	logic.RefreshVideoCache(ctx.Context(), ctx.Database(), videoID)
+	if _, err := ctx.Database().GetVideoByID(ctx.Context(), videoID); err != nil {
+		metrics.IncUserAction("playlist_add_video_url", "video_unavailable")
+		return playlist.AddVideoForm(playlistID, link, false, "Couldn't load this video"), nil
+	}
+
+	if err := logic.AddVideoToPlaylist(ctx.Context(), ctx.Database(), userID, playlistID, videoID); err != nil {
+		metrics.IncUserAction("playlist_add_video_url", "error")
+		return playlist.AddVideoForm(playlistID, link, false, "Failed to add video"), nil
+	}
+
+	metrics.IncUserAction("playlist_add_video_url", "success")
+	return nil, ctx.Redirect(fmt.Sprintf("/app/playlist/%s", playlistID), http.StatusSeeOther)
 }
 
 var RemoveVideoFromPlaylist brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
