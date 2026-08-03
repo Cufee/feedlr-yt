@@ -170,6 +170,72 @@ templ ImportPlaylistForm(url string, valid bool) {
 	</form>
 }
 
+templ AddVideoButton() {
+	<button
+		type="button"
+		id="add-video-btn"
+		class="ui-channel-action-btn cursor-pointer"
+		title="Add video from URL"
+	>
+		@icons.ListPlus()
+	</button>
+}
+
+templ AddVideoDialog(playlistID string) {
+	<dialog id="add-video-modal" class="ui-dialog">
+		<div class="ui-dialog-panel ui-motion-modal-panel flex flex-col items-center justify-center gap-4" id="add-video-modal-box">
+			<h2 class="text-base font-semibold text-text-primary">Add video from URL</h2>
+			@AddVideoForm(playlistID, "", true, "")
+			<div class="text-center text-xs text-text-secondary">
+				Paste a YouTube video URL to add it to this playlist.
+			</div>
+		</div>
+	</dialog>
+	@shared.EmbedScript(shared.PasteLinkModalScript("add-video-modal", "add-video-modal-box", "add-video-btn", "add-video-input", "add-video-form", false), "add-video-modal", "add-video-modal-box", "add-video-btn", "add-video-input", "add-video-form", false)
+}
+
+templ AddVideoForm(playlistID, url string, valid bool, errMsg string) {
+	<form
+		class="ui-motion-swap m-0 flex w-full flex-col gap-3"
+		id="add-video-form"
+		hx-post={ fmt.Sprintf("/api/playlists/%s/videos", playlistID) }
+		hx-target="#add-video-form"
+		hx-swap="outerHTML"
+		hx-indicator="#add-video-spinner"
+		_="on htmx:beforeRequest
+        if #add-video-input.value == ''
+          halt"
+	>
+		<div class="flex w-full items-center gap-2">
+			<input
+				type="text"
+				id="add-video-input"
+				name="link"
+				value={ url }
+				placeholder="https://youtube.com/watch..."
+				class={ "ui-input w-full", templ.KV("ui-input-error", !valid) }
+			/>
+			<button type="submit" class="ui-btn ui-btn-primary ui-btn-md shrink-0">Add</button>
+			<span class="htmx-indicator ui-indicator-delayed" id="add-video-spinner">
+				<span class="ui-spinner size-5 border-2"></span>
+			</span>
+		</div>
+		if errMsg != "" {
+			<span class="text-xs text-danger">{ errMsg }</span>
+		}
+	</form>
+}
+
+templ AddVideoToastOOB(message string) {
+	<div id="playlist-toast" hx-swap-oob="innerHTML">
+		<div class="fixed left-1/2 bottom-4 z-40 -translate-x-1/2">
+			<div class="ui-motion-toast ui-toast ui-toast-info opacity-90" _="init wait 2.5s then transition opacity to 0 over 300ms then remove me">
+				<span>{ message }</span>
+			</div>
+		</div>
+	</div>
+}
+
 templ EditPlaylistDialog(props types.PlaylistProps) {
 	<dialog id="edit-playlist-modal" class="ui-dialog">
 		<div class="ui-dialog-panel ui-motion-modal-panel flex flex-col items-center justify-center gap-4" id="edit-playlist-modal-box">
@@ -231,6 +297,7 @@ templ EditButton() {
 }
 
 templ PlaylistActions(props types.PlaylistProps) {
+	@AddVideoButton()
 	if props.YouTubePlaylistID != "" {
 		@shared.RefreshButton(fmt.Sprintf("/api/playlists/%s/sync", props.ID), props.UpdatedAt)
 	}

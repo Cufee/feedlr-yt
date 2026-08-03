@@ -406,8 +406,7 @@ func computePlaylistProgress(ctx context.Context, db interface {
 
 type PlaylistPageProps struct {
 	Playlist types.PlaylistProps
-	New      []types.VideoProps
-	Watched  []types.VideoProps
+	Videos   []types.VideoProps
 }
 
 func GetPlaylistPageProps(ctx context.Context, db interface {
@@ -474,11 +473,7 @@ func GetPlaylistPageProps(ctx context.Context, db interface {
 			continue
 		}
 
-		if vp.Progress > 0 {
-			props.Watched = append(props.Watched, vp)
-		} else {
-			props.New = append(props.New, vp)
-		}
+		props.Videos = append(props.Videos, vp)
 	}
 
 	return props, nil

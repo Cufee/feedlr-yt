@@ -111,6 +111,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		api.Post("/playlists/:id", toFiber(rapi.UpdatePlaylist))
 		api.Delete("/playlists/:id", toFiber(rapi.DeletePlaylist))
 		api.Post("/playlists/:id/sync", toFiber(rapi.SyncPlaylist))
+		api.Post("/playlists/:id/videos", toFiber(rapi.AddVideoToPlaylistFromURL))
 		api.Post("/playlists/:id/videos/:videoID/progress", toFiber(rapi.UpdatePlaylistVideoProgress))
 		api.Post("/playlists/:id/videos/:videoID/remove", toFiber(rapi.RemoveVideoFromPlaylist))
 		api.Post("/playlists/:id/videos/:videoID/move", toFiber(rapi.MovePlaylistItem))
