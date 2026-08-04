@@ -192,6 +192,7 @@ script youtubePlayerInit(channel string, video string, progress, volume int, wit
 		document.getElementById("player-loading").classList.add("hidden")
 		const volume = parseInt(window.localStorage.getItem(`player-volume-${channel}`) || window.localStorage.getItem("player-volume"))
 		if (Number.isInteger(volume) && volume > 0) window.feedlr_player.setVolume(volume)
+		try { window.feedlr_player.unloadModule('captions') } catch (e) {}
 	}
 	function onPlayerStateChange(event) {
 		withProgress && saveProgress()
