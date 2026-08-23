@@ -1,0 +1,165 @@
+package pages
+
+import (
+	"fmt"
+
+	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/types"
+)
+
+templ Podcast(props types.VideoPlayerProps) {
+	<div class="relative flex grow flex-col">
+		<div class="ui-video-rail">
+			<div class="ui-video-rail-actions">
+				@buttonChannel(props.Video.Channel.ID)
+				@buttonShare(props.Video.ID)
+				if props.Authenticated {
+					@feed.WatchLaterButton(props.Video.ID, props.Video.InWatchLater, feed.WatchLaterVideo)
+					if len(props.UserPlaylists) > 0 {
+						@shared.AddToPlaylistSelect(props.Video.ID, props.UserPlaylists, props.VideoInPlaylistIDs)
+					}
+				}
+			</div>
+			<div class="ui-video-rail-actions">
+				if props.Authenticated {
+					@buttonBack(props.ReturnURL)
+				} else {
+					@buttonLogin()
+				}
+			</div>
+		</div>
+		<div class="grow w-full flex flex-col relative overflow-y-auto">
+			<div id="player-loading" class="absolute inset-0 z-20 flex items-center justify-center bg-canvas/95"><span class="ui-spinner size-12 border-4"></span></div>
+			@podcastPlayer(props)
+		</div>
+	</div>
+	@shared.EmbedScript(podcastHotkeys(props.ReturnURL), props.ReturnURL)
+}
+
+templ podcastPlayer(player types.VideoPlayerProps) {
+	<div class="flex w-full max-w-xl grow flex-col items-center justify-center gap-6 px-6 py-10 mx-auto">
+		<img
+			src={ templ.URL(fmt.Sprintf("/thumb/video/%s/sddefault", player.Video.ID)) }
+			alt={ player.Video.Title }
+			class="size-40 rounded-xl object-cover shadow-lg md:size-56"
+		/>
+		<div class="flex flex-col items-center gap-1 text-center">
+			<h1 class="text-lg font-semibold leading-tight">{ player.Video.Title }</h1>
+			<a href={ templ.URL(fmt.Sprintf("/channel/%s", player.Video.Channel.ID)) } class="text-sm text-muted hover:text-default">
+				{ player.Video.Channel.Title }
+			</a>
+			<span class="text-xs text-muted">{ durationToString(player.Video.Duration) }</span>
+		</div>
+		<audio id="player" controls autoplay preload="metadata" src={ templ.URL(player.Video.StreamURL) } class="w-full"></audio>
+		<div class="flex items-center gap-1" id="playback-rate-controls">
+			<span class="ui-text-caption px-1">Speed</span>
+			for _, rate := range []string{"1", "1.25", "1.5", "1.75", "2"} {
+				<button data-playback-rate={ rate } class="ui-btn ui-btn-sm">{ rate + "x" }</button>
+			}
+		</div>
+	</div>
+	@shared.EmbedScript(podcastPlayerInit(player.Video.ID, player.Video.Progress, player.ReportProgress), player.Video.ID, player.Video.Progress, player.ReportProgress)
+}
+
+script podcastPlayerInit(episode string, progress int, withProgress bool) {
+	const audio = document.getElementById("player")
+	if (!audio) return
+
+	if (progress > 0) {
+		audio.addEventListener("loadedmetadata", () => { audio.currentTime = progress })
+	}
+	const savedVolume = parseInt(window.localStorage.getItem("player-volume"))
+	if (Number.isInteger(savedVolume) && savedVolume > 0) audio.volume = savedVolume / 100
+	const savedRate = parseFloat(window.localStorage.getItem("podcast-playback-rate"))
+	if (savedRate > 0) audio.playbackRate = savedRate
+
+	audio.addEventListener("canplay", () => {
+		document.getElementById("player-loading")?.classList.add("hidden")
+	})
+	audio.addEventListener("volumechange", () => {
+		const volume = Math.floor(audio.volume * 100)
+		if (volume > 0) window.localStorage.setItem("player-volume", volume)
+	})
+
+	const buttons = document.querySelectorAll("[data-playback-rate]")
+	function highlightRate() {
+		buttons.forEach((btn) => {
+			btn.classList.toggle("ui-btn-primary", Math.abs(parseFloat(btn.dataset.playbackRate) - audio.playbackRate) < 0.01)
+		})
+	}
+	buttons.forEach((btn) => {
+		btn.addEventListener("click", () => {
+			audio.playbackRate = parseFloat(btn.dataset.playbackRate)
+			window.localStorage.setItem("podcast-playback-rate", btn.dataset.playbackRate)
+			highlightRate()
+		})
+	})
+	highlightRate()
+
+	let lastProgress = 0
+	function saveProgress() {
+		const currentTime = Math.floor(audio.currentTime)
+		if (lastProgress === currentTime) return true
+		lastProgress = currentTime
+		fetch(`/api/videos/${episode}/progress?progress=${currentTime}`, {
+			method: 'POST',
+			credentials: 'include'
+		}).catch(e => console.error(e))
+		return true
+	}
+
+	if (withProgress) {
+		audio.addEventListener("pause", saveProgress)
+		audio.addEventListener("ended", saveProgress)
+		setTimeout(() => {
+			document.querySelector("#close-button")?.addEventListener("click", saveProgress)
+		}, 100)
+		setInterval(saveProgress, 10000)
+	}
+}
+
+script podcastHotkeys(returnUrl string) {
+	window.addEventListener("keydown", (event) => {
+		if (event.keyCode === 27) {
+			event.preventDefault()
+			document.getElementById("player-loading")?.classList.remove("hidden")
+			const audio = document.getElementById("player")
+			if (audio) audio.pause()
+			window.location.href = window.location.origin + returnUrl
+			setTimeout(() => {
+				window.location.href = window.location.origin + returnUrl
+			}, 250)
+			return false
+		}
+		const audio = document.getElementById("player")
+		if (!audio) return
+		for (const k of ["Alt", "AltGraph", "Control", "Meta"]) {
+			if (event.getModifierState(k) === true) return
+		}
+		// Play/Pause
+		if (event.keyCode === 32) {
+			event.preventDefault()
+			if (audio.paused) audio.play()
+			else audio.pause()
+		}
+		// Seek 5 seconds
+		if (event.keyCode === 37) {
+			event.preventDefault()
+			audio.currentTime -= 5
+		}
+		if (event.keyCode === 39) {
+			event.preventDefault()
+			audio.currentTime += 5
+		}
+		// Volume
+		if (event.keyCode === 38) {
+			event.preventDefault()
+			audio.volume = Math.min(1, audio.volume + 0.05)
+		}
+		if (event.keyCode === 40) {
+			event.preventDefault()
+			audio.volume = Math.max(0, audio.volume - 0.05)
+		}
+	})
+}

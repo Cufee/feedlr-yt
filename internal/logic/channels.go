@@ -37,9 +37,26 @@ func GetUserSubscribedChannels(ctx context.Context, db database.SubscriptionsCli
 }
 
 func GetChannelPageProps(ctx context.Context, db database.Client, userID, channelID string) (*types.ChannelPageProps, error) {
-	channel, cached, err := CacheChannel(ctx, db, channelID)
-	if err != nil {
-		return nil, err
+	// Podcast shows come straight from the database; their episodes are
+	// maintained by the feed poller, not the YouTube API.
+	show, err := db.GetPodcastShow(ctx, channelID)
+	if err != nil && !database.IsErrNotFound(err) {
+		return nil, errors.Wrap(err, "failed to check podcast show")
+	}
+	isPodcast := show != nil
+
+	var channel *models.Channel
+	cached := false
+	if isPodcast {
+		channel, err = db.GetChannel(ctx, channelID, database.Channel.WithPodcastShow())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		channel, cached, err = CacheChannel(ctx, db, channelID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	channelProps := types.ChannelModelToProps(channel)
 	props := types.ChannelPageProps{
@@ -69,7 +86,7 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 		return nil, err
 	}
 
-	if len(videos) == 0 && !cached {
+	if len(videos) == 0 && !cached && !isPodcast {
 		inserted, err := CacheChannelVideos(ctx, db, 3, channelID)
 		if err != nil && !errors.Is(err, youtube.ErrLoginRequired) {
 			return nil, errors.Wrap(err, "failed to cache channel videos")
@@ -82,6 +99,15 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 		}
 		// Apply filter to freshly cached videos
 		videos = filterVideosByType(videos, props.VideoFilter)
+	}
+	if len(videos) == 0 && isPodcast {
+		// Nothing cached yet (or a brand new show); pull the feed once.
+		if err := CachePodcastEpisodes(ctx, db, 24, channelID); err == nil {
+			videos, err = GetChannelVideosFiltered(ctx, db, 24, types.VideoFilterAll, channelID)
+			if err != nil && !database.IsErrNotFound(err) {
+				return nil, err
+			}
+		}
 	}
 
 	props.Channel.Videos = trimVideoList(12, 3, videos)

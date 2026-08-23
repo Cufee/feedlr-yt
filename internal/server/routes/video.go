@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -11,6 +12,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/templates/layouts"
 	"github.com/cufee/feedlr-yt/internal/templates/pages"
+	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/tpot/brewed"
 )
 
@@ -39,7 +41,7 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 
 		props, err := logic.GetPlayerPropsWithOpts(pctx, ctx.Database(), uid, video, logic.GetPlayerOptions{WithProgress: true, WithSegments: settings.SponsorBlock.SponsorBlockEnabled})
 		if err != nil {
-			return nil, nil, ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&from=feedler.app", video), http.StatusTemporaryRedirect)
+			return nil, nil, videoFetchFallback(ctx, video, err)
 		}
 
 		props.ReportProgress = true
@@ -60,7 +62,7 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 		}
 
 		props.ReturnURL = ctx.Query("return", "/app")
-		return layouts.Video(props.Video), pages.Video(props), nil
+		return playerLayout(props)
 	}
 
 	// No auth, do not check progress
@@ -69,9 +71,26 @@ var Video brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.Lay
 
 	props, err := logic.GetPlayerPropsWithOpts(pctx, ctx.Database(), "", video, logic.GetPlayerOptions{WithProgress: false, WithSegments: true})
 	if err != nil {
-		return nil, nil, ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&from=feedler.app", video), http.StatusTemporaryRedirect)
+		return nil, nil, videoFetchFallback(ctx, video, err)
 	}
 
 	props.ReturnURL = ctx.Query("return", "/app")
+	return playerLayout(props)
+}
+
+// playerLayout picks the audio player page for podcast episodes.
+func playerLayout(props types.VideoPlayerProps) (brewed.Layout[*handler.Context], templ.Component, error) {
+	if props.Video.IsPodcast() {
+		return layouts.Video(props.Video), pages.Podcast(props), nil
+	}
 	return layouts.Video(props.Video), pages.Video(props), nil
+}
+
+// videoFetchFallback keeps the YouTube fallback for videos, while podcast
+// episodes surface a local error page instead.
+func videoFetchFallback(ctx *handler.Context, video string, err error) error {
+	if strings.HasPrefix(video, "pe_") {
+		return ctx.Err(err)
+	}
+	return ctx.Redirect(fmt.Sprintf("https://www.youtube.com/watch?v=%s&from=feedler.app", video), http.StatusTemporaryRedirect)
 }

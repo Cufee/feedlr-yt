@@ -342,7 +342,7 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 		}
 	}
 
-	if options.WithSegments {
+	if options.WithSegments && !playerProps.Video.IsPodcast() {
 		if sponsorblock.C == nil {
 			return playerProps, nil
 		}

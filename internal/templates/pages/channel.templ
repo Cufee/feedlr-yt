@@ -40,7 +40,7 @@ templ Channel(props types.ChannelPageProps) {
 				@ChannelHeader(props)
 			</div>
 		}
-		if props.Authenticated && props.Subscribed {
+		if props.Authenticated && props.Subscribed && !props.Channel.IsPodcast {
 			@subscriptions.VideoFilterTabs(props.Channel.ID, props.VideoFilter)
 		}
 		@ChannelVideoFeed(props)
