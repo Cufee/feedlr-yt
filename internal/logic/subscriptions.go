@@ -21,6 +21,23 @@ func SubscriptionExists(ctx context.Context, db database.SubscriptionsClient, us
 }
 
 func NewSubscription(ctx context.Context, db database.Client, userId, channelId string) (*types.ChannelProps, error) {
+	show, err := db.GetPodcastShow(ctx, channelId)
+	if err != nil && !database.IsErrNotFound(err) {
+		return nil, errors.Wrap(err, "failed to check podcast show")
+	}
+	if show != nil {
+		channel, err := db.GetChannel(ctx, channelId)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get podcast channel")
+		}
+		if _, err := db.NewSubscription(ctx, userId, channel.ID); err != nil {
+			return nil, errors.Wrap(err, "failed to create podcast subscription")
+		}
+		props := types.ChannelModelToProps(channel)
+		props.IsPodcast = true
+		return &props, nil
+	}
+
 	channel, _, err := CacheChannel(ctx, db, channelId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to cache channel")

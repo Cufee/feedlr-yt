@@ -20,14 +20,15 @@ templ VideoMeta(title, channelURL, channelTitle, relativeTime, videoFilter strin
 						<span class="size-3.5 shrink-0">
 							@icons.Radio()
 						</span>
+					} else if isPodcast {
+						<span class="size-3.5 shrink-0">
+							@icons.Podcast()
+						</span>
 					}
 				</a>
 			}
 			<span class="ui-feed-time w-fit">
 				{ relativeTime }
-				if isPodcast {
-					 · Podcast
-				}
 			</span>
 		</div>
 	</div>

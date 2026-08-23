@@ -82,10 +82,10 @@ templ podcastPlayer(player types.VideoPlayerProps) {
 			</div>
 		</section>
 	</main>
-	@shared.EmbedScript(podcastPlayerInit(player.Video.ID, player.Video.Progress, player.ReportProgress), player.Video.ID, player.Video.Progress, player.ReportProgress)
+	@shared.EmbedScript(podcastPlayerInit(player.Video.ID, player.Video.Title, player.Video.Channel.Title, player.Video.Progress, player.ReportProgress), player.Video.ID, player.Video.Title, player.Video.Channel.Title, player.Video.Progress, player.ReportProgress)
 }
 
-script podcastPlayerInit(episode string, progress int, withProgress bool) {
+script podcastPlayerInit(episode, title, channel string, progress int, withProgress bool) {
 	const root = document.getElementById("podcast-player-page")
 	const audio = document.getElementById("podcast-player")
 	if (!root || !audio) return
@@ -141,6 +141,18 @@ script podcastPlayerInit(episode string, progress int, withProgress bool) {
 	function seek(seconds) {
 		const duration = Number.isFinite(audio.duration) ? audio.duration : Infinity
 		audio.currentTime = Math.max(0, Math.min(duration, audio.currentTime + seconds))
+	}
+	if ("mediaSession" in navigator && "MediaMetadata" in window) {
+		try {
+			navigator.mediaSession.metadata = new MediaMetadata({
+				title,
+				artist: channel,
+				album: channel,
+				artwork: [{ src: new URL(`/thumb/video/${episode}/maxresdefault`, window.location.origin).href }],
+			})
+			navigator.mediaSession.setActionHandler("seekbackward", () => seek(-15))
+			navigator.mediaSession.setActionHandler("seekforward", () => seek(15))
+		} catch (_) {}
 	}
 	function formatTime(seconds) {
 		const value = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0))

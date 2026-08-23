@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/cufee/feedlr-yt/internal/api/rss"
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/templates/components/channel"
 	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
@@ -48,31 +50,17 @@ templ SearchChannels(source types.MediaSource) {
 	</div>
 }
 
-templ SearchResultChannels(channels []types.ChannelSearchResultProps, source types.MediaSource) {
+templ SearchResultChannels(channels []types.ChannelSearchResultProps) {
 	for _, ch := range channels {
 		<div class="ui-motion-swap ui-channel-card group channel-btn" id={ fmt.Sprintf("channel-tile-%s", ch.ID) }>
-			@ui.Badge("YouTube", ui.BadgeNeutral, "ui-source-badge absolute left-2 top-2 z-20")
+			@ui.Badge("YouTube", ui.BadgeNeutral, "ui-source-badge ui-source-badge-channel")
 			<a hx-boost="true" href={ templ.URL(fmt.Sprintf("/channel/%s", ch.ID)) } class="ui-channel-overlay md:group-hover:opacity-100 group-[.htmx-request]:opacity-100" hx-indicator={ fmt.Sprintf("#channel-tile-%s", ch.ID) }>
 				<span class="ui-spinner size-6 border-[3px] md:size-7 htmx-indicator ui-indicator-delayed"></span>
 				<span class="group-[.htmx-request]:hidden">Open</span>
 			</a>
-			@channel.ChannelTile(ch.Channel, ch.Thumbnail, YouTubeSearchAction(ch.ID, ch.Subscribed, source))
+			@channel.ChannelTile(ch.Channel, ch.Thumbnail, nil)
 		</div>
 	}
-}
-
-templ YouTubeSearchAction(channelID string, subscribed bool, source types.MediaSource) {
-	<div id={ fmt.Sprintf("channel-search-action-%s", channelID) } class="relative z-20">
-		if subscribed {
-			<button type="button" class="ui-btn ui-btn-neutral ui-btn-sm" title="Unsubscribe" hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe?type=search&source=%s", channelID, source) } hx-target={ fmt.Sprintf("#channel-search-action-%s", channelID) } hx-swap="outerHTML">
-				Unsubscribe
-			</button>
-		} else {
-			<button type="button" class="ui-btn ui-btn-primary ui-btn-sm" title="Subscribe" hx-post={ fmt.Sprintf("/api/channels/%s/subscribe?type=search&source=%s", channelID, source) } hx-target={ fmt.Sprintf("#channel-search-action-%s", channelID) } hx-swap="outerHTML">
-				Subscribe
-			</button>
-		}
-	</div>
 }
 
 templ SearchPodcasts(source types.MediaSource, available bool) {
@@ -93,50 +81,33 @@ templ SearchPodcasts(source types.MediaSource, available bool) {
 	</div>
 }
 
-templ SearchResultPodcasts(podcasts []types.PodcastSearchResultProps, source types.MediaSource) {
+templ SearchResultPodcasts(podcasts []types.PodcastSearchResultProps) {
 	for _, podcast := range podcasts {
-		<div class="podcast-search-result ui-motion-swap ui-channel-card group">
-			@ui.Badge("Podcast", ui.BadgeAccent, "ui-source-badge absolute left-2 top-2 z-20")
-			<div class="ui-channel-tile">
-				<div class="ui-channel-thumb">
-					<div class="ui-channel-thumb-skeleton"></div>
-					if podcast.ArtworkURL != "" {
-						<img class="relative z-10 h-full w-full object-cover" src={ templ.URL(podcast.ArtworkURL) } alt={ podcast.Title } loading="lazy" decoding="async"/>
-					}
-				</div>
-				<div class="flex min-h-[5.3rem] w-full flex-col justify-start">
-					<div class="flex items-start justify-between gap-2">
-						<div class="my-auto ui-channel-title">{ podcast.Title }</div>
-						@PodcastSearchAction(podcast.FeedURL, podcast.Subscribed, source)
-					</div>
-					<span class="ui-channel-description">
-						if podcast.Author != "" {
-							{ podcast.Author }
-							if podcast.EpisodeCount > 0 {
-								{ fmt.Sprintf(" · %d episodes", podcast.EpisodeCount) }
-							}
-						} else if podcast.Description != "" {
-							{ podcast.Description }
-						}
-					</span>
-				</div>
-			</div>
+		<div class="podcast-search-result ui-motion-swap ui-channel-card group" id={ podcastSearchResultID(podcast) }>
+			@ui.Badge("Podcast", ui.BadgeNeutral, "ui-source-badge ui-source-badge-channel")
+			<a hx-boost="true" href={ templ.URL(podcastOpenURL(podcast.FeedURL)) } class="ui-channel-overlay md:group-hover:opacity-100 group-[.htmx-request]:opacity-100" hx-indicator={ "#" + podcastSearchResultID(podcast) }>
+				<span class="ui-spinner size-6 border-[3px] md:size-7 htmx-indicator ui-indicator-delayed"></span>
+				<span class="group-[.htmx-request]:hidden">Open</span>
+			</a>
+			@channel.ChannelTile(youtube.Channel{Title: podcast.Title, Description: podcastSearchDescription(podcast)}, podcast.ArtworkURL, nil)
 		</div>
 	}
 }
 
-templ PodcastSearchAction(feedURL string, subscribed bool, source types.MediaSource) {
-	<div class="podcast-search-action relative z-20">
-		if subscribed {
-			@ui.Badge("Subscribed", ui.BadgeAccent, "")
-		} else {
-			<button type="button" class="ui-btn ui-btn-primary ui-btn-sm" title="Subscribe" hx-post={ podcastSubscribeURL(feedURL, source) } hx-target="closest .podcast-search-action" hx-swap="outerHTML">
-				Subscribe
-			</button>
-		}
-	</div>
+func podcastSearchDescription(podcast types.PodcastSearchResultProps) string {
+	if podcast.Author == "" {
+		return podcast.Description
+	}
+	if podcast.EpisodeCount == 0 {
+		return podcast.Author
+	}
+	return fmt.Sprintf("%s · %d episodes", podcast.Author, podcast.EpisodeCount)
 }
 
-func podcastSubscribeURL(feedURL string, source types.MediaSource) string {
-	return "/api/podcasts/subscribe?type=search&source=" + string(source) + "&feed_url=" + url.QueryEscape(feedURL)
+func podcastOpenURL(feedURL string) string {
+	return "/api/podcasts/open?feed_url=" + url.QueryEscape(feedURL)
+}
+
+func podcastSearchResultID(podcast types.PodcastSearchResultProps) string {
+	return "podcast-search-result-" + rss.ShowID(podcast.FeedURL)
 }

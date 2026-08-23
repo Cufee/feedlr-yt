@@ -25,10 +25,6 @@ var SearchChannels brewed.Partial[*handler.Context] = func(ctx *handler.Context)
 	}
 
 	query := ctx.Query("search")
-	source, ok := types.ParseMediaSource(ctx.Query("source", string(types.MediaSourceAll)))
-	if !ok {
-		source = types.MediaSourceAll
-	}
 	if len(query) < 3 || len(query) > 32 {
 		if len(query) == 0 {
 			metrics.IncUserAction("search_channels", "empty")
@@ -49,7 +45,7 @@ var SearchChannels brewed.Partial[*handler.Context] = func(ctx *handler.Context)
 	}
 
 	metrics.IncUserAction("search_channels", "success")
-	return subscriptions.SearchResultChannels(channels, source), nil
+	return subscriptions.SearchResultChannels(channels), nil
 }
 
 templ channelsSearchErrorMessage(message string) {
@@ -74,10 +70,6 @@ var CreateSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Cont
 		metrics.IncUserAction("create_subscription", "success")
 		return subscriptions.UnsubscribeButtonSmall(props.ID), nil
 	}
-	if ctx.Query("type") == "search" {
-		metrics.IncUserAction("create_subscription", "success")
-		return channelSearchSubscriptionResponse(*props, subscriptionSource(ctx)), nil
-	}
 	metrics.IncUserAction("create_subscription", "success")
 	return subscriptions.SubscribedChannelTile(*props), nil
 }
@@ -100,39 +92,8 @@ var RemoveSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Cont
 		metrics.IncUserAction("remove_subscription", "success")
 		return subscriptions.SubscribeButtonSmall(channelId), nil
 	}
-	if ctx.Query("type") == "search" {
-		metrics.IncUserAction("remove_subscription", "success")
-		return channelSearchUnsubscriptionResponse(channelId, subscriptionSource(ctx)), nil
-	}
-
 	metrics.IncUserAction("remove_subscription", "success")
 	return nil, ctx.SendStatus(http.StatusOK)
-}
-
-func subscriptionSource(ctx *handler.Context) types.MediaSource {
-	source, ok := types.ParseMediaSource(ctx.Query("source", string(types.MediaSourceAll)))
-	if !ok {
-		return types.MediaSourceAll
-	}
-	return source
-}
-
-func sourceShowsSubscription(source, subscription types.MediaSource) bool {
-	return source == types.MediaSourceAll || source == subscription
-}
-
-templ channelSearchSubscriptionResponse(props types.ChannelProps, source types.MediaSource) {
-	@subscriptions.YouTubeSearchAction(props.ID, true, source)
-	if sourceShowsSubscription(source, props.MediaSource()) {
-		@subscriptions.SubscribedChannelTileOOB(props)
-	}
-}
-
-templ channelSearchUnsubscriptionResponse(channelID string, source types.MediaSource) {
-	@subscriptions.YouTubeSearchAction(channelID, false, source)
-	if sourceShowsSubscription(source, types.MediaSourceYouTube) {
-		@subscriptions.SubscribedChannelTileRemoveOOB(channelID)
-	}
 }
 
 var UpdateVideoFilter brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {

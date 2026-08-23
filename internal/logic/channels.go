@@ -55,6 +55,16 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 		if err != nil {
 			return nil, err
 		}
+		if channel.FeedUpdatedAt.Before(time.Unix(1, 0)) {
+			updatedAt := channel.UpdatedAt
+			if updatedAt.IsZero() {
+				updatedAt = time.Now()
+			}
+			if err := db.SetChannelFeedUpdatedAt(ctx, channelID, updatedAt); err != nil {
+				return nil, errors.Wrap(err, "failed to repair podcast feed refresh time")
+			}
+			channel.FeedUpdatedAt = updatedAt
+		}
 	} else {
 		channel, cached, err = CacheChannel(ctx, db, channelID)
 		if err != nil {

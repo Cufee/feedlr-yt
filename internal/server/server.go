@@ -119,6 +119,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 
 		api.Get("/channels/search", toFiber(rapi.SearchChannels))
 		api.Get("/podcasts/search", toFiber(rapi.SearchPodcasts))
+		api.Get("/podcasts/open", toFiber(rapi.OpenPodcast))
 		api.Post("/podcasts/subscribe", toFiber(rapi.CreatePodcastSubscription))
 		api.Post("/channels/:id/subscribe", toFiber(rapi.CreateSubscription))
 		api.Post("/channels/:id/unsubscribe", toFiber(rapi.RemoveSubscription))

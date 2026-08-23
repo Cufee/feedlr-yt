@@ -12,7 +12,6 @@ type PodcastShowsClient interface {
 	GetPodcastShow(ctx context.Context, channelID string) (*models.PodcastShow, error)
 	GetPodcastShowByFeedURL(ctx context.Context, feedURL string) (*models.PodcastShow, error)
 	SubscribedPodcastShowChannelIDs(ctx context.Context) ([]string, error)
-	SubscribedPodcastShowFeedURLs(ctx context.Context) (map[string]string, error)
 	UpsertPodcastShow(ctx context.Context, show *models.PodcastShow) error
 }
 
@@ -40,24 +39,6 @@ func (c *sqliteClient) SubscribedPodcastShowChannelIDs(ctx context.Context) ([]s
 		ids = append(ids, show.ChannelID)
 	}
 	return ids, nil
-}
-
-// SubscribedPodcastShowFeedURLs maps channel IDs to feed URLs for subscribed
-// podcast shows.
-func (c *sqliteClient) SubscribedPodcastShowFeedURLs(ctx context.Context) (map[string]string, error) {
-	shows, err := models.PodcastShows(
-		qm.Select(models.PodcastShowColumns.ChannelID, models.PodcastShowColumns.FeedURL),
-		qm.Where("EXISTS (SELECT 1 FROM subscriptions s WHERE s.channel_id = "+models.TableNames.PodcastShows+".channel_id)"),
-	).All(ctx, c.db)
-	if err != nil {
-		return nil, err
-	}
-
-	urls := make(map[string]string, len(shows))
-	for _, show := range shows {
-		urls[show.ChannelID] = show.FeedURL
-	}
-	return urls, nil
 }
 
 func (c *sqliteClient) UpsertPodcastShow(ctx context.Context, show *models.PodcastShow) error {

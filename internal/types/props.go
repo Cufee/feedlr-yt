@@ -122,7 +122,6 @@ type PodcastSearchResultProps struct {
 	ArtworkURL   string
 	Author       string
 	EpisodeCount int
-	Subscribed   bool
 }
 
 func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {

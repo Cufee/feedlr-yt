@@ -117,11 +117,11 @@
     }
 
     .ui-source-badge {
-        @apply border-glass-stroke/35 bg-glass-fill/55 text-text-primary shadow-[0_2px_8px_-4px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-sm)];
+        @apply border-white/15 bg-black/75 text-text-primary shadow-[0_2px_8px_-4px_var(--color-glass-shadow)] backdrop-blur-[var(--blur-glass-sm)];
     }
 
-    .ui-source-badge.ui-badge-accent {
-        @apply border-accent/50 bg-accent/32 text-text-primary shadow-[0_2px_10px_-4px_color-mix(in_oklab,var(--color-accent)_70%,transparent)];
+    .ui-source-badge-channel {
+        @apply absolute left-[3.5rem] top-px z-20 -translate-x-1/2;
     }
 
     .ui-btn {

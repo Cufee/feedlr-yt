@@ -16,7 +16,7 @@ import (
 )
 
 var SearchPodcasts brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
-	userID, ok := ctx.UserID()
+	_, ok := ctx.UserID()
 	if !ok {
 		metrics.IncUserAction("search_podcasts", "unauthorized")
 		return nil, ctx.SendStatus(http.StatusUnauthorized)
@@ -32,7 +32,7 @@ var SearchPodcasts brewed.Partial[*handler.Context] = func(ctx *handler.Context)
 		return podcastSearchMessage("Podcast search must be between 3 and 100 characters"), nil
 	}
 
-	podcasts, err := logic.SearchPodcasts(ctx.Context(), ctx.Database(), userID, query, 4)
+	podcasts, err := logic.SearchPodcasts(ctx.Context(), query, 4)
 	if errors.Is(err, logic.ErrPodcastSearchUnavailable) {
 		metrics.IncUserAction("search_podcasts", "unavailable")
 		return podcastSearchMessage("Podcast catalog search is unavailable. Add an RSS feed URL instead."), nil
@@ -47,7 +47,7 @@ var SearchPodcasts brewed.Partial[*handler.Context] = func(ctx *handler.Context)
 	}
 
 	metrics.IncUserAction("search_podcasts", "success")
-	return subscriptions.SearchResultPodcasts(podcasts, subscriptionSource(ctx)), nil
+	return subscriptions.SearchResultPodcasts(podcasts), nil
 }
 
 var CreatePodcastSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
@@ -80,20 +80,36 @@ var CreatePodcastSubscription brewed.Partial[*handler.Context] = func(ctx *handl
 	}
 
 	metrics.IncUserAction("create_podcast_subscription", "success")
-	return podcastSubscribeSuccess(*props, feedURL, subscriptionSource(ctx), ctx.Query("type")), nil
+	return podcastSubscribeSuccess(*props, subscriptionSource(ctx)), nil
+}
+
+var OpenPodcast brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	if _, ok := ctx.UserID(); !ok {
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
+	}
+
+	channelID, err := logic.OpenPodcast(ctx.Context(), ctx.Database(), strings.TrimSpace(ctx.Query("feed_url")))
+	if err != nil {
+		return nil, ctx.Err(err)
+	}
+	return nil, ctx.Redirect("/channel/"+channelID, http.StatusSeeOther)
+}
+
+func subscriptionSource(ctx *handler.Context) types.MediaSource {
+	source, ok := types.ParseMediaSource(ctx.Query("source", string(types.MediaSourceAll)))
+	if !ok {
+		return types.MediaSourceAll
+	}
+	return source
 }
 
 templ podcastSearchMessage(message string) {
 	@ui.EmptyState(message, "", "w-full py-6")
 }
 
-templ podcastSubscribeSuccess(props types.ChannelProps, feedURL string, source types.MediaSource, requestType string) {
-	if requestType == "search" {
-		@subscriptions.PodcastSearchAction(feedURL, true, source)
-	} else {
-		@ui.Toast("Subscribed to " + props.Title, ui.ToastSuccess)
-	}
-	if sourceShowsSubscription(source, props.MediaSource()) {
+templ podcastSubscribeSuccess(props types.ChannelProps, source types.MediaSource) {
+	@ui.Toast("Subscribed to " + props.Title, ui.ToastSuccess)
+	if source == types.MediaSourceAll || source == props.MediaSource() {
 		@subscriptions.SubscribedChannelTileOOB(props)
 	}
 }

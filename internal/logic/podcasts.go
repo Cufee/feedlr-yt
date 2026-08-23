@@ -3,7 +3,6 @@ package logic
 import (
 	"context"
 	"net/url"
-	"sync"
 	"time"
 
 	"github.com/aarondl/null/v8"
@@ -24,12 +23,9 @@ var (
 	ErrInvalidFeedURL = errors.New("invalid feed url")
 )
 
-// SearchPodcasts searches the PodcastIndex catalog and annotates results with
-// the user's current subscriptions.
+// SearchPodcasts searches the PodcastIndex catalog.
 func SearchPodcasts(
 	ctx context.Context,
-	db database.Client,
-	userID string,
 	query string,
 	limit int,
 ) ([]types.PodcastSearchResultProps, error) {
@@ -37,30 +33,9 @@ func SearchPodcasts(
 		return nil, ErrPodcastSearchUnavailable
 	}
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	var podcasts []podcastindex.Podcast
-	var searchErr error
-	go func() {
-		defer wg.Done()
-		podcasts, searchErr = podcastindex.DefaultClient.SearchPodcasts(ctx, query, limit)
-	}()
-
-	wg.Add(1)
-	var subscribedFeedURLs map[string]string
-	var subscribedErr error
-	go func() {
-		defer wg.Done()
-		subscribedFeedURLs, subscribedErr = db.SubscribedPodcastShowFeedURLs(ctx)
-	}()
-
-	wg.Wait()
-	if searchErr != nil {
-		return nil, errors.Wrap(searchErr, "failed to search podcasts")
-	}
-	if subscribedErr != nil {
-		return nil, errors.Wrap(subscribedErr, "failed to get user subscriptions")
+	podcasts, err := podcastindex.DefaultClient.SearchPodcasts(ctx, query, limit)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to search podcasts")
 	}
 
 	props := make([]types.PodcastSearchResultProps, 0, len(podcasts))
@@ -72,39 +47,19 @@ func SearchPodcasts(
 			ArtworkURL:   podcast.ArtworkURL,
 			Author:       podcast.Author,
 			EpisodeCount: podcast.EpisodeCount,
-			Subscribed:   subscribedFeedURLs != nil && feedURLSubscribed(subscribedFeedURLs, podcast.FeedURL),
 		})
 	}
 	return props, nil
-}
-
-func feedURLSubscribed(feedURLs map[string]string, feedURL string) bool {
-	for _, subscribed := range feedURLs {
-		if subscribed == feedURL {
-			return true
-		}
-	}
-	return false
 }
 
 // NewPodcastSubscription subscribes a user to a podcast feed. The feed is
 // fetched immediately so the show and its recent episodes are cached before
 // the subscription is created.
 func NewPodcastSubscription(ctx context.Context, db database.Client, userID, feedURL string) (*types.ChannelProps, error) {
-	parsed, err := parseFeedURL(feedURL)
+	channelID, result, err := fetchPodcastShow(ctx, feedURL)
 	if err != nil {
 		return nil, err
 	}
-
-	fctx, cancel := context.WithTimeout(ctx, time.Second*30)
-	defer cancel()
-
-	result, err := rss.FetchFeed(fctx, parsed.String(), "", "")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch feed")
-	}
-
-	channelID := rss.ShowID(result.CanonicalURL)
 
 	if sub, err := db.FindSubscription(ctx, userID, channelID); err == nil && sub != nil {
 		return podcastChannelProps(channelID, result, true), nil
@@ -112,18 +67,53 @@ func NewPodcastSubscription(ctx context.Context, db database.Client, userID, fee
 		return nil, errors.Wrap(err, "failed to check subscription")
 	}
 
-	if err := upsertPodcastShow(ctx, db, channelID, result.CanonicalURL, result); err != nil {
+	if err := persistPodcastShow(ctx, db, channelID, result); err != nil {
 		return nil, err
 	}
-	if err := upsertEpisodes(ctx, db, channelID, result.CanonicalURL, result.Episodes, 50); err != nil {
-		return nil, err
-	}
-
 	if _, err := db.NewSubscription(ctx, userID, channelID); err != nil {
 		return nil, errors.Wrap(err, "failed to create subscription")
 	}
 
 	return podcastChannelProps(channelID, result, false), nil
+}
+
+// OpenPodcast caches a catalog result and returns its channel ID without
+// subscribing the user.
+func OpenPodcast(ctx context.Context, db database.Client, feedURL string) (string, error) {
+	channelID, result, err := fetchPodcastShow(ctx, feedURL)
+	if err != nil {
+		return "", err
+	}
+	if err := persistPodcastShow(ctx, db, channelID, result); err != nil {
+		return "", err
+	}
+	return channelID, nil
+}
+
+func fetchPodcastShow(ctx context.Context, feedURL string) (string, *rss.FetchResult, error) {
+	parsed, err := parseFeedURL(feedURL)
+	if err != nil {
+		return "", nil, err
+	}
+
+	fctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+
+	result, err := rss.FetchFeed(fctx, parsed.String(), "", "")
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to fetch feed")
+	}
+	return rss.ShowID(result.CanonicalURL), result, nil
+}
+
+func persistPodcastShow(ctx context.Context, db database.Client, channelID string, result *rss.FetchResult) error {
+	if err := upsertPodcastShow(ctx, db, channelID, result.CanonicalURL, result); err != nil {
+		return err
+	}
+	if err := upsertEpisodes(ctx, db, channelID, result.CanonicalURL, result.Episodes, 50); err != nil {
+		return err
+	}
+	return nil
 }
 
 func parseFeedURL(feedURL string) (*url.URL, error) {
@@ -156,14 +146,11 @@ func upsertPodcastShow(ctx context.Context, db database.Client, channelID, canon
 	defer cancel()
 
 	record := &models.Channel{
-		ID:          channelID,
-		Title:       result.Show.Title,
-		Description: result.Show.Description,
-		Thumbnail:   result.Show.ImageURL,
-	}
-	if existing, err := db.GetChannel(cctx, channelID); err == nil {
-		// Preserve the refresh timestamp across metadata updates.
-		record.FeedUpdatedAt = existing.FeedUpdatedAt
+		ID:            channelID,
+		Title:         result.Show.Title,
+		Description:   result.Show.Description,
+		Thumbnail:     result.Show.ImageURL,
+		FeedUpdatedAt: time.Now(),
 	}
 	if err := db.UpsertChannel(cctx, record); err != nil {
 		return errors.Wrap(err, "failed to upsert channel")
