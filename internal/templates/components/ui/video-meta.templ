@@ -13,16 +13,16 @@ templ VideoMeta(title, channelURL, channelTitle, relativeTime, videoFilter strin
 				<a href={ templ.URL(channelURL) } class="ui-feed-channel w-fit" hx-boost="true" hx-target="body" title={ shared.YouTubeString(channelTitle) }>
 					@shared.YouTubeText(channelTitle)
 					if videoFilter == "videos" {
-						<span class="size-3.5 shrink-0">
+						<span class="flex size-3.5 shrink-0 items-center justify-center [&>svg]:size-full">
 							@icons.Clapperboard()
 						</span>
 					} else if videoFilter == "streams" {
-						<span class="size-3.5 shrink-0">
+						<span class="flex size-3.5 shrink-0 items-center justify-center [&>svg]:size-full">
 							@icons.Radio()
 						</span>
 					} else if isPodcast {
-						<span class="size-3.5 shrink-0">
-							@icons.Podcast()
+						<span class="flex size-3.5 shrink-0 items-center justify-center [&>svg]:size-full">
+							@icons.Rss()
 						</span>
 					}
 				</a>
