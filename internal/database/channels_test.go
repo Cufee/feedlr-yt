@@ -12,7 +12,12 @@ import (
 func TestInsertAndGetChannels(t *testing.T) {
 	is := is.New(t)
 
-	c, err := NewSQLiteClient(os.Getenv("DATABASE_PATH"))
+	dbPath := os.Getenv("DATABASE_PATH")
+	if dbPath == "" {
+		t.Skip("DATABASE_PATH not set")
+	}
+
+	c, err := NewSQLiteClient(dbPath)
 	is.NoErr(err)
 
 	c1 := models.Channel{

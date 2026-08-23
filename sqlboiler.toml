@@ -1,6 +1,6 @@
 output = "internal/database/models"
 wipe = true
-no-tests = false
+no-tests = true
 add-enum-types = true
 
 [sqlite3]

@@ -291,6 +291,14 @@ table "videos" {
     null = false
     type = text
   }
+  column "media_url" {
+    null = true
+    type = text
+  }
+
+  check "videos_media_url_by_type" {
+    expr = "((type = 'podcast_episode' AND media_url IS NOT NULL AND media_url != '') OR (type != 'podcast_episode' AND media_url IS NULL))"
+  }
 
   column "channel_id" {
     null = false
@@ -548,6 +556,50 @@ table "settings" {
   }
 }
 
+table "podcast_shows" {
+  schema = schema.main
+
+  column "channel_id" {
+    null = false
+    type = text
+  }
+  column "created_at" {
+    null = false
+    type = date
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.channel_id]
+  }
+
+  column "feed_url" {
+    null = false
+    type = text
+  }
+  column "etag" {
+    null = true
+    type = text
+  }
+  column "last_modified" {
+    null = true
+    type = text
+  }
+
+  foreign_key "podcast_shows_channel_id_fkey" {
+    columns = [ column.channel_id ]
+    ref_columns = [ table.channels.column.id ]
+    on_delete   = CASCADE
+  }
+
+  index "idx_podcast_shows_feed_url_unique" {
+    columns = [ column.feed_url ]
+    unique = true
+  }
+}
+
 table "subscriptions" {
   schema = schema.main
 
@@ -570,6 +622,11 @@ table "subscriptions" {
   column "favorite" {
     null = false
     type = boolean
+  }
+  column "video_filter" {
+    null = false
+    type = text
+    default = "all"
   }
 
   column "channel_id" {
@@ -637,6 +694,11 @@ table "playlists" {
     null = false
     type = text
   }
+  column "description" {
+    null = false
+    type = text
+    default = ""
+  }
   column "system" {
     null = false
     type = boolean
@@ -649,6 +711,10 @@ table "playlists" {
   column "max_size" {
     null = true
     type = integer
+  }
+  column "youtube_playlist_id" {
+    null = true
+    type = text
   }
 
   foreign_key "playlists_user_id_fkey" {
@@ -663,6 +729,9 @@ table "playlists" {
   index "idx_playlists_user_id_slug_unique" {
     columns = [ column.user_id, column.slug ]
     unique = true
+  }
+  index "idx_playlists_youtube_playlist_id" {
+    columns = [ column.youtube_playlist_id ]
   }
 }
 
@@ -718,5 +787,8 @@ table "playlist_items" {
   }
   index "idx_playlist_items_playlist_id_created_at" {
     columns = [ column.playlist_id, column.created_at ]
+  }
+  index "idx_playlist_items_playlist_id_position" {
+    columns = [ column.playlist_id, column.position ]
   }
 }

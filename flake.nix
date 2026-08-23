@@ -1,0 +1,40 @@
+{
+  description = "feedlr-yt - alternative frontend for YouTube and podcasts";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  };
+
+  outputs = { self, nixpkgs }:
+    let
+      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+    in
+    {
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShell {
+          # Keep the pinned nix go; never auto-download a different toolchain.
+          GOTOOLCHAIN = "local";
+          shellHook = ''
+            # mise or other managers export GOROOT pointing at a different
+            # installation; that leaks mismatched compile tools into this shell.
+            unset GOROOT
+          '';
+          packages = with pkgs; [
+            # Go toolchain (matches go.mod / .mise.toml)
+            go_1_26
+            # Frontend build
+            nodejs
+            # Live reload
+            air
+            # Task runner
+            go-task
+            # Database migrations (task migrate / task migrate-apply)
+            atlas
+            # Inspecting the SQLite database by hand
+            sqlite-interactive
+          ];
+        };
+      });
+    };
+}

@@ -10,7 +10,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/friendsofgo/errors"
 	"github.com/rs/zerolog/log"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -49,7 +48,7 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 				database.Video.Channel(channelID), database.Video.TypeNot(string(youtube.VideoTypeFailed)),
 				database.Video.Select(models.VideoColumns.ID, models.VideoColumns.ChannelID, models.VideoColumns.Type),
 			)
-			if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+			if err != nil && !database.IsErrNotFound(err) {
 				return errors.Wrap(err, "db#FindVideos")
 			}
 
@@ -168,6 +167,10 @@ func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID str
 
 func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) {
 	current, err := db.GetVideoByID(ctx, videoID)
+	if err == nil && current != nil && current.Type == string(youtube.VideoTypePodcastEpisode) {
+		// Podcast episodes refresh through their feed; nothing to do here.
+		return
+	}
 	if err != nil && !database.IsErrNotFound(err) {
 		metrics.ObserveVideoRefresh("refresh_video_cache", err)
 		log.Warn().Err(err).Str("videoID", videoID).Msg("failed to get video for cache refresh")

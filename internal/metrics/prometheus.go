@@ -68,6 +68,15 @@ var (
 		[]string{"operation", "outcome"},
 	)
 
+	podcastAPICallsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "feedlr",
+			Subsystem: "podcast_api",
+			Name:      "calls_total",
+			Help:      "Total number of podcast API calls.",
+		},
+		[]string{"client", "operation", "outcome"},
+	)
 	videoRefreshTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "feedlr",
@@ -137,6 +146,7 @@ func init() {
 		youtubeAPICallsTotal,
 		youtubeOAuthCallsTotal,
 		youtubeTVCallsTotal,
+		podcastAPICallsTotal,
 		videoRefreshTotal,
 		videoRefreshItemsTotal,
 		backgroundTasksTotal,
@@ -164,6 +174,14 @@ func IncUserAction(action, outcome string) {
 
 func ObserveYouTubeAPICall(client, operation string, err error) {
 	youtubeAPICallsTotal.WithLabelValues(
+		normalizeLabel(client),
+		normalizeLabel(operation),
+		outcomeFromErr(err),
+	).Inc()
+}
+
+func ObservePodcastAPICall(client, operation string, err error) {
+	podcastAPICallsTotal.WithLabelValues(
 		normalizeLabel(client),
 		normalizeLabel(operation),
 		outcomeFromErr(err),

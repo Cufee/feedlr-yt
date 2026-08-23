@@ -4,6 +4,7 @@ import (
 	"context"
 	stdErrors "errors"
 	"math"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -18,7 +19,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/netproxy"
 	"github.com/cufee/feedlr-yt/internal/types"
-	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -230,7 +230,13 @@ type tvSyncMetrics struct {
 	sponsorSkips    atomic.Uint64
 }
 
+// NewYouTubeTVSyncService returns nil when the encryption secret is not
+// configured; TV progress sync is disabled in that case.
 func NewYouTubeTVSyncService(db database.Client) (*YouTubeTVSyncService, error) {
+	if os.Getenv("YOUTUBE_SYNC_ENCRYPTION_SECRET") == "" {
+		return nil, nil
+	}
+
 	loungeHTTPClient, err := netproxy.NewYouTubeHTTPClient(0)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize youtube lounge http client")
@@ -239,7 +245,7 @@ func NewYouTubeTVSyncService(db database.Client) (*YouTubeTVSyncService, error) 
 	service := &YouTubeTVSyncService{
 		db: db,
 		crypto: newYouTubeSyncCrypto(
-			utils.MustGetEnv("YOUTUBE_SYNC_ENCRYPTION_SECRET"),
+			os.Getenv("YOUTUBE_SYNC_ENCRYPTION_SECRET"),
 		),
 		lounge:                 lounge.NewClient(loungeHTTPClient),
 		noEventTimeout:         tvSyncNoEventTimeout,

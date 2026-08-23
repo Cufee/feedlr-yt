@@ -18,8 +18,9 @@ type SubscriptionsClient interface {
 }
 
 type subscriptionQuery struct {
-	withChannel bool
-	withUser    bool
+	withChannel     bool
+	withUser        bool
+	withPodcastShow bool
 }
 
 type SubscriptionQuery func(*subscriptionQuery)
@@ -44,6 +45,11 @@ func (Subscription) WithChannel() SubscriptionQuery {
 func (Subscription) WithUser() SubscriptionQuery {
 	return func(o *subscriptionQuery) {
 		o.withUser = true
+	}
+}
+func (Subscription) WithChannelPodcastShow() SubscriptionQuery {
+	return func(o *subscriptionQuery) {
+		o.withPodcastShow = true
 	}
 }
 
@@ -76,6 +82,20 @@ func (c *sqliteClient) UserSubscriptions(ctx context.Context, userID string, o .
 		err := models.Subscription{}.L.LoadChannel(ctx, c.db, false, &subscriptions, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load subscription channel")
+		}
+	}
+	if opts.withPodcastShow {
+		channels := make([]*models.Channel, 0, len(subscriptions))
+		for _, subscription := range subscriptions {
+			if subscription.R.Channel != nil {
+				channels = append(channels, subscription.R.Channel)
+			}
+		}
+		if len(channels) > 0 {
+			err = models.Channel{}.L.LoadPodcastShow(ctx, c.db, false, &channels, nil)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to load subscription podcast show")
+			}
 		}
 	}
 	if opts.withUser {

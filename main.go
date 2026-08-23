@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/api/podcastindex"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
 	mw "github.com/cufee/feedlr-yt/internal/auth"
@@ -41,11 +42,17 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if youtubeSync == nil {
+		log.Info().Msg("YouTube playlist sync disabled: OAuth not configured")
+	}
 	logic.DefaultYouTubeSync = youtubeSync
 
 	youtubeTVSync, err := logic.NewYouTubeTVSyncService(db)
 	if err != nil {
 		panic(err)
+	}
+	if youtubeTVSync == nil {
+		log.Info().Msg("YouTube TV sync disabled: encryption secret not configured")
 	}
 	logic.DefaultYouTubeTVSync = youtubeTVSync
 
@@ -70,18 +77,26 @@ func main() {
 	}
 	youtube.DefaultClient = yt
 
+	pi, err := podcastindex.NewClient(os.Getenv("PODCASTINDEX_API_KEY"), os.Getenv("PODCASTINDEX_API_SECRET"))
+	if err != nil {
+		panic(err)
+	}
+	podcastindex.DefaultClient = pi
+
 	_, err = background.StartCronTasks(db, youtubeSync, youtubeTVSync)
 	if err != nil {
 		panic(err)
 	}
-	bootCtx, bootCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	if err := youtubeTVSync.RunLifecycleTick(bootCtx); err != nil {
-		log.Warn().Err(err).Msg("initial tv sync lifecycle tick failed")
+	if youtubeTVSync != nil {
+		bootCtx, bootCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		if err := youtubeTVSync.RunLifecycleTick(bootCtx); err != nil {
+			log.Warn().Err(err).Msg("initial tv sync lifecycle tick failed")
+		}
+		if err := youtubeTVSync.RunConnectionTick(bootCtx); err != nil {
+			log.Warn().Err(err).Msg("initial tv sync connection tick failed")
+		}
+		bootCancel()
 	}
-	if err := youtubeTVSync.RunConnectionTick(bootCtx); err != nil {
-		log.Warn().Err(err).Msg("initial tv sync connection tick failed")
-	}
-	bootCancel()
 
 	ses, err := sessions.New(db)
 	if err != nil {

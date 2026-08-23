@@ -95,6 +95,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		server.Get("/channel/:id", toFiber(root.Channel))
 		server.Get("/thumb/video/:id/:variant", toFiber(root.VideoThumbnail))
 		server.Get("/thumb/channel/:id", toFiber(root.ChannelThumbnail))
+		server.Get("/media/stream/:id", toFiber(root.MediaStream))
 
 		api := server.Group("/api").Use(limiterMiddleware).Use(authMw)
 		api.Post("/passkeys/add/begin", toFiber(login.AdditionalPasskeyBegin))
@@ -117,6 +118,8 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		api.Post("/playlists/:id/videos/:videoID/move", toFiber(rapi.MovePlaylistItem))
 
 		api.Get("/channels/search", toFiber(rapi.SearchChannels))
+		api.Get("/podcasts/search", toFiber(rapi.SearchPodcasts))
+		api.Post("/podcasts/subscribe", toFiber(rapi.CreatePodcastSubscription))
 		api.Post("/channels/:id/subscribe", toFiber(rapi.CreateSubscription))
 		api.Post("/channels/:id/unsubscribe", toFiber(rapi.RemoveSubscription))
 		api.Post("/channels/:id/filter", toFiber(rapi.UpdateVideoFilter))

@@ -27,6 +27,7 @@ const (
 	VideoTypeShort           VideoType = "short"
 	VideoTypePrivate         VideoType = "private"
 	VideoTypeFailed          VideoType = "failed"
+	VideoTypePodcastEpisode  VideoType = "podcast_episode"
 )
 
 type VideoDetails struct {

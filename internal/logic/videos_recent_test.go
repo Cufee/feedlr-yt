@@ -9,12 +9,20 @@ import (
 )
 
 type recentVideosMockDB struct {
-	recentViews      []*models.View
-	findVideosResult []*models.Video
-	findVideosCalled bool
+	recentViews             []*models.View
+	findVideosResult        []*models.Video
+	findVideosCalled        bool
+	recentVideoType         string
+	recentVideoTypeExcluded bool
 }
 
 func (m *recentVideosMockDB) GetRecentUserViews(_ context.Context, _ string, _ int) ([]*models.View, error) {
+	return m.recentViews, nil
+}
+
+func (m *recentVideosMockDB) GetRecentUserViewsForVideoType(_ context.Context, _ string, videoType string, exclude bool, _ int) ([]*models.View, error) {
+	m.recentVideoType = videoType
+	m.recentVideoTypeExcluded = exclude
 	return m.recentViews, nil
 }
 
@@ -51,7 +59,7 @@ func TestGetRecentVideosProps_EmptyViewsReturnsEmptyFeed(t *testing.T) {
 		},
 	}
 
-	feed, err := GetRecentVideosProps(context.Background(), db, "user-a")
+	feed, err := GetRecentVideosProps(context.Background(), db, "user-a", "all")
 	if err != nil {
 		t.Fatalf("GetRecentVideosProps returned error: %v", err)
 	}
@@ -63,3 +71,32 @@ func TestGetRecentVideosProps_EmptyViewsReturnsEmptyFeed(t *testing.T) {
 	}
 }
 
+func TestGetRecentVideosProps_PodcastSourceUsesPodcastQuery(t *testing.T) {
+	db := &recentVideosMockDB{}
+
+	_, err := GetRecentVideosProps(context.Background(), db, "user-a", "podcasts")
+	if err != nil {
+		t.Fatalf("GetRecentVideosProps returned error: %v", err)
+	}
+	if db.recentVideoType != "podcast_episode" {
+		t.Fatalf("expected podcast episode query, got %q", db.recentVideoType)
+	}
+	if db.recentVideoTypeExcluded {
+		t.Fatal("expected podcast source query to include podcast episodes")
+	}
+}
+
+func TestGetRecentVideosProps_YouTubeSourceExcludesPodcastEpisodes(t *testing.T) {
+	db := &recentVideosMockDB{}
+
+	_, err := GetRecentVideosProps(context.Background(), db, "user-a", "youtube")
+	if err != nil {
+		t.Fatalf("GetRecentVideosProps returned error: %v", err)
+	}
+	if db.recentVideoType != "podcast_episode" {
+		t.Fatalf("expected podcast episode query, got %q", db.recentVideoType)
+	}
+	if !db.recentVideoTypeExcluded {
+		t.Fatal("expected YouTube source query to exclude podcast episodes")
+	}
+}

@@ -173,6 +173,7 @@ func (c *sqliteClient) TouchVideoUpdatedAt(ctx context.Context, id string) error
 type ViewsClient interface {
 	GetUserViews(ctx context.Context, userID string, videoID ...string) ([]*models.View, error)
 	GetRecentUserViews(ctx context.Context, userID string, limit int) ([]*models.View, error)
+	GetRecentUserViewsForVideoType(ctx context.Context, userID, videoType string, exclude bool, limit int) ([]*models.View, error)
 	UpsertView(ctx context.Context, view *models.View) error
 }
 
@@ -214,6 +215,40 @@ func (c *sqliteClient) GetRecentUserViews(ctx context.Context, userID string, li
 		return nil, err
 	}
 
+	return views, nil
+}
+
+// GetRecentUserViewsForVideoType filters views through their videos before
+// applying the limit, so each source-specific recent feed is complete.
+func (c *sqliteClient) GetRecentUserViewsForVideoType(ctx context.Context, userID, videoType string, exclude bool, limit int) ([]*models.View, error) {
+	viewsTable := goqu.T(models.TableNames.Views)
+	videosTable := goqu.T(models.TableNames.Videos)
+	videoTypeCondition := videosTable.Col(models.VideoColumns.Type).Eq(videoType)
+	if exclude {
+		videoTypeCondition = videosTable.Col(models.VideoColumns.Type).Neq(videoType)
+	}
+
+	query := goqu.
+		From(viewsTable).
+		Select(viewsTable.Col("*")).
+		InnerJoin(videosTable, goqu.On(viewsTable.Col(models.ViewColumns.VideoID).Eq(videosTable.Col(models.VideoColumns.ID)))).
+		Where(
+			viewsTable.Col(models.ViewColumns.UserID).Eq(userID),
+			videoTypeCondition,
+		).
+		Order(viewsTable.Col(models.ViewColumns.UpdatedAt).Desc())
+	if limit > 0 {
+		query = query.Limit(uint(limit))
+	}
+
+	q, a, err := query.ToSQL()
+	if err != nil {
+		return nil, err
+	}
+	views, err := models.Views(qm.SQL(q, a...)).All(ctx, c.db)
+	if err != nil {
+		return nil, err
+	}
 	return views, nil
 }
 

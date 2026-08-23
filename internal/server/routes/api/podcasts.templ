@@ -1,0 +1,109 @@
+package api
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/metrics"
+	"github.com/cufee/feedlr-yt/internal/server/handler"
+	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
+	"github.com/cufee/feedlr-yt/internal/types"
+	"github.com/cufee/tpot/brewed"
+	"github.com/pkg/errors"
+)
+
+var SearchPodcasts brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
+	if !ok {
+		metrics.IncUserAction("search_podcasts", "unauthorized")
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
+	}
+
+	query := strings.TrimSpace(ctx.Query("search"))
+	if len(query) < 3 || len(query) > 100 {
+		if query == "" {
+			metrics.IncUserAction("search_podcasts", "empty")
+			return nil, nil
+		}
+		metrics.IncUserAction("search_podcasts", "invalid_query")
+		return podcastSearchMessage("Podcast search must be between 3 and 100 characters"), nil
+	}
+
+	podcasts, err := logic.SearchPodcasts(ctx.Context(), ctx.Database(), userID, query, 4)
+	if errors.Is(err, logic.ErrPodcastSearchUnavailable) {
+		metrics.IncUserAction("search_podcasts", "unavailable")
+		return podcastSearchMessage("Podcast catalog search is unavailable. Add an RSS feed URL instead."), nil
+	}
+	if err != nil {
+		metrics.IncUserAction("search_podcasts", "error")
+		return nil, ctx.Err(err)
+	}
+	if len(podcasts) == 0 {
+		metrics.IncUserAction("search_podcasts", "not_found")
+		return podcastSearchMessage(fmt.Sprintf("Didn't find any podcasts named %s", query)), nil
+	}
+
+	metrics.IncUserAction("search_podcasts", "success")
+	return subscriptions.SearchResultPodcasts(podcasts, subscriptionSource(ctx)), nil
+}
+
+var CreatePodcastSubscription brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
+	if !ok {
+		metrics.IncUserAction("create_podcast_subscription", "unauthorized")
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
+	}
+
+	feedURL, err := ctx.FormValue("feed_url")
+	if err != nil {
+		return nil, ctx.Err(err)
+	}
+	feedURL = strings.TrimSpace(feedURL)
+	if feedURL == "" {
+		feedURL = strings.TrimSpace(ctx.Query("feed_url"))
+	}
+	if feedURL == "" {
+		metrics.IncUserAction("create_podcast_subscription", "invalid_feed_url")
+		return podcastSubscribeError(ctx.Query("type") == "search", "Enter a podcast RSS feed URL"), nil
+	}
+
+	props, err := logic.NewPodcastSubscription(ctx.Context(), ctx.Database(), userID, feedURL)
+	if err != nil {
+		metrics.IncUserAction("create_podcast_subscription", "error")
+		if errors.Is(err, logic.ErrInvalidFeedURL) {
+			return podcastSubscribeError(ctx.Query("type") == "search", "Enter a valid HTTP or HTTPS podcast RSS feed URL"), nil
+		}
+		return podcastSubscribeError(ctx.Query("type") == "search", "Feedlr could not load that podcast feed"), nil
+	}
+
+	metrics.IncUserAction("create_podcast_subscription", "success")
+	return podcastSubscribeSuccess(*props, feedURL, subscriptionSource(ctx), ctx.Query("type")), nil
+}
+
+templ podcastSearchMessage(message string) {
+	@ui.EmptyState(message, "", "w-full py-6")
+}
+
+templ podcastSubscribeSuccess(props types.ChannelProps, feedURL string, source types.MediaSource, requestType string) {
+	if requestType == "search" {
+		@subscriptions.PodcastSearchAction(feedURL, true, source)
+	} else {
+		@ui.Toast("Subscribed to " + props.Title, ui.ToastSuccess)
+	}
+	if sourceShowsSubscription(source, props.MediaSource()) {
+		@subscriptions.SubscribedChannelTileOOB(props)
+	}
+}
+
+templ podcastSubscribeError(searchRequest bool, message string) {
+	if searchRequest {
+		<div class="podcast-search-result ui-motion-swap ui-channel-card group">
+			@ui.Toast(message, ui.ToastDanger, ui.WithToastClass("w-full"))
+		</div>
+	} else {
+		@ui.Toast(message, ui.ToastDanger)
+	}
+}

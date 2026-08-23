@@ -3,7 +3,7 @@ package ui
 import "github.com/cufee/feedlr-yt/internal/templates/components/icons"
 import "github.com/cufee/feedlr-yt/internal/templates/components/shared"
 
-templ VideoMeta(title, channelURL, channelTitle, relativeTime, videoFilter string, showChannelName bool) {
+templ VideoMeta(title, channelURL, channelTitle, relativeTime, videoFilter string, showChannelName, isPodcast bool) {
 	<div class="flex flex-col">
 		<span class="ui-feed-title" title={ shared.YouTubeString(title) }>
 			@shared.YouTubeText(title)
@@ -25,6 +25,9 @@ templ VideoMeta(title, channelURL, channelTitle, relativeTime, videoFilter strin
 			}
 			<span class="ui-feed-time w-fit">
 				{ relativeTime }
+				if isPodcast {
+					 · Podcast
+				}
 			</span>
 		</div>
 	</div>

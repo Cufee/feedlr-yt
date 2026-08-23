@@ -76,16 +76,53 @@ const (
 	VideoFilterStreams VideoFilter = "streams"
 )
 
+// MediaSource identifies where an item comes from in mixed feeds.
+type MediaSource string
+
+const (
+	MediaSourceAll      MediaSource = "all"
+	MediaSourceYouTube  MediaSource = "youtube"
+	MediaSourcePodcasts MediaSource = "podcasts"
+)
+
+func ParseMediaSource(value string) (MediaSource, bool) {
+	source := MediaSource(value)
+	switch source {
+	case MediaSourceAll, MediaSourceYouTube, MediaSourcePodcasts:
+		return source, true
+	default:
+		return MediaSourceAll, false
+	}
+}
+
 type ChannelProps struct {
 	youtube.Channel
 	Favorite      bool
 	VideoFilter   VideoFilter
 	FeedUpdatedAt time.Time
+	IsPodcast     bool
+}
+
+func (c ChannelProps) MediaSource() MediaSource {
+	if c.IsPodcast {
+		return MediaSourcePodcasts
+	}
+	return MediaSourceYouTube
 }
 
 type ChannelSearchResultProps struct {
 	youtube.Channel
 	Subscribed bool
+}
+
+type PodcastSearchResultProps struct {
+	FeedURL      string
+	Title        string
+	Description  string
+	ArtworkURL   string
+	Author       string
+	EpisodeCount int
+	Subscribed   bool
 }
 
 func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
@@ -121,6 +158,20 @@ type VideoProps struct {
 	Channel      ChannelProps
 	PublishedAt  time.Time
 	CreatedAt    time.Time
+	// StreamURL is set for podcast episodes and points at the internal media stream route.
+	StreamURL string
+}
+
+// IsPodcast reports whether this item is a podcast episode.
+func (v VideoProps) IsPodcast() bool {
+	return v.Video.Type == youtube.VideoTypePodcastEpisode
+}
+
+func (v VideoProps) MediaSource() MediaSource {
+	if v.IsPodcast() {
+		return MediaSourcePodcasts
+	}
+	return MediaSourceYouTube
 }
 
 type SegmentProps struct {

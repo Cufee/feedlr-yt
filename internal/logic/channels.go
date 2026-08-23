@@ -20,7 +20,10 @@ var ErrRefreshTooSoon = errors.New("channel feed was refreshed recently")
 Returns a list of channel props for all user subscriptions
 */
 func GetUserSubscribedChannels(ctx context.Context, db database.SubscriptionsClient, userID string) ([]types.ChannelProps, error) {
-	subscriptions, err := db.UserSubscriptions(ctx, userID, database.Subscription{}.WithChannel())
+	subscriptions, err := db.UserSubscriptions(ctx, userID,
+		database.Subscription{}.WithChannel(),
+		database.Subscription{}.WithChannelPodcastShow(),
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get subscriptions")
 	}
@@ -37,9 +40,26 @@ func GetUserSubscribedChannels(ctx context.Context, db database.SubscriptionsCli
 }
 
 func GetChannelPageProps(ctx context.Context, db database.Client, userID, channelID string) (*types.ChannelPageProps, error) {
-	channel, cached, err := CacheChannel(ctx, db, channelID)
-	if err != nil {
-		return nil, err
+	// Podcast shows come straight from the database; their episodes are
+	// maintained by the feed poller, not the YouTube API.
+	show, err := db.GetPodcastShow(ctx, channelID)
+	if err != nil && !database.IsErrNotFound(err) {
+		return nil, errors.Wrap(err, "failed to check podcast show")
+	}
+	isPodcast := show != nil
+
+	var channel *models.Channel
+	cached := false
+	if isPodcast {
+		channel, err = db.GetChannel(ctx, channelID, database.Channel.WithPodcastShow())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		channel, cached, err = CacheChannel(ctx, db, channelID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	channelProps := types.ChannelModelToProps(channel)
 	props := types.ChannelPageProps{
@@ -69,7 +89,7 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 		return nil, err
 	}
 
-	if len(videos) == 0 && !cached {
+	if len(videos) == 0 && !cached && !isPodcast {
 		inserted, err := CacheChannelVideos(ctx, db, 3, channelID)
 		if err != nil && !errors.Is(err, youtube.ErrLoginRequired) {
 			return nil, errors.Wrap(err, "failed to cache channel videos")
@@ -82,6 +102,15 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 		}
 		// Apply filter to freshly cached videos
 		videos = filterVideosByType(videos, props.VideoFilter)
+	}
+	if len(videos) == 0 && isPodcast {
+		// Nothing cached yet (or a brand new show); pull the feed once.
+		if err := CachePodcastEpisodes(ctx, db, 24, channelID); err == nil {
+			videos, err = GetChannelVideosFiltered(ctx, db, 24, types.VideoFilterAll, channelID)
+			if err != nil && !database.IsErrNotFound(err) {
+				return nil, err
+			}
+		}
 	}
 
 	props.Channel.Videos = trimVideoList(12, 3, videos)
@@ -110,6 +139,11 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 }
 
 func RefreshChannelFeed(ctx context.Context, db database.Client, channelID string) (time.Time, error) {
+	// Podcast channels refresh from their RSS feed, not the YouTube API.
+	if show, err := db.GetPodcastShow(ctx, channelID); err == nil && show != nil {
+		return RefreshPodcastFeed(ctx, db, channelID)
+	}
+
 	channel, _, err := CacheChannel(ctx, db, channelID)
 	if err != nil {
 		return time.Time{}, err
@@ -119,6 +153,28 @@ func RefreshChannelFeed(ctx context.Context, db database.Client, channelID strin
 	}
 
 	if _, err := CacheChannelVideos(ctx, db, 12, channelID); err != nil {
+		return channel.FeedUpdatedAt, err
+	}
+
+	updatedAt := time.Now()
+	if err := db.SetChannelFeedUpdatedAt(ctx, channelID, updatedAt); err != nil {
+		return updatedAt, errors.Wrap(err, "failed to update channel refresh time")
+	}
+	return updatedAt, nil
+}
+
+// RefreshPodcastFeed refreshes a podcast channel from its feed, with the same
+// throttle window as YouTube channel refreshes.
+func RefreshPodcastFeed(ctx context.Context, db database.Client, channelID string) (time.Time, error) {
+	channel, err := db.GetChannel(ctx, channelID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if !channel.FeedUpdatedAt.IsZero() && time.Since(channel.FeedUpdatedAt) < time.Hour {
+		return channel.FeedUpdatedAt, ErrRefreshTooSoon
+	}
+
+	if err := CachePodcastEpisodes(ctx, db, 25, channelID); err != nil {
 		return channel.FeedUpdatedAt, err
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	stdErrors "errors"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/netproxy"
 	"github.com/cufee/feedlr-yt/internal/types"
-	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/sethvargo/go-retry"
@@ -71,16 +71,34 @@ func (s *persistingRefreshTokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
+// NewYouTubeSyncService returns nil when YouTube OAuth is not configured;
+// playlist sync and watch-history sync are disabled in that case.
 func NewYouTubeSyncService(db database.Client) (*YouTubeSyncService, error) {
+	clientID := os.Getenv("YOUTUBE_OAUTH_CLIENT_ID")
+	clientSecret := os.Getenv("YOUTUBE_OAUTH_CLIENT_SECRET")
+	redirectURL := os.Getenv("YOUTUBE_OAUTH_REDIRECT_URL")
+	secret := os.Getenv("YOUTUBE_SYNC_ENCRYPTION_SECRET")
+
+	configured := clientID != "" && clientSecret != "" && redirectURL != ""
+	if !configured {
+		if clientID != "" || clientSecret != "" || redirectURL != "" {
+			return nil, errors.New("YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET and YOUTUBE_OAUTH_REDIRECT_URL must all be set to enable playlist sync")
+		}
+		return nil, nil
+	}
+	if secret == "" {
+		return nil, errors.New("YOUTUBE_SYNC_ENCRYPTION_SECRET must be set to enable playlist sync")
+	}
+
 	service := &YouTubeSyncService{
 		db: db,
 		crypto: newYouTubeSyncCrypto(
-			utils.MustGetEnv("YOUTUBE_SYNC_ENCRYPTION_SECRET"),
+			secret,
 		),
 		oauthConfig: &oauth2.Config{
-			ClientID:     utils.MustGetEnv("YOUTUBE_OAUTH_CLIENT_ID"),
-			ClientSecret: utils.MustGetEnv("YOUTUBE_OAUTH_CLIENT_SECRET"),
-			RedirectURL:  utils.MustGetEnv("YOUTUBE_OAUTH_REDIRECT_URL"),
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
 			Scopes:       []string{youTubeSyncOAuthScope},
 			Endpoint:     google.Endpoint,
 		},

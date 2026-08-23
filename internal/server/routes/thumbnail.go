@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/tpot/brewed"
@@ -71,16 +72,29 @@ var VideoThumbnail brewed.Partial[*handler.Context] = func(ctx *handler.Context)
 		return nil, ctx.SendStatus(http.StatusBadRequest)
 	}
 
-	file, ok := videoThumbnailFile(ctx.Params("variant"))
-	if !ok {
-		return nil, ctx.SendStatus(http.StatusBadRequest)
-	}
-
-	if _, err := ctx.Database().GetVideoByID(ctx.Context(), videoID); err != nil {
+	video, err := ctx.Database().GetVideoByID(ctx.Context(), videoID, database.Video.WithChannel())
+	if err != nil {
 		if database.IsErrNotFound(err) {
 			return nil, ctx.SendStatus(http.StatusNotFound)
 		}
 		return nil, ctx.SendStatus(http.StatusInternalServerError)
+	}
+
+	// Podcast episodes use the show artwork; the variant is ignored.
+	if youtube.VideoType(video.Type) == youtube.VideoTypePodcastEpisode {
+		thumbnailURL := ""
+		if video.R != nil && video.R.Channel != nil {
+			thumbnailURL = strings.TrimSpace(video.R.Channel.Thumbnail)
+		}
+		if thumbnailURL == "" {
+			return nil, ctx.SendStatus(http.StatusNotFound)
+		}
+		return nil, proxyImage(ctx, thumbnailURL)
+	}
+
+	file, ok := videoThumbnailFile(ctx.Params("variant"))
+	if !ok {
+		return nil, ctx.SendStatus(http.StatusBadRequest)
 	}
 
 	return nil, proxyImage(ctx, fmt.Sprintf("https://i.ytimg.com/vi/%s/%s", videoID, file))

@@ -6,15 +6,28 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/channel"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
 templ SubscribedChannelTile(props types.ChannelProps) {
+	@subscribedChannelTile(props)
+}
+
+templ SubscribedChannelTileOOB(props types.ChannelProps) {
+	<div hx-swap-oob="beforeend:#subscriptions-list">
+		@subscribedChannelTile(props)
+	</div>
+}
+
+templ subscribedChannelTile(props types.ChannelProps) {
 	<div
 		id={ fmt.Sprintf("subscribed-channel-tile-%s", props.ID) }
 		data-search={ shared.YouTubeString(props.Title) }
+		data-source={ string(props.MediaSource()) }
 		class="ui-motion-swap ui-channel-card group channel-btn"
 	>
+		@ui.Badge(subscriptionSourceLabel(props), subscriptionSourceTone(props), "ui-source-badge absolute left-2 top-2 z-20")
 		<a
 			hx-boost="true"
 			href={ templ.URL(fmt.Sprintf("/channel/%s", props.ID)) }
@@ -24,8 +37,26 @@ templ SubscribedChannelTile(props types.ChannelProps) {
 			<span class="ui-spinner size-6 border-[3px] md:size-7 htmx-indicator ui-indicator-delayed"></span>
 			<span class="group-[.htmx-request]:hidden">Open</span>
 		</a>
-		@channel.ChannelTile(props.Channel, channel.ChannelThumbnailProxyURL(props.ID), nil)
+		@channel.ChannelTile(props.Channel, channel.ChannelThumbnailProxyURL(props.ID), UnsubscribeButtonTile(props.ID))
 	</div>
+}
+
+templ SubscribedChannelTileRemoveOOB(channelID string) {
+	<div id={ fmt.Sprintf("subscribed-channel-tile-%s", channelID) } hx-swap-oob="delete"></div>
+}
+
+func subscriptionSourceLabel(props types.ChannelProps) string {
+	if props.IsPodcast {
+		return "Podcast"
+	}
+	return "YouTube"
+}
+
+func subscriptionSourceTone(props types.ChannelProps) ui.BadgeTone {
+	if props.IsPodcast {
+		return ui.BadgeAccent
+	}
+	return ui.BadgeNeutral
 }
 
 type subscribeButtonOptions struct {
@@ -49,7 +80,7 @@ func UnsubscribeButtonSmall(channelId string, opts ...SubscribeButtonOption) tem
 templ unsubscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 	<button
 		type="button"
-		class="ui-channel-action-btn"
+		class="relative z-20 ui-channel-action-btn"
 		hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe?type=button", channelId) }
 		hx-target="this"
 		if opts.refreshPage {
@@ -75,7 +106,7 @@ func SubscribeButtonSmall(channelId string, opts ...SubscribeButtonOption) templ
 templ subscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 	<button
 		type="button"
-		class="ui-channel-action-btn ui-channel-action-btn-primary"
+		class="relative z-20 ui-channel-action-btn ui-channel-action-btn-primary"
 		hx-post={ fmt.Sprintf("/api/channels/%s/subscribe?type=button", channelId) }
 		hx-target="this"
 		if opts.refreshPage {
@@ -87,6 +118,19 @@ templ subscribeButtonSmallImpl(channelId string, opts subscribeButtonOptions) {
 		title="Subscribe"
 	>
 		@icons.Bookmark()
+	</button>
+}
+
+templ UnsubscribeButtonTile(channelID string) {
+	<button
+		type="button"
+		class="relative z-20 ui-channel-action-btn"
+		hx-post={ fmt.Sprintf("/api/channels/%s/unsubscribe", channelID) }
+		hx-target={ fmt.Sprintf("#subscribed-channel-tile-%s", channelID) }
+		hx-swap="delete"
+		title="Unsubscribe"
+	>
+		@icons.BookmarkCrossed()
 	</button>
 }
 

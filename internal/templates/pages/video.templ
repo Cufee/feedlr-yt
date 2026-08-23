@@ -6,18 +6,22 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/types"
-	"github.com/sosodev/duration"
 	"time"
 )
 
 var _ = types.PlaylistProps{}
 
 func durationToString(videoDuration int) string {
-	d := duration.FromTimeDuration(time.Duration(videoDuration))
-	if d == nil {
+	if videoDuration <= 0 {
 		return ""
 	}
-	return d.String()
+	duration := time.Duration(videoDuration) * time.Second
+	hours := int(duration.Hours())
+	minutes := int(duration.Minutes()) % 60
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm", hours, minutes)
+	}
+	return fmt.Sprintf("%dm", minutes)
 }
 
 templ Video(props types.VideoPlayerProps) {
