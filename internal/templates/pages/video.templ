@@ -64,13 +64,13 @@ templ videoPlayer(player types.VideoPlayerProps) {
 }
 
 templ buttonChannel(id string) {
-	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="ui-video-rail-btn">
+	<a href={ templ.URL(fmt.Sprintf("/channel/%s", id)) } class="ui-video-rail-btn" aria-label="Open channel">
 		@icons.Profile()
 	</a>
 }
 
 templ buttonShare(id string) {
-	<button id="share-video-link-btn" class="ui-video-rail-btn">
+	<button id="share-video-link-btn" class="ui-video-rail-btn" aria-label="Share video">
 		@icons.Share()
 	</button>
 	@shared.EmbedScript(shareButtonScript(id), id)
@@ -95,7 +95,7 @@ templ buttonLogin() {
 }
 
 templ buttonBack(url string) {
-	<a class="close-button ui-video-rail-btn bg-accent text-slate-950 hover:bg-accent-strong" href={ templ.URL(url) } id="close-button">
+	<a class="close-button ui-video-rail-btn bg-accent text-slate-950 hover:bg-accent-strong" href={ templ.URL(url) } id="close-button" aria-label="Close player">
 		@icons.Cross()
 	</a>
 }
