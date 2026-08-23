@@ -6,6 +6,7 @@ package podcastindex
 import (
 	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"encoding/hex"
 	"io"
 	"net/http"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/metrics"
-	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
 )
 
@@ -164,7 +164,7 @@ type apiFeed struct {
 	Image        string `json:"image"`
 	Artwork      string `json:"artwork"`
 	EpisodeCount int    `json:"episodeCount"`
-	Dead         bool   `json:"dead"`
+	Dead         int    `json:"dead"`
 	Locked       int    `json:"locked"`
 }
 
@@ -195,6 +195,6 @@ func (f apiFeed) toPodcast() (Podcast, bool) {
 		ArtworkURL:   artwork,
 		Author:       author,
 		EpisodeCount: f.EpisodeCount,
-		Dead:         f.Dead,
+		Dead:         f.Dead != 0,
 	}, true
 }

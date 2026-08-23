@@ -135,6 +135,10 @@ func (m *mockTVSyncStore) GetRecentUserViews(_ context.Context, _ string, _ int)
 	return nil, nil
 }
 
+func (m *mockTVSyncStore) GetRecentUserViewsForVideoType(_ context.Context, _ string, _ string, _ bool, _ int) ([]*models.View, error) {
+	return nil, nil
+}
+
 func (m *mockTVSyncStore) UpsertView(_ context.Context, _ *models.View) error {
 	return nil
 }

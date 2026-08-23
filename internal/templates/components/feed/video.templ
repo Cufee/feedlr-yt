@@ -58,7 +58,7 @@ func VideoFeed(videos []types.VideoProps, returnUrl string, options ...FeedOptio
 templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedOptions) {
 	<div class="relative grid w-full grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 md:grid-cols-3" id="components-video-feed">
 		for _, video := range videos {
-			<div class="ui-motion-swap flex flex-col gap-1" id={ fmt.Sprintf("video-item-%s", video.ID) }>
+			<div class="ui-motion-swap flex flex-col gap-1" id={ fmt.Sprintf("video-item-%s", video.ID) } data-source={ string(video.MediaSource()) }>
 				<a href={ templ.URL(fmt.Sprintf("/video/%s?return=%s", video.ID, returnUrl)) } hx-boost="true" hx-target="body" class="relative flex flex-col w-full cursor-pointer group">
 					@videoCardComponent(video, opts)
 				</a>
@@ -69,6 +69,7 @@ templ videoFeedComponent(videos []types.VideoProps, returnUrl string, opts feedO
 					utils.RelativeTimeAgo(video.PublishedAt),
 					string(video.Channel.VideoFilter),
 					opts.showChannelName,
+					video.IsPodcast(),
 				)
 			</div>
 		}
@@ -105,7 +106,10 @@ templ WatchLaterCarouselItem(video types.VideoProps) {
 	<div class="ui-watch-later-item ui-motion-swap" id={ fmt.Sprintf("carousel-item-%s", video.ID) }>
 		<a href={ templ.URL(fmt.Sprintf("/video/%s", video.ID)) } hx-boost="true" hx-target="body" class="relative flex flex-col h-full cursor-pointer group">
 			<div class="ui-video-card aspect-video">
-				@VideoThumbnail(video.ID, video.Title, false)
+				if video.IsPodcast() {
+					@ui.Badge("Podcast", ui.BadgeAccent, "ui-source-badge absolute left-2 top-2 z-30")
+				}
+				@VideoThumbnailForVideo(video, false)
 				if video.Progress > 0 {
 					<div class="ui-video-state-overlay text-xl">Watched</div>
 					<div class="ui-video-progress-track">
@@ -186,6 +190,16 @@ templ VideoThumbnail(videoID, alt string, hidden bool) {
 	</div>
 }
 
+templ VideoThumbnailForVideo(video types.VideoProps, hidden bool) {
+	if video.IsPodcast() {
+		<div class={ "ui-video-thumbnail", "absolute", "inset-0", "pointer-events-none", templ.KV("blur-xl", hidden) }>
+			<img class="absolute h-full w-full object-cover bg-elev-1 transition-transform duration-500 pointer-events-none group-hover:scale-110" src={ VideoThumbnailProxyURL(video.ID, "sddefault") } alt={ shared.YouTubeString(video.Title) } loading="lazy" decoding="async"/>
+		</div>
+	} else {
+		@VideoThumbnail(video.ID, video.Title, hidden)
+	}
+}
+
 func VideoCard(video types.VideoProps, options ...FeedOption) templ.Component {
 	var o feedOptions
 	for _, apply := range options {
@@ -196,6 +210,9 @@ func VideoCard(video types.VideoProps, options ...FeedOption) templ.Component {
 
 templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 	@ui.VideoCardShell(fmt.Sprintf("video-card-%s", video.ID)) {
+		if video.IsPodcast() {
+			@ui.Badge("Podcast", ui.BadgeAccent, "ui-source-badge absolute left-2 top-2 z-30")
+		}
 		if opts.showProgressActions || opts.showWatchLaterButton || opts.showPlaylistActions {
 			<div class="absolute z-20 top-2 left-2 htmx-indicator ui-indicator-delayed" id={ fmt.Sprintf("video-card-%s-indicator", video.ID) }>
 				<span class="ui-spinner size-7 border-[3px] md:size-5 md:border-2"></span>
@@ -281,7 +298,7 @@ templ videoCardComponent(video types.VideoProps, opts feedOptions) {
 				{ secondsToDurationString(video.Duration) }
 			}
 		</div>
-		@VideoThumbnail(video.ID, video.Title, video.Hidden)
+		@VideoThumbnailForVideo(video, video.Hidden)
 	}
 }
 

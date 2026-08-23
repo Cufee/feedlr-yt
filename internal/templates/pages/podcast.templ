@@ -10,7 +10,7 @@ import (
 
 templ Podcast(props types.VideoPlayerProps) {
 	<div class="relative flex grow flex-col">
-		<div class="ui-video-rail">
+		<div class="ui-podcast-rail">
 			<div class="ui-video-rail-actions">
 				@buttonChannel(props.Video.Channel.ID)
 				@buttonShare(props.Video.ID)
@@ -29,137 +29,203 @@ templ Podcast(props types.VideoPlayerProps) {
 				}
 			</div>
 		</div>
-		<div class="grow w-full flex flex-col relative overflow-y-auto">
-			<div id="player-loading" class="absolute inset-0 z-20 flex items-center justify-center bg-canvas/95"><span class="ui-spinner size-12 border-4"></span></div>
+		<div class="grow w-full overflow-y-auto">
 			@podcastPlayer(props)
 		</div>
 	</div>
-	@shared.EmbedScript(podcastHotkeys(props.ReturnURL), props.ReturnURL)
 }
 
 templ podcastPlayer(player types.VideoPlayerProps) {
-	<div class="flex w-full max-w-xl grow flex-col items-center justify-center gap-6 px-6 py-10 mx-auto">
-		<img
-			src={ templ.URL(fmt.Sprintf("/thumb/video/%s/sddefault", player.Video.ID)) }
-			alt={ player.Video.Title }
-			class="size-40 rounded-xl object-cover shadow-lg md:size-56"
-		/>
-		<div class="flex flex-col items-center gap-1 text-center">
-			<h1 class="text-lg font-semibold leading-tight">{ player.Video.Title }</h1>
-			<a href={ templ.URL(fmt.Sprintf("/channel/%s", player.Video.Channel.ID)) } class="text-sm text-muted hover:text-default">
-				{ player.Video.Channel.Title }
-			</a>
-			<span class="text-xs text-muted">{ durationToString(player.Video.Duration) }</span>
-		</div>
-		<audio id="player" controls autoplay preload="metadata" src={ templ.URL(player.Video.StreamURL) } class="w-full"></audio>
-		<div class="flex items-center gap-1" id="playback-rate-controls">
-			<span class="ui-text-caption px-1">Speed</span>
-			for _, rate := range []string{"1", "1.25", "1.5", "1.75", "2"} {
-				<button data-playback-rate={ rate } class="ui-btn ui-btn-sm">{ rate + "x" }</button>
-			}
-		</div>
-	</div>
+	<main id="podcast-player-page" class="mx-auto flex w-full max-w-5xl grow items-center px-4 py-5 sm:px-6 md:py-10">
+		<section class="podcast-player-surface w-full" aria-label="Podcast player">
+			<div class="podcast-player-details">
+				<img
+					src={ templ.URL(fmt.Sprintf("/thumb/video/%s/sddefault", player.Video.ID)) }
+					alt={ player.Video.Title }
+					class="podcast-player-artwork"
+				/>
+				<div class="min-w-0 self-center">
+					<div class="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-accent">Podcast episode</div>
+					<h1 class="text-balance text-xl font-semibold leading-tight text-text-primary sm:text-2xl md:text-3xl">{ player.Video.Title }</h1>
+					<a href={ templ.URL(fmt.Sprintf("/channel/%s", player.Video.Channel.ID)) } class="mt-2 inline-block text-sm text-text-secondary transition-colors hover:text-text-primary">
+						{ player.Video.Channel.Title }
+					</a>
+					<div class="mt-1 text-sm text-text-secondary">{ durationToString(player.Video.Duration) }</div>
+				</div>
+			</div>
+			<div class="podcast-player-controls">
+				<audio id="podcast-player" data-feedlr-podcast-player autoplay preload="metadata" src={ templ.URL(player.Video.StreamURL) }></audio>
+				<div class="podcast-player-timeline">
+					<input id="podcast-progress" class="podcast-player-scrubber" type="range" min="0" max="0" value="0" step="1" aria-label="Episode progress"/>
+					<div class="flex items-center justify-between text-xs tabular-nums text-text-secondary">
+						<output id="podcast-elapsed">0:00</output>
+						<output id="podcast-remaining">-0:00</output>
+					</div>
+				</div>
+				<div class="podcast-player-transport" aria-label="Playback controls">
+					<button type="button" data-podcast-skip="-15" class="podcast-player-skip" aria-label="Skip back 15 seconds"><span>15</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
+					<button type="button" id="podcast-play-toggle" class="podcast-player-play" aria-label="Play episode">
+						<svg data-podcast-play-icon viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg>
+						<svg data-podcast-pause-icon class="hidden" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3v14H7V5Zm7 0h3v14h-3V5Z"/></svg>
+					</button>
+					<button type="button" data-podcast-skip="15" class="podcast-player-skip" aria-label="Skip forward 15 seconds"><span>15</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
+				</div>
+				<div class="podcast-player-options">
+					<label class="podcast-player-select-label" for="podcast-speed">Speed</label>
+					<select id="podcast-speed" class="podcast-player-select" aria-label="Playback speed">
+						for _, rate := range []string{"0.75", "1", "1.25", "1.5", "1.75", "2"} {
+							<option value={ rate }>{ rate + "x" }</option>
+						}
+					</select>
+					<label class="podcast-player-volume" for="podcast-volume"><span>Volume</span><input id="podcast-volume" type="range" min="0" max="100" value="100" aria-label="Volume"/></label>
+				</div>
+			</div>
+		</section>
+	</main>
 	@shared.EmbedScript(podcastPlayerInit(player.Video.ID, player.Video.Progress, player.ReportProgress), player.Video.ID, player.Video.Progress, player.ReportProgress)
 }
 
 script podcastPlayerInit(episode string, progress int, withProgress bool) {
-	const audio = document.getElementById("player")
-	if (!audio) return
+	const root = document.getElementById("podcast-player-page")
+	const audio = document.getElementById("podcast-player")
+	if (!root || !audio) return
 
-	if (progress > 0) {
-		audio.addEventListener("loadedmetadata", () => { audio.currentTime = progress })
+	window.feedlrPodcastPlayer?.cleanup?.()
+	for (const player of document.querySelectorAll("audio[data-feedlr-podcast-player]")) {
+		if (player !== audio) {
+			player.pause()
+			player.removeAttribute("src")
+			player.load()
+		}
 	}
-	const savedVolume = parseInt(window.localStorage.getItem("player-volume"))
-	if (Number.isInteger(savedVolume) && savedVolume > 0) audio.volume = savedVolume / 100
-	const savedRate = parseFloat(window.localStorage.getItem("podcast-playback-rate"))
-	if (savedRate > 0) audio.playbackRate = savedRate
 
-	audio.addEventListener("canplay", () => {
-		document.getElementById("player-loading")?.classList.add("hidden")
-	})
-	audio.addEventListener("volumechange", () => {
-		const volume = Math.floor(audio.volume * 100)
-		if (volume > 0) window.localStorage.setItem("player-volume", volume)
-	})
+	const controller = new AbortController()
+	let lastProgress = -1
+	let progressTimer
+	let disposed = false
 
-	const buttons = document.querySelectorAll("[data-playback-rate]")
-	function highlightRate() {
-		buttons.forEach((btn) => {
-			btn.classList.toggle("ui-btn-primary", Math.abs(parseFloat(btn.dataset.playbackRate) - audio.playbackRate) < 0.01)
-		})
-	}
-	buttons.forEach((btn) => {
-		btn.addEventListener("click", () => {
-			audio.playbackRate = parseFloat(btn.dataset.playbackRate)
-			window.localStorage.setItem("podcast-playback-rate", btn.dataset.playbackRate)
-			highlightRate()
-		})
-	})
-	highlightRate()
-
-	let lastProgress = 0
 	function saveProgress() {
+		if (!withProgress || disposed) return
 		const currentTime = Math.floor(audio.currentTime)
-		if (lastProgress === currentTime) return true
+		if (currentTime <= 0 || currentTime === lastProgress) return
 		lastProgress = currentTime
 		fetch(`/api/videos/${episode}/progress?progress=${currentTime}`, {
-			method: 'POST',
-			credentials: 'include'
-		}).catch(e => console.error(e))
-		return true
+			method: "POST",
+			credentials: "include",
+			keepalive: true,
+		}).catch(() => {})
 	}
 
-	if (withProgress) {
-		audio.addEventListener("pause", saveProgress)
-		audio.addEventListener("ended", saveProgress)
-		setTimeout(() => {
-			document.querySelector("#close-button")?.addEventListener("click", saveProgress)
-		}, 100)
-		setInterval(saveProgress, 10000)
+	function cleanup() {
+		if (disposed) return
+		saveProgress()
+		disposed = true
+		if (progressTimer) window.clearInterval(progressTimer)
+		controller.abort()
+		audio.pause()
+		audio.removeAttribute("src")
+		audio.load()
+		if (window.feedlrPodcastPlayer?.audio === audio) delete window.feedlrPodcastPlayer
 	}
-}
 
-script podcastHotkeys(returnUrl string) {
-	window.addEventListener("keydown", (event) => {
-		if (event.keyCode === 27) {
-			event.preventDefault()
-			document.getElementById("player-loading")?.classList.remove("hidden")
-			const audio = document.getElementById("player")
-			if (audio) audio.pause()
-			window.location.href = window.location.origin + returnUrl
-			setTimeout(() => {
-				window.location.href = window.location.origin + returnUrl
-			}, 250)
-			return false
-		}
-		const audio = document.getElementById("player")
-		if (!audio) return
-		for (const k of ["Alt", "AltGraph", "Control", "Meta"]) {
-			if (event.getModifierState(k) === true) return
-		}
-		// Play/Pause
-		if (event.keyCode === 32) {
+	window.feedlrPodcastPlayer = { audio, cleanup }
+	if (!window.feedlrPodcastNavigationCleanup) {
+		window.feedlrPodcastNavigationCleanup = true
+		document.addEventListener("htmx:beforeSwap", (event) => {
+			const player = window.feedlrPodcastPlayer
+			if (player && event.detail.target?.contains(player.audio)) player.cleanup()
+		})
+		window.addEventListener("pagehide", () => window.feedlrPodcastPlayer?.cleanup())
+	}
+
+	function seek(seconds) {
+		const duration = Number.isFinite(audio.duration) ? audio.duration : Infinity
+		audio.currentTime = Math.max(0, Math.min(duration, audio.currentTime + seconds))
+	}
+	function formatTime(seconds) {
+		const value = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0))
+		const hours = Math.floor(value / 3600)
+		const minutes = Math.floor(value / 60) % 60
+		const secs = value % 60
+		return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}` : `${minutes}:${String(secs).padStart(2, "0")}`
+	}
+	const progressInput = root.querySelector("#podcast-progress")
+	const elapsed = root.querySelector("#podcast-elapsed")
+	const remaining = root.querySelector("#podcast-remaining")
+	function updateTimeline() {
+		const duration = Number.isFinite(audio.duration) ? audio.duration : 0
+		progressInput.max = String(duration)
+		progressInput.value = String(Math.min(audio.currentTime, duration))
+		elapsed.textContent = formatTime(audio.currentTime)
+		remaining.textContent = `-${formatTime(duration - audio.currentTime)}`
+	}
+	function updatePlayButton() {
+		const playing = !audio.paused && !audio.ended
+		root.querySelector("[data-podcast-play-icon]").classList.toggle("hidden", playing)
+		root.querySelector("[data-podcast-pause-icon]").classList.toggle("hidden", !playing)
+		root.querySelector("#podcast-play-toggle").setAttribute("aria-label", playing ? "Pause episode" : "Play episode")
+	}
+
+	function restoreProgress() {
+		if (progress > 0 && Number.isFinite(audio.duration)) audio.currentTime = Math.min(progress, audio.duration)
+		updateTimeline()
+	}
+	if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) restoreProgress()
+	else audio.addEventListener("loadedmetadata", restoreProgress, { once: true, signal: controller.signal })
+
+	const savedVolume = Number.parseInt(window.localStorage.getItem("player-volume"), 10)
+	if (Number.isInteger(savedVolume) && savedVolume >= 0) audio.volume = savedVolume / 100
+	const savedRate = Number.parseFloat(window.localStorage.getItem("podcast-playback-rate"))
+	if (savedRate > 0) audio.playbackRate = savedRate
+
+	const speedSelect = root.querySelector("#podcast-speed")
+	speedSelect.value = String(audio.playbackRate)
+	speedSelect.addEventListener("change", () => {
+		audio.playbackRate = Number.parseFloat(speedSelect.value)
+		window.localStorage.setItem("podcast-playback-rate", speedSelect.value)
+	}, { signal: controller.signal })
+	const volumeInput = root.querySelector("#podcast-volume")
+	volumeInput.value = String(Math.round(audio.volume * 100))
+	volumeInput.addEventListener("input", () => { audio.volume = Number(volumeInput.value) / 100 }, { signal: controller.signal })
+	root.querySelector("#podcast-play-toggle").addEventListener("click", () => {
+		if (audio.paused) audio.play()
+		else audio.pause()
+	}, { signal: controller.signal })
+	root.querySelectorAll("[data-podcast-skip]").forEach((button) => {
+		button.addEventListener("click", () => seek(Number.parseInt(button.dataset.podcastSkip, 10)), { signal: controller.signal })
+	})
+	progressInput.addEventListener("input", () => {
+		audio.currentTime = Number(progressInput.value)
+		updateTimeline()
+	}, { signal: controller.signal })
+	audio.addEventListener("loadedmetadata", updateTimeline, { signal: controller.signal })
+	audio.addEventListener("timeupdate", updateTimeline, { signal: controller.signal })
+	audio.addEventListener("play", updatePlayButton, { signal: controller.signal })
+	audio.addEventListener("pause", updatePlayButton, { signal: controller.signal })
+	audio.addEventListener("ended", updatePlayButton, { signal: controller.signal })
+	audio.addEventListener("volumechange", () => {
+		volumeInput.value = String(Math.round(audio.volume * 100))
+		window.localStorage.setItem("player-volume", Math.round(audio.volume * 100))
+	}, { signal: controller.signal })
+	audio.addEventListener("pause", saveProgress, { signal: controller.signal })
+	audio.addEventListener("ended", saveProgress, { signal: controller.signal })
+	document.getElementById("close-button")?.addEventListener("click", cleanup, { signal: controller.signal })
+	document.addEventListener("keydown", (event) => {
+		const target = event.target instanceof Element ? event.target : null
+		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, button, a, [contenteditable=true]")) return
+		if (event.key === " ") {
 			event.preventDefault()
 			if (audio.paused) audio.play()
 			else audio.pause()
-		}
-		// Seek 5 seconds
-		if (event.keyCode === 37) {
+		} else if (event.key === "ArrowLeft") {
 			event.preventDefault()
-			audio.currentTime -= 5
-		}
-		if (event.keyCode === 39) {
+			seek(-15)
+		} else if (event.key === "ArrowRight") {
 			event.preventDefault()
-			audio.currentTime += 5
+			seek(15)
 		}
-		// Volume
-		if (event.keyCode === 38) {
-			event.preventDefault()
-			audio.volume = Math.min(1, audio.volume + 0.05)
-		}
-		if (event.keyCode === 40) {
-			event.preventDefault()
-			audio.volume = Math.max(0, audio.volume - 0.05)
-		}
-	})
+	}, { signal: controller.signal })
+	if (withProgress) progressTimer = window.setInterval(saveProgress, 10000)
+	updateTimeline()
+	updatePlayButton()
 }

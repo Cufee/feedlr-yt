@@ -6,29 +6,62 @@ import (
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
-templ Subscriptions(channels []types.ChannelProps) {
+type SubscriptionPageProps struct {
+	Channels               []types.ChannelProps
+	Source                 types.MediaSource
+	DiscoverySource        types.MediaSource
+	PodcastSearchAvailable bool
+}
+
+templ Subscriptions(props SubscriptionPageProps) {
 	<head><title>Feedlr - Subscriptions</title></head>
 	<div class="flex flex-col gap-6">
 		<div id="search" class="ui-section">
 			<div class="ui-section-header justify-center">
-				<h2 class="ui-section-title">Find More Channels</h2>
+				<h2 class="ui-section-title">Discover subscriptions</h2>
 			</div>
-			@subscriptions.SearchChannels()
+			@subscriptions.Discovery(subscriptions.DiscoveryProps{
+				SubscriptionSource: props.Source,
+				DiscoverySource: props.DiscoverySource,
+				PodcastSearchAvailable: props.PodcastSearchAvailable,
+				YouTubeURL: discoveryURL(props.Source, types.MediaSourceYouTube),
+				PodcastsURL: discoveryURL(props.Source, types.MediaSourcePodcasts),
+			})
 		</div>
 		<div id="subscriptions" class="ui-section">
-			<div class="ui-section-header justify-center">
+			<div class="ui-section-header flex-col justify-center gap-3 sm:flex-row sm:justify-between">
 				<h2 class="ui-section-title">Your Subscriptions</h2>
+				<div class="ui-filter-tabs" aria-label="Subscription source filter">
+					@subscriptionSourceTab(types.MediaSourceAll, props.Source, props.DiscoverySource, "All")
+					@subscriptionSourceTab(types.MediaSourceYouTube, props.Source, props.DiscoverySource, "YouTube")
+					@subscriptionSourceTab(types.MediaSourcePodcasts, props.Source, props.DiscoverySource, "Podcasts")
+				</div>
 			</div>
-			if len(channels) > 6 {
+			if len(props.Channels) > 6 {
 				<div class="mx-auto flex w-full max-w-full md:max-w-sm">
 					@shared.FuseSearch("subscriptions-list", "Filter Subscriptions", 1)
 				</div>
 			}
 			<div class="ui-channel-grid" id="subscriptions-list">
-				for _, channel := range channels {
+				for _, channel := range props.Channels {
 					@subscriptions.SubscribedChannelTile(channel)
 				}
 			</div>
 		</div>
 	</div>
+}
+
+func discoveryURL(source, discover types.MediaSource) string {
+	return "/app/subscriptions?source=" + string(source) + "&discover=" + string(discover)
+}
+
+templ subscriptionSourceTab(tab, current, discovery types.MediaSource, label string) {
+	<a
+		class={ "ui-tab", templ.KV("ui-tab-active", tab == current) }
+		href={ templ.URL(discoveryURL(tab, discovery)) }
+		hx-boost="true"
+		hx-target="body"
+	>
+		{ label }
+	</a>
 }

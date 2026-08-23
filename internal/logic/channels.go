@@ -20,7 +20,10 @@ var ErrRefreshTooSoon = errors.New("channel feed was refreshed recently")
 Returns a list of channel props for all user subscriptions
 */
 func GetUserSubscribedChannels(ctx context.Context, db database.SubscriptionsClient, userID string) ([]types.ChannelProps, error) {
-	subscriptions, err := db.UserSubscriptions(ctx, userID, database.Subscription{}.WithChannel())
+	subscriptions, err := db.UserSubscriptions(ctx, userID,
+		database.Subscription{}.WithChannel(),
+		database.Subscription{}.WithChannelPodcastShow(),
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get subscriptions")
 	}

@@ -6,14 +6,32 @@ import (
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
-templ History(props []types.VideoProps) {
+templ History(props []types.VideoProps, source types.MediaSource) {
 	<head>
 		<title>Feedlr - Recent</title>
 	</head>
 	<div id="app-index" class="flex flex-col gap-4">
+		<div class="ui-filter-tabs-wrap">
+			<div class="ui-filter-tabs" aria-label="Recent media filter">
+				@recentSourceTab(types.MediaSourceAll, source, "All")
+				@recentSourceTab(types.MediaSourceYouTube, source, "YouTube")
+				@recentSourceTab(types.MediaSourcePodcasts, source, "Podcasts")
+			</div>
+		</div>
 		if len(props) == 0 {
-			@ui.EmptyState("No recent videos yet", "", "py-10")
+			@ui.EmptyState("No recent items yet", "Playback history for this source will appear here", "py-10")
 		}
 		@feed.VideoFeed(props, "/app/recent", feed.WithChannelName, feed.WithProgressBar)
 	</div>
+}
+
+templ recentSourceTab(tab, current types.MediaSource, label string) {
+	<a
+		class={ "ui-tab", templ.KV("ui-tab-active", tab == current) }
+		href={ templ.URL("/app/recent?source=" + string(tab)) }
+		hx-boost="true"
+		hx-target="body"
+	>
+		{ label }
+	</a>
 }

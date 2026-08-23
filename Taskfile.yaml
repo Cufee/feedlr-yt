@@ -49,7 +49,8 @@ tasks:
       SQLITE3_DBNAME: "{{.DATABASE_PATH}}"
     cmds:
       - go generate ./...
-      - sqlboiler sqlite3
+      - go build -o tmp/bin/sqlboiler-sqlite3 github.com/aarondl/sqlboiler-sqlite3
+      - go tool sqlboiler tmp/bin/sqlboiler-sqlite3
 
   migrate:
     desc: generate migrations

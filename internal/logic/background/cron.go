@@ -59,23 +59,25 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 		return nil, err
 	}
 
-	playlistCron := os.Getenv("PLAYLIST_SYNC_CRON")
-	if playlistCron == "" {
-		playlistCron = "*/30 * * * *"
-	}
-
-	_, err = s.Cron(playlistCron).Do(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
-		defer cancel()
-
-		runErr := sync.RunSyncTick(ctx)
-		metrics.ObserveBackgroundTask("youtube_sync_run_tick", runErr)
-		if runErr != nil {
-			log.Printf("RunSyncTick: %v", runErr)
+	if sync != nil {
+		playlistCron := os.Getenv("PLAYLIST_SYNC_CRON")
+		if playlistCron == "" {
+			playlistCron = "*/30 * * * *"
 		}
-	})
-	if err != nil {
-		return nil, err
+
+		_, err = s.Cron(playlistCron).Do(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+			defer cancel()
+
+			runErr := sync.RunSyncTick(ctx)
+			metrics.ObserveBackgroundTask("youtube_sync_run_tick", runErr)
+			if runErr != nil {
+				log.Printf("RunSyncTick: %v", runErr)
+			}
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if tvSync != nil {

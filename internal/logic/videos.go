@@ -112,8 +112,17 @@ Returns a list of channel props with videos for all user subscriptions
 func GetRecentVideosProps(ctx context.Context, db interface {
 	database.VideosClient
 	database.ViewsClient
-}, userId string) ([]types.VideoProps, error) {
-	views, err := db.GetRecentUserViews(ctx, userId, 24)
+}, userId string, source types.MediaSource) ([]types.VideoProps, error) {
+	var views []*models.View
+	var err error
+	switch source {
+	case types.MediaSourcePodcasts:
+		views, err = db.GetRecentUserViewsForVideoType(ctx, userId, string(youtube.VideoTypePodcastEpisode), false, 24)
+	case types.MediaSourceYouTube:
+		views, err = db.GetRecentUserViewsForVideoType(ctx, userId, string(youtube.VideoTypePodcastEpisode), true, 24)
+	default:
+		views, err = db.GetRecentUserViews(ctx, userId, 24)
+	}
 	if err != nil && !database.IsErrNotFound(err) {
 		return nil, errors.Wrap(err, "GetCompleteUserProgress.database.DefaultClient.GetAllUserViews failed to get user views")
 	}

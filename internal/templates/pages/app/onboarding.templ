@@ -2,25 +2,27 @@ package app
 
 import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
-	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
+	"github.com/cufee/feedlr-yt/internal/types"
 )
 
-templ Onboarding() {
+templ Onboarding(discovery types.MediaSource, podcastSearchAvailable bool) {
 	<head><title>Welcome to Feedlr!</title></head>
 	<div class="flex flex-col gap-6">
-		<div id="search" class="ui-section">
+		<div class="ui-section">
 			<div class="ui-section-header justify-center">
-				<h2 class="ui-section-title">Search Channels</h2>
+				<h2 class="ui-section-title">Build your feed</h2>
 			</div>
-			@ui.Card(ui.WithCardClass("p-4 md:p-5")) {
-				@subscriptions.SearchChannels()
-			}
-		</div>
-		<div id="subscriptions" class="ui-section">
-			<div class="ui-section-header justify-center">
-				<h2 class="ui-section-title">Your Subscriptions</h2>
+			<p class="mx-auto max-w-xl text-center text-sm text-text-secondary">Subscribe to a YouTube channel or a podcast to start your feed.</p>
+			@subscriptions.Discovery(subscriptions.DiscoveryProps{
+				SubscriptionSource: types.MediaSourceAll,
+				DiscoverySource: discovery,
+				PodcastSearchAvailable: podcastSearchAvailable,
+				YouTubeURL: "/app/onboarding?discover=youtube",
+				PodcastsURL: "/app/onboarding?discover=podcasts",
+			})
+			<div id="subscriptions" class="ui-section">
+				<div class="ui-channel-grid" id="subscriptions-list"></div>
 			</div>
-			<div class="ui-channel-grid" id="subscriptions-list"></div>
 		</div>
 	</div>
 }

@@ -1,12 +1,12 @@
 # [Feedlr](https://feedlr.app)
 
-Feedlr is an alternative frontend for YouTube. The main goal is to make following your favorite creators simpler and reduce doom scrolling.
+Feedlr is a subscription reader for YouTube channels and podcasts. The main goal is to make following your favorite creators simpler and reduce doom scrolling.
 
 ## Approach
 
 - No recommendation, play-next, or related videos
 - No channel discovery; you need to know who you want to follow
-- A simpler feed split into new and watched videos
+- A simpler feed split into new and watched items
 - Embedded sponsor segments can be skipped with SponsorBlock
 
 ## Current State
@@ -14,7 +14,7 @@ Feedlr is an alternative frontend for YouTube. The main goal is to make followin
 Core functionality is complete and working reliably. Implemented in this repository:
 
 - Passkey auth (WebAuthn) with sessions
-- Subscriptions flow (search, subscribe/unsubscribe, per-channel filters)
+- YouTube and podcast subscriptions, including RSS feed URL subscriptions
 - Feed pages (`/app`, `/app/recent`, `/app/watch-later`, onboarding)
 - Watch later playlist and cleanup task
 - YouTube playlist sync via OAuth (`Feedlr Sync` playlist)
@@ -26,7 +26,7 @@ For implementation details, see `docs/`.
 
 ## Stack
 
-- Go 1.25
+- Go 1.26.5
 - Fiber
 - Templ + HTMX + Hyperscript
 - Tailwind CSS v4 + shared `ui-*` primitives
@@ -57,14 +57,17 @@ YOUTUBE_API_KEY=replace-me
 DATABASE_PATH=$(pwd)/tmp/database/local.db
 DATABASE_DIR=$(pwd)/tmp/database
 SPONSORBLOCK_API_URL=https://sponsor.ajay.app/api
-VIDEO_CACHE_UPDATE_CRON=0 0 * * *
-YOUTUBE_SYNC_ENCRYPTION_SECRET=replace-me
-YOUTUBE_OAUTH_CLIENT_ID=replace-me
-YOUTUBE_OAUTH_CLIENT_SECRET=replace-me
-YOUTUBE_OAUTH_REDIRECT_URL=http://localhost:3000/api/settings/youtube-sync/connect/callback
-PLAYLIST_SYNC_CRON=*/30 * * * *
+VIDEO_CACHE_UPDATE_CRON="0 0 * * *"
+YOUTUBE_SYNC_ENCRYPTION_SECRET=
+YOUTUBE_OAUTH_CLIENT_ID=
+YOUTUBE_OAUTH_CLIENT_SECRET=
+YOUTUBE_OAUTH_REDIRECT_URL=
+PLAYLIST_SYNC_CRON="*/30 * * * *"
 PLAYLIST_SYNC_MAX_EXPENSIVE_CALLS=4
 PLAYLIST_SYNC_MAX_USERS_PER_TICK=100
+PODCASTINDEX_API_KEY=
+PODCASTINDEX_API_SECRET=
+PODCAST_CACHE_UPDATE_CRON="0 */6 * * *"
 MAINTENANCE_MODE=false
 COOKIE_DOMAIN=localhost:3000
 METRICS_PORT=9090
@@ -84,8 +87,9 @@ task dev
 Open `http://localhost:3000`.
 
 Notes:
-- `YOUTUBE_OAUTH_CLIENT_ID` / `YOUTUBE_OAUTH_CLIENT_SECRET` must be non-empty at startup.
-- The YouTube auth client may ask for device authentication on first run (check server logs).
+- YouTube playlist sync starts only when `YOUTUBE_OAUTH_CLIENT_ID`, `YOUTUBE_OAUTH_CLIENT_SECRET`, `YOUTUBE_OAUTH_REDIRECT_URL`, and `YOUTUBE_SYNC_ENCRYPTION_SECRET` are all set.
+- PodcastIndex credentials enable catalog search. Users can subscribe to a direct RSS feed URL without them.
+- The YouTube auth client may ask for device authentication on first run. Check the server logs.
 
 ### 2. Production-style local run
 
@@ -123,3 +127,4 @@ task migrate-apply
 - `docs/PLAYLIST-SYNC.md`
 - `docs/TV-PROGRESS-SYNC.md`
 - `docs/OBSERVABILITY.md`
+- `docs/PODCASTS.md`

@@ -57,7 +57,7 @@ templ videoLayout(video types.VideoProps, content ...templ.Component) {
 			<meta name="twitter:image" content={ VideoThumbnailProxyURL(video.ID, "maxresdefault") }/>
 			<meta name="twitter:image:alt" content={ shared.YouTubeString(video.Title) }/>
 		}
-		<body class="h-svh bg-black" hx-ext="head-support">
+		<body class="h-svh bg-canvas" hx-ext="head-support">
 			@ui.NavProgress()
 			@ui.PageShellVideo("") {
 				for _, c := range content {
