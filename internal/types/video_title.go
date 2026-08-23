@@ -18,6 +18,8 @@ func NormalizeVideoTitle(title string, videoType youtube.VideoType, videoID stri
 		return "Private video"
 	case youtube.VideoTypeFailed:
 		return "Unavailable video"
+	case youtube.VideoTypePodcastEpisode:
+		return "Untitled episode"
 	default:
 		return "Untitled video"
 	}

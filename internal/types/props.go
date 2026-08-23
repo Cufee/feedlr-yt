@@ -89,6 +89,16 @@ type ChannelSearchResultProps struct {
 	Subscribed bool
 }
 
+type PodcastSearchResultProps struct {
+	FeedURL      string
+	Title        string
+	Description  string
+	ArtworkURL   string
+	Author       string
+	EpisodeCount int
+	Subscribed   bool
+}
+
 func (c *ChannelProps) WithVideos(videos ...VideoProps) ChannelWithVideosProps {
 	return ChannelWithVideosProps{
 		ChannelProps: *c,

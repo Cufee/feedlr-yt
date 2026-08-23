@@ -16,6 +16,8 @@ type Client interface {
 	VideosClient
 	ViewsClient
 
+	PodcastShowsClient
+
 	UsersClient
 	SettingsClient
 	SubscriptionsClient

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/api/podcastindex"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
 	mw "github.com/cufee/feedlr-yt/internal/auth"
@@ -69,6 +70,12 @@ func main() {
 		panic(err)
 	}
 	youtube.DefaultClient = yt
+
+	pi, err := podcastindex.NewClient(os.Getenv("PODCASTINDEX_API_KEY"), os.Getenv("PODCASTINDEX_API_SECRET"))
+	if err != nil {
+		panic(err)
+	}
+	podcastindex.DefaultClient = pi
 
 	_, err = background.StartCronTasks(db, youtubeSync, youtubeTVSync)
 	if err != nil {

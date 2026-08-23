@@ -110,6 +110,11 @@ func GetChannelPageProps(ctx context.Context, db database.Client, userID, channe
 }
 
 func RefreshChannelFeed(ctx context.Context, db database.Client, channelID string) (time.Time, error) {
+	// Podcast channels refresh from their RSS feed, not the YouTube API.
+	if show, err := db.GetPodcastShow(ctx, channelID); err == nil && show != nil {
+		return RefreshPodcastFeed(ctx, db, channelID)
+	}
+
 	channel, _, err := CacheChannel(ctx, db, channelID)
 	if err != nil {
 		return time.Time{}, err
@@ -119,6 +124,28 @@ func RefreshChannelFeed(ctx context.Context, db database.Client, channelID strin
 	}
 
 	if _, err := CacheChannelVideos(ctx, db, 12, channelID); err != nil {
+		return channel.FeedUpdatedAt, err
+	}
+
+	updatedAt := time.Now()
+	if err := db.SetChannelFeedUpdatedAt(ctx, channelID, updatedAt); err != nil {
+		return updatedAt, errors.Wrap(err, "failed to update channel refresh time")
+	}
+	return updatedAt, nil
+}
+
+// RefreshPodcastFeed refreshes a podcast channel from its feed, with the same
+// throttle window as YouTube channel refreshes.
+func RefreshPodcastFeed(ctx context.Context, db database.Client, channelID string) (time.Time, error) {
+	channel, err := db.GetChannel(ctx, channelID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if !channel.FeedUpdatedAt.IsZero() && time.Since(channel.FeedUpdatedAt) < time.Hour {
+		return channel.FeedUpdatedAt, ErrRefreshTooSoon
+	}
+
+	if err := CachePodcastEpisodes(ctx, db, 25, channelID); err != nil {
 		return channel.FeedUpdatedAt, err
 	}
 

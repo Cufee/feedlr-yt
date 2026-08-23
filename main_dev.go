@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/api/podcastindex"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
 	mw "github.com/cufee/feedlr-yt/internal/auth"
@@ -60,6 +61,13 @@ func main() {
 		panic(err)
 	}
 	youtube.DefaultClient = yt
+
+	pi, err := podcastindex.NewClient(os.Getenv("PODCASTINDEX_API_KEY"), os.Getenv("PODCASTINDEX_API_SECRET"))
+	if err != nil {
+		panic(err)
+	}
+	podcastindex.DefaultClient = pi
+
 	bootCtx, bootCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	if err := youtubeTVSync.RunLifecycleTick(bootCtx); err != nil {
 		log.Warn().Err(err).Msg("initial tv sync lifecycle tick failed")

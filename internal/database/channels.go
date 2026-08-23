@@ -7,6 +7,8 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/doug-martin/goqu/v9"
 
+	"slices"
+
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/aarondl/sqlboiler/v4/queries/qm"
 )
@@ -26,6 +28,7 @@ type channelQuery struct {
 	withVideos        bool
 	videosLimit       int
 	withSubscriptions bool
+	withPodcastShow   bool
 }
 
 type channelQuerySlice []ChannelQuery
@@ -56,6 +59,11 @@ func (channel) WithSubscriptions() ChannelQuery {
 func (channel) ID(ids ...string) ChannelQuery {
 	return func(o *channelQuery) {
 		o.id = append(o.id, ids...)
+	}
+}
+func (channel) WithPodcastShow() ChannelQuery {
+	return func(o *channelQuery) {
+		o.withPodcastShow = true
 	}
 }
 
@@ -111,6 +119,12 @@ func (c *sqliteClient) GetChannels(ctx context.Context, o ...ChannelQuery) ([]*m
 			return nil, err
 		}
 	}
+	if opts.withPodcastShow {
+		err = models.Channel{}.L.LoadPodcastShow(ctx, c.db, false, &channels, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return channels, nil
 }
@@ -127,6 +141,25 @@ func (c *sqliteClient) GetChannelsForUpdate(ctx context.Context) ([]string, erro
 	}
 	if len(channelIDs) == 0 {
 		return nil, nil
+	}
+
+	// Podcast channels are refreshed on their own schedule from their RSS
+	// feeds; the YouTube upload-frequency heuristic below does not apply.
+	podcastShows, err := models.PodcastShows(qm.Select(models.PodcastShowColumns.ChannelID)).All(ctx, c.db)
+	if err != nil {
+		return nil, err
+	}
+	if len(podcastShows) > 0 {
+		podcastIDs := make(map[string]bool, len(podcastShows))
+		for _, show := range podcastShows {
+			podcastIDs[show.ChannelID] = true
+		}
+		channelIDs = slices.DeleteFunc(channelIDs, func(id string) bool {
+			return podcastIDs[id]
+		})
+		if len(channelIDs) == 0 {
+			return nil, nil
+		}
 	}
 
 	const maxVideosPerChannel uint = 5
@@ -222,6 +255,12 @@ func (c *sqliteClient) GetChannel(ctx context.Context, channelId string, o ...Ch
 	}
 	if opts.withSubscriptions {
 		err = models.Channel{}.L.LoadSubscriptions(ctx, c.db, true, channel, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if opts.withPodcastShow {
+		err = models.Channel{}.L.LoadPodcastShow(ctx, c.db, true, channel, nil)
 		if err != nil {
 			return nil, err
 		}
