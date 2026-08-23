@@ -3,12 +3,17 @@ package youtube
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestVideoTypeDetection(t *testing.T) {
+	if os.Getenv("FEEDLR_INTEGRATION_TESTS") == "" {
+		t.Skip("set FEEDLR_INTEGRATION_TESTS=1 to run integration tests against live services")
+	}
+
 	videos := []struct {
 		id           string
 		description  string

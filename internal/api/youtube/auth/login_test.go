@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/cufee/feedlr-yt/tests/mock"
@@ -28,6 +29,10 @@ func testAuthClient() (*Client, error) {
 }
 
 func TestLoginFlow(t *testing.T) {
+	if os.Getenv("FEEDLR_INTEGRATION_TESTS") == "" {
+		t.Skip("set FEEDLR_INTEGRATION_TESTS=1 to run integration tests against live services")
+	}
+
 	is := is.New(t)
 
 	client, err := testAuthClient()

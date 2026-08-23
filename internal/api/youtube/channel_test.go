@@ -9,9 +9,16 @@ import (
 )
 
 func TestGetChannelVideos(t *testing.T) {
+	if os.Getenv("FEEDLR_INTEGRATION_TESTS") == "" {
+		t.Skip("set FEEDLR_INTEGRATION_TESTS=1 to run integration tests against live services")
+	}
+	if os.Getenv("YOUTUBE_API_KEY") == "" {
+		t.Skip("YOUTUBE_API_KEY not set")
+	}
+
 	client, err := NewClient(os.Getenv("YOUTUBE_API_KEY"), nil)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	videos, err := client.GetChannelVideos("UCXuqSBlHAE6Xw-yeJA0Tunw", time.Time{}, 3)

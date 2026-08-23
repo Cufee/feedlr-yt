@@ -62,14 +62,13 @@ func (channel) ID(ids ...string) ChannelQuery {
 func (c *sqliteClient) GetChannels(ctx context.Context, o ...ChannelQuery) ([]*models.Channel, error) {
 	opts := channelQuerySlice(o).opts()
 
-	var mods qm.QueryMod
-	if opts.id != nil {
-		mods = models.ChannelWhere.ID.IN(opts.id)
-	}
-
 	var err error
 	var channels []*models.Channel
-	channels, err = models.Channels(mods).All(ctx, c.db)
+	if opts.id != nil {
+		channels, err = models.Channels(models.ChannelWhere.ID.IN(opts.id)).All(ctx, c.db)
+	} else {
+		channels, err = models.Channels().All(ctx, c.db)
+	}
 	if err != nil {
 		return nil, err
 	}

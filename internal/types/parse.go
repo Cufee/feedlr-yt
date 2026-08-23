@@ -16,19 +16,29 @@ func VideoToProps(video youtube.Video, channel ChannelProps) VideoProps {
 }
 
 func VideoModelToProps(video *models.Video, channel ChannelProps) VideoProps {
-	return VideoProps{
+	videoType := youtube.VideoType(video.Type)
+	props := VideoProps{
 		Video: youtube.Video{
-			Type:        youtube.VideoType(video.Type),
+			Type:        videoType,
 			ID:          video.ID,
-			Title:       NormalizeVideoTitle(video.Title, youtube.VideoType(video.Type), video.ID),
+			Title:       NormalizeVideoTitle(video.Title, videoType, video.ID),
 			Duration:    int(video.Duration),
-			Thumbnail:   fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", video.ID),
 			Description: video.Description,
 		},
 		PublishedAt: video.PublishedAt,
 		CreatedAt:   video.CreatedAt,
 		Channel:     channel,
 	}
+
+	if videoType == youtube.VideoTypePodcastEpisode {
+		// Podcast episodes use the show artwork instead of a video thumbnail.
+		props.Video.Thumbnail = channel.Thumbnail
+		props.StreamURL = "/media/stream/" + video.ID
+	} else {
+		props.Video.Thumbnail = fmt.Sprintf("https://i.ytimg.com/vi/%s/0.jpg", video.ID)
+	}
+
+	return props
 }
 
 func ChannelModelToProps(channel *models.Channel) ChannelProps {
@@ -41,6 +51,7 @@ func ChannelModelToProps(channel *models.Channel) ChannelProps {
 		},
 		Favorite:      false, // This requires an additional query to subscriptions
 		FeedUpdatedAt: channel.FeedUpdatedAt,
+		IsPodcast:     channel.R.GetPodcastShow() != nil,
 	}
 }
 

@@ -3,6 +3,7 @@ package auth
 import (
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -11,6 +12,10 @@ import (
 )
 
 func TestNewWebPlayerRequestContext(t *testing.T) {
+	if os.Getenv("FEEDLR_INTEGRATION_TESTS") == "" {
+		t.Skip("set FEEDLR_INTEGRATION_TESTS=1 to run integration tests against live services")
+	}
+
 	is := is.New(t)
 	client := Client{http: http.DefaultClient}
 	context, err := client.newWebPlayerRequestContext()

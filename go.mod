@@ -44,8 +44,12 @@ require (
 	cloud.google.com/go/auth v0.13.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.6 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
+	github.com/Masterminds/goutils v1.1.1 // indirect
+	github.com/Masterminds/semver/v3 v3.1.1 // indirect
+	github.com/Masterminds/sprig/v3 v3.2.2 // indirect
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/aarondl/inflect v0.0.2 // indirect
+	github.com/aarondl/sqlboiler-sqlite3 v0.0.0-20250626062431-f14395264624 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -72,8 +76,12 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
+	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
@@ -88,9 +96,11 @@ require (
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
+	github.com/spf13/cobra v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
@@ -143,4 +153,8 @@ require (
 	google.golang.org/api v0.214.0
 )
 
-tool github.com/a-h/templ/cmd/templ
+tool (
+	github.com/a-h/templ/cmd/templ
+	github.com/aarondl/sqlboiler-sqlite3
+	github.com/aarondl/sqlboiler/v4
+)

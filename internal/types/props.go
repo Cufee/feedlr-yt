@@ -81,6 +81,7 @@ type ChannelProps struct {
 	Favorite      bool
 	VideoFilter   VideoFilter
 	FeedUpdatedAt time.Time
+	IsPodcast     bool
 }
 
 type ChannelSearchResultProps struct {
@@ -121,6 +122,13 @@ type VideoProps struct {
 	Channel      ChannelProps
 	PublishedAt  time.Time
 	CreatedAt    time.Time
+	// StreamURL is set for podcast episodes and points at the internal media stream route.
+	StreamURL string
+}
+
+// IsPodcast reports whether this item is a podcast episode.
+func (v VideoProps) IsPodcast() bool {
+	return v.Video.Type == youtube.VideoTypePodcastEpisode
 }
 
 type SegmentProps struct {
