@@ -47,6 +47,10 @@ var cacheBusterMiddleware = func(c *fiber.Ctx) error {
 
 var staticWithCacheMiddleware = func(path string, assets fs.FS) func(*fiber.Ctx) error {
 	hashes := getAssetsHashes(assets)
+	hashedAssets := make(map[string]string, len(hashes))
+	for assetPath, hash := range hashes {
+		hashedAssets[hashedAssetPath(path, assetPath, hash)] = assetPath
+	}
 	handler := filesystem.New(filesystem.Config{
 		Root:       http.FS(assets),
 		Browse:     true,
@@ -55,37 +59,27 @@ var staticWithCacheMiddleware = func(path string, assets fs.FS) func(*fiber.Ctx)
 	})
 
 	return func(c *fiber.Ctx) error {
-		hash, ok := hashes[c.Path()]
+		requestedPath := c.Path()
+		assetPath, ok := hashedAssets[requestedPath]
+		if ok {
+			c.Path(assetPath)
+			c.Set("Vary", "Accept-Encoding")
+			c.Set("Cache-Control", "public, max-age=31536000, immutable")
+			return handler(c)
+		}
+
+		hash, ok := hashes[requestedPath]
 		if !ok {
 			return handler(c)
 		}
 
-		etag := fmt.Sprintf(`"%s"`, hash)
-		c.Set("Vary", "Accept-Encoding")
-		c.Set("Cache-Control", "public, no-cache, must-revalidate")
-		c.Set("ETag", etag)
-
-		if ifNoneMatchMatches(c.Get(fiber.HeaderIfNoneMatch), etag) {
-			return c.SendStatus(fiber.StatusNotModified)
-		}
-
-		return handler(c)
+		c.Set("Cache-Control", "no-store")
+		return c.Redirect(hashedAssetPath(path, requestedPath, hash), http.StatusTemporaryRedirect)
 	}
 }
 
-func ifNoneMatchMatches(header, etag string) bool {
-	if header == "" {
-		return false
-	}
-
-	for _, candidate := range strings.Split(header, ",") {
-		token := strings.TrimSpace(candidate)
-		if token == "*" || token == etag || token == "W/"+etag {
-			return true
-		}
-	}
-
-	return false
+func hashedAssetPath(root, assetPath, hash string) string {
+	return "/" + root + "/_" + "/" + hash + "/" + strings.TrimPrefix(assetPath, "/"+root+"/")
 }
 
 func getAssetsHashes(assets fs.FS) map[string]string {
