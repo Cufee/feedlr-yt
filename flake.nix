@@ -13,9 +13,16 @@
     {
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
+          # Keep the pinned nix go; never auto-download a different toolchain.
+          GOTOOLCHAIN = "local";
+          shellHook = ''
+            # mise or other managers export GOROOT pointing at a different
+            # installation; that leaks mismatched compile tools into this shell.
+            unset GOROOT
+          '';
           packages = with pkgs; [
-            # Go toolchain; templ and sqlboiler run via `go tool` (see go.mod)
-            go
+            # Go toolchain (matches go.mod / .mise.toml)
+            go_1_26
             # Frontend build
             nodejs
             # Live reload
