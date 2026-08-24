@@ -630,19 +630,31 @@
     }
 
     .podcast-player-details {
-        @apply flex aspect-[5/4] w-full shrink-0 flex-col items-center justify-center overflow-y-auto px-5 py-7 sm:px-8 sm:py-10;
+        @apply grid h-28 w-full shrink-0 grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-3 overflow-hidden px-4 py-4 sm:h-32 sm:grid-cols-[5rem_minmax(0,1fr)] sm:px-5;
     }
 
     .podcast-player-artwork-stage {
-        @apply flex w-full justify-center;
+        @apply flex w-full;
     }
 
     .podcast-player-artwork {
-        @apply aspect-square w-36 max-w-full rounded-[var(--radius-media)] object-cover shadow-[0_14px_30px_-18px_var(--color-glass-shadow)] sm:w-44;
+        @apply aspect-square w-full rounded-[var(--radius-media)] object-cover shadow-[0_14px_30px_-18px_var(--color-glass-shadow)];
     }
 
     .podcast-player-identity {
-        @apply mt-6 w-full max-w-xl text-center;
+        @apply min-w-0 text-left;
+    }
+
+    .podcast-player-title {
+        @apply text-base font-semibold leading-tight text-text-primary sm:text-lg;
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .podcast-player-identity > a {
+        @apply block truncate;
     }
 
     .podcast-player-notes {
@@ -659,6 +671,26 @@
 
     .podcast-player-notes-content p {
         @apply pr-3;
+    }
+
+    .podcast-player-notes-content :where(p, ul, ol, blockquote, pre) {
+        @apply mb-3;
+    }
+
+    .podcast-player-notes-content :where(ul, ol) {
+        @apply pl-5;
+    }
+
+    .podcast-player-notes-content ul {
+        list-style-type: disc;
+    }
+
+    .podcast-player-notes-content ol {
+        list-style-type: decimal;
+    }
+
+    .podcast-player-notes-content a {
+        @apply text-accent underline underline-offset-2 hover:text-accent-strong;
     }
 
     .podcast-player-controls {
@@ -687,6 +719,10 @@
 
     .podcast-player-play {
         @apply inline-flex size-16 items-center justify-center rounded-full bg-accent text-slate-950 shadow-[0_8px_24px_-10px_color-mix(in_oklab,var(--color-accent)_70%,transparent)] transition-[background-color,transform] duration-150 hover:bg-accent-strong active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-chrome sm:size-18;
+    }
+
+    .podcast-player-play:disabled {
+        @apply cursor-wait bg-accent/60 shadow-none;
     }
 
     .podcast-player-play svg {
@@ -732,19 +768,29 @@
         }
 
         .podcast-player-details {
-            @apply block aspect-auto h-full w-auto min-h-0 self-stretch border-r border-glass-stroke/16 px-[min(4vw,3rem)] py-[min(5vh,3rem)];
+            @apply block h-full w-auto min-h-0 self-stretch border-r border-glass-stroke/16 px-[min(4vw,3rem)] py-[min(5vh,3rem)];
         }
 
         .podcast-player-artwork-stage {
-            @apply justify-start;
-        }
-
-        .podcast-player-artwork {
             @apply w-[min(32rem,100%)];
         }
 
+        .podcast-player-artwork {
+            @apply w-full;
+        }
+
         .podcast-player-identity {
-            @apply mt-8 max-w-2xl text-left;
+            @apply mt-8 max-w-2xl;
+        }
+
+        .podcast-player-title {
+            @apply text-3xl;
+            display: block;
+            overflow: visible;
+        }
+
+        .podcast-player-identity > a {
+            display: inline-block;
         }
 
         .podcast-player-controls {

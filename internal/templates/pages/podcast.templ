@@ -45,11 +45,10 @@ templ podcastPlayer(player types.VideoPlayerProps) {
 					/>
 				</div>
 				<div class="podcast-player-identity">
-					<h1 class="text-balance text-xl font-semibold leading-tight text-text-primary sm:text-2xl md:text-3xl">{ player.Video.Title }</h1>
+					<h1 class="podcast-player-title">{ player.Video.Title }</h1>
 					<a href={ templ.URL(fmt.Sprintf("/channel/%s", player.Video.Channel.ID)) } class="mt-2 inline-block text-sm text-text-secondary transition-colors hover:text-text-primary">
 						{ player.Video.Channel.Title }
 					</a>
-					<div class="mt-1 text-sm text-text-secondary">{ durationToString(player.Video.Duration) }</div>
 				</div>
 			</div>
 			<div class="podcast-player-secondary">
@@ -57,9 +56,7 @@ templ podcastPlayer(player types.VideoPlayerProps) {
 					<section class="podcast-player-notes" aria-labelledby="podcast-notes-heading">
 						<h2 id="podcast-notes-heading" class="podcast-player-notes-heading">Episode notes</h2>
 						<div class="podcast-player-notes-content">
-							<p>
-								@shared.YouTubeText(player.Video.Description)
-							</p>
+							@shared.PodcastHTML(player.Video.Description)
 						</div>
 					</section>
 				}
@@ -74,8 +71,9 @@ templ podcastPlayer(player types.VideoPlayerProps) {
 					</div>
 					<div class="podcast-player-transport" aria-label="Playback controls">
 						<button type="button" data-podcast-skip="-15" class="podcast-player-skip" aria-label="Skip back 15 seconds"><span>15</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
-						<button type="button" id="podcast-play-toggle" class="podcast-player-play" aria-label="Play episode">
-							<svg data-podcast-play-icon viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"></path></svg>
+						<button type="button" id="podcast-play-toggle" class="podcast-player-play" aria-label="Loading episode" aria-busy="true" disabled>
+							<span data-podcast-loading-icon class="ui-spinner size-6" aria-hidden="true"></span>
+							<svg data-podcast-play-icon class="hidden" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"></path></svg>
 							<svg data-podcast-pause-icon class="hidden" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3v14H7V5Zm7 0h3v14h-3V5Z"></path></svg>
 						</button>
 						<button type="button" data-podcast-skip="15" class="podcast-player-skip" aria-label="Skip forward 15 seconds"><span>15</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v5h-5"></path></svg></button>
@@ -114,6 +112,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	let lastProgress = -1
 	let progressTimer
 	let disposed = false
+	let loading = audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA
 
 	function saveProgress() {
 		if (!withProgress || disposed) return
@@ -183,11 +182,27 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		elapsed.textContent = formatTime(audio.currentTime)
 		remaining.textContent = `-${formatTime(duration - audio.currentTime)}`
 	}
+	const playToggle = root.querySelector("#podcast-play-toggle")
+	const loadingIcon = root.querySelector("[data-podcast-loading-icon]")
+	function setLoading(value) {
+		loading = value
+		playToggle.disabled = value
+		playToggle.setAttribute("aria-busy", String(value))
+		loadingIcon.classList.toggle("hidden", !value)
+		if (value) {
+			root.querySelector("[data-podcast-play-icon]").classList.add("hidden")
+			root.querySelector("[data-podcast-pause-icon]").classList.add("hidden")
+			playToggle.setAttribute("aria-label", "Loading episode")
+			return
+		}
+		updatePlayButton()
+	}
 	function updatePlayButton() {
+		if (loading) return
 		const playing = !audio.paused && !audio.ended
 		root.querySelector("[data-podcast-play-icon]").classList.toggle("hidden", playing)
 		root.querySelector("[data-podcast-pause-icon]").classList.toggle("hidden", !playing)
-		root.querySelector("#podcast-play-toggle").setAttribute("aria-label", playing ? "Pause episode" : "Play episode")
+		playToggle.setAttribute("aria-label", playing ? "Pause episode" : "Play episode")
 	}
 
 	function restoreProgress() {
@@ -211,7 +226,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	const volumeInput = root.querySelector("#podcast-volume")
 	volumeInput.value = String(Math.round(audio.volume * 100))
 	volumeInput.addEventListener("input", () => { audio.volume = Number(volumeInput.value) / 100 }, { signal: controller.signal })
-	root.querySelector("#podcast-play-toggle").addEventListener("click", () => {
+	playToggle.addEventListener("click", () => {
 		if (audio.paused) audio.play()
 		else audio.pause()
 	}, { signal: controller.signal })
@@ -223,6 +238,9 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		updateTimeline()
 	}, { signal: controller.signal })
 	audio.addEventListener("loadedmetadata", updateTimeline, { signal: controller.signal })
+	audio.addEventListener("loadstart", () => setLoading(true), { signal: controller.signal })
+	audio.addEventListener("canplay", () => setLoading(false), { signal: controller.signal })
+	audio.addEventListener("error", () => setLoading(false), { signal: controller.signal })
 	audio.addEventListener("timeupdate", updateTimeline, { signal: controller.signal })
 	audio.addEventListener("play", updatePlayButton, { signal: controller.signal })
 	audio.addEventListener("pause", updatePlayButton, { signal: controller.signal })
@@ -251,5 +269,5 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	}, { signal: controller.signal })
 	if (withProgress) progressTimer = window.setInterval(saveProgress, 10000)
 	updateTimeline()
-	updatePlayButton()
+	setLoading(loading)
 }
