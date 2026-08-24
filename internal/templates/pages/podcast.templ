@@ -218,6 +218,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 			const player = window.feedlrPodcastPlayer
 			if (player && event.detail.target?.contains(player.audio)) player.cleanup()
 		})
+		window.addEventListener("popstate", () => window.feedlrPodcastPlayer?.cleanup())
 		window.addEventListener("pagehide", () => window.feedlrPodcastPlayer?.cleanup())
 	}
 
