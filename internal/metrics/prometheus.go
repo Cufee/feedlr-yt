@@ -136,6 +136,9 @@ var (
 		},
 		[]string{"scope", "stage", "kind"},
 	)
+	podcastSegmentAnalysesTotal    = prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: "feedlr", Subsystem: "podcast_segment_analysis", Name: "total", Help: "Total transcript segment analyses."}, []string{"outcome"})
+	podcastSegmentAnalysisDuration = prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: "feedlr", Subsystem: "podcast_segment_analysis", Name: "duration_seconds", Help: "Transcript segment analysis duration."})
+	podcastSegmentSegmentsTotal    = prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: "feedlr", Subsystem: "podcast_segment_analysis", Name: "segments_total", Help: "Persisted transcript segments."}, []string{"category"})
 )
 
 func init() {
@@ -153,7 +156,18 @@ func init() {
 		tvSyncEventsTotal,
 		proxyEventsTotal,
 		proxyErrorsTotal,
+		podcastSegmentAnalysesTotal,
+		podcastSegmentAnalysisDuration,
+		podcastSegmentSegmentsTotal,
 	)
+}
+
+func ObservePodcastSegmentAnalysis(outcome string, duration float64, categories []string) {
+	podcastSegmentAnalysesTotal.WithLabelValues(normalizeLabel(outcome)).Inc()
+	podcastSegmentAnalysisDuration.Observe(duration)
+	for _, category := range categories {
+		podcastSegmentSegmentsTotal.WithLabelValues(normalizeLabel(category)).Inc()
+	}
 }
 
 func IncHTTPRequest(method, route string, statusCode int) {

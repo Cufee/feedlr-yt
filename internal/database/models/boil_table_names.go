@@ -4,33 +4,39 @@
 package models
 
 var TableNames = struct {
-	AppConfiguration      string
-	Channels              string
-	Passkeys              string
-	PlaylistItems         string
-	Playlists             string
-	PodcastShows          string
-	Sessions              string
-	Settings              string
-	Subscriptions         string
-	Users                 string
-	Videos                string
-	Views                 string
-	YoutubeSyncAccounts   string
-	YoutubeTVSyncAccounts string
+	AppConfiguration          string
+	Channels                  string
+	Passkeys                  string
+	PlaylistItems             string
+	Playlists                 string
+	PodcastEpisodeSegments    string
+	PodcastEpisodeTranscripts string
+	PodcastSegmentAnalyses    string
+	PodcastShows              string
+	Sessions                  string
+	Settings                  string
+	Subscriptions             string
+	Users                     string
+	Videos                    string
+	Views                     string
+	YoutubeSyncAccounts       string
+	YoutubeTVSyncAccounts     string
 }{
-	AppConfiguration:      "app_configuration",
-	Channels:              "channels",
-	Passkeys:              "passkeys",
-	PlaylistItems:         "playlist_items",
-	Playlists:             "playlists",
-	PodcastShows:          "podcast_shows",
-	Sessions:              "sessions",
-	Settings:              "settings",
-	Subscriptions:         "subscriptions",
-	Users:                 "users",
-	Videos:                "videos",
-	Views:                 "views",
-	YoutubeSyncAccounts:   "youtube_sync_accounts",
-	YoutubeTVSyncAccounts: "youtube_tv_sync_accounts",
+	AppConfiguration:          "app_configuration",
+	Channels:                  "channels",
+	Passkeys:                  "passkeys",
+	PlaylistItems:             "playlist_items",
+	Playlists:                 "playlists",
+	PodcastEpisodeSegments:    "podcast_episode_segments",
+	PodcastEpisodeTranscripts: "podcast_episode_transcripts",
+	PodcastSegmentAnalyses:    "podcast_segment_analyses",
+	PodcastShows:              "podcast_shows",
+	Sessions:                  "sessions",
+	Settings:                  "settings",
+	Subscriptions:             "subscriptions",
+	Users:                     "users",
+	Videos:                    "videos",
+	Views:                     "views",
+	YoutubeSyncAccounts:       "youtube_sync_accounts",
+	YoutubeTVSyncAccounts:     "youtube_tv_sync_accounts",
 }

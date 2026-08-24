@@ -600,6 +600,188 @@ table "podcast_shows" {
   }
 }
 
+// The selected timed publisher transcript for a podcast episode.  It is kept
+// separate from videos because feeds freely update episode metadata.
+table "podcast_episode_transcripts" {
+  schema = schema.main
+  column "video_id" {
+    null = false
+    type = text
+  }
+  column "url" {
+    null = false
+    type = text
+  }
+  column "mime_type" {
+    null = false
+    type = text
+  }
+  column "language" {
+    null = true
+    type = text
+  }
+  column "rel" {
+    null = true
+    type = text
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.video_id]
+  }
+  foreign_key "podcast_episode_transcripts_video_id_fkey" {
+    columns = [column.video_id]
+    ref_columns = [table.videos.column.id]
+    on_delete = CASCADE
+  }
+}
+
+table "podcast_segment_analyses" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = text
+  }
+  column "video_id" {
+    null = false
+    type = text
+  }
+  column "transcript_hash" {
+    null = false
+    type = text
+  }
+  column "transcript_url" {
+    null = false
+    type = text
+  }
+  column "model" {
+    null = false
+    type = text
+  }
+  column "prompt_version" {
+    null = false
+    type = text
+  }
+  column "status" {
+    null = false
+    type = text
+  }
+  column "error" {
+    null = true
+    type = text
+  }
+  column "started_at" {
+    null = true
+    type = date
+  }
+  column "completed_at" {
+    null = true
+    type = date
+  }
+  column "created_at" {
+    null = false
+    type = date
+  }
+  column "updated_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "podcast_segment_analyses_video_id_fkey" {
+    columns = [column.video_id]
+    ref_columns = [table.videos.column.id]
+    on_delete = CASCADE
+  }
+  index "idx_podcast_segment_analyses_input_unique" {
+    columns = [column.video_id, column.transcript_hash, column.model, column.prompt_version]
+    unique = true
+  }
+}
+
+// Segments are episode facts, not provider-specific output. The source and
+// optional analysis identify how a range was obtained while leaving room for
+// publisher, manual, or future providers to contribute segments.
+table "podcast_episode_segments" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = text
+  }
+  column "video_id" {
+    null = false
+    type = text
+  }
+  column "analysis_id" {
+    null = true
+    type = text
+  }
+  column "source" {
+    null = false
+    type = text
+  }
+  column "position" {
+    null = false
+    type = integer
+  }
+  column "category" {
+    null = false
+    type = text
+  }
+  column "start_ms" {
+    null = false
+    type = integer
+  }
+  column "end_ms" {
+    null = false
+    type = integer
+  }
+  column "start_cue" {
+    null = false
+    type = integer
+  }
+  column "end_cue" {
+    null = false
+    type = integer
+  }
+  column "start_text" {
+    null = false
+    type = text
+  }
+  column "end_text" {
+    null = false
+    type = text
+  }
+  column "reason" {
+    null = false
+    type = text
+  }
+  column "brand" {
+    null = true
+    type = text
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "podcast_episode_segments_video_id_fkey" {
+    columns = [column.video_id]
+    ref_columns = [table.videos.column.id]
+    on_delete = CASCADE
+  }
+  foreign_key "podcast_episode_segments_analysis_id_fkey" {
+    columns = [column.analysis_id]
+    ref_columns = [table.podcast_segment_analyses.column.id]
+    on_delete = CASCADE
+  }
+  index "idx_podcast_episode_segments_analysis_position" {
+    columns = [column.analysis_id, column.position]
+    unique = true
+  }
+}
+
 table "subscriptions" {
   schema = schema.main
 

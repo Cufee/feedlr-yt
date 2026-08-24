@@ -178,6 +178,22 @@ type SegmentProps struct {
 	End   int `json:"end"`
 }
 
+type PodcastSegmentProps struct {
+	Category  string `json:"category"`
+	StartMS   int    `json:"start_ms"`
+	EndMS     int    `json:"end_ms"`
+	StartText string `json:"start_text"`
+	EndText   string `json:"end_text"`
+	Brand     string `json:"brand"`
+	Reason    string `json:"reason"`
+	Skippable bool   `json:"skippable"`
+}
+
+type PodcastSegmentAnalysisProps struct {
+	Status   string                `json:"status"`
+	Segments []PodcastSegmentProps `json:"segments"`
+}
+
 type PlaylistProps struct {
 	ID                string
 	Name              string
@@ -198,8 +214,9 @@ type VideoPlayerProps struct {
 
 	PlayerVolumeLevel int `json:"playerVolumeLevel"`
 
-	SkipSegments     []SegmentProps `json:"skipSegments"`
-	SkipSegmentsJSON string         `json:"skipSegmentsJSON"`
+	SkipSegments     []SegmentProps              `json:"skipSegments"`
+	SkipSegmentsJSON string                      `json:"skipSegmentsJSON"`
+	PodcastSegments  PodcastSegmentAnalysisProps `json:"podcastSegments"`
 
 	ReturnURL string `json:"returnURL"`
 

@@ -200,6 +200,17 @@ func upsertEpisodes(ctx context.Context, db database.Client, channelID, feedURL 
 	if err := db.UpsertVideos(uctx, updates...); err != nil {
 		return errors.Wrap(err, "failed to upsert episodes")
 	}
+	for _, episode := range episodes {
+		if episode.Transcript == nil {
+			continue
+		}
+		if err := db.UpsertPodcastTranscript(uctx, database.PodcastTranscript{
+			VideoID: rss.EpisodeID(feedURL, episode.GUID), URL: episode.Transcript.URL,
+			MIMEType: episode.Transcript.MIMEType, Language: episode.Transcript.Language, Rel: episode.Transcript.Rel,
+		}); err != nil {
+			return errors.Wrap(err, "failed to upsert episode transcript")
+		}
+	}
 	return nil
 }
 
