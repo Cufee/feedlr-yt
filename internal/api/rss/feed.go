@@ -38,6 +38,15 @@ type Episode struct {
 	Duration    int // seconds
 	PublishedAt time.Time
 	MediaURL    string
+	Transcript  *Transcript
+}
+
+// Transcript is the selected timed Podcasting 2.0 transcript source.
+type Transcript struct {
+	URL      string
+	MIMEType string
+	Language string
+	Rel      string
 }
 
 // FetchResult is the outcome of a feed fetch.
@@ -249,6 +258,22 @@ func episodeFromItem(item *gofeed.Item) (Episode, bool) {
 	if episode.Duration == 0 && item.Extensions["yt"] != nil && len(item.Extensions["yt"]["duration"]) > 0 {
 		// yt:duration is a common non-itunes extension carrying seconds.
 		episode.Duration = ParseDuration(item.Extensions["yt"]["duration"][0].Value)
+	}
+	if extensions := item.Extensions["podcast"]; extensions != nil {
+		for _, preferred := range []string{"text/vtt", "application/x-subrip", "application/srt"} {
+			for _, extension := range extensions["transcript"] {
+				mime := strings.ToLower(strings.TrimSpace(extension.Attrs["type"]))
+				url := strings.TrimSpace(extension.Attrs["url"])
+				if url == "" || mime != preferred {
+					continue
+				}
+				episode.Transcript = &Transcript{URL: url, MIMEType: mime, Language: strings.TrimSpace(extension.Attrs["language"]), Rel: strings.TrimSpace(extension.Attrs["rel"])}
+				break
+			}
+			if episode.Transcript != nil {
+				break
+			}
+		}
 	}
 
 	return episode, true

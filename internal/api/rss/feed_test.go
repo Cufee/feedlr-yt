@@ -120,3 +120,14 @@ func TestEpisodeIDMatchesEpisodeUpsert(t *testing.T) {
 	id := EpisodeID("https://feed.example.com/rss", "flightcast:episode-a")
 	is.True(id != EpisodeID("https://feed.example.com/rss", "flightcast:episode-b"))
 }
+
+func TestParseFeedSelectsPreferredTimedTranscript(t *testing.T) {
+	is := is.New(t)
+	feed := `<?xml version="1.0"?><rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel><title>x</title><item><guid>x</guid><pubDate>Tue, 18 Aug 2026 15:00:00 +0000</pubDate><enclosure url="https://example.test/a.mp3" type="audio/mpeg"/><podcast:transcript url="https://example.test/a.txt" type="text/plain"/><podcast:transcript url="https://example.test/a.srt" type="application/srt"/><podcast:transcript url="https://example.test/a.vtt" type="text/vtt" language="en" rel="captions"/></item></channel></rss>`
+	result, err := parseFeed(strings.NewReader(feed))
+	is.NoErr(err)
+	is.Equal(len(result.Episodes), 1)
+	is.True(result.Episodes[0].Transcript != nil)
+	is.Equal(result.Episodes[0].Transcript.URL, "https://example.test/a.vtt")
+	is.Equal(result.Episodes[0].Transcript.Language, "en")
+}

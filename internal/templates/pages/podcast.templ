@@ -52,18 +52,23 @@ templ podcastPlayer(player types.VideoPlayerProps) {
 				</div>
 			</div>
 			<div class="podcast-player-secondary">
-				if player.Video.Description != "" {
-					<section class="podcast-player-notes" aria-labelledby="podcast-notes-heading">
-						<h2 id="podcast-notes-heading" class="podcast-player-notes-heading">Episode notes</h2>
-						<div class="podcast-player-notes-content">
+				<section class="podcast-player-notes" aria-label="Episode details">
+					<div class="ui-tabs grid w-full grid-cols-2" role="tablist" aria-label="Episode details">
+						<button id="podcast-notes-tab" type="button" class="ui-tab h-full w-full ui-tab-active" role="tab" aria-selected="true" aria-controls="podcast-notes-panel">Episode notes</button>
+						<button id="podcast-segments-tab" type="button" class="ui-tab h-full w-full" role="tab" aria-selected="false" aria-controls="podcast-segments-panel" hidden><span>Sponsor segments</span><span data-podcast-segment-count class="ui-badge hidden"></span><span data-podcast-segment-spinner class="ui-spinner size-3 border-2"></span></button>
+					</div>
+					<div id="podcast-notes-panel" class="podcast-player-notes-content" role="tabpanel" aria-labelledby="podcast-notes-tab">
 							@shared.PodcastHTML(player.Video.Description)
 						</div>
-					</section>
-				}
+					<div id="podcast-segments-panel" class="podcast-player-notes-content hidden" role="tabpanel" aria-labelledby="podcast-segments-tab"></div>
+				</section>
 				<div class="podcast-player-controls">
 					<audio id="podcast-player" data-feedlr-podcast-player autoplay preload="metadata" src={ templ.URL(player.Video.StreamURL) }></audio>
 					<div class="podcast-player-timeline">
-						<input id="podcast-progress" class="podcast-player-scrubber" type="range" min="0" max="0" value="0" step="1" aria-label="Episode progress" aria-valuetext="0 minutes 0 seconds of 0 minutes 0 seconds"/>
+						<div class="relative">
+							<div id="podcast-segment-markers" class="pointer-events-none absolute inset-x-0 top-1/2 z-30 h-1 -translate-y-1/2" aria-hidden="true"></div>
+							<input id="podcast-progress" class="podcast-player-scrubber relative z-20" type="range" min="0" max="0" value="0" step="1" aria-label="Episode progress" aria-valuetext="0 minutes 0 seconds of 0 minutes 0 seconds"/>
+						</div>
 						<div class="flex items-center justify-between text-xs tabular-nums text-text-secondary">
 							<output id="podcast-elapsed">0:00</output>
 							<output id="podcast-remaining">-0:00</output>
@@ -91,10 +96,10 @@ templ podcastPlayer(player types.VideoPlayerProps) {
 			</div>
 		</section>
 	</main>
-	@shared.EmbedScript(podcastPlayerInit(player.Video.ID, player.Video.Title, player.Video.Channel.Title, player.Video.Progress, player.ReportProgress), player.Video.ID, player.Video.Title, player.Video.Channel.Title, player.Video.Progress, player.ReportProgress)
+	@shared.EmbedScript(podcastPlayerInit(player.Video.ID, player.Video.Title, player.Video.Channel.Title, player.Video.Progress, player.ReportProgress, player.PodcastSegments), player.Video.ID, player.Video.Title, player.Video.Channel.Title, player.Video.Progress, player.ReportProgress, player.PodcastSegments)
 }
 
-script podcastPlayerInit(episode, title, channel string, progress int, withProgress bool) {
+script podcastPlayerInit(episode, title, channel string, progress int, withProgress bool, initialSegments any) {
 	const root = document.getElementById("podcast-player-page")
 	const audio = document.getElementById("podcast-player")
 	if (!root || !audio) return
@@ -112,7 +117,77 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	let lastProgress = -1
 	let progressTimer
 	let disposed = false
-	let loading = audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA
+	let loading = true
+	let segments = initialSegments?.segments || []
+	let analysisStatus = initialSegments?.status || "pending"
+	let lastSkippedSegmentID = ""
+	let manuallyEnteredSegmentID = ""
+	let pollTimer
+	let progressInput
+	const segmentTab = root.querySelector("#podcast-segments-tab")
+	const notesTab = root.querySelector("#podcast-notes-tab")
+	const notesPanel = root.querySelector("#podcast-notes-panel")
+	const segmentsPanel = root.querySelector("#podcast-segments-panel")
+	const segmentCount = root.querySelector("[data-podcast-segment-count]")
+	const segmentSpinner = root.querySelector("[data-podcast-segment-spinner]")
+	const segmentMarkers = root.querySelector("#podcast-segment-markers")
+	function element(tag, className, value) { const node = document.createElement(tag); if (className) node.className = className; if (value) node.textContent = value; return node }
+	function updateSegmentTrack() {
+		if (!progressInput) return
+		const duration = Number.isFinite(audio.duration) ? audio.duration : 0
+		const ranges = duration > 0 ? segments.filter((segment) => segment.skippable).map((segment) => ({ start: Math.max(0, Math.min(100, segment.start_ms / 1000 / duration * 100)), end: Math.max(0, Math.min(100, segment.end_ms / 1000 / duration * 100)) })).filter((range) => range.end > range.start).sort((a, b) => a.start - b.start) : []
+		segmentMarkers.replaceChildren()
+		for (const range of ranges) { const marker = document.createElement("span"); marker.className = "absolute h-full rounded-full bg-accent/80"; marker.style.left = `${range.start}%`; marker.style.width = `${range.end - range.start}%`; segmentMarkers.append(marker) }
+	}
+	function setActivePanel(panel) {
+		const notesActive = panel === "notes"
+		notesPanel.classList.toggle("hidden", !notesActive)
+		segmentsPanel.classList.toggle("hidden", notesActive)
+		notesTab.classList.toggle("ui-tab-active", notesActive)
+		segmentTab.classList.toggle("ui-tab-active", !notesActive)
+		notesTab.setAttribute("aria-selected", String(notesActive))
+		segmentTab.setAttribute("aria-selected", String(!notesActive))
+	}
+	function panelMessage(message, pending) {
+		const messagePanel = element("div", "glass-panel flex items-center gap-3 p-4 text-sm text-text-secondary")
+		if (pending) messagePanel.append(element("span", "ui-spinner size-4 border-2"))
+		messagePanel.append(element("span", "", message))
+		segmentsPanel.replaceChildren(messagePanel)
+	}
+	function renderSegments() {
+		updateSegmentTrack()
+		if (analysisStatus === "failed" || analysisStatus === "unavailable") { segmentTab.hidden = true; if (!segmentsPanel.classList.contains("hidden")) setActivePanel("notes"); return }
+		segmentTab.hidden = false
+		segmentSpinner.classList.toggle("hidden", analysisStatus === "ready")
+		segmentCount.classList.toggle("hidden", analysisStatus !== "ready")
+		if (analysisStatus !== "ready") { panelMessage("Finding sponsor segments…", false); return }
+		segmentCount.textContent = String(segments.length)
+		segmentsPanel.replaceChildren()
+		if (!segments.length) { panelMessage("No sponsor segments identified.", false); return }
+		const list = element("div", "flex flex-col gap-2")
+		for (const segment of segments) {
+			const row = element("button", "glass-panel group w-full p-3 text-left transition-colors hover:bg-glass-fill/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60")
+			row.type = "button"
+			row.setAttribute("aria-label", `Seek to ${formatTime(segment.start_ms/1000)}`)
+			const header = element("div", "flex items-center justify-between gap-3")
+			const labels = element("div", "flex min-w-0 items-center gap-2")
+			labels.append(element("span", "ui-badge ui-badge-accent capitalize", segment.category))
+			header.append(labels)
+			const duration = Math.max(0, Math.round((segment.end_ms - segment.start_ms) / 1000))
+			header.append(element("span", "shrink-0 text-xs tabular-nums text-text-secondary", `${formatTime(segment.start_ms/1000)}–${formatTime(segment.end_ms/1000)} · ${duration}s`))
+			row.append(header)
+			row.append(element("p", "mt-2 line-clamp-2 text-sm leading-5 text-text-secondary", `${segment.start_text}${segment.end_text !== segment.start_text ? " … "+segment.end_text : ""}`))
+			row.addEventListener("click", () => setManualPosition(segment.start_ms / 1000), { signal: controller.signal })
+			list.append(row)
+		}
+		segmentsPanel.append(list)
+	}
+	function applyStatus(payload) { analysisStatus=payload.status; segments=payload.segments||[]; renderSegments(); if (analysisStatus === "ready" || analysisStatus === "failed" || analysisStatus === "unavailable") { if (pollTimer) clearTimeout(pollTimer); if (analysisStatus === "ready") skipSegmentAtCurrentTime() } }
+	async function loadSegmentStatus(waitMS) { try { const response=await fetch(`/api/videos/${episode}/sponsor-segments?wait_ms=${waitMS}`,{credentials:"include",signal:controller.signal}); if (!response.ok) return; const payload=await response.json(); applyStatus(payload); if (payload.status === "pending" || payload.status === "running") pollTimer=window.setTimeout(() => loadSegmentStatus(0),payload.poll_after_ms||2000) } catch (e) { if (e.name !== "AbortError") return } }
+	notesTab?.addEventListener("click",()=>setActivePanel("notes"),{signal:controller.signal})
+	segmentTab?.addEventListener("click",()=>setActivePanel("segments"),{signal:controller.signal})
+	renderSegments()
+	if (analysisStatus === "pending" || analysisStatus === "running") loadSegmentStatus(3000)
 
 	function saveProgress() {
 		if (!withProgress || disposed) return
@@ -131,6 +206,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		saveProgress()
 		disposed = true
 		if (progressTimer) window.clearInterval(progressTimer)
+		if (pollTimer) window.clearTimeout(pollTimer)
 		controller.abort()
 		audio.pause()
 		audio.removeAttribute("src")
@@ -150,7 +226,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 
 	function seek(seconds) {
 		const duration = Number.isFinite(audio.duration) ? audio.duration : Infinity
-		audio.currentTime = Math.max(0, Math.min(duration, audio.currentTime + seconds))
+		setManualPosition(Math.max(0, Math.min(duration, audio.currentTime + seconds)))
 	}
 	if ("mediaSession" in navigator && "MediaMetadata" in window) {
 		try {
@@ -171,7 +247,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		const secs = value % 60
 		return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}` : `${minutes}:${String(secs).padStart(2, "0")}`
 	}
-	const progressInput = root.querySelector("#podcast-progress")
+	progressInput = root.querySelector("#podcast-progress")
 	const elapsed = root.querySelector("#podcast-elapsed")
 	const remaining = root.querySelector("#podcast-remaining")
 	function updateTimeline() {
@@ -181,6 +257,29 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		progressInput.setAttribute("aria-valuetext", `${formatTime(audio.currentTime)} of ${formatTime(duration)}`)
 		elapsed.textContent = formatTime(audio.currentTime)
 		remaining.textContent = `-${formatTime(duration - audio.currentTime)}`
+		updateSegmentTrack()
+	}
+	function segmentID(segment) { return `${segment.start_ms}:${segment.end_ms}` }
+	function segmentAt(time) { return segments.find((segment) => segment.skippable && time >= segment.start_ms / 1000 && time < segment.end_ms / 1000) }
+	function setManualPosition(time) {
+		const segment = segmentAt(time)
+		manuallyEnteredSegmentID = segment ? segmentID(segment) : ""
+		lastSkippedSegmentID = ""
+		audio.currentTime = time
+		updateTimeline()
+	}
+	function skipSegmentAtCurrentTime() {
+		const segment = segmentAt(audio.currentTime)
+		if (!segment) {
+			manuallyEnteredSegmentID = ""
+			return
+		}
+		const id = segmentID(segment)
+		if (id === manuallyEnteredSegmentID || id === lastSkippedSegmentID) return
+		lastSkippedSegmentID = id
+		audio.currentTime = segment.end_ms / 1000
+		updateTimeline()
+		saveProgress()
 	}
 	const playToggle = root.querySelector("#podcast-play-toggle")
 	const loadingIcon = root.querySelector("[data-podcast-loading-icon]")
@@ -208,6 +307,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	function restoreProgress() {
 		if (progress > 0 && Number.isFinite(audio.duration)) audio.currentTime = Math.min(progress, audio.duration)
 		updateTimeline()
+		skipSegmentAtCurrentTime()
 	}
 	if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) restoreProgress()
 	else audio.addEventListener("loadedmetadata", restoreProgress, { once: true, signal: controller.signal })
@@ -234,14 +334,13 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		button.addEventListener("click", () => seek(Number.parseInt(button.dataset.podcastSkip, 10)), { signal: controller.signal })
 	})
 	progressInput.addEventListener("input", () => {
-		audio.currentTime = Number(progressInput.value)
-		updateTimeline()
+		setManualPosition(Number(progressInput.value))
 	}, { signal: controller.signal })
 	audio.addEventListener("loadedmetadata", updateTimeline, { signal: controller.signal })
 	audio.addEventListener("loadstart", () => setLoading(true), { signal: controller.signal })
 	audio.addEventListener("canplay", () => setLoading(false), { signal: controller.signal })
 	audio.addEventListener("error", () => setLoading(false), { signal: controller.signal })
-	audio.addEventListener("timeupdate", updateTimeline, { signal: controller.signal })
+	audio.addEventListener("timeupdate", () => { updateTimeline(); skipSegmentAtCurrentTime() }, { signal: controller.signal })
 	audio.addEventListener("play", updatePlayButton, { signal: controller.signal })
 	audio.addEventListener("pause", updatePlayButton, { signal: controller.signal })
 	audio.addEventListener("ended", updatePlayButton, { signal: controller.signal })

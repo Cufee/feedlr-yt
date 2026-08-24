@@ -6,8 +6,8 @@ package podcastindex
 import (
 	"context"
 	"crypto/sha1"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"

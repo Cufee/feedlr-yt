@@ -20,4 +20,3 @@ func ifClass(condition bool, className string) string {
 	}
 	return ""
 }
-
