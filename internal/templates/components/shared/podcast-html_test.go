@@ -18,3 +18,25 @@ func TestSanitizePodcastHTML(t *testing.T) {
 		}
 	}
 }
+
+func TestSanitizePodcastHTMLLinkifiesPlainURLs(t *testing.T) {
+	input := `<p>Visit https://example.com/docs and www.feedlr.app.</p><a href="https://existing.example">Existing link</a><pre>https://code.example</pre>`
+	got := SanitizePodcastHTML(input)
+
+	for _, href := range []string{"https://example.com/docs", "https://www.feedlr.app", "https://existing.example"} {
+		if !strings.Contains(got, `href="`+href+`"`) {
+			t.Fatalf("missing linked URL %q: %q", href, got)
+		}
+	}
+	if strings.Count(got, `href="https://existing.example"`) != 1 {
+		t.Fatalf("existing link was rewritten: %q", got)
+	}
+	if strings.Contains(got, `href="https://code.example"`) {
+		t.Fatalf("code block URL was linkified: %q", got)
+	}
+	for _, attribute := range []string{`target="_blank"`, "nofollow", "noreferrer"} {
+		if !strings.Contains(got, attribute) {
+			t.Fatalf("linked URL is missing %q: %q", attribute, got)
+		}
+	}
+}

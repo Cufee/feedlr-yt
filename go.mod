@@ -34,7 +34,9 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/zerolog v1.33.0
 	github.com/sethvargo/go-retry v0.3.0
+	golang.org/x/net v0.57.0
 	golang.org/x/sync v0.22.0
+	mvdan.cc/xurls/v2 v2.6.0
 )
 
 require (
@@ -107,7 +109,6 @@ require (
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/tools v0.47.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect

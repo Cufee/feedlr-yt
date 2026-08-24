@@ -666,7 +666,8 @@
     }
 
     .podcast-player-notes-content {
-        @apply mt-3 min-h-0 grow overflow-y-auto whitespace-pre-line;
+        @apply mt-3 min-h-0 grow overflow-y-auto break-words whitespace-pre-line;
+        overflow-wrap: anywhere;
     }
 
     .podcast-player-notes-content p {
@@ -691,6 +692,21 @@
 
     .podcast-player-notes-content a {
         @apply text-accent underline underline-offset-2 hover:text-accent-strong;
+    }
+
+    .podcast-player-notes-content :where(pre, code) {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+    }
+
+    .podcast-player-notes-content :where(img, table) {
+        max-width: 100%;
+    }
+
+    .podcast-player-notes-content table {
+        width: 100%;
+        table-layout: fixed;
     }
 
     .podcast-player-controls {
