@@ -156,11 +156,11 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	}
 	function renderSegments() {
 		updateSegmentTrack()
-		if (analysisStatus === "failed" || analysisStatus === "unavailable") { segmentTab.hidden = true; if (!segmentsPanel.classList.contains("hidden")) setActivePanel("notes"); return }
 		segmentTab.hidden = false
-		segmentSpinner.classList.toggle("hidden", analysisStatus === "ready")
-		segmentCount.classList.toggle("hidden", analysisStatus !== "ready")
-		if (analysisStatus !== "ready") { panelMessage("Finding sponsor segments…", false); return }
+		const complete = analysisStatus === "ready" || analysisStatus === "failed" || analysisStatus === "unavailable"
+		segmentSpinner.classList.toggle("hidden", complete)
+		segmentCount.classList.toggle("hidden", !complete)
+		if (!complete) { panelMessage("Finding sponsor segments…", false); return }
 		segmentCount.textContent = String(segments.length)
 		segmentsPanel.replaceChildren()
 		if (!segments.length) { panelMessage("No sponsor segments identified.", false); return }
