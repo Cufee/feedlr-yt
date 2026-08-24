@@ -166,9 +166,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		if (!segments.length) { panelMessage("No sponsor segments identified.", false); return }
 		const list = element("div", "flex flex-col gap-2")
 		for (const segment of segments) {
-			const row = element("button", "glass-panel group w-full p-3 text-left transition-colors hover:bg-glass-fill/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60")
-			row.type = "button"
-			row.setAttribute("aria-label", `Seek to ${formatTime(segment.start_ms/1000)}`)
+			const row = element("div", "glass-panel w-full p-3")
 			const header = element("div", "flex items-center justify-between gap-3")
 			const labels = element("div", "flex min-w-0 items-center gap-2")
 			labels.append(element("span", "ui-badge ui-badge-accent capitalize", segment.category))
@@ -177,7 +175,6 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 			header.append(element("span", "shrink-0 text-xs tabular-nums text-text-secondary", `${formatTime(segment.start_ms/1000)}–${formatTime(segment.end_ms/1000)} · ${duration}s`))
 			row.append(header)
 			row.append(element("p", "mt-2 line-clamp-2 text-sm leading-5 text-text-secondary", `${segment.start_text}${segment.end_text !== segment.start_text ? " … "+segment.end_text : ""}`))
-			row.addEventListener("click", () => setManualPosition(segment.start_ms / 1000), { signal: controller.signal })
 			list.append(row)
 		}
 		segmentsPanel.append(list)
