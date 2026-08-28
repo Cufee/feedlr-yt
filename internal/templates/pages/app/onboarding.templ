@@ -13,16 +13,25 @@ templ Onboarding(discovery types.MediaSource, podcastSearchAvailable bool) {
 				<h2 class="ui-section-title">Build your feed</h2>
 			</div>
 			<p class="mx-auto max-w-xl text-center text-sm text-text-secondary">Subscribe to a YouTube channel or a podcast to start your feed.</p>
+			<div class="ui-filter-tabs-wrap">
+				<div class="ui-tabs" aria-label="Subscription discovery source">
+					@onboardingSourceTab(types.MediaSourceYouTube, discovery, "YouTube")
+					@onboardingSourceTab(types.MediaSourcePodcasts, discovery, "Podcasts")
+				</div>
+			</div>
 			@subscriptions.Discovery(subscriptions.DiscoveryProps{
-				SubscriptionSource: types.MediaSourceAll,
-				DiscoverySource: discovery,
+				SubscriptionSource: discovery,
 				PodcastSearchAvailable: podcastSearchAvailable,
-				YouTubeURL: "/app/onboarding?discover=youtube",
-				PodcastsURL: "/app/onboarding?discover=podcasts",
 			})
 			<div id="subscriptions" class="ui-section">
 				<div class="ui-channel-grid" id="subscriptions-list"></div>
 			</div>
 		</div>
 	</div>
+}
+
+templ onboardingSourceTab(source, current types.MediaSource, label string) {
+	<a class={ "ui-tab", templ.KV("ui-tab-active", source == current) } href={ templ.URL("/app/onboarding?discover=" + string(source)) } hx-boost="true" hx-target="body">
+		{ label }
+	</a>
 }

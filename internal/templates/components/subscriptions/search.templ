@@ -13,32 +13,17 @@ import (
 
 type DiscoveryProps struct {
 	SubscriptionSource     types.MediaSource
-	DiscoverySource        types.MediaSource
 	PodcastSearchAvailable bool
-	YouTubeURL             string
-	PodcastsURL            string
 }
 
 templ Discovery(props DiscoveryProps) {
 	<div class="glass-panel flex w-full flex-col gap-4 p-4 md:p-5">
-		<div class="ui-filter-tabs-wrap">
-			<div class="ui-tabs" aria-label="Subscription discovery source">
-				@discoveryTab(props.YouTubeURL, props.DiscoverySource == types.MediaSourceYouTube, "YouTube")
-				@discoveryTab(props.PodcastsURL, props.DiscoverySource == types.MediaSourcePodcasts, "Podcasts")
-			</div>
-		</div>
-		if props.DiscoverySource == types.MediaSourcePodcasts {
+		if props.SubscriptionSource == types.MediaSourcePodcasts {
 			@SearchPodcasts(props.SubscriptionSource, props.PodcastSearchAvailable)
 		} else {
 			@SearchChannels(props.SubscriptionSource)
 		}
 	</div>
-}
-
-templ discoveryTab(url string, active bool, label string) {
-	<a class={ "ui-tab", templ.KV("ui-tab-active", active) } href={ templ.URL(url) } hx-boost="true" hx-target="body">
-		{ label }
-	</a>
 }
 
 templ SearchChannels(source types.MediaSource) {

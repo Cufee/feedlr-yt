@@ -20,9 +20,9 @@ var Subscriptions brewed.Page[*handler.Context] = func(ctx *handler.Context) (br
 		return nil, nil, nil
 	}
 
-	source, ok := types.ParseMediaSource(ctx.Query("source", string(types.MediaSourceAll)))
-	if !ok {
-		source = types.MediaSourceAll
+	source, ok := types.ParseMediaSource(ctx.Query("source", string(types.MediaSourceYouTube)))
+	if !ok || source == types.MediaSourceAll {
+		source = types.MediaSourceYouTube
 	}
 
 	channels, err := logic.GetUserSubscribedChannels(ctx.Context(), ctx.Database(), userID)
@@ -32,7 +32,7 @@ var Subscriptions brewed.Page[*handler.Context] = func(ctx *handler.Context) (br
 
 	subscriptions := make([]types.ChannelProps, 0, len(channels))
 	for _, channel := range channels {
-		if source == types.MediaSourceAll || channel.MediaSource() == source {
+		if channel.MediaSource() == source {
 			subscriptions = append(subscriptions, channel)
 		}
 	}
@@ -40,15 +40,6 @@ var Subscriptions brewed.Page[*handler.Context] = func(ctx *handler.Context) (br
 	return layouts.App, app.Subscriptions(app.SubscriptionPageProps{
 		Channels:               subscriptions,
 		Source:                 source,
-		DiscoverySource:        discoverySource(ctx.Query("discover", string(types.MediaSourceYouTube))),
 		PodcastSearchAvailable: podcastindex.DefaultClient != nil,
 	}), nil
-}
-
-func discoverySource(value string) types.MediaSource {
-	source, ok := types.ParseMediaSource(value)
-	if !ok || source == types.MediaSourceAll {
-		return types.MediaSourceYouTube
-	}
-	return source
 }

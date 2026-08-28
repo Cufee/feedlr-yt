@@ -9,7 +9,6 @@ import (
 type SubscriptionPageProps struct {
 	Channels               []types.ChannelProps
 	Source                 types.MediaSource
-	DiscoverySource        types.MediaSource
 	PodcastSearchAvailable bool
 }
 
@@ -22,19 +21,15 @@ templ Subscriptions(props SubscriptionPageProps) {
 			</div>
 			@subscriptions.Discovery(subscriptions.DiscoveryProps{
 				SubscriptionSource: props.Source,
-				DiscoverySource: props.DiscoverySource,
 				PodcastSearchAvailable: props.PodcastSearchAvailable,
-				YouTubeURL: discoveryURL(props.Source, types.MediaSourceYouTube),
-				PodcastsURL: discoveryURL(props.Source, types.MediaSourcePodcasts),
 			})
 		</div>
 		<div id="subscriptions" class="ui-section">
 			<div class="ui-section-header flex-col justify-center gap-3 sm:flex-row sm:justify-between">
 				<h2 class="ui-section-title">Your Subscriptions</h2>
 				<div class="ui-filter-tabs" aria-label="Subscription source filter">
-					@subscriptionSourceTab(types.MediaSourceAll, props.Source, props.DiscoverySource, "All")
-					@subscriptionSourceTab(types.MediaSourceYouTube, props.Source, props.DiscoverySource, "YouTube")
-					@subscriptionSourceTab(types.MediaSourcePodcasts, props.Source, props.DiscoverySource, "Podcasts")
+					@subscriptionSourceTab(types.MediaSourceYouTube, props.Source, "YouTube")
+					@subscriptionSourceTab(types.MediaSourcePodcasts, props.Source, "Podcasts")
 				</div>
 			</div>
 			if len(props.Channels) > 6 {
@@ -51,14 +46,10 @@ templ Subscriptions(props SubscriptionPageProps) {
 	</div>
 }
 
-func discoveryURL(source, discover types.MediaSource) string {
-	return "/app/subscriptions?source=" + string(source) + "&discover=" + string(discover)
-}
-
-templ subscriptionSourceTab(tab, current, discovery types.MediaSource, label string) {
+templ subscriptionSourceTab(tab, current types.MediaSource, label string) {
 	<a
 		class={ "ui-tab", templ.KV("ui-tab-active", tab == current) }
-		href={ templ.URL(discoveryURL(tab, discovery)) }
+		href={ templ.URL("/app/subscriptions?source=" + string(tab)) }
 		hx-boost="true"
 		hx-target="body"
 	>
