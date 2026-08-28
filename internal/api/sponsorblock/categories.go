@@ -16,5 +16,12 @@ var (
 	Music               = Category{"Music", "Segments featuring off-topic music in the video.", "music_offtopic"}
 	Filler              = Category{"Filler", "Tangential and humorous scenes added to the video that are not essential for understanding the main content.", "filler"}
 	AvailableCategories = []Category{Sponsor, SelfPromo, Interaction, Preview, Intro, Outro, Music, Filler}
-	ValidCategoryValues = []string{"sponsor", "selfpromo", "interaction", "preview", "intro", "outro", "music_offtopic", "filler"}
+	// PodcastAvailableCategories contains only labels that can be determined
+	// from a spoken, timed transcript. Video-only and non-skippable categories
+	// such as endcards, highlights, and exclusive access are intentionally absent.
+	PodcastHook                = Category{"Hook / Greetings", "Narrated previews, greetings, or goodbyes that do not contain information needed for the episode.", "intro"}
+	PodcastTangents            = Category{"Tangents / Jokes", "Tangential scenes or jokes that are not needed to follow the episode's main discussion.", "filler"}
+	PodcastAvailableCategories = []Category{Sponsor, SelfPromo, Interaction, Preview, PodcastHook, PodcastTangents}
+	ValidCategoryValues        = []string{"sponsor", "selfpromo", "interaction", "preview", "intro", "outro", "music_offtopic", "filler"}
+	ValidPodcastCategoryValues = []string{"sponsor", "selfpromo", "interaction", "preview", "intro", "filler"}
 )

@@ -2,18 +2,26 @@ package app
 
 import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/settings"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
-templ Settings(props types.SettingsPageProps) {
+templ Settings(props types.SettingsPageProps, section string) {
 	<head><title>Feedlr - Settings</title></head>
 	<div class="ui-section">
-		<div class="ui-section-header">
-			<h1 class="ui-section-title">Settings</h1>
-		</div>
-		@settings.ManageAccount(props.Passkeys)
-		@settings.YouTubeSyncSettings(props.YouTubeSync, props.YouTubeTVSync)
-		@settings.SponsorBlockSettings(props.SponsorBlock)
+		@ui.SectionMenu("Settings sections", []ui.MenuItem{
+			{Label: "Account", Href: "/app/settings/account", Active: section == "account"},
+			{Label: "YouTube", Href: "/app/settings/youtube", Active: section == "youtube"},
+			{Label: "Podcasts", Href: "/app/settings/podcasts", Active: section == "podcasts"},
+		})
+		if section == "account" {
+			@settings.ManageAccount(props.Passkeys)
+		} else if section == "youtube" {
+			@settings.YouTubeSyncSettings(props.YouTubeSync, props.YouTubeTVSync)
+			@settings.SponsorBlockSettings(props.SponsorBlock)
+		} else {
+			@settings.PodcastSegmentSettings(props.PodcastSegments)
+		}
 	</div>
 	<script>
 		const savedSettingsScrollY = sessionStorage.getItem('feedlr-settings-scroll-y');

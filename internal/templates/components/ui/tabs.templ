@@ -23,3 +23,29 @@ templ tabsImpl(opts tabsOptions) {
 		{ children... }
 	</div>
 }
+
+// MenuItem describes one destination in a page-level split menu.
+type MenuItem struct {
+	Label  string
+	Href   string
+	Active bool
+}
+
+// SectionMenu is the shared navigation treatment for page-level splits such
+// as media source filters and settings sections.
+templ SectionMenu(label string, items []MenuItem) {
+	<nav class="ui-filter-tabs-wrap" aria-label={ label }>
+		<div class="ui-filter-tabs">
+			for _, item := range items {
+				<a
+					class={ "ui-tab", templ.KV("ui-tab-active", item.Active) }
+					href={ templ.URL(item.Href) }
+					hx-boost="true"
+					hx-target="body"
+				>
+					{ item.Label }
+				</a>
+			}
+		</div>
+	</nav>
+}

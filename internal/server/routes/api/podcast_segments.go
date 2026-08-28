@@ -65,7 +65,7 @@ var PodcastSponsorSegments brewed.Partial[*handler.Context] = func(ctx *handler.
 		return nil, err
 	}
 	for _, segment := range status.Segments {
-		selected := settings.SponsorBlock.SponsorBlockEnabled && slices.Contains(settings.SponsorBlock.SelectedSponsorBlockCategories, segment.Category)
+		selected := settings.PodcastSegments.Enabled && slices.Contains(settings.PodcastSegments.SelectedCategories, segment.Category)
 		if !selected {
 			continue
 		}

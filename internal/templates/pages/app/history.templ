@@ -11,27 +11,14 @@ templ History(props []types.VideoProps, source types.MediaSource) {
 		<title>Feedlr - Recent</title>
 	</head>
 	<div id="app-index" class="flex flex-col gap-4">
-		<div class="ui-filter-tabs-wrap">
-			<div class="ui-filter-tabs" aria-label="Recent media filter">
-				@recentSourceTab(types.MediaSourceAll, source, "All")
-				@recentSourceTab(types.MediaSourceYouTube, source, "YouTube")
-				@recentSourceTab(types.MediaSourcePodcasts, source, "Podcasts")
-			</div>
-		</div>
+		@ui.SectionMenu("Recent media filter", []ui.MenuItem{
+			{Label: "All", Href: "/app/recent?source=all", Active: source == types.MediaSourceAll},
+			{Label: "YouTube", Href: "/app/recent?source=youtube", Active: source == types.MediaSourceYouTube},
+			{Label: "Podcasts", Href: "/app/recent?source=podcasts", Active: source == types.MediaSourcePodcasts},
+		})
 		if len(props) == 0 {
 			@ui.EmptyState("No recent items yet", "Playback history for this source will appear here", "py-10")
 		}
 		@feed.VideoFeed(props, "/app/recent", feed.WithChannelName, feed.WithProgressBar)
 	</div>
-}
-
-templ recentSourceTab(tab, current types.MediaSource, label string) {
-	<a
-		class={ "ui-tab", templ.KV("ui-tab-active", tab == current) }
-		href={ templ.URL("/app/recent?source=" + string(tab)) }
-		hx-boost="true"
-		hx-target="body"
-	>
-		{ label }
-	</a>
 }

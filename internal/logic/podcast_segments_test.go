@@ -22,3 +22,21 @@ func TestParseTimedTranscriptRejectsBadRange(t *testing.T) {
 		t.Fatal("expected malformed range error")
 	}
 }
+
+func TestCleanCueTextRemovesMarkup(t *testing.T) {
+	is := is.New(t)
+	is.Equal(cleanCueText(`<p>Acme <strong>VPN</strong></p>`), "Acme VPN")
+}
+
+func TestPodcastSegmentCategories(t *testing.T) {
+	for _, category := range []string{"sponsor", "selfpromo", "interaction", "preview", "intro", "filler"} {
+		if !validCategory(category) {
+			t.Fatalf("%q should be a valid podcast segment category", category)
+		}
+	}
+	for _, category := range []string{"exclusive_access", "poi_highlight", "outro", "music_offtopic"} {
+		if validCategory(category) {
+			t.Fatalf("%q should not be a valid podcast segment category", category)
+		}
+	}
+}

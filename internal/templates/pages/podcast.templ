@@ -55,7 +55,7 @@ templ podcastPlayer(player types.VideoPlayerProps) {
 				<section class="podcast-player-notes" aria-label="Episode details">
 					<div class="ui-tabs grid w-full grid-cols-2" role="tablist" aria-label="Episode details">
 						<button id="podcast-notes-tab" type="button" class="ui-tab h-full w-full ui-tab-active" role="tab" aria-selected="true" aria-controls="podcast-notes-panel">Episode notes</button>
-						<button id="podcast-segments-tab" type="button" class="ui-tab h-full w-full" role="tab" aria-selected="false" aria-controls="podcast-segments-panel" hidden><span>Sponsor segments</span><span data-podcast-segment-count class="ui-badge hidden"></span><span data-podcast-segment-spinner class="ui-spinner size-3 border-2"></span></button>
+						<button id="podcast-segments-tab" type="button" class="ui-tab h-full w-full" role="tab" aria-selected="false" aria-controls="podcast-segments-panel" hidden><span>Episode segments</span><span data-podcast-segment-count class="ui-badge hidden"></span><span data-podcast-segment-spinner class="ui-spinner size-3 border-2"></span></button>
 					</div>
 					<div id="podcast-notes-panel" class="podcast-player-notes-content" role="tabpanel" aria-labelledby="podcast-notes-tab">
 							@shared.PodcastHTML(player.Video.Description)
@@ -160,10 +160,10 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		const complete = analysisStatus === "ready" || analysisStatus === "failed" || analysisStatus === "unavailable"
 		segmentSpinner.classList.toggle("hidden", complete)
 		segmentCount.classList.toggle("hidden", !complete)
-		if (!complete) { panelMessage("Finding sponsor segments…", false); return }
+		if (!complete) { panelMessage("Finding episode segments…", false); return }
 		segmentCount.textContent = String(segments.length)
 		segmentsPanel.replaceChildren()
-		if (!segments.length) { panelMessage("No sponsor segments identified.", false); return }
+		if (!segments.length) { panelMessage("No selected episode segments identified.", false); return }
 		const list = element("div", "flex flex-col gap-2")
 		for (const segment of segments) {
 			const row = element("div", "glass-panel w-full p-3")

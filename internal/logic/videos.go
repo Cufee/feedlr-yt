@@ -370,13 +370,15 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 		analysis, err := db.GetLatestPodcastSegmentAnalysis(ctx, videoId)
 		if err == nil {
 			playerProps.PodcastSegments.Status = analysis.Status
-			settings, settingsErr := GetUserSettings(ctx, db, userId)
-			if settingsErr == nil && settings.SponsorBlock.SponsorBlockEnabled {
-				for _, segment := range analysis.Segments {
-					if !slices.Contains(settings.SponsorBlock.SelectedSponsorBlockCategories, segment.Category) {
-						continue
+			if userId != "" {
+				settings, settingsErr := GetUserSettings(ctx, db, userId)
+				if settingsErr == nil && settings.PodcastSegments.Enabled {
+					for _, segment := range analysis.Segments {
+						if !slices.Contains(settings.PodcastSegments.SelectedCategories, segment.Category) {
+							continue
+						}
+						playerProps.PodcastSegments.Segments = append(playerProps.PodcastSegments.Segments, types.PodcastSegmentProps{Category: segment.Category, StartMS: segment.StartMS, EndMS: segment.EndMS, StartText: segment.StartText, EndText: segment.EndText, Brand: segment.Brand, Reason: segment.Reason, Skippable: true})
 					}
-					playerProps.PodcastSegments.Segments = append(playerProps.PodcastSegments.Segments, types.PodcastSegmentProps{Category: segment.Category, StartMS: segment.StartMS, EndMS: segment.EndMS, StartText: segment.StartText, EndText: segment.EndText, Brand: segment.Brand, Reason: segment.Reason, Skippable: true})
 				}
 			}
 		}

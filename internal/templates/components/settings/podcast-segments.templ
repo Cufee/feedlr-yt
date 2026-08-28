@@ -1,0 +1,65 @@
+package settings
+
+import (
+	"fmt"
+	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
+	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/types"
+	"golang.org/x/exp/slices"
+)
+
+templ PodcastSegmentSettings(settings types.PodcastSegmentSettingsProps) {
+	<div class="ui-settings-section" id="podcast-segment-settings">
+		<div class="ui-settings-header">
+			<div>
+				<span class="ui-settings-title">Smart skipping</span>
+				<p class="ui-settings-note mt-1">Automatically skip ads, promos, recaps, and other optional moments found in timed podcast transcripts.</p>
+			</div>
+			@PodcastGlobalToggleButton(settings.Enabled)
+		</div>
+		<div class="flex w-full flex-row flex-wrap gap-3">
+			for _, cat := range settings.AvailableCategories {
+				@PodcastCategoryCard(cat, settings.Enabled && slices.Contains(settings.SelectedCategories, cat.Value), !settings.Enabled)
+			}
+		</div>
+	</div>
+}
+
+templ PodcastCategoryCard(category sponsorblock.Category, checked, disabled bool) {
+	<div class={ categoryCardClass(disabled) }>
+		<div class="flex justify-between gap-2">
+			<span class="text-sm font-semibold text-text-primary">{ category.Name }</span>
+			@PodcastCategoryToggleButton(category.Value, checked, disabled)
+		</div>
+		<div class="flex break-words truncate">
+			@shared.Textbox("ui-settings-note") {
+				{ category.Description }
+			}
+		</div>
+	</div>
+}
+
+templ PodcastCategoryToggleButton(category string, checked, disabled bool) {
+	<input
+		type="checkbox"
+		id={ fmt.Sprintf("podcast-segment-cat-%s", category) }
+		class="ui-toggle ui-toggle-category"
+		checked?={ checked }
+		disabled?={ disabled }
+		hx-post={ fmt.Sprintf("/api/settings/podcast-segments/category?category=%s", category) }
+		hx-target="this"
+		hx-swap="outerHTML"
+	/>
+}
+
+templ PodcastGlobalToggleButton(checked bool) {
+	<input
+		id="podcast-segments"
+		type="checkbox"
+		class="ui-toggle ui-toggle-global"
+		checked?={ checked }
+		hx-post={ fmt.Sprintf("/api/settings/podcast-segments?value=%t", !checked) }
+		hx-target="#podcast-segment-settings"
+		hx-swap="outerHTML"
+	/>
+}

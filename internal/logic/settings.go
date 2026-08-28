@@ -17,6 +17,11 @@ var defaultSettings = types.SettingsPageProps{
 		SponsorBlockEnabled:             true,
 		AvailableSponsorBlockCategories: sponsorblock.AvailableCategories,
 		SelectedSponsorBlockCategories:  []string{sponsorblock.SelfPromo.Value, sponsorblock.Sponsor.Value, sponsorblock.Interaction.Value}},
+	PodcastSegments: types.PodcastSegmentSettingsProps{
+		Enabled:             true,
+		AvailableCategories: sponsorblock.PodcastAvailableCategories,
+		SelectedCategories:  []string{sponsorblock.Sponsor.Value, sponsorblock.SelfPromo.Value, sponsorblock.Interaction.Value, sponsorblock.Preview.Value, sponsorblock.PodcastHook.Value, sponsorblock.PodcastTangents.Value},
+	},
 }
 
 func ToggleSponsorBlockCategory(ctx context.Context, db database.SettingsClient, id string, category string) (types.SettingsPageProps, error) {
@@ -46,6 +51,31 @@ func ToggleSponsorBlock(ctx context.Context, db database.SettingsClient, id stri
 	}
 
 	settings.SponsorBlock.SponsorBlockEnabled = !settings.SponsorBlock.SponsorBlockEnabled
+	return settings, UpdateUserSettings(ctx, db, id, settings)
+}
+
+func TogglePodcastSegmentCategory(ctx context.Context, db database.SettingsClient, id, category string) (types.SettingsPageProps, error) {
+	if !slices.Contains(sponsorblock.ValidPodcastCategoryValues, category) {
+		return types.SettingsPageProps{}, errors.New("invalid podcast segment category")
+	}
+	settings, err := GetUserSettings(ctx, db, id)
+	if err != nil {
+		return types.SettingsPageProps{}, err
+	}
+	if slices.Contains(settings.PodcastSegments.SelectedCategories, category) {
+		settings.PodcastSegments.SelectedCategories = slices.DeleteFunc(settings.PodcastSegments.SelectedCategories, func(i string) bool { return i == category })
+	} else {
+		settings.PodcastSegments.SelectedCategories = append(settings.PodcastSegments.SelectedCategories, category)
+	}
+	return settings, UpdateUserSettings(ctx, db, id, settings)
+}
+
+func TogglePodcastSegments(ctx context.Context, db database.SettingsClient, id string) (types.SettingsPageProps, error) {
+	settings, err := GetUserSettings(ctx, db, id)
+	if err != nil {
+		return types.SettingsPageProps{}, err
+	}
+	settings.PodcastSegments.Enabled = !settings.PodcastSegments.Enabled
 	return settings, UpdateUserSettings(ctx, db, id, settings)
 }
 
@@ -114,5 +144,13 @@ func GetUserSettings(ctx context.Context, db database.SettingsClient, id string)
 		return types.SettingsPageProps{}, err
 	}
 
+	// Older JSON settings records predate podcast preferences. Hydrate the new
+	// values so existing users get the safe defaults without a migration.
+	if props.PodcastSegments.AvailableCategories == nil {
+		props.PodcastSegments = defaultSettings.PodcastSegments
+		if err := UpdateUserSettings(ctx, db, id, props); err != nil {
+			return types.SettingsPageProps{}, err
+		}
+	}
 	return props, nil
 }

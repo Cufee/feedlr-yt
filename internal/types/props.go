@@ -10,12 +10,13 @@ import (
 )
 
 type SettingsPageProps struct {
-	FeedMode      string
-	PlayerVolume  int
-	SponsorBlock  SponsorBlockSettingsProps
-	Passkeys      []PasskeyProps
-	YouTubeSync   YouTubeSyncStatusProps
-	YouTubeTVSync YouTubeTVSyncStatusProps
+	FeedMode        string
+	PlayerVolume    int
+	SponsorBlock    SponsorBlockSettingsProps
+	PodcastSegments PodcastSegmentSettingsProps
+	Passkeys        []PasskeyProps
+	YouTubeSync     YouTubeSyncStatusProps
+	YouTubeTVSync   YouTubeTVSyncStatusProps
 }
 
 type YouTubeSyncStatusProps struct {
@@ -60,6 +61,14 @@ type SponsorBlockSettingsProps struct {
 	SponsorBlockEnabled             bool
 	SelectedSponsorBlockCategories  []string
 	AvailableSponsorBlockCategories []sponsorblock.Category
+}
+
+// PodcastSegmentSettingsProps controls locally detected transcript segments.
+// It deliberately has separate preferences from YouTube's SponsorBlock data.
+type PodcastSegmentSettingsProps struct {
+	Enabled             bool
+	SelectedCategories  []string
+	AvailableCategories []sponsorblock.Category
 }
 
 type NavbarProps struct {

@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/cufee/feedlr-yt/internal/database"
@@ -47,5 +48,9 @@ var Settings brewed.Page[*handler.Context] = func(ctx *handler.Context) (brewed.
 		props.Passkeys = append(props.Passkeys, types.PasskeyToProps(pk))
 	}
 
-	return layouts.App, app.Settings(props), nil
+	section := strings.ToLower(ctx.Params("section", "account"))
+	if section != "account" && section != "youtube" && section != "podcasts" {
+		return nil, nil, ctx.SendStatus(http.StatusNotFound)
+	}
+	return layouts.App, app.Settings(props, section), nil
 }

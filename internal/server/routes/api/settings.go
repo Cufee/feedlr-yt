@@ -47,3 +47,34 @@ var ToggleSponsorBlock brewed.Partial[*handler.Context] = func(ctx *handler.Cont
 	metrics.IncUserAction("toggle_sponsorblock", "success")
 	return settings.SponsorBlockSettings(updated.SponsorBlock), nil
 }
+
+var TogglePodcastSegmentCategory brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
+	if !ok {
+		metrics.IncUserAction("toggle_podcast_segment_category", "unauthorized")
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
+	}
+	category := ctx.Query("category")
+	updated, err := logic.TogglePodcastSegmentCategory(ctx.Context(), ctx.Database(), userID, category)
+	if err != nil {
+		metrics.IncUserAction("toggle_podcast_segment_category", "error")
+		return nil, err
+	}
+	metrics.IncUserAction("toggle_podcast_segment_category", "success")
+	return settings.PodcastCategoryToggleButton(category, slices.Contains(updated.PodcastSegments.SelectedCategories, category), !updated.PodcastSegments.Enabled), nil
+}
+
+var TogglePodcastSegments brewed.Partial[*handler.Context] = func(ctx *handler.Context) (templ.Component, error) {
+	userID, ok := ctx.UserID()
+	if !ok {
+		metrics.IncUserAction("toggle_podcast_segments", "unauthorized")
+		return nil, ctx.SendStatus(http.StatusUnauthorized)
+	}
+	updated, err := logic.TogglePodcastSegments(ctx.Context(), ctx.Database(), userID)
+	if err != nil {
+		metrics.IncUserAction("toggle_podcast_segments", "error")
+		return nil, err
+	}
+	metrics.IncUserAction("toggle_podcast_segments", "success")
+	return settings.PodcastSegmentSettings(updated.PodcastSegments), nil
+}

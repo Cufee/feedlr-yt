@@ -129,6 +129,8 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 
 		api.Post("/settings/sponsorblock", toFiber(rapi.ToggleSponsorBlock))
 		api.Post("/settings/sponsorblock/category", toFiber(rapi.ToggleSponsorBlockCategory))
+		api.Post("/settings/podcast-segments", toFiber(rapi.TogglePodcastSegments))
+		api.Post("/settings/podcast-segments/category", toFiber(rapi.TogglePodcastSegmentCategory))
 		api.Post("/settings/youtube-sync/connect/begin", toFiber(rapi.BeginYouTubeSyncConnect))
 		api.Get("/settings/youtube-sync/connect/callback", toFiber(rapi.FinishYouTubeSyncConnect))
 		api.Post("/settings/youtube-sync/disconnect", toFiber(rapi.DisconnectYouTubeSync))
@@ -143,6 +145,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		app.All("/recent", toFiber(rapp.Recent))
 		app.All("/watch-later", toFiber(rapp.WatchLater))
 		app.All("/settings", toFiber(rapp.Settings))
+		app.All("/settings/:section", toFiber(rapp.Settings))
 		app.All("/onboarding", toFiber(rapp.Onboarding))
 		app.All("/subscriptions", toFiber(rapp.Subscriptions))
 		app.All("/playlists", toFiber(rapp.PlaylistsIndex))

@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
@@ -13,12 +14,10 @@ templ Onboarding(discovery types.MediaSource, podcastSearchAvailable bool) {
 				<h2 class="ui-section-title">Build your feed</h2>
 			</div>
 			<p class="mx-auto max-w-xl text-center text-sm text-text-secondary">Subscribe to a YouTube channel or a podcast to start your feed.</p>
-			<div class="ui-filter-tabs-wrap">
-				<div class="ui-tabs" aria-label="Subscription discovery source">
-					@onboardingSourceTab(types.MediaSourceYouTube, discovery, "YouTube")
-					@onboardingSourceTab(types.MediaSourcePodcasts, discovery, "Podcasts")
-				</div>
-			</div>
+			@ui.SectionMenu("Subscription discovery source", []ui.MenuItem{
+				{Label: "YouTube", Href: "/app/onboarding?discover=youtube", Active: discovery == types.MediaSourceYouTube},
+				{Label: "Podcasts", Href: "/app/onboarding?discover=podcasts", Active: discovery == types.MediaSourcePodcasts},
+			})
 			@subscriptions.Discovery(subscriptions.DiscoveryProps{
 				SubscriptionSource: discovery,
 				PodcastSearchAvailable: podcastSearchAvailable,
@@ -28,10 +27,4 @@ templ Onboarding(discovery types.MediaSource, podcastSearchAvailable bool) {
 			</div>
 		</div>
 	</div>
-}
-
-templ onboardingSourceTab(source, current types.MediaSource, label string) {
-	<a class={ "ui-tab", templ.KV("ui-tab-active", source == current) } href={ templ.URL("/app/onboarding?discover=" + string(source)) } hx-boost="true" hx-target="body">
-		{ label }
-	</a>
 }

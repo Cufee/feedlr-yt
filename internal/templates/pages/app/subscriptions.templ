@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
 	"github.com/cufee/feedlr-yt/internal/templates/components/subscriptions"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
@@ -15,6 +16,10 @@ type SubscriptionPageProps struct {
 templ Subscriptions(props SubscriptionPageProps) {
 	<head><title>Feedlr - Subscriptions</title></head>
 	<div class="flex flex-col gap-6">
+		@ui.SectionMenu("Subscription source filter", []ui.MenuItem{
+			{Label: "YouTube", Href: "/app/subscriptions?source=youtube", Active: props.Source == types.MediaSourceYouTube},
+			{Label: "Podcasts", Href: "/app/subscriptions?source=podcasts", Active: props.Source == types.MediaSourcePodcasts},
+		})
 		<div id="search" class="ui-section">
 			<div class="ui-section-header justify-center">
 				<h2 class="ui-section-title">Discover subscriptions</h2>
@@ -25,12 +30,8 @@ templ Subscriptions(props SubscriptionPageProps) {
 			})
 		</div>
 		<div id="subscriptions" class="ui-section">
-			<div class="ui-section-header flex-col justify-center gap-3 sm:flex-row sm:justify-between">
+			<div class="ui-section-header justify-center">
 				<h2 class="ui-section-title">Your Subscriptions</h2>
-				<div class="ui-filter-tabs" aria-label="Subscription source filter">
-					@subscriptionSourceTab(types.MediaSourceYouTube, props.Source, "YouTube")
-					@subscriptionSourceTab(types.MediaSourcePodcasts, props.Source, "Podcasts")
-				</div>
 			</div>
 			if len(props.Channels) > 6 {
 				<div class="mx-auto flex w-full max-w-full md:max-w-sm">
@@ -44,15 +45,4 @@ templ Subscriptions(props SubscriptionPageProps) {
 			</div>
 		</div>
 	</div>
-}
-
-templ subscriptionSourceTab(tab, current types.MediaSource, label string) {
-	<a
-		class={ "ui-tab", templ.KV("ui-tab-active", tab == current) }
-		href={ templ.URL("/app/subscriptions?source=" + string(tab)) }
-		hx-boost="true"
-		hx-target="body"
-	>
-		{ label }
-	</a>
 }
