@@ -6,7 +6,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/channel"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
-	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
@@ -27,7 +26,6 @@ templ subscribedChannelTile(props types.ChannelProps) {
 		data-source={ string(props.MediaSource()) }
 		class="ui-motion-swap ui-channel-card group channel-btn"
 	>
-		@ui.Badge(subscriptionSourceLabel(props), ui.BadgeNeutral, "ui-source-badge ui-source-badge-channel")
 		<a
 			hx-boost="true"
 			href={ templ.URL(fmt.Sprintf("/channel/%s", props.ID)) }
@@ -39,13 +37,6 @@ templ subscribedChannelTile(props types.ChannelProps) {
 		</a>
 		@channel.ChannelTile(props.Channel, channel.ChannelThumbnailProxyURL(props.ID), nil)
 	</div>
-}
-
-func subscriptionSourceLabel(props types.ChannelProps) string {
-	if props.IsPodcast {
-		return "Podcast"
-	}
-	return "YouTube"
 }
 
 type subscribeButtonOptions struct {
