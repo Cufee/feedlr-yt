@@ -122,7 +122,7 @@ var FinishYouTubeSyncConnect brewed.Endpoint[*handler.Context] = func(ctx *handl
 	}(userID)
 
 	metrics.IncUserAction("youtube_sync_finish_connect", "success")
-	return ctx.Redirect("/app/settings", http.StatusTemporaryRedirect)
+	return ctx.Redirect("/app/settings/youtube", http.StatusSeeOther)
 }
 
 var DisconnectYouTubeSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
@@ -145,7 +145,7 @@ var DisconnectYouTubeSync brewed.Endpoint[*handler.Context] = func(ctx *handler.
 	}
 
 	metrics.IncUserAction("youtube_sync_disconnect", "success")
-	return ctx.Redirect("/app/settings", http.StatusTemporaryRedirect)
+	return ctx.Redirect("/app/settings/youtube", http.StatusSeeOther)
 }
 
 var ToggleYouTubeSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
@@ -173,7 +173,7 @@ var ToggleYouTubeSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Cont
 		return ctx.Err(err)
 	}
 	metrics.IncUserAction("youtube_sync_toggle", "success")
-	return ctx.Redirect("/app/settings", http.StatusTemporaryRedirect)
+	return ctx.Redirect("/app/settings/youtube", http.StatusSeeOther)
 }
 
 var ConnectYouTubeTVSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
@@ -206,7 +206,7 @@ var ConnectYouTubeTVSync brewed.Endpoint[*handler.Context] = func(ctx *handler.C
 	}
 
 	metrics.IncUserAction("youtube_tv_sync_connect", "success")
-	return ctx.Redirect("/app/settings", http.StatusTemporaryRedirect)
+	return ctx.Redirect("/app/settings/youtube", http.StatusSeeOther)
 }
 
 var DisconnectYouTubeTVSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
@@ -229,7 +229,7 @@ var DisconnectYouTubeTVSync brewed.Endpoint[*handler.Context] = func(ctx *handle
 	}
 
 	metrics.IncUserAction("youtube_tv_sync_disconnect", "success")
-	return ctx.Redirect("/app/settings", http.StatusTemporaryRedirect)
+	return ctx.Redirect("/app/settings/youtube", http.StatusSeeOther)
 }
 
 var ToggleYouTubeTVSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Context) error {
@@ -257,5 +257,5 @@ var ToggleYouTubeTVSync brewed.Endpoint[*handler.Context] = func(ctx *handler.Co
 		return ctx.Err(err)
 	}
 	metrics.IncUserAction("youtube_tv_sync_toggle", "success")
-	return ctx.Redirect("/app/settings", http.StatusTemporaryRedirect)
+	return ctx.Redirect("/app/settings/youtube", http.StatusSeeOther)
 }

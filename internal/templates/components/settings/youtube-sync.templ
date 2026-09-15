@@ -86,7 +86,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 				if status.Available && !status.Connected {
 					<div class="flex flex-col gap-3">
 						<div class="ui-settings-note leading-relaxed">
-							Connect your YouTube account to keep a private playlist mirrored from your Feedlr home feed.
+							Connect your YouTube account to mirror your home feed and all Feedlr playlists, including Watch Later, to private YouTube playlists.
 						</div>
 						<form action="/api/settings/youtube-sync/connect/begin" method="post">
 							@ui.Button("Connect YouTube", ui.WithButtonVariant(ui.ButtonPrimary), ui.WithButtonSize(ui.ButtonSmall))
@@ -94,6 +94,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 					</div>
 				}
 				if status.Available && status.Connected {
+					<div class="ui-settings-note leading-relaxed">Your home feed and all Feedlr playlists sync to private YouTube playlists. Large playlists fill over multiple sync runs.</div>
 					<div class="ui-settings-grid">
 						<div class="ui-settings-stat">
 							<div class="flex items-center justify-between gap-2">
@@ -104,7 +105,7 @@ templ YouTubeSyncSettings(status types.YouTubeSyncStatusProps, tvStatus types.Yo
 										target="_blank"
 										rel="noreferrer noopener"
 										class="ui-btn ui-btn-ghost ui-btn-sm ui-btn-icon !size-7 text-xs"
-										title="Open synced playlist"
+										title="Open synced feed playlist"
 									>↗</a>
 								} else {
 									<button

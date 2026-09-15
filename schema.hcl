@@ -104,6 +104,45 @@ table "youtube_sync_accounts" {
   }
 }
 
+table "youtube_sync_targets" {
+  schema = schema.main
+  column "account_id" {
+    null = false
+    type = text
+  }
+  column "source_id" {
+    null = false
+    type = text
+  }
+  column "playlist_id" {
+    null = false
+    type = text
+    default = ""
+  }
+  column "title" {
+    null = false
+    type = text
+    default = ""
+  }
+  column "description" {
+    null = false
+    type = text
+    default = ""
+  }
+  column "last_attempt_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.account_id, column.source_id]
+  }
+  foreign_key "youtube_sync_targets_account_id_fkey" {
+    columns = [column.account_id]
+    ref_columns = [table.youtube_sync_accounts.column.id]
+    on_delete = CASCADE
+  }
+}
+
 table "youtube_tv_sync_accounts" {
   schema = schema.main
 

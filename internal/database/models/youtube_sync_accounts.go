@@ -129,14 +129,17 @@ var YoutubeSyncAccountWhere = struct {
 
 // YoutubeSyncAccountRels is where relationship names are stored.
 var YoutubeSyncAccountRels = struct {
-	User string
+	User                      string
+	AccountYoutubeSyncTargets string
 }{
-	User: "User",
+	User:                      "User",
+	AccountYoutubeSyncTargets: "AccountYoutubeSyncTargets",
 }
 
 // youtubeSyncAccountR is where relationships are stored.
 type youtubeSyncAccountR struct {
-	User *User `boil:"User" json:"User" toml:"User" yaml:"User"`
+	User                      *User                  `boil:"User" json:"User" toml:"User" yaml:"User"`
+	AccountYoutubeSyncTargets YoutubeSyncTargetSlice `boil:"AccountYoutubeSyncTargets" json:"AccountYoutubeSyncTargets" toml:"AccountYoutubeSyncTargets" yaml:"AccountYoutubeSyncTargets"`
 }
 
 // NewStruct creates a new relationship struct
@@ -158,6 +161,22 @@ func (r *youtubeSyncAccountR) GetUser() *User {
 	}
 
 	return r.User
+}
+
+func (o *YoutubeSyncAccount) GetAccountYoutubeSyncTargets() YoutubeSyncTargetSlice {
+	if o == nil {
+		return nil
+	}
+
+	return o.R.GetAccountYoutubeSyncTargets()
+}
+
+func (r *youtubeSyncAccountR) GetAccountYoutubeSyncTargets() YoutubeSyncTargetSlice {
+	if r == nil {
+		return nil
+	}
+
+	return r.AccountYoutubeSyncTargets
 }
 
 // youtubeSyncAccountL is where Load methods for each relationship are stored.
@@ -487,6 +506,20 @@ func (o *YoutubeSyncAccount) User(mods ...qm.QueryMod) userQuery {
 	return Users(queryMods...)
 }
 
+// AccountYoutubeSyncTargets retrieves all the youtube_sync_target's YoutubeSyncTargets with an executor via account_id column.
+func (o *YoutubeSyncAccount) AccountYoutubeSyncTargets(mods ...qm.QueryMod) youtubeSyncTargetQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"youtube_sync_targets\".\"account_id\"=?", o.ID),
+	)
+
+	return YoutubeSyncTargets(queryMods...)
+}
+
 // LoadUser allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (youtubeSyncAccountL) LoadUser(ctx context.Context, e boil.ContextExecutor, singular bool, maybeYoutubeSyncAccount interface{}, mods queries.Applicator) error {
@@ -607,6 +640,119 @@ func (youtubeSyncAccountL) LoadUser(ctx context.Context, e boil.ContextExecutor,
 	return nil
 }
 
+// LoadAccountYoutubeSyncTargets allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (youtubeSyncAccountL) LoadAccountYoutubeSyncTargets(ctx context.Context, e boil.ContextExecutor, singular bool, maybeYoutubeSyncAccount interface{}, mods queries.Applicator) error {
+	var slice []*YoutubeSyncAccount
+	var object *YoutubeSyncAccount
+
+	if singular {
+		var ok bool
+		object, ok = maybeYoutubeSyncAccount.(*YoutubeSyncAccount)
+		if !ok {
+			object = new(YoutubeSyncAccount)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeYoutubeSyncAccount)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeYoutubeSyncAccount))
+			}
+		}
+	} else {
+		s, ok := maybeYoutubeSyncAccount.(*[]*YoutubeSyncAccount)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeYoutubeSyncAccount)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeYoutubeSyncAccount))
+			}
+		}
+	}
+
+	args := make(map[interface{}]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &youtubeSyncAccountR{}
+		}
+		args[object.ID] = struct{}{}
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &youtubeSyncAccountR{}
+			}
+			args[obj.ID] = struct{}{}
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	argsSlice := make([]interface{}, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
+	}
+
+	query := NewQuery(
+		qm.From(`youtube_sync_targets`),
+		qm.WhereIn(`youtube_sync_targets.account_id in ?`, argsSlice...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load youtube_sync_targets")
+	}
+
+	var resultSlice []*YoutubeSyncTarget
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice youtube_sync_targets")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on youtube_sync_targets")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for youtube_sync_targets")
+	}
+
+	if len(youtubeSyncTargetAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.AccountYoutubeSyncTargets = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &youtubeSyncTargetR{}
+			}
+			foreign.R.Account = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.AccountID {
+				local.R.AccountYoutubeSyncTargets = append(local.R.AccountYoutubeSyncTargets, foreign)
+				if foreign.R == nil {
+					foreign.R = &youtubeSyncTargetR{}
+				}
+				foreign.R.Account = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetUser of the youtubeSyncAccount to the related item.
 // Sets o.R.User to related.
 // Adds o to related.R.YoutubeSyncAccount.
@@ -651,6 +797,59 @@ func (o *YoutubeSyncAccount) SetUser(ctx context.Context, exec boil.ContextExecu
 		related.R.YoutubeSyncAccount = o
 	}
 
+	return nil
+}
+
+// AddAccountYoutubeSyncTargets adds the given related objects to the existing relationships
+// of the youtube_sync_account, optionally inserting them as new records.
+// Appends related to o.R.AccountYoutubeSyncTargets.
+// Sets related.R.Account appropriately.
+func (o *YoutubeSyncAccount) AddAccountYoutubeSyncTargets(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*YoutubeSyncTarget) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.AccountID = o.ID
+			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"youtube_sync_targets\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 0, []string{"account_id"}),
+				strmangle.WhereClause("\"", "\"", 0, youtubeSyncTargetPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.AccountID, rel.SourceID}
+
+			if boil.IsDebug(ctx) {
+				writer := boil.DebugWriterFrom(ctx)
+				fmt.Fprintln(writer, updateQuery)
+				fmt.Fprintln(writer, values)
+			}
+			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.AccountID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &youtubeSyncAccountR{
+			AccountYoutubeSyncTargets: related,
+		}
+	} else {
+		o.R.AccountYoutubeSyncTargets = append(o.R.AccountYoutubeSyncTargets, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &youtubeSyncTargetR{
+				Account: o,
+			}
+		} else {
+			rel.R.Account = o
+		}
+	}
 	return nil
 }
 

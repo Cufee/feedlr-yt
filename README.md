@@ -17,7 +17,7 @@ Core functionality is complete and working reliably. Implemented in this reposit
 - YouTube and podcast subscriptions, including RSS feed URL subscriptions
 - Feed pages (`/app`, `/app/recent`, `/app/watch-later`, onboarding)
 - Watch later playlist and cleanup task
-- YouTube playlist sync via OAuth (`Feedlr Sync` playlist)
+- YouTube playlist sync via OAuth (home feed, Watch Later, and all user/imported playlists)
 - YouTube TV lounge sync (pairing, progress sync, SponsorBlock skip)
 - Background cron jobs for cache and sync tasks
 - Prometheus metrics endpoint (`METRICS_PORT` / `METRICS_PATH`)

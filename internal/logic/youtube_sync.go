@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/aarondl/null/v8"
@@ -37,7 +37,8 @@ const (
 var DefaultYouTubeSync *YouTubeSyncService
 
 type YouTubeSyncService struct {
-	db database.Client
+	syncMu sync.Mutex
+	db     database.Client
 
 	crypto      *youtubeSyncCrypto
 	oauthConfig *oauth2.Config
@@ -238,129 +239,47 @@ func (s *YouTubeSyncService) RunSyncForUser(ctx context.Context, userID string) 
 }
 
 func (s *YouTubeSyncService) syncUser(ctx context.Context, account *models.YoutubeSyncAccount) error {
-	attemptedAt := time.Now().UTC()
-
-	desired, latestPublishedAt, err := s.desiredVideosForUser(ctx, account.UserID)
+	// OAuth callbacks and scheduled runs can overlap. Serialize exports so they
+	// cannot create duplicate destinations or apply plans to stale positions.
+	s.syncMu.Lock()
+	defer s.syncMu.Unlock()
+	account, err := s.db.GetYouTubeSyncAccountByUserID(ctx, account.UserID)
 	if err != nil {
-		s.storeRunResult(ctx, account.UserID, account.LastFeedVideoPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
 		return err
 	}
-
-	if account.LastFeedVideoPublishedAt.Valid && !latestPublishedAt.Valid {
-		latestPublishedAt = account.LastFeedVideoPublishedAt
-	}
-
-	service, err := s.youtubeServiceForAccount(ctx, account)
-	if err != nil {
-		s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
-		return err
-	}
-
-	expensiveCallsLeft := s.maxExpensiveCallsPerSync
-
-	playlistID := ""
-	if account.PlaylistID.Valid {
-		playlistID = strings.TrimSpace(account.PlaylistID.String)
-	}
-
-	if playlistID == "" {
-		if expensiveCallsLeft < 1 {
-			err := errors.New("playlist missing but no write calls left in current sync budget")
-			s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
-			return err
-		}
-
-		playlistID, err = createYouTubeSyncPlaylist(ctx, service)
-		if err != nil {
-			s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
-			return err
-		}
-		expensiveCallsLeft--
-		if err := s.db.UpdateYouTubeSyncPlaylistID(ctx, account.UserID, playlistID); err != nil {
-			s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
-			return err
-		}
-	}
-
-	remoteItems, err := listPlaylistItemsWithRetry(ctx, service, playlistID, 50)
-	if err != nil && isYouTubePlaylistNotFound(err) {
-		if expensiveCallsLeft < 1 {
-			err = errors.Wrap(err, "playlist missing remotely and no write calls left in current sync budget")
-			s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
-			return err
-		}
-
-		playlistID, err = createYouTubeSyncPlaylist(ctx, service)
-		if err != nil {
-			s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
-			return err
-		}
-		expensiveCallsLeft--
-		if err := s.db.UpdateYouTubeSyncPlaylistID(ctx, account.UserID, playlistID); err != nil {
-			s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
-			return err
-		}
-
-		remoteItems, err = listPlaylistItemsWithRetry(ctx, service, playlistID, 50)
-	}
-	if err != nil {
-		s.storeRunResult(ctx, account.UserID, latestPublishedAt, account.LastSyncedAt, attemptedAt, err.Error())
-		return err
-	}
-
-	plan := buildPlaylistSyncPlan(desired, remoteItems, expensiveCallsLeft)
-	if len(plan.ToAdd) == 0 && len(plan.ToDelete) == 0 {
-		syncedAt := null.TimeFrom(time.Now().UTC())
-		s.storeRunResult(ctx, account.UserID, latestPublishedAt, syncedAt, attemptedAt, "")
+	if !account.SyncEnabled {
 		return nil
 	}
-
-	var mutationErrors []string
-	var firstMutationErr error
-
-	for _, itemID := range plan.ToDelete {
-		err := deletePlaylistItem(ctx, service, itemID)
+	attemptedAt := time.Now().UTC()
+	latestPublishedAt := account.LastFeedVideoPublishedAt
+	run := func() error {
+		desired, latest, err := s.desiredVideosForUser(ctx, account.UserID)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to delete playlist item %s", itemID)
-			if firstMutationErr == nil {
-				firstMutationErr = err
-			}
-			mutationErrors = append(mutationErrors, err.Error())
+			return err
 		}
-	}
-
-	if firstMutationErr != nil {
-		lastErr := strings.Join(mutationErrors, " | ")
-		if len(lastErr) > 4000 {
-			lastErr = lastErr[:4000]
+		if latest.Valid {
+			latestPublishedAt = latest
 		}
-		s.storeRunResult(ctx, account.UserID, account.LastFeedVideoPublishedAt, account.LastSyncedAt, attemptedAt, lastErr)
-		return firstMutationErr
-	}
-
-	for _, add := range plan.ToAdd {
-		err := insertVideoIntoPlaylist(ctx, service, playlistID, add.VideoID, add.Position)
+		service, err := s.youtubeServiceForAccount(ctx, account)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to insert video %s into playlist %s at position %d", add.VideoID, playlistID, add.Position)
-			if firstMutationErr == nil {
-				firstMutationErr = err
-			}
-			mutationErrors = append(mutationErrors, err.Error())
+			return err
 		}
+		return s.syncPlaylists(ctx, service, account, desired)
 	}
-
-	if firstMutationErr != nil {
-		lastErr := strings.Join(mutationErrors, " | ")
-		if len(lastErr) > 4000 {
-			lastErr = lastErr[:4000]
+	err = run()
+	syncedAt := account.LastSyncedAt
+	lastError := ""
+	if err != nil {
+		lastError = err.Error()
+		if len(lastError) > 4000 {
+			lastError = lastError[:4000]
 		}
-		s.storeRunResult(ctx, account.UserID, account.LastFeedVideoPublishedAt, account.LastSyncedAt, attemptedAt, lastErr)
-		return firstMutationErr
+		latestPublishedAt = account.LastFeedVideoPublishedAt
+	} else {
+		syncedAt = null.TimeFrom(time.Now().UTC())
 	}
-
-	syncedAt := null.TimeFrom(time.Now().UTC())
-	s.storeRunResult(ctx, account.UserID, latestPublishedAt, syncedAt, attemptedAt, "")
-	return nil
+	s.storeRunResult(ctx, account.UserID, latestPublishedAt, syncedAt, attemptedAt, lastError)
+	return err
 }
 
 func (s *YouTubeSyncService) desiredVideosForUser(ctx context.Context, userID string) ([]string, null.Time, error) {
@@ -375,7 +294,7 @@ func (s *YouTubeSyncService) desiredVideosForUser(ctx context.Context, userID st
 
 	add := func(videos []types.VideoProps) {
 		for _, video := range videos {
-			if video.ID == "" || seen[video.ID] {
+			if video.ID == "" || video.IsPodcast() || seen[video.ID] {
 				continue
 			}
 			seen[video.ID] = true
@@ -650,21 +569,15 @@ func filterRemoteItems(remote []playlistRemoteItem, excludedItemIDs map[string]b
 	return filtered
 }
 
-func createYouTubeSyncPlaylist(ctx context.Context, service *ytv3.Service) (string, error) {
+func createYouTubeSyncPlaylist(ctx context.Context, service *ytv3.Service, title, description string) (string, error) {
 	playlist, err := service.Playlists.Insert([]string{"snippet", "status"}, &ytv3.Playlist{
-		Snippet: &ytv3.PlaylistSnippet{
-			Title:       youtubeSyncPlaylistName,
-			Description: youtubeSyncPlaylistDescription,
-		},
-		Status: &ytv3.PlaylistStatus{
-			PrivacyStatus: "private",
-		},
+		Snippet: &ytv3.PlaylistSnippet{Title: title, Description: description},
+		Status:  &ytv3.PlaylistStatus{PrivacyStatus: "private"},
 	}).Context(ctx).Do()
 	metrics.ObserveYouTubeAPICall("playlist_sync", "create_playlist", err)
 	if err != nil {
 		return "", err
 	}
-
 	if playlist == nil || playlist.Id == "" {
 		return "", errors.New("playlist creation returned empty id")
 	}
@@ -676,27 +589,28 @@ func listPlaylistItems(ctx context.Context, service *ytv3.Service, playlistID st
 	if maxResults > 0 {
 		call = call.MaxResults(maxResults)
 	}
-
-	result, err := call.Context(ctx).Do()
-	metrics.ObserveYouTubeAPICall("playlist_sync", "list_playlist_items", err)
-	if err != nil {
-		return nil, err
-	}
-
 	var items []playlistRemoteItem
-	for _, item := range result.Items {
-		remote := playlistRemoteItem{
-			ItemID: item.Id,
+	for {
+		result, err := call.Context(ctx).Do()
+		metrics.ObserveYouTubeAPICall("playlist_sync", "list_playlist_items", err)
+		if err != nil {
+			return nil, err
 		}
-		if item.Snippet != nil {
-			remote.Position = item.Snippet.Position
-			if item.Snippet.ResourceId != nil {
-				remote.VideoID = item.Snippet.ResourceId.VideoId
+		for _, item := range result.Items {
+			remote := playlistRemoteItem{ItemID: item.Id}
+			if item.Snippet != nil {
+				remote.Position = item.Snippet.Position
+				if item.Snippet.ResourceId != nil {
+					remote.VideoID = item.Snippet.ResourceId.VideoId
+				}
 			}
+			items = append(items, remote)
 		}
-		items = append(items, remote)
+		if result.NextPageToken == "" {
+			return items, nil
+		}
+		call = call.PageToken(result.NextPageToken)
 	}
-	return items, nil
 }
 
 func listPlaylistItemsWithRetry(ctx context.Context, service *ytv3.Service, playlistID string, maxResults int64) ([]playlistRemoteItem, error) {

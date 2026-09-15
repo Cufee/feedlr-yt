@@ -13,6 +13,8 @@ import (
 )
 
 type YouTubeSyncClient interface {
+	ListYouTubeSyncTargets(ctx context.Context, accountID string) ([]*models.YoutubeSyncTarget, error)
+	UpsertYouTubeSyncTarget(ctx context.Context, target *models.YoutubeSyncTarget) error
 	GetYouTubeSyncAccountByUserID(ctx context.Context, userID string) (*models.YoutubeSyncAccount, error)
 	UpsertYouTubeSyncCredentials(ctx context.Context, userID string, encryptedRefreshToken []byte, secretHash string) error
 	UpdateYouTubeSyncRefreshToken(ctx context.Context, userID string, encryptedRefreshToken []byte, secretHash string) error
@@ -21,6 +23,16 @@ type YouTubeSyncClient interface {
 	ListEnabledYouTubeSyncAccounts(ctx context.Context, limit int) ([]*models.YoutubeSyncAccount, error)
 	UpdateYouTubeSyncPlaylistID(ctx context.Context, userID, playlistID string) error
 	UpdateYouTubeSyncRunResult(ctx context.Context, userID string, result YouTubeSyncRunResult) error
+}
+
+func (c *sqliteClient) ListYouTubeSyncTargets(ctx context.Context, accountID string) ([]*models.YoutubeSyncTarget, error) {
+	return models.YoutubeSyncTargets(models.YoutubeSyncTargetWhere.AccountID.EQ(accountID)).All(ctx, c.db)
+}
+
+func (c *sqliteClient) UpsertYouTubeSyncTarget(ctx context.Context, target *models.YoutubeSyncTarget) error {
+	return target.Upsert(ctx, c.db, true,
+		[]string{models.YoutubeSyncTargetColumns.AccountID, models.YoutubeSyncTargetColumns.SourceID},
+		boil.Infer(), boil.Infer())
 }
 
 type YouTubeSyncRunResult struct {

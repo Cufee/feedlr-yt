@@ -20,6 +20,7 @@ var TableNames = struct {
 	Videos                    string
 	Views                     string
 	YoutubeSyncAccounts       string
+	YoutubeSyncTargets        string
 	YoutubeTVSyncAccounts     string
 }{
 	AppConfiguration:          "app_configuration",
@@ -38,5 +39,6 @@ var TableNames = struct {
 	Videos:                    "videos",
 	Views:                     "views",
 	YoutubeSyncAccounts:       "youtube_sync_accounts",
+	YoutubeSyncTargets:        "youtube_sync_targets",
 	YoutubeTVSyncAccounts:     "youtube_tv_sync_accounts",
 }
