@@ -21,7 +21,7 @@ func (c *Client) GetContext(ctx context.Context) (*WebPlayerRequestContext, erro
 		metrics.ObserveYouTubeOAuthCall("get_web_player_context_cache", nil)
 		return c.context, nil
 	}
-	context, err := c.newWebPlayerRequestContext()
+	context, err := c.newWebPlayerRequestContext(ctx)
 	metrics.ObserveYouTubeOAuthCall("get_web_player_context", err)
 	if err != nil {
 		return nil, err
@@ -30,8 +30,8 @@ func (c *Client) GetContext(ctx context.Context) (*WebPlayerRequestContext, erro
 	return c.context, nil
 }
 
-func (c *Client) newWebPlayerRequestContext() (*WebPlayerRequestContext, error) {
-	req, err := http.NewRequest("GET", youtubeBaseURL+"/sw.js_data", nil)
+func (c *Client) newWebPlayerRequestContext(ctx context.Context) (*WebPlayerRequestContext, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", youtubeBaseURL+"/sw.js_data", nil)
 	if err != nil {
 		return nil, err
 	}

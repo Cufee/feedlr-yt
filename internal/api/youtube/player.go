@@ -32,8 +32,9 @@ const (
 
 type VideoDetails struct {
 	Video
-	ChannelID string `json:"channelId"`
-	Duration  int    `json:"duration"`
+	ChannelID    string `json:"channelId"`
+	ChannelTitle string `json:"channelTitle"`
+	Duration     int    `json:"duration"`
 }
 
 type Microformat struct {
@@ -139,12 +140,20 @@ var playerURL, _ = url.Parse("https://www.youtube.com/youtubei/v1/player")
 var playerLimiter = time.NewTicker(time.Second / 25)
 
 func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
+	return c.GetVideoPlayerDetailsContext(context.Background(), videoId)
+}
+
+// GetVideoPlayerDetailsContext fetches player metadata without using Data API v3.
+func (c *client) GetVideoPlayerDetailsContext(ctx context.Context, videoId string) (*VideoDetails, error) {
 	var result *VideoDetails
 	b := retry.WithMaxRetries(3, retry.NewConstant(500*time.Millisecond))
-
-	err := retry.Do(context.Background(), b, func(_ context.Context) error {
-		<-playerLimiter.C
-		details, err := c.getDesktopPlayerDetails(videoId)
+	err := retry.Do(ctx, b, func(ctx context.Context) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-playerLimiter.C:
+		}
+		details, err := c.getDesktopPlayerDetailsContext(ctx, videoId)
 		if err != nil {
 			if errors.Is(err, ErrLoginRequired) {
 				metrics.ObserveYouTubeAPICall("player", "bot_detection", err)
@@ -154,7 +163,6 @@ func (c *client) GetVideoPlayerDetails(videoId string) (*VideoDetails, error) {
 		result = details
 		return nil
 	})
-
 	metrics.ObserveYouTubeAPICall("player", "get_video_player_details", err)
 	return result, err
 }

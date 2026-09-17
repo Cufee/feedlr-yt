@@ -79,6 +79,10 @@ type DesktopPlayerVideoDetails struct {
 
 // isShortsURL checks if YouTube serves the /shorts/ URL for this video (200 = short, 303 redirect = not)
 func (c *client) isShortsURL(videoID string, userAgent string) bool {
+	return c.isShortsURLContext(context.Background(), videoID, userAgent)
+}
+
+func (c *client) isShortsURLContext(ctx context.Context, videoID string, userAgent string) bool {
 	httpClient := c.httpClientWithTimeout(5 * time.Second)
 	httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
@@ -86,7 +90,7 @@ func (c *client) isShortsURL(videoID string, userAgent string) bool {
 
 	shortsURL := "https://www.youtube.com/shorts/" + videoID
 
-	status, err := probeShortsURL(httpClient, http.MethodHead, shortsURL, userAgent)
+	status, err := probeShortsURLContext(ctx, httpClient, http.MethodHead, shortsURL, userAgent)
 	metrics.ObserveYouTubeAPICall("player", "shorts_head_probe", err)
 	if err == nil && status == http.StatusOK {
 		return true
@@ -96,7 +100,7 @@ func (c *client) isShortsURL(videoID string, userAgent string) bool {
 	}
 
 	// Some proxies mishandle HEAD requests. Fall back to a lightweight GET probe.
-	status, err = probeShortsURL(httpClient, http.MethodGet, shortsURL, userAgent)
+	status, err = probeShortsURLContext(ctx, httpClient, http.MethodGet, shortsURL, userAgent)
 	metrics.ObserveYouTubeAPICall("player", "shorts_get_probe", err)
 	return err == nil && status == http.StatusOK
 }
@@ -112,7 +116,11 @@ func (c *client) httpClientWithTimeout(timeout time.Duration) *http.Client {
 }
 
 func probeShortsURL(client *http.Client, method, shortsURL, userAgent string) (int, error) {
-	req, err := http.NewRequest(method, shortsURL, nil)
+	return probeShortsURLContext(context.Background(), client, method, shortsURL, userAgent)
+}
+
+func probeShortsURLContext(ctx context.Context, client *http.Client, method, shortsURL, userAgent string) (int, error) {
+	req, err := http.NewRequestWithContext(ctx, method, shortsURL, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -142,9 +150,10 @@ func isThumbnailPortrait(thumbnail Thumbnail) bool {
 }
 
 func (c *client) getDesktopPlayerDetails(videoId string) (*VideoDetails, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	return c.getDesktopPlayerDetailsContext(context.Background(), videoId)
+}
 
+func (c *client) getDesktopPlayerDetailsContext(ctx context.Context, videoId string) (*VideoDetails, error) {
 	token, err := c.auth.Token(ctx)
 	metrics.ObserveYouTubeAPICall("player", "resolve_auth_token", err)
 	if err != nil {
@@ -164,7 +173,7 @@ func (c *client) getDesktopPlayerDetails(videoId string) (*VideoDetails, error) 
 	}
 
 	client := c.httpClientWithTimeout(10 * time.Second)
-	req, err := http.NewRequest("POST", playerURL.String(), body)
+	req, err := http.NewRequestWithContext(ctx, "POST", playerURL.String(), body)
 	metrics.ObserveYouTubeAPICall("player", "build_player_request", err)
 	if err != nil {
 		return nil, err
@@ -208,9 +217,14 @@ func (c *client) getDesktopPlayerDetails(videoId string) (*VideoDetails, error) 
 	if channelID == "" {
 		channelID = details.Microformat.PlayerMicroformatRenderer.ExternalChannelID
 	}
+	channelTitle := details.PlayerVideoDetails.Author
+	if channelTitle == "" {
+		channelTitle = details.Microformat.PlayerMicroformatRenderer.OwnerChannelName
+	}
 	fullDetails := VideoDetails{
-		ChannelID: channelID,
-		Duration:  duration,
+		ChannelTitle: channelTitle,
+		ChannelID:    channelID,
+		Duration:     duration,
 		Video: Video{
 			Type:        VideoTypeVideo,
 			ID:          videoId,
@@ -287,7 +301,7 @@ func (c *client) getDesktopPlayerDetails(videoId string) (*VideoDetails, error) 
 
 	// Fallback: check if /shorts/{id} URL resolves (200 = short, 303 = not short)
 	if fullDetails.Duration > 0 && fullDetails.Duration <= 180 {
-		if c.isShortsURL(videoId, bodyContext.UserAgent) {
+		if c.isShortsURLContext(ctx, videoId, bodyContext.UserAgent) {
 			fullDetails.Type = VideoTypeShort
 			return &fullDetails, nil
 		}

@@ -205,7 +205,8 @@ type YouTubeTVSyncService struct {
 	reconnectMin           time.Duration
 	reconnectMax           time.Duration
 
-	metrics *tvSyncMetrics
+	metrics  *tvSyncMetrics
+	metadata *tvMetadataImporter
 
 	workersMu sync.Mutex
 	workers   map[string]*tvSyncWorker
@@ -257,6 +258,7 @@ func NewYouTubeTVSyncService(db database.Client) (*YouTubeTVSyncService, error) 
 		workers:                map[string]*tvSyncWorker{},
 	}
 
+	service.metadata = newTVMetadataImporter(db, service.persistTVProgress)
 	return service, nil
 }
 
@@ -871,20 +873,22 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 			s.processSponsorSkip(ctx, account.UserID, videoID, videoRuntime, playback, session, now, runtime.sponsorCategories)
 		}
 
-		if shouldWriteProgress(playback.State, now, videoRuntime.lastProgressWrite) {
-			resolved, err := UpdateViewProgress(ctx, s.db, account.UserID, videoID, observedSecond)
-			if err != nil {
-				if isUnknownVideoProgressError(err) {
-					log.Debug().Str("userID", account.UserID).Str("videoID", videoID).Msg("skipping tv progress sync for unknown video")
-					return nil
+		// Keep every observation while importing, including a final event or
+		// backward seek inside the usual progress write interval.
+		validProgressState := state == "" || state == "1" || state == "2" || state == "0"
+		if validProgressState && s.metadata.queue(ctx, account.UserID, videoID, observedSecond, true) {
+			videoRuntime.lastProgressWrite = now
+		} else if shouldWriteProgress(playback.State, now, videoRuntime.lastProgressWrite) {
+			if err := s.persistTVProgress(ctx, account.UserID, videoID, observedSecond); err != nil {
+				if isUnknownVideoProgressError(err) && s.metadata.queue(ctx, account.UserID, videoID, observedSecond, false) {
+					videoRuntime.lastProgressWrite = now
+				} else if isUnknownVideoProgressError(err) {
+					log.Debug().Str("userID", account.UserID).Str("videoID", videoID).Msg("TV video import unavailable or backing off")
+				} else {
+					log.Warn().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Msg("failed to sync TV progress")
 				}
-				log.Warn().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Msg("failed to sync tv progress")
 			} else {
-				s.recordProgressUpdate(account.UserID, videoID, observedSecond, resolved)
 				videoRuntime.lastProgressWrite = now
-				if cleanupDB, ok := s.db.(watchLaterCleanupDB); ok {
-					_ = RemoveFromWatchLaterIfFullyWatched(ctx, cleanupDB, account.UserID, videoID, resolved)
-				}
 			}
 		}
 	}

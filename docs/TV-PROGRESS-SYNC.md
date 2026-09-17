@@ -227,6 +227,25 @@ Process events while playing:
 3. Persist at most once per `write_interval` using the same view write path used by the app.
 4. After write, run existing "remove watch-later if fully watched" rule.
 
+Unknown-video imports run in the background, using the existing authenticated
+desktop player for video metadata and the public channel page for channel
+metadata. This path never calls Data API v3 or `CacheChannel`. Cached videos and
+complete channel records are reused. If the channel page fails, the player's
+channel ID and name provide a minimal channel record so progress can still save.
+An incomplete channel can be enriched when another video from that channel is
+imported after the channel retry cooldown.
+
+Imports are deduplicated by video ID, and concurrent channel lookups are shared.
+While an import is pending, the latest valid progress for each user is retained,
+including backward seeks and ended events inside the normal write interval.
+These observations survive a lounge disconnect. There are at most 128 pending
+video jobs and three active imports; each job has a 90-second deadline and up to
+three import attempts, with 2- and 10-second delays. The player client also has
+its existing internal retries. Failed video imports and channel-page fetches
+have a one-minute cooldown. Progress writes retry transient failures as well.
+The queue is in memory: process restarts, exhausted retries, and queue saturation
+can still lose observations. Channel pages can change or be throttled by YouTube.
+
 Default constants:
 - `tvSyncProgressWriteIntervalSec = 10`
 - `tvSyncResumeStartWindowSec = 90`
