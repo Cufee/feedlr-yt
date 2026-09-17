@@ -3,9 +3,10 @@
 ## Overview
 
 The YouTube client combines:
-1. **YouTube Data API v3** - Channel search, metadata
-2. **Desktop Player API** - Video details, playback info (undocumented)
-3. **OAuth2 Device Flow** - User authentication for personalized features
+1. **YouTube Data API v3** - Channel search and playlist items
+2. **Public channel pages** - Channel metadata without Data API quota
+3. **Desktop Player API** - Video details, playback info (undocumented)
+4. **OAuth2 Device Flow** - User authentication for personalized features
 
 ## Location
 
@@ -58,8 +59,13 @@ type Channel struct {
 ### Get Channel Details
 
 ```go
-channel, err := ytClient.GetChannel(ctx, channelID)
+channel, err := ytClient.GetChannelPage(ctx, channelID)
+uploadsPlaylistID, err := youtube.ChannelUploadsPlaylistID(channelID)
 ```
+
+`GetChannelPage` fetches the public `/channel/{id}` page and parses its embedded
+metadata. It does not use GCP credentials or Data API quota. The uploads playlist
+ID is derived locally by replacing the channel ID's `UC` prefix with `UU`.
 
 ### Get Channel Videos
 
@@ -74,7 +80,7 @@ videos, err := ytClient.GetChannelVideos(
 ```
 
 **Flow:**
-1. Gets channel's uploads playlist ID
+1. Derives the channel's uploads playlist ID locally
 2. Fetches playlist items
 3. Gets video details for each item
 4. Filters out shorts, private videos

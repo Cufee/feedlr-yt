@@ -32,6 +32,49 @@ func TestGetChannelPageUsesPublicPage(t *testing.T) {
 	}
 }
 
+func TestChannelUploadsPlaylistID(t *testing.T) {
+	tests := []struct {
+		name      string
+		channelID string
+		want      string
+		wantErr   bool
+	}{
+		{
+			name:      "standard channel",
+			channelID: "UCYO_jab_esuFRV4b17AJtAw",
+			want:      "UUYO_jab_esuFRV4b17AJtAw",
+		},
+		{
+			name:      "hyphens and underscores",
+			channelID: "UCBR8-60-B28hp2BmDPdntcQ",
+			want:      "UUBR8-60-B28hp2BmDPdntcQ",
+		},
+		{name: "wrong prefix", channelID: "UUYO_jab_esuFRV4b17AJtAw", wantErr: true},
+		{name: "too short", channelID: "UC123", wantErr: true},
+		{name: "too long", channelID: "UCYO_jab_esuFRV4b17AJtAwx", wantErr: true},
+		{name: "invalid characters", channelID: "UCYO/jab/esuFRV4b17AJtAw", wantErr: true},
+		{name: "surrounding whitespace", channelID: " UCYO_jab_esuFRV4b17AJtAw", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ChannelUploadsPlaylistID(tt.channelID)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("ChannelUploadsPlaylistID(%q) succeeded with %q", tt.channelID, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want {
+				t.Fatalf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestParseChannelPageRejectsUnavailableAndMismatchedPages(t *testing.T) {
 	for _, body := range []string{
 		`<html>Before you continue to YouTube</html>`,

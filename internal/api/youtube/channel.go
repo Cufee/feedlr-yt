@@ -74,34 +74,13 @@ func (c *client) SearchChannels(query string, limit int) ([]Channel, error) {
 	return channels, nil
 }
 
-func (c *client) GetChannel(channelID string) (*Channel, error) {
-	res, err := c.service.Channels.List([]string{"id", "snippet"}).Id(channelID).Do()
-	metrics.ObserveYouTubeAPICall("data_v3", "get_channel", err)
-	if err != nil {
-		return nil, errors.Wrap(err, "channels list failed")
-	}
-
-	if len(res.Items) <= 0 {
-		return nil, errors.New("channels list returned no channels")
-	}
-
-	var channel Channel
-	channel.ID = res.Items[0].Id
-	channel.Title = res.Items[0].Snippet.Title
-	channel.Thumbnail = res.Items[0].Snippet.Thumbnails.Medium.Url
-	channel.Description = res.Items[0].Snippet.Description
-
-	return &channel, nil
-}
-
 func (c *client) GetChannelVideos(channelID string, uploadedAfter time.Time, limit int, skipVideoIds ...string) ([]Video, error) {
-	uploadsId, err := c.GetChannelUploadPlaylistID(channelID)
-	metrics.ObserveYouTubeAPICall("data_v3", "get_channel_videos_upload_playlist", err)
+	uploadsID, err := ChannelUploadsPlaylistID(channelID)
 	if err != nil {
 		return nil, err
 	}
 
-	videos, err := c.GetPlaylistVideos(uploadsId, uploadedAfter, limit, skipVideoIds...)
+	videos, err := c.GetPlaylistVideos(uploadsID, uploadedAfter, limit, skipVideoIds...)
 	metrics.ObserveYouTubeAPICall("data_v3", "get_channel_videos_playlist", err)
 	if err != nil {
 		return nil, err

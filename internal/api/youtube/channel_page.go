@@ -17,6 +17,16 @@ import (
 var channelIDPattern = regexp.MustCompile(`^UC[A-Za-z0-9_-]{22}$`)
 var initialDataAssignment = regexp.MustCompile(`(?:var\s+ytInitialData|window\["ytInitialData"\]|ytInitialData)\s*=\s*`)
 
+// ChannelUploadsPlaylistID derives the canonical uploads playlist for a
+// channel. YouTube channel IDs use a UC prefix and their uploads playlists use
+// the same suffix with a UU prefix.
+func ChannelUploadsPlaylistID(channelID string) (string, error) {
+	if !channelIDPattern.MatchString(channelID) {
+		return "", fmt.Errorf("invalid YouTube channel ID")
+	}
+	return "UU" + channelID[2:], nil
+}
+
 // GetChannelPage fetches public channel metadata without credentials or Data API quota.
 func (c *client) GetChannelPage(ctx context.Context, channelID string) (channel *Channel, err error) {
 	defer func() { metrics.ObserveYouTubeAPICall("web", "get_channel_page", err) }()

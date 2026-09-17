@@ -21,7 +21,7 @@ func TestGetPlaylistVideos(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	playlist, err := client.GetChannelUploadPlaylistID("UCUyeluBRhGPCW4rPe_UvBZQ")
+	playlist, err := ChannelUploadsPlaylistID("UCUyeluBRhGPCW4rPe_UvBZQ")
 	if err != nil {
 		t.Error(err)
 	}

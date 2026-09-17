@@ -953,7 +953,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "100 * sum(rate(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel|get_channel_upload_playlist|get_channel_videos_upload_playlist|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\",outcome=\"error\"}[$__rate_interval])) / clamp_min(sum(rate(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel|get_channel_upload_playlist|get_channel_videos_upload_playlist|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\"}[$__rate_interval])), 1e-9)",
+          "expr": "100 * sum(rate(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel_page|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\",outcome=\"error\"}[$__rate_interval])) / clamp_min(sum(rate(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel_page|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\"}[$__rate_interval])), 1e-9)",
           "legendFormat": "",
           "range": true,
           "refId": "A"
@@ -1017,7 +1017,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(rate(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel|get_channel_upload_playlist|get_channel_videos_upload_playlist|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\",outcome=\"error\"}[$__rate_interval]))",
+          "expr": "sum(rate(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel_page|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\",outcome=\"error\"}[$__rate_interval]))",
           "legendFormat": "",
           "range": true,
           "refId": "A"
@@ -1192,7 +1192,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (operation, outcome) (rate(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel|get_channel_upload_playlist|get_channel_videos_upload_playlist|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\"}[$__rate_interval]))",
+          "expr": "sum by (operation, outcome) (rate(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel_page|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\"}[$__rate_interval]))",
           "legendFormat": "{{operation}} / {{outcome}}",
           "range": true,
           "refId": "A"
@@ -1325,7 +1325,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "topk(20, sum by (client, operation) (increase(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel|get_channel_upload_playlist|get_channel_videos_upload_playlist|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\",outcome=\"error\"}[$__range])))",
+          "expr": "topk(20, sum by (client, operation) (increase(feedlr_youtube_api_calls_total{operation=~\"get_video_player_details|get_channel_page|get_channel_videos_playlist|list_playlist_items|playlist_video_details_batch|player_request|player_status|parse_player_response|resolve_auth_token|resolve_player_context|build_player_payload|build_player_request|player_response_body|shorts_head_probe\",outcome=\"error\"}[$__range])))",
           "format": "table",
           "instant": true,
           "legendFormat": "",

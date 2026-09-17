@@ -16,20 +16,6 @@ type PlayListItemWithDetails struct {
 	Duration int
 }
 
-func (c *client) GetChannelUploadPlaylistID(channelId string) (string, error) {
-	playlists, err := c.service.Channels.List([]string{"id", "contentDetails"}).Id(channelId).Fields("items(contentDetails/relatedPlaylists/uploads)").Do()
-	metrics.ObserveYouTubeAPICall("data_v3", "get_channel_upload_playlist", err)
-	if err != nil {
-		return "", errors.Wrap(err, "channels list failed")
-	}
-
-	if len(playlists.Items) <= 0 {
-		return "", errors.New("channels list returned no channels")
-	}
-
-	return playlists.Items[0].ContentDetails.RelatedPlaylists.Uploads, nil
-}
-
 func (c *client) GetPlaylistVideos(playlistId string, uploadedAfter time.Time, limit int, skipVideoIds ...string) ([]Video, error) {
 	if playlistId == "" {
 		return nil, errors.New("playlist id cannot be blank")

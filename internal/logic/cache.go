@@ -117,52 +117,94 @@ func CacheChannelVideos(ctx context.Context, db database.Client, limit int, chan
 Saves the channel to the database if it doesn't exist already and returns the channel model
 */
 func CacheChannel(ctx context.Context, db database.ChannelsClient, channelID string) (*models.Channel, bool, error) {
+	if youtube.DefaultClient == nil {
+		err := errors.New("youtube client is unavailable")
+		metrics.ObserveVideoRefresh("cache_channel", err)
+		return nil, false, err
+	}
+	return cacheChannel(ctx, db, channelID, youtube.DefaultClient.GetChannelPage)
+}
+
+func cacheChannel(
+	ctx context.Context,
+	db database.ChannelsClient,
+	channelID string,
+	fetch func(context.Context, string) (*youtube.Channel, error),
+) (*models.Channel, bool, error) {
+	uploadsPlaylistID, err := youtube.ChannelUploadsPlaylistID(channelID)
+	if err != nil {
+		metrics.ObserveVideoRefresh("cache_channel", err)
+		return nil, false, err
+	}
+
 	dctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
 	existing, err := db.GetChannel(dctx, channelID)
-	if err == nil && existing.UploadsPlaylistID != "" && time.Since(existing.UpdatedAt) < 7*24*time.Hour {
+	if err != nil && !database.IsErrNotFound(err) {
+		metrics.ObserveVideoRefresh("cache_channel", err)
+		return nil, false, errors.Wrap(err, "db#GetChannel")
+	}
+	if err != nil {
+		existing = nil
+	}
+
+	if existing != nil && time.Since(existing.UpdatedAt) < 7*24*time.Hour {
+		if existing.UploadsPlaylistID != uploadsPlaylistID {
+			existing.UploadsPlaylistID = uploadsPlaylistID
+			if err := upsertCachedChannel(ctx, db, existing); err != nil {
+				metrics.ObserveVideoRefresh("cache_channel", err)
+				return nil, false, err
+			}
+		}
 		metrics.ObserveVideoRefresh("cache_channel", nil)
 		return existing, true, nil
 	}
 
-	channel, err := youtube.DefaultClient.GetChannel(channelID)
+	channel, err := fetch(ctx, channelID)
+	if err == nil && (channel == nil || channel.ID != channelID || channel.Title == "") {
+		err = errors.New("public channel metadata is incomplete")
+	}
 	if err != nil {
+		if existing != nil && ctx.Err() == nil {
+			existing.UploadsPlaylistID = uploadsPlaylistID
+			log.Warn().Err(err).Str("channelID", channelID).Msg("using stale channel after public metadata fetch failed")
+			metrics.ObserveVideoRefresh("cache_channel_stale_fallback", nil)
+			return existing, true, nil
+		}
 		metrics.ObserveVideoRefresh("cache_channel", err)
-		return nil, false, errors.Wrap(err, "youtube#GetChannel")
+		return nil, false, errors.Wrap(err, "youtube#GetChannelPage")
 	}
+	record := existing
+	if record == nil {
+		record = &models.Channel{ID: channelID}
+	}
+	record.Title = channel.Title
+	if channel.Description != "" {
+		record.Description = channel.Description
+	}
+	if channel.Thumbnail != "" {
+		record.Thumbnail = channel.Thumbnail
+	}
+	record.UploadsPlaylistID = uploadsPlaylistID
 
-	uploadsPlaylist, err := youtube.DefaultClient.GetChannelUploadPlaylistID(channelID)
-	if err != nil {
+	if err := upsertCachedChannel(ctx, db, record); err != nil {
 		metrics.ObserveVideoRefresh("cache_channel", err)
-		return nil, false, errors.Wrap(err, "youtube#GetChannelUploadPlaylistID")
-	}
-
-	record := &models.Channel{
-		ID:                channel.ID,
-		Title:             channel.Title,
-		Description:       channel.Description,
-		Thumbnail:         channel.Thumbnail,
-		UploadsPlaylistID: uploadsPlaylist,
-	}
-
-	// Preserve FeedUpdatedAt from the existing row when refreshing stale metadata
-	if existing != nil {
-		record.FeedUpdatedAt = existing.FeedUpdatedAt
-	}
-
-	uctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
-	err = db.UpsertChannel(uctx, record)
-	if err != nil {
-		metrics.ObserveVideoRefresh("cache_channel", err)
-		return nil, false, errors.Wrap(err, "db#UpsertChannel")
+		return nil, false, err
 	}
 
 	metrics.ObserveVideoRefresh("cache_channel", nil)
 	// Return cached=true when refreshing an existing channel (only metadata changed)
 	return record, existing != nil, nil
+}
+
+func upsertCachedChannel(ctx context.Context, db database.ChannelsClient, channel *models.Channel) error {
+	uctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	if err := db.UpsertChannel(uctx, channel); err != nil {
+		return errors.Wrap(err, "db#UpsertChannel")
+	}
+	return nil
 }
 
 func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) {
@@ -248,6 +290,7 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 	// Ensure channel exists before upserting video (FK constraint on channel_id)
 	if _, _, err := CacheChannel(ctx, db, video.ChannelID); err != nil {
 		log.Warn().Err(err).Str("videoID", videoID).Str("channelID", video.ChannelID).Msg("failed to cache channel before video upsert")
+		return
 	}
 
 	if err := db.UpsertVideos(ctx, update); err != nil {
@@ -256,10 +299,6 @@ func RefreshVideoCache(ctx context.Context, db database.Client, videoID string) 
 		return
 	}
 
-	if _, _, err := CacheChannel(ctx, db, video.ChannelID); err != nil {
-		metrics.ObserveVideoRefresh("refresh_video_cache_channel", err)
-		log.Warn().Err(err).Str("videoID", videoID).Str("channelID", video.ChannelID).Msg("failed to cache channel during video refresh")
-	}
 	metrics.ObserveVideoRefresh("refresh_video_cache", nil)
 	metrics.AddVideoRefreshItems("refresh_video_cache", 1)
 }
