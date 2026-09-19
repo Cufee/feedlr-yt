@@ -25,7 +25,6 @@ import (
 
 const (
 	tvSyncUserInactiveDays = 14
-	tvSyncMaxUsersPerTick  = 100
 )
 
 const (
@@ -33,6 +32,11 @@ const (
 	tvSyncReconnectMin              = 10 * time.Second
 	tvSyncReconnectMax              = 5 * time.Minute
 	tvSyncResumeReconnectWindow     = 2 * time.Minute
+	tvSyncPlaybackFreshness         = 60 * time.Second
+	tvSyncResumeRetryInterval       = 5 * time.Second
+	tvSyncResumeConfirmationTimeout = 30 * time.Second
+	tvSyncResumeMaxAttempts         = 3
+	tvSyncResumeToleranceSec        = 2
 	tvSyncProgressWriteInterval     = 10 * time.Second
 	tvSyncResumeStartWindowSec      = 90
 	tvSyncResumeAheadThresholdSec   = 8
@@ -70,12 +74,23 @@ type tvSyncSegment struct {
 }
 
 type tvSyncVideoRuntime struct {
-	lastProgressWrite time.Time
-	lastState         string
-	sponsorLoaded     bool
-	sponsorSegments   []tvSyncSegment
-	skippedSegments   map[int]bool
-	lastSponsorSkipAt time.Time
+	lastProgressWrite    time.Time
+	lastState            string
+	observedSecond       int
+	hasObservation       bool
+	progressDirty        bool
+	resumeLoaded         bool
+	resumeTarget         int
+	resumeWaitForAdvance bool
+	resumeObserved       bool
+	resumeLastTime       float64
+	resumeAttempts       int
+	resumeStartedAt      time.Time
+	lastResumeAttempt    time.Time
+	sponsorLoaded        bool
+	sponsorSegments      []tvSyncSegment
+	skippedSegments      map[int]bool
+	lastSponsorSkipAt    time.Time
 }
 
 type tvSyncRuntime struct {
@@ -86,6 +101,9 @@ type tvSyncRuntime struct {
 	currentVideoID       string
 	currentPlaybackState string
 	resumeApplied        bool
+	lastPlaybackAt       time.Time
+	lastPlaybackTime     float64
+	hasPlaybackTime      bool
 
 	sponsorEnabled    bool
 	sponsorCategories []sponsorblock.Category
@@ -139,6 +157,11 @@ func (r *tvSyncRuntime) setCurrentVideo(videoID string) bool {
 	r.currentVideoID = videoID
 	r.currentPlaybackState = ""
 	r.resumeApplied = false
+	r.lastPlaybackAt = time.Time{}
+	r.hasPlaybackTime = false
+	// Only the active playback owns skip/resume/progress state. Revisiting a
+	// video starts a new playback and must not inherit old skipped segments.
+	r.videoState = map[string]*tvSyncVideoRuntime{}
 	return true
 }
 
@@ -153,6 +176,9 @@ func (r *tvSyncRuntime) clearCurrentVideo() {
 	r.currentVideoID = ""
 	r.currentPlaybackState = ""
 	r.resumeApplied = false
+	r.lastPlaybackAt = time.Time{}
+	r.hasPlaybackTime = false
+	r.videoState = map[string]*tvSyncVideoRuntime{}
 	r.mu.Unlock()
 }
 
@@ -166,6 +192,32 @@ func (r *tvSyncRuntime) currentPlaybackSnapshot() (string, string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.currentVideoID, r.currentPlaybackState
+}
+
+func (r *tvSyncRuntime) playbackFresh(now time.Time) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return !r.lastPlaybackAt.IsZero() && now.Sub(r.lastPlaybackAt) < tvSyncPlaybackFreshness
+}
+
+func (r *tvSyncRuntime) playbackChanged(state string, playback lounge.PlaybackEvent) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return state != r.currentPlaybackState || (playback.HasCurrentTime && (!r.hasPlaybackTime || playback.CurrentTime != r.lastPlaybackTime))
+}
+
+func (r *tvSyncRuntime) observePlayback(state string, playback lounge.PlaybackEvent, now time.Time) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	// Heartbeats and repeated frozen timestamps do not keep playback alive.
+	if state != r.currentPlaybackState || (playback.HasCurrentTime && (!r.hasPlaybackTime || playback.CurrentTime != r.lastPlaybackTime)) {
+		r.lastPlaybackAt = now
+	}
+	r.currentPlaybackState = state
+	if playback.HasCurrentTime {
+		r.hasPlaybackTime = true
+		r.lastPlaybackTime = playback.CurrentTime
+	}
 }
 
 func (r *tvSyncRuntime) resumeAppliedForCurrentVideo() bool {
@@ -360,7 +412,7 @@ func (s *YouTubeTVSyncService) SetEnabled(ctx context.Context, userID string, en
 }
 
 func (s *YouTubeTVSyncService) RunLifecycleTick(ctx context.Context) error {
-	accounts, err := s.db.ListEnabledYouTubeTVSyncAccounts(ctx, tvSyncMaxUsersPerTick)
+	accounts, err := s.db.ListEnabledYouTubeTVSyncAccounts(ctx, 0)
 	if err != nil {
 		return err
 	}
@@ -415,7 +467,8 @@ func (s *YouTubeTVSyncService) RunLifecycleTick(ctx context.Context) error {
 }
 
 func (s *YouTubeTVSyncService) RunConnectionTick(ctx context.Context) error {
-	accounts, err := s.db.ListEnabledYouTubeTVSyncAccounts(ctx, tvSyncMaxUsersPerTick)
+	// Reconciliation needs the complete desired set, not a rotating first page.
+	accounts, err := s.db.ListEnabledYouTubeTVSyncAccounts(ctx, 0)
 	if err != nil {
 		return err
 	}
@@ -534,17 +587,20 @@ func (s *YouTubeTVSyncService) runWorker(ctx context.Context, userID string, wor
 			LastError:       "",
 		})
 
-		err = s.connectAndRunOnce(ctx, account)
+		var healthy bool
+		err = s.connectAndRun(ctx, account, func() { healthy = true })
 		if stdErrors.Is(err, context.Canceled) || stdErrors.Is(err, context.DeadlineExceeded) {
 			if ctx.Err() != nil {
 				return
 			}
 		}
 
-		if err == nil {
+		if err == nil || healthy {
 			backoff = s.reconnectMin
 		} else {
 			backoff = min(backoff*2, s.reconnectMax)
+		}
+		if err != nil {
 			s.recordReconnect(userID, err)
 			log.Warn().Err(err).Str("userID", userID).Msg("tv sync worker loop ended")
 		}
@@ -579,10 +635,17 @@ func (s *YouTubeTVSyncService) sleepWithContext(ctx context.Context, delay time.
 }
 
 func (s *YouTubeTVSyncService) connectAndRunOnce(ctx context.Context, account *database.YouTubeTVSyncAccount) error {
+	return s.connectAndRun(ctx, account, nil)
+}
+
+// onHealthy is called on the subscription goroutine after a sustained period
+// of live playback, so later failures do not retain an old maximum backoff.
+func (s *YouTubeTVSyncService) connectAndRun(ctx context.Context, account *database.YouTubeTVSyncAccount, onHealthy func()) error {
+	userID := account.UserID
 	session, account, err := s.connectSession(ctx, account)
 	if err != nil {
 		now := time.Now().UTC()
-		_ = s.db.UpdateYouTubeTVSyncState(ctx, account.UserID, database.YouTubeTVSyncStateUpdate{
+		_ = s.db.UpdateYouTubeTVSyncState(ctx, userID, database.YouTubeTVSyncStateUpdate{
 			ConnectionState:  tvSyncStateError,
 			StateReason:      "Could not connect to TV",
 			LastError:        sanitizeError(err),
@@ -603,6 +666,7 @@ func (s *YouTubeTVSyncService) connectAndRunOnce(ctx context.Context, account *d
 		LastEventAt:     null.TimeFrom(now),
 	})
 	s.recordConnect(account.UserID)
+	connectedAt := now
 
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -667,7 +731,7 @@ func (s *YouTubeTVSyncService) connectAndRunOnce(ctx context.Context, account *d
 				return
 			case <-ticker.C:
 				videoID, playbackState := runtime.currentPlaybackSnapshot()
-				if videoID == "" || playbackState != "1" {
+				if videoID == "" || playbackState != "1" || !runtime.playbackFresh(time.Now().UTC()) {
 					continue
 				}
 				requestNowPlaying()
@@ -692,9 +756,20 @@ func (s *YouTubeTVSyncService) connectAndRunOnce(ctx context.Context, account *d
 			_ = s.db.UpdateYouTubeTVSyncState(subCtx, account.UserID, update)
 		}
 
-		return s.processEvent(subCtx, account, session, runtime, event)
+		err := s.processEvent(subCtx, account, session, runtime, event)
+		if onHealthy != nil && now.Sub(connectedAt) >= tvSyncPlaybackFreshness && runtime.playbackFresh(now) {
+			_, state := runtime.currentPlaybackSnapshot()
+			if state == "1" {
+				onHealthy()
+				onHealthy = nil
+			}
+		}
+		return err
 	})
 
+	// The stream can close without a final onStateChange. Flush only observations
+	// already validated by the event handler, including those still throttled.
+	s.flushCurrentTVProgress(ctx, account.UserID, runtime)
 	cancel()
 	<-watchdogDone
 	<-nowPlayingPollDone
@@ -770,10 +845,11 @@ func (s *YouTubeTVSyncService) connectSession(ctx context.Context, account *data
 		return nil, account, errors.Wrap(err, "failed to persist refreshed lounge token")
 	}
 
-	account, err = s.db.GetYouTubeTVSyncAccountByUserID(ctx, account.UserID)
+	refreshedAccount, err := s.db.GetYouTubeTVSyncAccountByUserID(ctx, account.UserID)
 	if err != nil {
 		return nil, account, err
 	}
+	account = refreshedAccount
 	token, err = s.DecryptLoungeToken(account)
 	if err != nil {
 		return nil, account, err
@@ -787,151 +863,257 @@ func (s *YouTubeTVSyncService) connectSession(ctx context.Context, account *data
 }
 
 func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *database.YouTubeTVSyncAccount, session *lounge.Session, runtime *tvSyncRuntime, event lounge.Event) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	now := time.Now().UTC()
 	if event.Type == "loungeScreenDisconnected" {
+		s.flushCurrentTVProgress(ctx, account.UserID, runtime)
+		runtime.clearCurrentVideo()
 		return errors.New("screen disconnected")
 	}
-
 	if event.Type == "onPlaybackSpeedChanged" {
-		if err := s.lounge.GetNowPlaying(ctx, session); err != nil {
-			log.Debug().Err(err).Str("userID", account.UserID).Msg("failed to request nowPlaying after playback speed change")
+		_, state := runtime.currentPlaybackSnapshot()
+		if state == "1" && runtime.playbackFresh(now) {
+			return s.lounge.GetNowPlaying(ctx, session)
 		}
+		return nil
 	}
 
 	playback, ok := lounge.ExtractPlaybackEvent(event)
 	if !ok {
 		return nil
 	}
-
-	videoID := strings.TrimSpace(playback.VideoID)
+	// A nowPlaying snapshot owns its video identity; only a partial state-change
+	// event may inherit it. An explicit empty ID always means no active video.
+	if playback.VideoID == "" && (playback.HasVideoID || event.Type == "nowPlaying") {
+		s.flushCurrentTVProgress(ctx, account.UserID, runtime)
+		runtime.clearCurrentVideo()
+		return nil
+	}
+	videoID := playback.VideoID
 	if videoID == "" {
+		if !runtime.playbackFresh(now) {
+			return nil
+		}
 		videoID = runtime.currentVideo()
 	}
 	if videoID == "" {
 		return nil
 	}
-
+	// A TV can go idle without ending the Lounge transport. Starting the same
+	// video hours later is a new playback, while repeated frozen snapshots are
+	// not. Require advancement before resuming after this ambiguous transition.
+	restartingAfterIdle := runtime.currentVideo() == videoID && playback.State == "1" && !runtime.playbackFresh(now) && runtime.playbackChanged("1", playback)
+	if restartingAfterIdle {
+		s.flushCurrentTVProgress(ctx, account.UserID, runtime)
+		runtime.clearCurrentVideo()
+	}
+	if runtime.currentVideo() != videoID {
+		s.flushCurrentTVProgress(ctx, account.UserID, runtime)
+	}
 	isNewVideo := runtime.setCurrentVideo(videoID)
 	if isNewVideo {
 		_ = s.db.UpdateYouTubeTVSyncState(ctx, account.UserID, database.YouTubeTVSyncStateUpdate{
 			ConnectionState: tvSyncStateConnected,
-			StateReason:     "",
-			LastError:       "",
 			LastVideoID:     null.StringFrom(videoID),
 		})
-		if !playback.HasCurrentTime {
-			if err := s.lounge.GetNowPlaying(ctx, session); err != nil {
-				log.Debug().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Msg("failed to request nowPlaying for new video")
-			}
-		}
 	}
-
 	videoRuntime := runtime.videoRuntime(videoID)
-	now := time.Now().UTC()
+	if restartingAfterIdle {
+		videoRuntime.resumeWaitForAdvance = true
+	}
 	state := strings.TrimSpace(playback.State)
-	if state != "" {
-		runtime.setCurrentPlaybackState(state)
-	}
-	if !runtime.resumeAppliedForCurrentVideo() && shouldAttemptResumeSeek(isNewVideo, playback, state, videoRuntime.lastState) {
-		if shouldSuppressResumeSeekAfterReconnect(account, videoID, playback, now) {
-			runtime.markResumeAppliedForCurrentVideo()
-			if state != "" {
-				videoRuntime.lastState = state
+	if state == "" {
+		if !runtime.playbackFresh(now) {
+			if isNewVideo {
+				return s.lounge.GetNowPlaying(ctx, session)
 			}
-			if err := s.lounge.GetNowPlaying(ctx, session); err != nil {
-				log.Debug().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Msg("failed to request nowPlaying after reconnect resume suppression")
-			}
-			log.Debug().Str("userID", account.UserID).Str("videoID", videoID).Msg("suppressed tv resume seek after recent reconnect")
-			// Ignore the potentially stale event that triggered suppression.
 			return nil
 		}
-
-		saved := s.getStoredProgress(ctx, account.UserID, videoID)
-		if shouldApplyResumeSeek(saved, playback) {
-			if err := s.lounge.SeekTo(ctx, session, float64(saved)); err != nil {
-				log.Debug().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Int("saved_progress", saved).Msg("failed to apply tv resume seek")
-			} else {
-				videoRuntime.lastSponsorSkipAt = now
-				log.Debug().Str("userID", account.UserID).Str("videoID", videoID).Int("saved_progress", saved).Msg("applied tv resume seek from app state")
-			}
-			runtime.markResumeAppliedForCurrentVideo()
-			if state != "" {
-				videoRuntime.lastState = state
-			}
-			// Never persist pre-seek TV timestamps from the same event.
-			return nil
-		}
-		runtime.markResumeAppliedForCurrentVideo()
+		_, state = runtime.currentPlaybackSnapshot()
 	}
+	previousState := videoRuntime.lastState
+	videoRuntime.lastState = state
+	runtime.observePlayback(state, playback, now)
 
-	observedSecond := 0
-	if playback.HasCurrentTime {
-		observedSecond = clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration)
-	}
-
-	if playback.HasCurrentTime {
-		if runtime.sponsorEnabled {
-			s.processSponsorSkip(ctx, account.UserID, videoID, videoRuntime, playback, session, now, runtime.sponsorCategories)
-		}
-
-		// Keep every observation while importing, including a final event or
-		// backward seek inside the usual progress write interval.
-		validProgressState := state == "" || state == "1" || state == "2" || state == "0"
-		if validProgressState && s.metadata.queue(ctx, account.UserID, videoID, observedSecond, true) {
-			videoRuntime.lastProgressWrite = now
-		} else if shouldWriteProgress(playback.State, now, videoRuntime.lastProgressWrite) {
-			if err := s.persistTVProgress(ctx, account.UserID, videoID, observedSecond); err != nil {
-				if isUnknownVideoProgressError(err) && s.metadata.queue(ctx, account.UserID, videoID, observedSecond, false) {
-					videoRuntime.lastProgressWrite = now
-				} else if isUnknownVideoProgressError(err) {
-					log.Debug().Str("userID", account.UserID).Str("videoID", videoID).Msg("TV video import unavailable or backing off")
-				} else {
-					log.Warn().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Msg("failed to sync TV progress")
-				}
-			} else {
-				videoRuntime.lastProgressWrite = now
-			}
-		}
-	}
-	if state != "" {
-		videoRuntime.lastState = state
-	}
+	// Ended snapshots never initiate resume. A zero/absent terminal timestamp
+	// flushes our last valid observation instead of replacing it with zero.
 	if state == "0" {
+		if runtime.resumeAppliedForCurrentVideo() && playback.HasCurrentTime {
+			videoRuntime.observeProgress(clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration))
+		}
+		s.flushCurrentTVProgress(ctx, account.UserID, runtime)
 		runtime.clearCurrentVideo()
+		return nil
 	}
+	if state != "1" && state != "2" {
+		return nil
+	}
+	if !playback.HasCurrentTime {
+		if state == "2" {
+			s.flushCurrentTVProgress(ctx, account.UserID, runtime)
+		} else if isNewVideo || previousState != "1" {
+			return s.lounge.GetNowPlaying(ctx, session)
+		}
+		return nil
+	}
+	if !runtime.playbackFresh(now) {
+		return nil
+	}
+	if !runtime.resumeAppliedForCurrentVideo() {
+		// Pausing may confirm a pending seek, but a paused snapshot alone cannot
+		// establish a new playback session or issue another seek.
+		second := clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration)
+		if state == "2" && videoRuntime.resumeAttempts > 0 && second > 0 && second >= videoRuntime.resumeTarget-tvSyncResumeToleranceSec {
+			runtime.markResumeAppliedForCurrentVideo()
+		} else if state != "1" {
+			return nil
+		} else {
+			ready, err := s.resolveTVResume(ctx, account, session, runtime, videoRuntime, videoID, playback, now)
+			if err != nil {
+				log.Warn().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Msg("failed to read TV resume progress")
+			}
+			if !ready {
+				return nil
+			}
+		}
+	}
+
+	second := clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration)
+	// Zero is also emitted during player teardown. A deliberate restart is saved
+	// once playback advances above zero; positive backward seeks remain valid.
+	videoRuntime.observeProgress(second)
+	if second > 0 && state == "1" && runtime.sponsorEnabled {
+		s.processSponsorSkip(ctx, account.UserID, videoID, videoRuntime, playback, session, now, runtime.sponsorCategories)
+	}
+	s.writeTVProgress(ctx, account.UserID, videoID, videoRuntime, now, state == "2")
 	return nil
 }
 
-func shouldWriteProgress(state string, now time.Time, lastWrite time.Time) bool {
-	if state != "" && state != "1" && state != "2" && state != "0" {
-		return false
+func (v *tvSyncVideoRuntime) observeProgress(second int) {
+	if second <= 0 {
+		return
 	}
-	if lastWrite.IsZero() {
-		return true
+	if !v.hasObservation || v.observedSecond != second {
+		v.observedSecond = second
+		v.hasObservation = true
+		v.progressDirty = true
 	}
-	return now.Sub(lastWrite) >= tvSyncProgressWriteInterval
 }
 
-func shouldAttemptResumeSeek(isNewVideo bool, playback lounge.PlaybackEvent, state, lastState string) bool {
-	if !playback.HasCurrentTime {
+func (s *YouTubeTVSyncService) flushCurrentTVProgress(ctx context.Context, userID string, runtime *tvSyncRuntime) {
+	if videoID := runtime.currentVideo(); videoID != "" {
+		s.writeTVProgress(ctx, userID, videoID, runtime.videoRuntime(videoID), time.Now().UTC(), true)
+	}
+}
+
+func (s *YouTubeTVSyncService) writeTVProgress(ctx context.Context, userID, videoID string, v *tvSyncVideoRuntime, now time.Time, force bool) {
+	if !v.progressDirty {
+		return
+	}
+	// Pending imports retain every valid observation, including a backward seek
+	// or terminal event inside the ordinary write interval.
+	if s.metadata.queue(ctx, userID, videoID, v.observedSecond, true) {
+		v.progressDirty = false
+		v.lastProgressWrite = now
+		return
+	}
+	if !force && !shouldWriteProgress("1", now, v.lastProgressWrite) {
+		return
+	}
+	if err := s.persistTVProgress(ctx, userID, videoID, v.observedSecond); err != nil {
+		if !isUnknownVideoProgressError(err) || !s.metadata.queue(ctx, userID, videoID, v.observedSecond, false) {
+			log.Warn().Err(err).Str("userID", userID).Str("videoID", videoID).Msg("failed to sync TV progress")
+			return
+		}
+	}
+	v.progressDirty = false
+	v.lastProgressWrite = now
+}
+
+// resolveTVResume stays pending across partial events, stale snapshots and
+// failed commands. An HTTP acknowledgement is not playback confirmation.
+func (s *YouTubeTVSyncService) resolveTVResume(ctx context.Context, account *database.YouTubeTVSyncAccount, session *lounge.Session, runtime *tvSyncRuntime, v *tvSyncVideoRuntime, videoID string, playback lounge.PlaybackEvent, now time.Time) (bool, error) {
+	if !v.resumeLoaded {
+		// Joining playback already beyond the start window should not override
+		// the TV's position. Evaluate resume on the first complete playing event.
+		if clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration) > tvSyncResumeStartWindowSec {
+			runtime.markResumeAppliedForCurrentVideo()
+			return true, nil
+		}
+		saved, err := s.getStoredProgress(ctx, account.UserID, videoID)
+		if err != nil {
+			return false, err
+		}
+		v.resumeLoaded = true
+		v.resumeTarget = saved
+		v.resumeWaitForAdvance = shouldApplyResumeSeek(saved, playback) && (v.resumeWaitForAdvance || shouldSuppressResumeSeekAfterReconnect(account, videoID, playback, now))
+	}
+	advancing := v.resumeObserved && playback.CurrentTime > v.resumeLastTime && playback.CurrentTime > 0
+	v.resumeObserved = true
+	v.resumeLastTime = playback.CurrentTime
+
+	if v.resumeWaitForAdvance {
+		if !advancing {
+			if v.lastResumeAttempt.IsZero() {
+				v.lastResumeAttempt = now
+				if err := s.lounge.GetNowPlaying(ctx, session); err != nil {
+					log.Debug().Err(err).Str("userID", account.UserID).Msg("failed to refresh playback after reconnect")
+				}
+			}
+			return false, nil
+		}
+		v.resumeWaitForAdvance = false
+		v.lastResumeAttempt = time.Time{}
+	}
+
+	second := clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration)
+	if v.resumeAttempts > 0 {
+		confirmed := second > 0 && second >= v.resumeTarget-tvSyncResumeToleranceSec
+		// After bounded retries, advancing playback may represent a user override
+		// or a device that ignored the seek. Frozen/zero snapshots remain blocked.
+		overridden := now.Sub(v.resumeStartedAt) >= tvSyncResumeConfirmationTimeout && advancing
+		if confirmed || overridden {
+			runtime.markResumeAppliedForCurrentVideo()
+			return true, nil
+		}
+		if v.resumeAttempts >= tvSyncResumeMaxAttempts || now.Sub(v.lastResumeAttempt) < tvSyncResumeRetryInterval {
+			return false, nil
+		}
+	} else if !shouldApplyResumeSeek(v.resumeTarget, playback) {
+		runtime.markResumeAppliedForCurrentVideo()
+		return true, nil
+	}
+
+	if v.resumeAttempts == 0 {
+		v.resumeStartedAt = now
+	}
+	v.resumeAttempts++
+	v.lastResumeAttempt = now
+	if err := s.lounge.SeekTo(ctx, session, float64(v.resumeTarget)); err != nil {
+		log.Debug().Err(err).Str("userID", account.UserID).Str("videoID", videoID).Msg("failed to apply TV resume seek")
+	} else {
+		v.lastSponsorSkipAt = now
+	}
+	return false, nil
+}
+
+func shouldWriteProgress(state string, now time.Time, lastWrite time.Time) bool {
+	if state != "1" && state != "2" && state != "0" {
 		return false
 	}
-	currentSecond := clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration)
-	if isNewVideo && currentSecond <= tvSyncResumeStartWindowSec {
-		return true
-	}
-	return state == "1" && lastState != "" && lastState != "1"
+	return state == "2" || state == "0" || lastWrite.IsZero() || now.Sub(lastWrite) >= tvSyncProgressWriteInterval
 }
 
 func shouldApplyResumeSeek(savedProgress int, playback lounge.PlaybackEvent) bool {
 	if savedProgress <= 0 || !playback.HasCurrentTime {
 		return false
 	}
-
 	currentSecond := clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration)
 	if currentSecond <= tvSyncResumeStartWindowSec {
-		return true
+		return savedProgress > currentSecond
 	}
-
 	return savedProgress >= currentSecond+tvSyncResumeAheadThresholdSec
 }
 
@@ -942,13 +1124,9 @@ func shouldSuppressResumeSeekAfterReconnect(account *database.YouTubeTVSyncAccou
 	if !account.LastVideoID.Valid || strings.TrimSpace(account.LastVideoID.String) != videoID {
 		return false
 	}
-	if !account.LastDisconnectAt.Valid {
+	if !account.LastDisconnectAt.Valid || now.Sub(account.LastDisconnectAt.Time) > tvSyncResumeReconnectWindow {
 		return false
 	}
-	if now.Sub(account.LastDisconnectAt.Time) > tvSyncResumeReconnectWindow {
-		return false
-	}
-
 	currentSecond := clampPlaybackSecond(playback.CurrentTime, playback.Duration, playback.HasDuration)
 	return currentSecond <= tvSyncResumeStartWindowSec
 }
@@ -967,17 +1145,17 @@ func clampPlaybackSecond(current float64, duration float64, hasDuration bool) in
 	return seconds
 }
 
-func (s *YouTubeTVSyncService) getStoredProgress(ctx context.Context, userID, videoID string) int {
+func (s *YouTubeTVSyncService) getStoredProgress(ctx context.Context, userID, videoID string) (int, error) {
 	views, err := s.db.GetUserViews(ctx, userID, videoID)
-	if err != nil || len(views) == 0 {
-		return 0
+	if err != nil && !database.IsErrNotFound(err) {
+		return 0, err
 	}
 	for _, view := range views {
 		if view.VideoID == videoID {
-			return int(view.Progress)
+			return int(view.Progress), nil
 		}
 	}
-	return 0
+	return 0, nil
 }
 
 func isUnknownVideoProgressError(err error) bool {

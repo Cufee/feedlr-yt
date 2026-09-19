@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -46,7 +47,8 @@ type Event struct {
 }
 
 type PlaybackEvent struct {
-	VideoID string
+	VideoID    string
+	HasVideoID bool
 
 	State string
 
@@ -67,6 +69,8 @@ type Session struct {
 
 	commandOffset int64
 	mu            sync.Mutex
+	commandMu     sync.Mutex
+	initialEvents []Event
 }
 
 type Client struct {
@@ -281,6 +285,7 @@ func (c *Client) Connect(ctx context.Context, screenID, loungeToken, deviceName 
 
 	err = parseEventChunks(bytes.NewReader(body), func(events []Event) error {
 		session.applyEvents(events)
+		session.initialEvents = append(session.initialEvents, events...)
 		return nil
 	})
 	if err != nil {
@@ -301,6 +306,19 @@ func (c *Client) Subscribe(ctx context.Context, session *Session, onEvent func(E
 	if session == nil || !session.connected() {
 		metrics.ObserveYouTubeTVCall("subscribe", ErrNotConnected)
 		return ErrNotConnected
+	}
+	// Connect may contain playback as well as session identifiers. Deliver those
+	// observations before requesting events after the cursor we already received.
+	session.mu.Lock()
+	initial := session.initialEvents
+	session.initialEvents = nil
+	session.mu.Unlock()
+	for _, event := range initial {
+		if event.Type != "c" && event.Type != "S" && onEvent != nil {
+			if err := onEvent(event); err != nil {
+				return err
+			}
+		}
 	}
 
 	params := session.commonParams()
@@ -371,6 +389,13 @@ func (c *Client) command(ctx context.Context, session *Session, command string, 
 		metrics.ObserveYouTubeTVCall("command_"+command, ErrNotConnected)
 		return ErrNotConnected
 	}
+	// Serialize the entire request, not just RID allocation, so polling cannot
+	// overtake a seek on the wire. Keep the event-state mutex independent.
+	session.commandMu.Lock()
+	defer session.commandMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	rid, ofs := session.nextCommandRID()
 	params := session.commonParams()
@@ -430,21 +455,23 @@ func ExtractPlaybackEvent(event Event) (PlaybackEvent, bool) {
 
 	playback := PlaybackEvent{}
 	if videoID, ok := payload["videoId"]; ok {
+		playback.HasVideoID = true
 		playback.VideoID, _ = videoID.(string)
+		playback.VideoID = strings.TrimSpace(playback.VideoID)
 	}
 	if state, ok := payload["state"]; ok {
 		playback.State = asString(state)
 	}
-	if currentTime, ok := parseFloatField(payload["currentTime"]); ok {
+	if currentTime, ok := parseFloatField(payload["currentTime"]); ok && currentTime >= 0 {
 		playback.CurrentTime = currentTime
 		playback.HasCurrentTime = true
 	}
-	if duration, ok := parseFloatField(payload["duration"]); ok {
+	if duration, ok := parseFloatField(payload["duration"]); ok && duration > 0 {
 		playback.Duration = duration
 		playback.HasDuration = true
 	}
 
-	if playback.VideoID == "" && !playback.HasCurrentTime && !playback.HasDuration && playback.State == "" {
+	if !playback.HasVideoID && !playback.HasCurrentTime && !playback.HasDuration && playback.State == "" && event.Type != "nowPlaying" {
 		return PlaybackEvent{}, false
 	}
 	return playback, true
@@ -456,7 +483,7 @@ func parseFloatField(v any) (float64, bool) {
 		return 0, false
 	}
 	parsed, err := strconv.ParseFloat(s, 64)
-	if err != nil {
+	if err != nil || math.IsNaN(parsed) || math.IsInf(parsed, 0) {
 		return 0, false
 	}
 	return parsed, true
@@ -665,9 +692,6 @@ func sessionResponseError(statusCode int, body string) error {
 
 func withRequestTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	if timeout <= 0 {
-		return ctx, func() {}
-	}
-	if _, hasDeadline := ctx.Deadline(); hasDeadline {
 		return ctx, func() {}
 	}
 	return context.WithTimeout(ctx, timeout)

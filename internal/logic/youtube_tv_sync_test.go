@@ -54,32 +54,6 @@ func TestClampPlaybackSecond(t *testing.T) {
 	}
 }
 
-func TestShouldAttemptResumeSeek(t *testing.T) {
-	playbackAtStart := lounge.PlaybackEvent{
-		HasCurrentTime: true,
-		CurrentTime:    10,
-	}
-	if !shouldAttemptResumeSeek(true, playbackAtStart, "1", "") {
-		t.Fatal("expected resume attempt for new video near start")
-	}
-
-	playbackOngoing := lounge.PlaybackEvent{
-		HasCurrentTime: true,
-		CurrentTime:    300,
-	}
-	if shouldAttemptResumeSeek(true, playbackOngoing, "1", "") {
-		t.Fatal("did not expect resume attempt for new video that is already ongoing")
-	}
-
-	if !shouldAttemptResumeSeek(false, playbackOngoing, "1", "2") {
-		t.Fatal("expected resume attempt on transition into playing state")
-	}
-
-	if shouldAttemptResumeSeek(false, playbackOngoing, "1", "") {
-		t.Fatal("did not expect resume attempt on first seen ongoing playback state")
-	}
-}
-
 func TestShouldApplyResumeSeek(t *testing.T) {
 	playbackAtStart := lounge.PlaybackEvent{
 		HasCurrentTime: true,

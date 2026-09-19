@@ -83,9 +83,11 @@ Responsibilities:
 
 Notes:
 - Implement command serialization (mutex) to avoid RID/offset races.
+- Deliver playback events from the initial bind response before subscribing at its event cursor.
 - Implement watchdog based on "time since last event".
 - Refresh now-playing state after playback-speed changes.
 - Poll `getNowPlaying` periodically while connected and an active video is known, to ensure steady progress updates without waking idle TV app sessions.
+- Stop polling when playback has not changed for 60 seconds, even if Lounge heartbeats continue.
 
 ### 2) New logic service: `internal/logic/youtube_tv_sync.go`
 
@@ -206,26 +208,33 @@ All states should be shown in Settings UI with human-readable reason and relativ
 ### Resume-on-start
 
 Trigger:
-- new video where current TV position is within the start window,
-- transition into playing state (`state=1`) for an already-known video in the connection session.
+- the first complete playing observation for an active video, including when the video ID, state and position arrive in separate events,
+- renewed playback after the same video has been idle beyond the playback freshness timeout.
 
 Steps:
 1. Load saved progress from `views.progress`.
-2. Determine whether this event represents playback start (new video near start, or play-state transition).
-3. If saved progress is > `0` and current position is within start window, send `seekTo(saved)`.
-4. If current position is beyond start window, seek only when saved progress is ahead by a minimum threshold.
-5. Mark a single in-memory resume flag for the active video so this resume logic is evaluated once per active video.
-6. Skip persisting progress for that same event to avoid writing pre-seek timestamps.
+2. Joining an already ongoing video beyond the 90-second start window accepts the TV's position without seeking.
+3. Near the start, seek only if saved progress is ahead. Paused, ended, unstarted and ad snapshots cannot initiate a seek.
+4. After a recent reconnect or a long idle period, wait for the playhead to advance before issuing a resume seek. Repeated stale snapshots do not complete this check.
+5. Keep resume pending until the TV reports the target position (with a two-second tolerance). HTTP success alone does not confirm a seek; failed commands also keep progress protected.
+6. Retry at most three times, at least five seconds apart. After 30 seconds, advancing playback can establish that the user overrode the seek or the device ignored it. Frozen/zero snapshots still cannot complete resume.
+7. Database read errors preserve progress and leave resume eligible for retry.
+
+Only the active video's runtime is retained. Changing videos resets resume and SponsorBlock skip state.
 
 ### Progress ingest (TV -> Feedlr)
 
-Process events while playing:
+Validate and process playback observations:
 1. Normalize candidate progress:
    - floor seconds,
-   - clamp to `[0, duration]` when duration known.
-2. Ensure the video exists in local cache before writing progress (fetch/cache when missing).
-3. Persist at most once per `write_interval` using the same view write path used by the app.
-4. After write, run existing "remove watch-later if fully watched" rule.
+   - reject negative and non-finite timestamps,
+   - clamp to duration when known,
+   - ignore zero timestamps: TV teardown can emit zero; deliberate restarts are saved once playback advances above zero.
+2. An empty `nowPlaying` snapshot clears active playback. Only `onStateChange` deltas may inherit video identity, and only while playback is fresh. Missing states inherit the last fresh state; they do not make an inactive state writable.
+3. Retain the latest valid observation and write changed progress at most once per ten seconds during playback. Positive backward seeks are supported.
+4. Flush pending progress on pause, end, video change, an empty snapshot, or stream disconnect. Zero/absent final timestamps preserve the last valid position. Repeated unchanged snapshots do not overwrite progress saved by another player.
+5. Ensure the video exists in local cache before writing progress (fetch/cache when missing).
+6. After write, run existing "remove watch-later if fully watched" rule.
 
 Unknown-video imports run in the background, using the existing authenticated
 desktop player for video metadata and the public channel page for channel
@@ -250,7 +259,8 @@ Default constants:
 - `tvSyncProgressWriteIntervalSec = 10`
 - `tvSyncResumeStartWindowSec = 90`
 - `tvSyncResumeAheadThresholdSec = 8`
-- `tvSyncNowPlayingPollIntervalSec = 5`
+- `tvSyncNowPlayingPollInterval = 15 * time.Second`
+- `tvSyncPlaybackFreshness = 60 * time.Second`
 - `tvSyncVideoCacheRetryIntervalSec = 60`
 
 ### SponsorBlock skip on TV
@@ -260,7 +270,7 @@ For each new `video_id`:
 2. Normalize:
    - merge overlapping/adjacent segments,
    - ignore segments shorter than minimum length.
-3. During playback, if current time is inside an unskipped segment:
+3. During confirmed playing state, if current time is inside an unskipped segment:
    - seek to segment end,
    - mark segment as skipped for this video/session,
    - apply cooldown to avoid skip loops.

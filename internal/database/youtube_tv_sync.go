@@ -50,6 +50,7 @@ type YouTubeTVSyncClient interface {
 	UpdateYouTubeTVSyncLoungeToken(ctx context.Context, userID, screenID, screenName string, loungeTokenEnc []byte, secretHash string) error
 	SetYouTubeTVSyncAccountEnabled(ctx context.Context, userID string, enabled bool) error
 	DeleteYouTubeTVSyncAccount(ctx context.Context, userID string) error
+	// ListEnabledYouTubeTVSyncAccounts returns all enabled accounts when limit <= 0.
 	ListEnabledYouTubeTVSyncAccounts(ctx context.Context, limit int) ([]*YouTubeTVSyncAccount, error)
 	UpdateYouTubeTVSyncState(ctx context.Context, userID string, update YouTubeTVSyncStateUpdate) error
 	GetUserLastSessionActivity(ctx context.Context, userID string) (null.Time, error)
@@ -219,7 +220,7 @@ func (c *sqliteClient) DeleteYouTubeTVSyncAccount(ctx context.Context, userID st
 
 func (c *sqliteClient) ListEnabledYouTubeTVSyncAccounts(ctx context.Context, limit int) ([]*YouTubeTVSyncAccount, error) {
 	if limit <= 0 {
-		limit = 100
+		limit = -1 // SQLite's unlimited LIMIT, for complete worker reconciliation.
 	}
 
 	rows, err := c.db.QueryContext(

@@ -336,3 +336,42 @@ func TestConnectAndRunOnce_RefreshEndpointMalformed(t *testing.T) {
 		t.Fatalf("expected error state, got %s", finalAccount.ConnectionState)
 	}
 }
+
+type tvSyncAccountListStore struct {
+	*mockTVSyncStore
+	accounts []*database.YouTubeTVSyncAccount
+	limit    int
+}
+
+func (s *tvSyncAccountListStore) ListEnabledYouTubeTVSyncAccounts(_ context.Context, limit int) ([]*database.YouTubeTVSyncAccount, error) {
+	s.limit = limit
+	if limit > 0 && limit < len(s.accounts) {
+		return s.accounts[:limit], nil
+	}
+	return s.accounts, nil
+}
+
+func TestConnectionTickPreservesWorkersBeyondFirstHundred(t *testing.T) {
+	store := &tvSyncAccountListStore{mockTVSyncStore: &mockTVSyncStore{}}
+	service := &YouTubeTVSyncService{db: store, workers: map[string]*tvSyncWorker{}}
+	var stopped int
+	for i := range 105 {
+		id := fmt.Sprintf("user-%03d", i)
+		store.accounts = append(store.accounts, &database.YouTubeTVSyncAccount{UserID: id, SyncEnabled: true})
+		service.workers[id] = &tvSyncWorker{cancel: func() { stopped++ }}
+	}
+	if err := service.RunConnectionTick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if store.limit != 0 || stopped != 0 || len(service.workers) != 105 {
+		t.Fatalf("partial reconciliation: limit=%d stopped=%d workers=%d", store.limit, stopped, len(service.workers))
+	}
+	// Actual removal still cancels a worker, even when the rest span many users.
+	store.accounts = store.accounts[1:]
+	if err := service.RunConnectionTick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if stopped != 1 || len(service.workers) != 104 {
+		t.Fatalf("removed worker not stopped: %d, %d", stopped, len(service.workers))
+	}
+}
