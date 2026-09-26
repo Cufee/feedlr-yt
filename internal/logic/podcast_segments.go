@@ -10,7 +10,6 @@ import (
 	"html"
 	"io"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,7 +21,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/metrics"
 )
 
-const podcastSegmentsPromptVersion = "podcast-segments-v6"
+const podcastSegmentsPromptVersion = "podcast-segments-v7"
 const podcastSegmentLease = 10 * time.Minute
 
 type PodcastSegmentStatus struct {
@@ -40,7 +39,7 @@ func podcastModel() string {
 	if openrouter.DefaultClient != nil {
 		return openrouter.DefaultClient.Model()
 	}
-	return "google/gemini-2.5-flash-lite"
+	return openrouter.DefaultModel
 }
 
 // EnsurePodcastSegmentAnalysis obtains durable state and starts at most one
@@ -61,7 +60,7 @@ func EnsurePodcastSegmentAnalysis(ctx context.Context, db database.Client, video
 		return PodcastSegmentStatus{Status: database.PodcastSegmentUnavailable}, nil
 	}
 	bytes, failure := fetchTranscript(ctx, source.URL, source.MIMEType)
-	hash := hashTranscript(bytes, source.URL, failure, v.Description)
+	hash := hashTranscript(bytes, source.URL, failure, v.Description, v.Title)
 	model := podcastModel()
 	a, owner, err := db.AcquirePodcastSegmentAnalysis(ctx, videoID, hash, source.URL, model, podcastSegmentsPromptVersion)
 	if err != nil {
@@ -79,15 +78,15 @@ func EnsurePodcastSegmentAnalysis(ctx context.Context, db database.Client, video
 		return PodcastSegmentStatus{Status: database.PodcastSegmentUnavailable}, nil
 	}
 	if _, loaded := segmentRuns.LoadOrStore(a.ID, struct{}{}); !loaded {
-		go runPodcastSegmentAnalysis(db, a.ID, bytes, v.Description)
+		go runPodcastSegmentAnalysis(db, a.ID, bytes, v.Description, v.Title)
 	}
 	return PodcastSegmentStatus{Status: database.PodcastSegmentRunning}, nil
 }
 
-func hashTranscript(bytes []byte, url, failure, description string) string {
+func hashTranscript(bytes []byte, url, failure, description, title string) string {
 	h := sha256.New()
 	h.Write(bytes)
-	h.Write([]byte("\x00" + url + "\x00" + failure + "\x00" + description))
+	h.Write([]byte("\x00" + url + "\x00" + failure + "\x00" + description + "\x00" + title))
 	return hex.EncodeToString(h.Sum(nil))
 }
 func fetchTranscript(ctx context.Context, url, mime string) ([]byte, string) {
@@ -122,25 +121,30 @@ func isTimedTranscript(mime string) bool {
 	return false
 }
 
-func runPodcastSegmentAnalysis(db database.Client, id string, data []byte, description string) {
+func runPodcastSegmentAnalysis(db database.Client, id string, data []byte, description, title string) {
 	defer segmentRuns.Delete(id)
 	started := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	complete := func(status, failure string, segments []database.PodcastSegment) {
+		completionCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = db.CompletePodcastSegmentAnalysis(completionCtx, id, status, failure, segments)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
 	defer cancel()
 	cues, err := parseTimedTranscript(data)
 	if err != nil {
-		_ = db.CompletePodcastSegmentAnalysis(ctx, id, database.PodcastSegmentUnavailable, "transcript_parse_failed", nil)
+		complete(database.PodcastSegmentUnavailable, "transcript_parse_failed", nil)
 		metrics.ObservePodcastSegmentAnalysis("transcript_parse_failed", time.Since(started).Seconds(), nil)
 		return
 	}
 	notes := extractPodcastSponsors(ctx, description)
-	segments, err := inferPodcastSegments(ctx, cues, notes)
+	segments, err := inferPodcastSegments(ctx, cues, notes, title)
 	if err != nil {
-		_ = db.CompletePodcastSegmentAnalysis(ctx, id, database.PodcastSegmentFailed, "model_output_invalid", nil)
+		complete(database.PodcastSegmentFailed, "model_output_invalid", nil)
 		metrics.ObservePodcastSegmentAnalysis("model_output_invalid", time.Since(started).Seconds(), nil)
 		return
 	}
-	_ = db.CompletePodcastSegmentAnalysis(ctx, id, database.PodcastSegmentReady, "", segments)
+	complete(database.PodcastSegmentReady, "", segments)
 	categories := make([]string, 0, len(segments))
 	for _, segment := range segments {
 		categories = append(categories, segment.Category)
@@ -262,7 +266,7 @@ func extractPodcastSponsors(ctx context.Context, description string) string {
 	}
 	extractionCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	result, err := openrouter.DefaultClient.CompleteWithOptions(extractionCtx, sponsorExtractionPrompt, notes, openrouter.CompletionOptions{MaxTokens: 400})
+	result, err := openrouter.DefaultClient.CompleteWithOptions(extractionCtx, sponsorExtractionPrompt, notes, openrouter.CompletionOptions{MaxTokens: 2048, ReasoningEffort: "low"})
 	if err != nil {
 		return ""
 	}
@@ -296,172 +300,6 @@ func extractPodcastSponsors(ctx context.Context, description string) string {
 	return string(encoded)
 }
 
-const segmentSystemPrompt = `Task: identify only clearly skippable segments in a podcast transcript. Allowed categories: sponsor (paid third-party advertisement, affiliate/referral, promo-code read), selfpromo (show/host/network promotion), interaction (brief request to like, subscribe, rate, follow, share, comment, or enable notifications), preview (a recap or preview whose substantive information is repeated later in the episode), intro (a narrated hook, greeting, or goodbye without information needed for the episode), filler (a clearly tangential joke or bit that is not needed to follow the main discussion).
-
-Be conservative: return no segment unless it is a dedicated contiguous block. Do not infer from names alone or mark normal discussion, editorial mentions, internal funding, or dynamic ads absent from the transcript. A supplied show-notes sponsor list is only a clue: label a sponsor segment only when the transcript itself is a dedicated listener-facing ad read. In particular, do not mark a host's normal discussion of their own project, company, product infrastructure, funding, or roadmap merely because it describes benefits or uses promotional language. Do not mark a host reporting that their organization sponsors, funds, partners with, or supports a person, developer, company, or project; that is editorial discussion unless it becomes a dedicated listener-facing promotion. For preview, intro, and filler, use the category only when it is clearly dispensable; do not remove context, meaningful conclusions, or jokes that materially explain the discussion.
-
-Boundary rule: once you identify an unambiguous host-read ad, return the complete contiguous block—not merely the cue that names the product. Ads may be performed as a skit: include the earliest consecutive fictional setup or dialogue that leads into the product mention, even where it does not name the product. Include every consecutive product claim, testimonial, feature list, scripted dialogue, promotion, or CTA, plus a closing character line or punchline that belongs to the ad even if it does not repeat the product name. End only at the first cue that clearly resumes the episode’s normal editorial discussion. Do not end the segment just because a short joke, character line, or transition occurs inside the same ad. Conversely, do not consume the first normal discussion cue after the ad has clearly ended.
-
-Use supplied cue boundaries only. Never invent timestamps or cue indices. Return JSON {"segments":[{"category":"sponsor","start_cue":1,"end_cue":2,"brand":"","start_text":"","end_text":"","reason":""}]}.`
-
-const segmentBoundaryPrompt = `A confirmed sponsor read has been found. Correct its boundaries using only the supplied cue records. Expand backward through the complete scripted problem setup or banter when it establishes the scenario that the product solves, even when the brand is introduced later. Expand forward through every product claim, fictional dialogue, punchline, or closing line belonging to the ad. Include an entire closing exchange, not only its first line. A final fictional callback to the ad's premise is still part of the ad even when it has no brand or feature language. Preserve meaningful editorial conversation before or after the ad, even if the ad starts or ends in the middle of a broader conversation. Return JSON {"start_cue":number,"end_cue":number}.`
-
-const segmentBoundaryVerifierPrompt = `Review the boundaries of this already-confirmed sponsor read using only the supplied local cues. Check especially the cues immediately after its proposed end: if they are consecutive in-character dialogue, a callback to the ad's problem scenario, or the final beat of the same scripted read, extend through the entire exchange. Do not retain a product-claim boundary when a clearly connected closing line follows. Do not include normal editorial conversation. Return JSON {"start_cue":number,"end_cue":number}.`
-
-func inferPodcastSegments(ctx context.Context, cues []transcriptCue, notes string) ([]database.PodcastSegment, error) {
-	if compactCueSize(cues) <= 1_500_000 {
-		return inferCueWindow(ctx, cues, cues, 0, len(cues)-1, notes)
-	}
-	var all []database.PodcastSegment
-	for start := 0; start < len(cues); {
-		end, startSize := start, 0
-		for end < len(cues) && startSize+len(cues[end].Text)+64 <= 300_000 {
-			startSize += len(cues[end].Text) + 64
-			end++
-		}
-		if end == start {
-			end++
-		}
-		from, to := max(0, start-20), min(len(cues), end+20)
-		segments, err := inferCueWindow(ctx, cues, cues[from:to], cues[start].Index, cues[end-1].Index, notes)
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, segments...)
-		start = end
-	}
-	return mergePodcastSegments(all), nil
-}
-func compactCueSize(cues []transcriptCue) int {
-	size := 0
-	for _, cue := range cues {
-		size += len(cue.Text) + 64
-	}
-	return size
-}
-func inferCueWindow(ctx context.Context, all, window []transcriptCue, targetStart, targetEnd int, notes string) ([]database.PodcastSegment, error) {
-	payload := make([]map[string]any, len(window))
-	for i, c := range window {
-		payload[i] = map[string]any{"i": c.Index, "start_ms": c.StartMS, "end_ms": c.EndMS, "text": c.Text}
-	}
-	inputPayload := map[string]any{"cues": payload}
-	if notes != "" {
-		var sponsors []string
-		if json.Unmarshal([]byte(notes), &sponsors) == nil {
-			inputPayload["show_notes_explicit_sponsors"] = sponsors
-		}
-	}
-	encoded, _ := json.Marshal(inputPayload)
-	input := string(encoded)
-	if targetStart != 0 || targetEnd != len(all)-1 {
-		input += fmt.Sprintf("\nReport only segments intersecting target cue range %d through %d.", targetStart, targetEnd)
-	}
-	result, err := openrouter.DefaultClient.Complete(ctx, segmentSystemPrompt, input)
-	if err != nil {
-		return nil, err
-	}
-	var out struct {
-		Segments []struct {
-			Category  string `json:"category"`
-			StartCue  int    `json:"start_cue"`
-			EndCue    int    `json:"end_cue"`
-			Brand     string `json:"brand"`
-			StartText string `json:"start_text"`
-			EndText   string `json:"end_text"`
-			Reason    string `json:"reason"`
-		} `json:"segments"`
-	}
-	if err := json.Unmarshal([]byte(result.Content), &out); err != nil {
-		return nil, err
-	}
-	byIndex := make(map[int]transcriptCue, len(all))
-	for _, cue := range all {
-		byIndex[cue.Index] = cue
-	}
-	var segments []database.PodcastSegment
-	for _, candidate := range out.Segments {
-		start, ok := byIndex[candidate.StartCue]
-		end, endOK := byIndex[candidate.EndCue]
-		if !ok || !endOK || candidate.EndCue < candidate.StartCue || !validCategory(candidate.Category) {
-			return nil, errors.New("invalid segment")
-		}
-		if candidate.EndCue < targetStart || candidate.StartCue > targetEnd {
-			continue
-		}
-		if end.EndMS-start.StartMS < 1500 && candidate.Category != "interaction" {
-			continue
-		}
-		if strings.TrimSpace(candidate.Reason) == "" {
-			return nil, errors.New("missing evidence")
-		}
-		segments = append(segments, database.PodcastSegment{Category: candidate.Category, StartMS: start.StartMS, EndMS: end.EndMS, StartCue: start.Index, EndCue: end.Index, StartText: start.Text, EndText: end.Text, Reason: strings.TrimSpace(candidate.Reason), Brand: strings.TrimSpace(candidate.Brand)})
-	}
-	return refineSponsorBoundaries(ctx, all, mergePodcastSegments(segments)), nil
-}
-
-func refineSponsorBoundaries(ctx context.Context, cues []transcriptCue, segments []database.PodcastSegment) []database.PodcastSegment {
-	byIndex := make(map[int]int, len(cues))
-	for offset, cue := range cues {
-		byIndex[cue.Index] = offset
-	}
-	for i := range segments {
-		segment := &segments[i]
-		if segment.Category != "sponsor" || segment.Brand == "" || !strings.Contains(strings.ToLower(segment.StartText), strings.ToLower(segment.Brand)) {
-			continue
-		}
-		start, foundStart := byIndex[segment.StartCue]
-		end, foundEnd := byIndex[segment.EndCue]
-		if !foundStart || !foundEnd {
-			continue
-		}
-		from, to := max(0, start-20), min(len(cues), end+21)
-		payloadCues := make([]map[string]any, 0, to-from)
-		for _, cue := range cues[from:to] {
-			payloadCues = append(payloadCues, map[string]any{"i": cue.Index, "start_ms": cue.StartMS, "end_ms": cue.EndMS, "text": cue.Text})
-		}
-		input, err := json.Marshal(map[string]any{"candidate": map[string]any{"category": segment.Category, "start_cue": segment.StartCue, "end_cue": segment.EndCue, "brand": segment.Brand}, "cues": payloadCues})
-		if err != nil {
-			continue
-		}
-		for _, prompt := range []string{segmentBoundaryPrompt, segmentBoundaryVerifierPrompt} {
-			result, err := openrouter.DefaultClient.Complete(ctx, prompt, string(input))
-			if err != nil {
-				continue
-			}
-			var refined struct {
-				StartCue int `json:"start_cue"`
-				EndCue   int `json:"end_cue"`
-			}
-			if err := json.Unmarshal([]byte(result.Content), &refined); err != nil {
-				continue
-			}
-			refinedStart, validStart := byIndex[refined.StartCue]
-			refinedEnd, validEnd := byIndex[refined.EndCue]
-			if !validStart || !validEnd || refinedStart < from || refinedEnd >= to || refinedEnd < refinedStart {
-				continue
-			}
-			first, last := cues[refinedStart], cues[refinedEnd]
-			segment.StartCue, segment.EndCue = first.Index, last.Index
-			segment.StartMS, segment.EndMS = first.StartMS, last.EndMS
-			segment.StartText, segment.EndText = first.Text, last.Text
-		}
-	}
-	return mergePodcastSegments(segments)
-}
-func mergePodcastSegments(segments []database.PodcastSegment) []database.PodcastSegment {
-	sort.Slice(segments, func(i, j int) bool { return segments[i].StartMS < segments[j].StartMS })
-	dedup := segments[:0]
-	for _, s := range segments {
-		if len(dedup) > 0 && dedup[len(dedup)-1].Category == s.Category && s.StartMS <= dedup[len(dedup)-1].EndMS {
-			if s.EndMS > dedup[len(dedup)-1].EndMS {
-				dedup[len(dedup)-1].EndMS = s.EndMS
-			}
-			continue
-		}
-		dedup = append(dedup, s)
-	}
-	return dedup
-}
 func validCategory(c string) bool {
 	return c == "sponsor" || c == "selfpromo" || c == "interaction" || c == "preview" || c == "intro" || c == "filler"
 }

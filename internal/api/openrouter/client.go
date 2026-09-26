@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const defaultModel = "google/gemini-3.5-flash-lite"
+const DefaultModel = "openai/gpt-6-luna"
 
 type Client struct {
 	key, model string
@@ -48,13 +48,13 @@ func NewFromEnvironment() *Client {
 	}
 	model := strings.TrimSpace(os.Getenv("PODCAST_SEGMENTS_MODEL"))
 	if model == "" {
-		model = defaultModel
+		model = DefaultModel
 	}
 	return New(key, model)
 }
 
 func New(key, model string) *Client {
-	return &Client{key: strings.TrimSpace(key), model: strings.TrimSpace(model), http: &http.Client{Timeout: 60 * time.Second}}
+	return &Client{key: strings.TrimSpace(key), model: strings.TrimSpace(model), http: &http.Client{Timeout: 90 * time.Second}}
 }
 func (c *Client) Model() string { return c.model }
 
@@ -68,7 +68,7 @@ func (c *Client) CompleteWithOptions(ctx context.Context, system, input string, 
 	}
 	payload := map[string]any{"model": c.model, "messages": []map[string]string{{"role": "system", "content": system}, {"role": "user", "content": input}}, "max_tokens": options.MaxTokens, "response_format": map[string]any{"type": "json_object"}}
 	if options.ReasoningEffort != "" {
-		payload["reasoning"] = map[string]any{"effort": options.ReasoningEffort}
+		payload["reasoning"] = map[string]any{"effort": options.ReasoningEffort, "exclude": true}
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -92,7 +92,8 @@ func (c *Client) CompleteWithOptions(ctx context.Context, system, input string, 
 	var decoded struct {
 		Model   string `json:"model"`
 		Choices []struct {
-			Message struct {
+			FinishReason string `json:"finish_reason"`
+			Message      struct {
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
@@ -107,6 +108,9 @@ func (c *Client) CompleteWithOptions(ctx context.Context, system, input string, 
 	}
 	if len(decoded.Choices) == 0 || strings.TrimSpace(decoded.Choices[0].Message.Content) == "" {
 		return Result{}, errors.New("provider returned empty response")
+	}
+	if decoded.Choices[0].FinishReason != "stop" {
+		return Result{}, errors.New("provider returned incomplete response")
 	}
 	return Result{Content: decoded.Choices[0].Message.Content, Usage: Usage{Model: decoded.Model, InputTokens: decoded.Usage.PromptTokens, OutputTokens: decoded.Usage.CompletionTokens, Cost: decoded.Usage.Cost}}, nil
 }
