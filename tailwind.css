@@ -75,6 +75,16 @@
     }
 }
 
+/* Keep touch form controls large enough to avoid iOS focus zoom, even in
+   landscape. Outside layers so component and utility text sizes cannot shrink them. */
+@media (any-pointer: coarse) {
+    input,
+    textarea,
+    select {
+        font-size: max(16px, 1rem);
+    }
+}
+
 @layer components {
     .glass-panel {
         @apply rounded-[var(--radius-panel)] border border-glass-stroke/25 bg-glass-fill/45 backdrop-blur-[var(--blur-glass-md)] shadow-[0_10px_36px_-20px_var(--color-glass-shadow)];
