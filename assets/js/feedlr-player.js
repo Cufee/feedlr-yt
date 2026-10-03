@@ -7,6 +7,10 @@
   const read = (storage, key) => { try { return storage.getItem(key); } catch (_) { return null; } };
   const write = (storage, key, value) => { try { storage.setItem(key, String(value)); } catch (_) {} };
   const qualityKey = "feedlr-player-quality";
+  const usesDeviceVolume = () => Boolean(global.navigator?.userAgentData?.mobile ||
+    /Android|iPhone|iPad|iPod/i.test(global.navigator?.userAgent || "") ||
+    (global.navigator?.platform === "MacIntel" && global.navigator?.maxTouchPoints > 1) ||
+    global.matchMedia?.("(hover: none) and (pointer: coarse)").matches);
   const qualityPreference = (value) => value === "audio" ? "audio" : /^\d+$/.test(value) && Number(value) > 0 ? String(Number(value)) : "auto";
   function qualityHeight(track) {
     let height = track.height || 0;
@@ -26,10 +30,6 @@
     // Older progress requests omitted volume and left a zero database default.
     // New pages start audibly; in-page switches preserve their exact snapshot.
     return clamp(finite(saved) > 0 ? finite(saved) : finite(server) > 0 ? finite(server) : 100, 0, 100);
-  }
-  const modeKey = (video) => `feedlr-player-mode:${video}`;
-  function preferredMode(storage, video, authenticated) {
-    return authenticated && read(storage, modeKey(video)) !== "iframe" ? "native" : "iframe";
   }
   function usableResolution(result, now = Date.now()) {
     if (result.mode !== "native") return false;
@@ -151,11 +151,49 @@
     return youtubeReady;
   }
 
+  const iframeMenuActions = new WeakMap();
+  let iframeMenuRegistered = false;
+  function registerIframeMenu() {
+    if (iframeMenuRegistered) return;
+    class YouTubeMenuButton extends global.shaka.ui.Element {
+      constructor(parent, controls) {
+        super(parent, controls);
+        this.button = document.createElement("button");
+        this.button.type = "button";
+        this.button.className = "feedlr-youtube-menu-button";
+        this.button.setAttribute("aria-label", "Use YouTube player");
+        this.button.setAttribute("role", "menuitem");
+        const icon = document.getElementById("feedlr-iframe-menu-icon")?.content.cloneNode(true);
+        if (icon) this.button.append(icon);
+        const label = document.createElement("span");
+        label.className = "shaka-overflow-button-label shaka-overflow-menu-only shaka-simple-overflow-button-label-inline";
+        label.textContent = "Use YouTube player";
+        this.button.append(label);
+        parent.append(this.button);
+        this.eventManager.listen(this.button, "click", () => {
+          controls.hideSettingsMenus();
+          iframeMenuActions.get(controls.getLocalPlayer())?.();
+        });
+        this.checkAvailability();
+      }
+      checkAvailability() {
+        this.button.classList.toggle("shaka-hidden", this.isSubMenuOpened);
+      }
+      release() {
+        this.button.remove();
+        super.release();
+      }
+    }
+    global.shaka.ui.OverflowMenu.registerElement("feedlr_youtube", {
+      create: (parent, controls) => new YouTubeMenuButton(parent, controls),
+    }, false);
+    iframeMenuRegistered = true;
+  }
+
   class Controller {
     constructor(options) {
       this.options = options;
       this.root = document.getElementById("player");
-      this.toggle = document.getElementById("player-mode-toggle");
       this.loading = document.getElementById("player-loading");
       this.abort = new AbortController();
       this.generation = 0;
@@ -165,20 +203,15 @@
       this.quality = qualityPreference(read(global.localStorage, qualityKey));
       this.availableQualities = [];
       this.audioOnly = false;
-      this.mode = preferredMode(global.sessionStorage, options.video, options.authenticated);
+      this.deviceVolume = usesDeviceVolume();
+      this.mode = options.authenticated ? "native" : "iframe";
       this.lastProgress = -1;
       this.expiresAt = Infinity;
       this.renewAt = Infinity;
       this.expiryRetryUsed = false;
       this.watchdog = new PlaybackWatchdog();
       const savedVolume = read(global.localStorage, `player-volume-${options.channel}`) ?? read(global.localStorage, "player-volume");
-      this.state = { position: finite(options.progress), playing: true, volume: initialVolume(savedVolume, options.volume), muted: false, rate: 1 };
-      this.listen(this.toggle, "click", () => {
-        const mode = this.mode === "native" ? "iframe" : "native";
-        write(global.sessionStorage, modeKey(options.video), mode);
-        this.expiryRetryUsed = false;
-        this.switchPlayer(mode, this.snapshot(), "manual_switch");
-      });
+      this.state = { position: finite(options.progress), playing: true, volume: this.deviceVolume ? 100 : initialVolume(savedVolume, options.volume), muted: false, rate: 1 };
       this.listen(document.getElementById("close-button"), "click", () => this.cleanup());
       this.listen(document, "keydown", (event) => this.hotkey(event));
       this.listen(document, "htmx:beforeSwap", (event) => {
@@ -221,16 +254,6 @@
       return { ...this.state };
     }
     showLoading(loading) { this.loading?.classList.toggle("hidden", !loading); }
-    updateToggle() {
-      if (!this.toggle) return;
-      const label = this.mode === "native" ? "Use YouTube player" : "Use Feedlr player";
-      this.toggle.setAttribute("aria-label", label);
-      this.toggle.title = label;
-      for (const icon of this.toggle.querySelectorAll("[data-player-icon]")) {
-        icon.hidden = icon.dataset.playerIcon === this.mode;
-      }
-      this.toggle.disabled = this.switching;
-    }
     notice(message) {
       const toast = document.getElementById("notification-toast");
       const text = toast?.querySelector("span");
@@ -270,10 +293,10 @@
       if (reason === "renewal") this.metric("renewal", "scheduled");
       if (reason === "manual_switch") this.metric("switch", requestedMode);
       if (preservedState) this.state = { ...preservedState };
+      if (this.deviceVolume) this.state.volume = 100;
       this.mode = requestedMode;
       this.blocked = false;
       this.showLoading(true);
-      this.updateToggle();
       await this.destroyAdapter();
       if (!current()) return;
       this.root.replaceChildren();
@@ -290,7 +313,6 @@
         resolution = { ...resolution, mode: "iframe", reason: "invalid_resolution" };
       }
       this.mode = requestedMode === "native" ? resolution.mode : "iframe";
-      this.updateToggle();
       try {
         if (this.mode === "native") {
           this.audioOnly = resolution.audioOnly === true;
@@ -324,7 +346,6 @@
       }
       if (!current()) return;
       this.switching = false;
-      this.updateToggle();
     }
 
     async createNative(resolution, current) {
@@ -360,10 +381,18 @@
       }
       this.root.append(box);
       const player = new global.shaka.Player();
+      let destroyed = false;
+      registerIframeMenu();
+      iframeMenuActions.set(player, () => {
+        if (current() && !destroyed && this.ready && !this.switching) {
+          this.switchPlayer("iframe", this.snapshot(), "manual_switch");
+        }
+      });
       const ui = new global.shaka.ui.Overlay(player, box, video);
       ui.configure({
-        overflowMenuButtons: ["quality", "playback_rate", "picture_in_picture"],
-        controlPanelElements: ["play_pause", "time_and_duration", "spacer", "mute", "volume", "overflow_menu", "fullscreen"],
+        overflowMenuButtons: ["quality", "playback_rate", "picture_in_picture", "feedlr_youtube"],
+        controlPanelElements: ["play_pause", "time_and_duration", "spacer", ...(this.deviceVolume ? [] : ["mute", "volume"]), "overflow_menu", "fullscreen"],
+        alwaysShowVolumeBar: true,
         singleClickForPlayAndPause: true,
         seekOnTaps: false,
         qualityMarks: { 720: "", 1080: "", 1440: "", 2160: "", 4320: "" },
@@ -373,16 +402,16 @@
       this.playerAbort = new AbortController();
       const signal = this.playerAbort.signal;
       const listen = (event, callback) => video.addEventListener(event, callback, { signal });
-      let destroyed = false;
       const pending = { ...this.state };
       this.adapter = {
         video, player, waveform,
         snapshot: () => restoredState({ position: video.currentTime, playing: !video.paused && !video.ended, volume: video.volume * 100, muted: video.muted, rate: player.getPlaybackRate?.() || this.state.rate }, pending),
         play: () => { pending.playing = true; return this.playNative(video, pending); }, pause: () => { pending.playing = false; video.pause(); },
         seek: (time) => { pending.position = clamp(time, 0, Number.isFinite(video.duration) ? video.duration : Infinity); video.currentTime = pending.position; },
-        volume: (value) => { pending.volume = clamp(value, 0, 100); video.volume = pending.volume / 100; },
+        volume: (value) => { pending.volume = this.deviceVolume ? 100 : clamp(value, 0, 100); video.volume = pending.volume / 100; },
         destroy: async () => {
           destroyed = true;
+          iframeMenuActions.delete(player);
           video.pause();
           // Overlay.destroy owns and destroys its Shaka Player as well.
           await ui.destroy();
@@ -568,7 +597,7 @@
         this.adapter = {
           snapshot: () => restoredState({ position: player.getCurrentTime(), playing: [1, 3].includes(player.getPlayerState()), volume: player.getVolume(), muted: player.isMuted(), rate: player.getPlaybackRate() }, pending),
           play: () => { pending.playing = true; player.playVideo(); }, pause: () => { pending.playing = false; player.pauseVideo(); },
-          seek: (time) => { pending.position = Math.max(0, time); player.seekTo(pending.position, true); }, volume: (value) => { pending.volume = clamp(value, 0, 100); player.setVolume(pending.volume); },
+          seek: (time) => { pending.position = Math.max(0, time); player.seekTo(pending.position, true); }, volume: (value) => { pending.volume = this.deviceVolume ? 100 : clamp(value, 0, 100); player.setVolume(pending.volume); },
           destroy: async () => { destroyed = true; global.clearTimeout(timer); player.destroy(); resolve(); },
         };
       });
@@ -628,7 +657,7 @@
       }
     }
     saveVolume() {
-      if (!this.ready || !this.adapter) return;
+      if (this.deviceVolume || !this.ready || !this.adapter) return;
       const volume = Math.round(this.adapter.snapshot().volume);
       write(global.localStorage, "player-volume", volume);
       write(global.localStorage, `player-volume-${this.options.channel}`, volume);
@@ -651,6 +680,7 @@
         return;
       }
       if (!this.ready || !this.adapter) return;
+      if (this.deviceVolume && ["ArrowUp", "ArrowDown"].includes(event.key)) return;
       const state = this.snapshot();
       const actions = {
         " ": () => state.playing ? this.adapter.pause() : this.adapter.play(),
@@ -689,7 +719,7 @@
     global.feedlr_player = controller;
     return controller;
   }
-  const api = { mount, Controller, PlaybackWatchdog, preferredMode, usableResolution, expirationError, applyQuality, restoredState, initialVolume, qualityLabel, qualityPreference, qualityHeight, qualityFromLabel };
+  const api = { mount, Controller, PlaybackWatchdog, usableResolution, expirationError, applyQuality, restoredState, initialVolume, qualityLabel, qualityPreference, qualityHeight, qualityFromLabel };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else {
     global.FeedlrPlayer = api;

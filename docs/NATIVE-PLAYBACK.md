@@ -4,7 +4,7 @@ Feedlr plays prerecorded YouTube videos through a private Invidious Companion an
 
 ## Player behavior
 
-The icon button beside **X** switches between Feedlr and YouTube while preserving position, playing/paused state, volume, mute, and supported playback rate. It shows `</>` to switch to the iframe and a player icon to switch to native playback; its tooltip and accessible label identify the target player. Manual player choices are stored per video in the current tab and survive reloads. A different video defaults to native unless that video already has a saved tab choice. Automatic fallback stays active for the current page; the button permits a manual native retry.
+Each page load requests native playback for signed-in viewers; the server selects iframe if its playback checks fail. The native settings menu includes **Use YouTube player**, which switches to iframe while preserving position, playing/paused state, volume, mute, and supported playback rate. Both manual and automatic fallback stay active for the current page. Refreshing retries native playback, subject to the server's health checks and circuit retry interval. Player mode is not persisted between page loads.
 
 Quality lives in Shaka's settings menu: **Auto**, supported resolutions, and **Audio only**. Resolutions use familiar labels such as **1080p**, **2K**, and **4K**, including normalized portrait/ultrawide labels. The choice persists across videos and reloads in `localStorage` under `feedlr-player-quality`:
 
@@ -14,14 +14,16 @@ Quality lives in Shaka's settings menu: **Auto**, supported resolutions, and **A
 
 The iframe manages its own quality; returning to Feedlr restores the native preference. Both players share progress reporting, hotkeys, SponsorBlock, and teardown through `assets/js/feedlr-player.js`.
 
+On mobile devices, the native player hides mute and volume controls and uses 100% player volume, leaving loudness to the device's volume buttons. Desktop keeps the volume slider visible without hover expansion and retains its saved volume preference.
+
 ## Deployment
 
 Docker Compose enables native playback by default. `.env.example` sets it to **off** for deployment acceptance; `NATIVE_PLAYBACK_ENABLED=false` remains the global iframe rollback switch.
 
 1. Generate a secret with `openssl rand -hex 8` and set `COMPANION_SECRET` in `.env`. Companion requires exactly 16 alphanumeric characters.
 2. Set `COMPANION_URL=http://companion:8282`. Compose passes the shared secret to both services and enables signed manifest requests.
-3. Start the private service with `docker compose --profile native up -d companion`.
-4. On the acceptance deployment, set `NATIVE_PLAYBACK_ENABLED=true` and recreate Feedlr with `docker compose --profile native up -d --build feedlr-service`.
+3. Deploy the stack with `docker compose up -d --build`. Companion starts with the other services; no Compose profile is required, including in Dokploy.
+4. On the acceptance deployment, set `NATIVE_PLAYBACK_ENABLED=true` and recreate Feedlr with `docker compose up -d --build feedlr-service`.
 
 Companion has no published ports or public proxy route. It shares the dedicated `playback` network only with Feedlr and uses the writable `companion-cache` volume at `/var/tmp/youtubei.js`; its root filesystem is read-only. The image's `/healthz` check establishes process liveness, not successful YouTube playback. Companion being unavailable does not prevent Feedlr from starting.
 
@@ -64,7 +66,7 @@ npm test
 go generate ./...
 go test ./...
 go vet ./...
-docker compose --profile native config --quiet
+docker compose config --quiet
 ```
 
 Automated checks cover controller state/lifecycle behavior, manifest rewriting, authorization, health recovery, and streaming with fake Companion and socket tests. Local browser verification exercised the integrated page in Chromium and Firefox, including native-to-iframe switching. Audio-only playback was verified with zero video media bytes. Local playback checks also covered seeking, quality selection, state preservation, and simulated expiry recovery.

@@ -2,21 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
-const { PlaybackWatchdog, preferredMode, applyQuality, expirationError, restoredState, initialVolume, qualityLabel, qualityHeight, qualityFromLabel } = require('./feedlr-player.js');
+const { PlaybackWatchdog, applyQuality, expirationError, restoredState, initialVolume, qualityLabel, qualityHeight, qualityFromLabel } = require('./feedlr-player.js');
 
 function storage() {
   const values = new Map();
   return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
 }
-
-test('manual mode is tab-local and video-specific; guests always use iframe', () => {
-  const tab = storage();
-  tab.setItem('feedlr-player-mode:one', 'iframe');
-  assert.equal(preferredMode(tab, 'one', true), 'iframe');
-  assert.equal(preferredMode(tab, 'two', true), 'native');
-  assert.equal(preferredMode(storage(), 'one', true), 'native');
-  assert.equal(preferredMode(tab, 'two', false), 'iframe');
-});
 
 test('startup and continuous stall deadlines exclude suspended playback', () => {
   const watchdog = new PlaybackWatchdog();
@@ -51,7 +42,7 @@ test('only expiry or authentication HTTP failures justify an expiry retry', () =
   assert.equal(expirationError({ category: 3 }, 10000, 10001), true);
 });
 
-function harness({ resolutions = [], authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false } = {}) {
+function harness({ resolutions = [], authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume } = {}) {
   const timers = new Map();
   let nextTimer = 1;
   const requests = [];
@@ -61,7 +52,8 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
   class Element extends EventTarget {
     constructor(tag) {
       super(); this.tagName = tag; this.style = { setProperty() {} }; this.dataset = {}; this.children = [];
-      this.classList = { add() {}, remove() {}, toggle() {} }; this.volume = 1; this.muted = false;
+      const classes = new Set();
+      this.classList = { add: (name) => classes.add(name), remove: (name) => classes.delete(name), contains: (name) => classes.has(name), toggle: (name, force) => { if (force ?? !classes.has(name)) classes.add(name); else classes.delete(name); } }; this.volume = 1; this.muted = false;
       this.currentTime = 0; this.playbackRate = 1; this.paused = true; this.ended = false; this.duration = 5000;
     }
     append(...children) { this.children.push(...children); }
@@ -81,7 +73,7 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
     pause() { if (!this.paused) { this.paused = true; this.dispatchEvent(event('pause')); } }
     requestVideoFrameCallback(callback) { this.frameCallback = callback; return 1; }
   }
-  const elements = new Map(['player', 'player-mode-toggle', 'player-loading', 'close-button', 'notification-toast'].map((id) => [id, new Element('div')]));
+  const elements = new Map(['player', 'player-loading', 'close-button', 'notification-toast'].map((id) => [id, new Element('div')]));
   const doc = Object.assign(new EventTarget(), {
     getElementById: (id) => elements.get(id), createElement: (tag) => new Element(tag),
     querySelector: () => null, head: new Element('head'), hidden: false,
@@ -98,7 +90,33 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
     selectVariantTrack(track) { this.selected = track; }
     async destroy() { order.push('destroy'); this.video.pause(); this.video.currentTime = 0; this.video.dispatchEvent(event('ended')); }
   }
-  class Overlay { constructor(player) { this.player = player; this.controls = new EventTarget(); } configure(config) { this.config = config; } setEnabled() {} getControls() { return this.controls; } async destroy() { await this.player.destroy(); } }
+  const menuFactories = new Map();
+  class UIElement {
+    constructor(_parent, controls) {
+      this.abort = new AbortController();
+      this.eventManager = { listen: (target, type, callback) => target.addEventListener(type, callback, { signal: this.abort.signal }) };
+      this.isSubMenuOpened = false;
+      this.eventManager.listen(controls, 'submenuopen', () => { this.isSubMenuOpened = true; this.checkAvailability(); });
+      this.eventManager.listen(controls, 'submenuclose', () => { this.isSubMenuOpened = false; this.checkAvailability(); });
+    }
+    release() { this.abort.abort(); }
+  }
+  class Overlay {
+    constructor(player) {
+      this.player = player;
+      player.ui = this;
+      this.controls = Object.assign(new EventTarget(), { getLocalPlayer: () => player, getPlayer: () => ({}), hideSettingsMenus: () => { this.menuHidden = true; } });
+      this.children = [];
+    }
+    configure(config) {
+      this.config = config;
+      this.children.forEach((child) => child.release());
+      this.children = config.overflowMenuButtons.filter((name) => menuFactories.has(name)).map((name) => menuFactories.get(name).create(new Element('div'), this.controls));
+    }
+    setEnabled() {}
+    getControls() { return this.controls; }
+    async destroy() { this.children.forEach((child) => child.release()); await this.player.destroy(); }
+  }
   class YouTube {
     constructor(_frame, options) {
       this.options = options; this.position = options.playerVars.start; this.state = -1; this.volume = 100; this.muted = false; this.rate = 1;
@@ -115,8 +133,8 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
     getPlayerState() { return this.state; } unloadModule() {} destroy() { this.position = 0; this.options.events.onStateChange({ data: 0 }); }
   }
   const win = Object.assign(new EventTarget(), {
-    document: doc, navigator: { onLine: true }, location: { origin: 'https://feedlr.test' },
-    sessionStorage: storage(), localStorage: storage(), shaka: { Player: Shaka, ui: { Overlay }, polyfill: { installAll() {} } }, YT: { Player: YouTube },
+    document: doc, navigator: { onLine: true }, location: { origin: 'https://feedlr.test' }, matchMedia: () => ({ matches: mobile }),
+    sessionStorage: storage(), localStorage: storage(), shaka: { Player: Shaka, ui: { Overlay, Element: UIElement, OverflowMenu: { registerElement: (name, factory) => menuFactories.set(name, factory) } }, polyfill: { installAll() {} } }, YT: { Player: YouTube },
     setTimeout: (callback, ms) => { const id = nextTimer++; timers.set(id, { callback, ms }); return id; },
     clearTimeout: (id) => timers.delete(id),
     setInterval: (callback, ms) => { const id = nextTimer++; timers.set(id, { callback, ms }); return id; },
@@ -133,6 +151,8 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
     return { ok: true };
   };
   const options = { video: 'one', channel: 'channel', progress: 1, volume: 50, authenticated, withProgress: authenticated, returnURL: '/', segments: [] };
+  if (legacyIframeChoice) win.sessionStorage.setItem('feedlr-player-mode:one', 'iframe');
+  if (savedVolume !== undefined) win.localStorage.setItem('player-volume', savedVolume);
   if (queued) win.feedlrPendingPlayer = { options, root: staleQueue ? new Element('div') : elements.get('player') };
   vm.runInNewContext(fs.readFileSync(require.resolve('./feedlr-player.js'), 'utf8'), { window: win, document: doc, fetch, performance, AbortController, URL, console });
   const controller = queued ? win.feedlr_player : win.FeedlrPlayer.mount(options);
@@ -161,22 +181,103 @@ test('initial resolution uses fresh database progress; switch preserves full sta
   assert.equal(h.timers.size, 0);
 });
 
-test('guests skip resolution and native scripts; manual choice survives remount', async () => {
+test('guests skip resolution and native scripts', async () => {
   const h = harness({ authenticated: false });
   await h.controller.start;
   assert.equal(h.controller.mode, 'iframe');
   assert.equal(h.requests.length, 0);
   assert.equal(h.players.length, 0);
   h.controller.cleanup();
-  const signed = harness();
+});
+
+test('settings fallback preserves state for this page; remount retries native despite legacy preferences', async () => {
+  const signed = harness({ legacyIframeChoice: true });
   await signed.controller.start;
-  signed.elements.get('player-mode-toggle').dispatchEvent(signed.event('click'));
+  assert.equal(signed.controller.mode, 'native');
+  const video = signed.controller.adapter.video;
+  video.currentTime = 321.75; video.volume = 0.35; video.muted = true; video.playbackRate = 1.5; video.pause();
+  const ui = signed.players[0].ui;
+  const button = ui.children[0].button;
+  button.dispatchEvent(signed.event('click'));
   await settle();
-  assert.equal(signed.win.sessionStorage.getItem('feedlr-player-mode:one'), 'iframe');
+  assert.equal(ui.menuHidden, true);
+  assert.equal(signed.controller.mode, 'iframe');
+  assert.deepEqual(JSON.parse(JSON.stringify(signed.controller.snapshot())), { position: 321.75, playing: false, volume: 35, muted: true, rate: 1.5 });
+  signed.controller.tick();
+  signed.controller.checkRenewal();
+  assert.equal(signed.controller.mode, 'iframe');
   const again = signed.win.FeedlrPlayer.mount(signed.controller.options);
   await again.start;
-  assert.equal(again.mode, 'iframe');
+  assert.equal(again.mode, 'native');
+  button.dispatchEvent(signed.event('click')); // Released controls cannot switch a new player.
+  await settle();
+  assert.equal(again.mode, 'native');
   again.cleanup();
+});
+
+test('server-side failure stays on iframe until a fresh mount checks native again', async () => {
+  const h = harness({ resolutions: [{ mode: 'iframe', reason: 'health_failed', progress: 456 }] });
+  await h.controller.start;
+  assert.equal(h.controller.mode, 'iframe');
+  assert.equal(h.controller.getCurrentTime(), 456);
+  h.controller.tick();
+  h.controller.checkRenewal();
+  assert.equal(h.requests.filter((request) => request.url.endsWith('/playback')).length, 1);
+  const again = h.win.FeedlrPlayer.mount(h.controller.options);
+  await again.start;
+  assert.equal(again.mode, 'native');
+  assert.deepEqual(h.requests.filter((request) => request.url.endsWith('/playback')).map((request) => JSON.parse(request.body).mode), ['native', 'native']);
+  again.cleanup();
+});
+
+test('iframe action hides inside quality submenus and releases on UI reconfiguration', async () => {
+  const h = harness();
+  await h.controller.start;
+  const ui = h.players[0].ui;
+  const button = ui.children[0].button;
+  ui.controls.dispatchEvent(h.event('submenuopen'));
+  assert.equal(button.classList.contains('shaka-hidden'), true);
+  ui.controls.dispatchEvent(h.event('submenuclose'));
+  assert.equal(button.classList.contains('shaka-hidden'), false);
+  ui.configure(ui.config);
+  button.dispatchEvent(h.event('click'));
+  await settle();
+  assert.equal(h.controller.mode, 'native');
+  ui.children[0].button.dispatchEvent(h.event('click'));
+  await settle();
+  assert.equal(h.controller.mode, 'iframe');
+  h.controller.cleanup();
+});
+
+test('mobile uses device volume and omits native mute/volume controls across switches', async () => {
+  const h = harness({ mobile: true, savedVolume: '25' });
+  await h.controller.start;
+  const ui = h.players[0].ui;
+  assert.equal(ui.config.controlPanelElements.includes('mute'), false);
+  assert.equal(ui.config.controlPanelElements.includes('volume'), false);
+  assert.equal(h.controller.adapter.video.volume, 1);
+  h.controller.setVolume(15);
+  assert.equal(h.controller.getVolume(), 100);
+  ui.children[0].button.dispatchEvent(h.event('click'));
+  await settle();
+  assert.equal(h.controller.mode, 'iframe');
+  h.controller.setVolume(10);
+  assert.equal(h.controller.getVolume(), 100);
+  h.controller.saveVolume();
+  assert.equal(h.win.localStorage.getItem('player-volume'), '25');
+  h.controller.cleanup();
+});
+
+test('desktop retains mute and volume controls and its saved volume', async () => {
+  const h = harness({ savedVolume: '25' });
+  await h.controller.start;
+  assert.equal(h.players[0].ui.config.controlPanelElements.includes('mute'), true);
+  assert.equal(h.players[0].ui.config.controlPanelElements.includes('volume'), true);
+  assert.equal(h.players[0].ui.config.alwaysShowVolumeBar, true);
+  assert.equal(h.controller.getVolume(), 25);
+  h.controller.setVolume(15);
+  assert.equal(h.controller.getVolume(), 15);
+  h.controller.cleanup();
 });
 
 test('expired media retries resolution once, preserves position, then falls back', async () => {

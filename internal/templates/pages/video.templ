@@ -39,14 +39,6 @@ templ Video(props types.VideoPlayerProps) {
 			</div>
 			<div class="ui-video-rail-actions">
 				if (props.Authenticated) {
-					<button type="button" id="player-mode-toggle" class="ui-video-rail-btn shadow-sm disabled:pointer-events-none disabled:opacity-50" aria-label="Use YouTube player" title="Use YouTube player" disabled>
-						<span data-player-icon="iframe" class="[&>svg]:size-5 [&>svg]:stroke-[1.8]" aria-hidden="true">
-							@icons.Embed()
-						</span>
-						<span data-player-icon="native" class="[&>svg]:size-5 [&>svg]:stroke-[1.8]" aria-hidden="true" hidden>
-							@icons.Player()
-						</span>
-					</button>
 					@buttonBack(props.ReturnURL)
 				} else {
 					@buttonLogin()
@@ -76,6 +68,9 @@ templ Video(props types.VideoPlayerProps) {
 
 templ videoPlayer(player types.VideoPlayerProps) {
 	<div id="player" class="grow overflow-hidden relative" style="min-height: 0"></div>
+	<template id="feedlr-iframe-menu-icon">
+		@icons.Embed()
+	</template>
 	<script src="/assets/js/feedlr-player.js"></script>
 	@shared.EmbedScript(feedlrPlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress, player.Authenticated, player.SkipSegments, player.ReturnURL), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress, player.Authenticated, player.SkipSegments, player.ReturnURL)
 }

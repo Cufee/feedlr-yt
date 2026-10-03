@@ -31,6 +31,13 @@
     height: 50px;
 }
 
+.feedlr-youtube-menu-button > svg {
+    flex: none;
+    width: var(--shaka-icon-size-sm, 24px);
+    height: var(--shaka-icon-size-sm, 24px);
+    margin-inline-end: 10px;
+}
+
 .feedlr-audio-visual {
     position: absolute;
     inset: 0;
