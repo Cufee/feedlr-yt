@@ -1,5 +1,7 @@
 services:
   feedlr-migrate:
+    env_file:
+      - .env
     build:
       dockerfile: Dockerfile.migrate
     pull_policy: always
@@ -10,6 +12,8 @@ services:
       - dokploy-network
 
   feedlr-service:
+    env_file:
+      - .env
     build:
       dockerfile: Dockerfile
     environment:
