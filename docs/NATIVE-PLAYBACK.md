@@ -16,6 +16,8 @@ The iframe manages its own quality; returning to Feedlr restores the native pref
 
 On mobile devices, the native player hides mute and volume controls and uses 100% player volume, leaving loudness to the device's volume buttons. Desktop keeps the volume slider visible without hover expansion and retains its saved volume preference.
 
+Desktop uses a single click to play/pause and a double click to toggle fullscreen. Mobile uses taps to show/hide controls, a central play/pause button, and double taps on the sides to seek backward/forward by 10 seconds. Mobile fullscreen uses its button; device rotation does not trigger fullscreen. These gestures use Shaka's built-in controls. In the pinned Shaka version, the first tap with hidden controls only reveals them and does not count toward double-tap seeking. Hold for temporary 2× playback is not implemented.
+
 ## Deployment
 
 Docker Compose enables native playback by default. `.env.example` sets it to **off** for deployment acceptance; `NATIVE_PLAYBACK_ENABLED=false` remains the global iframe rollback switch.

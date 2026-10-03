@@ -391,10 +391,14 @@
       const ui = new global.shaka.ui.Overlay(player, box, video);
       ui.configure({
         overflowMenuButtons: ["quality", "playback_rate", "picture_in_picture", "feedlr_youtube"],
-        controlPanelElements: ["play_pause", "time_and_duration", "spacer", ...(this.deviceVolume ? [] : ["mute", "volume"]), "overflow_menu", "fullscreen"],
+        controlPanelElements: [...(this.deviceVolume ? [] : ["play_pause"]), "time_and_duration", "spacer", ...(this.deviceVolume ? [] : ["mute", "volume"]), "overflow_menu", "fullscreen"],
         alwaysShowVolumeBar: true,
-        singleClickForPlayAndPause: true,
-        seekOnTaps: false,
+        singleClickForPlayAndPause: !this.deviceVolume,
+        doubleClickForFullscreen: !this.deviceVolume,
+        seekOnTaps: this.deviceVolume,
+        tapSeekDistance: 10,
+        enableFullscreenOnRotation: false,
+        bigButtons: this.deviceVolume ? ["play_pause_buffering"] : [],
         qualityMarks: { 720: "", 1080: "", 1440: "", 2160: "", 4320: "" },
         customTrackLabel: (label, track, type) => type === "video" && track.height ? qualityLabel(qualityHeight(track)) : label,
       });
