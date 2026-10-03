@@ -526,6 +526,12 @@
         if (!heights.length) throw new Error("unsupported_codec");
         this.availableQualities = [...new Set(player.getVariantTracks().map(qualityHeight).filter((height) => height > 0))].sort((a, b) => b - a);
       }
+      // Loading clears Shaka's media session. Restore metadata for every new
+      // player, including URL renewals and switches to/from audio-only playback.
+      const mediaSession = controls.getMediaSession();
+      mediaSession.setupTitle(this.options.title || "");
+      mediaSession.setupArtist(this.options.channelTitle || "");
+      mediaSession.setupPoster(new URL(`/thumb/video/${encodeURIComponent(this.options.video)}/hqdefault`, global.location.origin).href);
       applyQuality(player, this.audioOnly ? "auto" : this.quality);
       updateQualityLabels();
       video.volume = this.state.volume / 100;

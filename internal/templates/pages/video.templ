@@ -72,11 +72,11 @@ templ videoPlayer(player types.VideoPlayerProps) {
 		@icons.Embed()
 	</template>
 	<script src="/assets/js/feedlr-player.js"></script>
-	@shared.EmbedScript(feedlrPlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress, player.Authenticated, player.SkipSegments, player.ReturnURL), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress, player.Authenticated, player.SkipSegments, player.ReturnURL)
+	@shared.EmbedScript(feedlrPlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress, player.Authenticated, player.SkipSegments, player.ReturnURL, shared.YouTubeString(player.Video.Title), shared.YouTubeString(player.Video.Channel.Title)), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress, player.Authenticated, player.SkipSegments, player.ReturnURL, shared.YouTubeString(player.Video.Title), shared.YouTubeString(player.Video.Channel.Title))
 }
 
-script feedlrPlayerInit(channel, video string, progress, volume int, withProgress, authenticated bool, segments []types.SegmentProps, returnURL string) {
-	const options = { channel, video, progress, volume, withProgress, authenticated, segments, returnURL }
+script feedlrPlayerInit(channel, video string, progress, volume int, withProgress, authenticated bool, segments []types.SegmentProps, returnURL, title, channelTitle string) {
+	const options = { channel, video, progress, volume, withProgress, authenticated, segments, returnURL, title, channelTitle }
 	if (window.FeedlrPlayer) {
 		window.FeedlrPlayer.mount(options)
 	} else {

@@ -105,7 +105,7 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
     constructor(player) {
       this.player = player;
       player.ui = this;
-      this.controls = Object.assign(new EventTarget(), { getLocalPlayer: () => player, getPlayer: () => ({}), hideSettingsMenus: () => { this.menuHidden = true; } });
+      this.controls = Object.assign(new EventTarget(), { getLocalPlayer: () => player, getPlayer: () => ({}), getMediaSession: () => ({ setupTitle() {}, setupArtist() {}, setupPoster() {} }), hideSettingsMenus: () => { this.menuHidden = true; } });
       this.children = [];
     }
     configure(config) {
