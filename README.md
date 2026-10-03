@@ -19,6 +19,7 @@ Core functionality is complete and working reliably. Implemented in this reposit
 - Watch later playlist and cleanup task
 - YouTube playlist sync via OAuth (home feed, Watch Later, and all user/imported playlists)
 - YouTube TV lounge sync (pairing, progress sync, SponsorBlock skip)
+- Optional native YouTube playback with persistent quality/audio-only choices and automatic iframe fallback
 - Background cron jobs for cache and sync tasks
 - Prometheus metrics endpoint (`METRICS_PORT` / `METRICS_PATH`)
 
@@ -128,3 +129,4 @@ task migrate-apply
 - `docs/TV-PROGRESS-SYNC.md`
 - `docs/OBSERVABILITY.md`
 - `docs/PODCASTS.md`
+- [Native playback and deployment](docs/NATIVE-PLAYBACK.md)

@@ -77,6 +77,10 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 			server.Use(globalMw)
 		}
 
+		playbackService := newPlaybackService()
+		defer playbackService.Close()
+		registerPlaybackRoutes(server, playbackService, db, ses)
+
 		// Root/Error and etc
 		server.All("/", toFiber(root.Landing))
 		server.All("/error", toFiber(root.Error))

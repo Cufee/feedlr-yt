@@ -25,7 +25,7 @@ func durationToString(videoDuration int) string {
 }
 
 templ Video(props types.VideoPlayerProps) {
-	<div class="relative flex grow flex-col">
+	<div class="feedlr-video-page relative flex grow flex-col">
 		<div class="ui-video-rail">
 			<div class="ui-video-rail-actions">
 				@buttonChannel(props.Video.Channel.ID)
@@ -39,6 +39,14 @@ templ Video(props types.VideoPlayerProps) {
 			</div>
 			<div class="ui-video-rail-actions">
 				if (props.Authenticated) {
+					<button type="button" id="player-mode-toggle" class="ui-video-rail-btn shadow-sm disabled:pointer-events-none disabled:opacity-50" aria-label="Use YouTube player" title="Use YouTube player" disabled>
+						<span data-player-icon="iframe" class="[&>svg]:size-5 [&>svg]:stroke-[1.8]" aria-hidden="true">
+							@icons.Embed()
+						</span>
+						<span data-player-icon="native" class="[&>svg]:size-5 [&>svg]:stroke-[1.8]" aria-hidden="true" hidden>
+							@icons.Player()
+						</span>
+					</button>
 					@buttonBack(props.ReturnURL)
 				} else {
 					@buttonLogin()
@@ -46,21 +54,40 @@ templ Video(props types.VideoPlayerProps) {
 			</div>
 		</div>
 		<div class="grow w-full flex flex-col relative">
-			<div class="absolute inset-0 z-20 flex items-center justify-center bg-canvas/95" id="player-loading"><span class="ui-spinner size-12 border-4"></span></div>
+			<div class="feedlr-player-loading" id="player-loading" role="status" aria-label="Loading video">
+				<div class="feedlr-player-spinner" aria-hidden="true">
+					<svg focusable="false" stroke="currentColor" viewBox="0 0 38 38" xmlns="http://www.w3.org/2000/svg" width="50px" height="50px">
+						<g transform="translate(1 1)" stroke-width="6" fill="none" fill-rule="evenodd">
+							<circle stroke-opacity=".5" cx="18" cy="18" r="16"></circle>
+							<path d="M34 18c0-9.94-8.06-16-16-16">
+								<animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="1s" repeatCount="indefinite"></animateTransform>
+							</path>
+						</g>
+					</svg>
+				</div>
+			</div>
 			@videoPlayer(props)
 		</div>
 		<div id="notification-toast" class="opacity-0 pointer-events-none">
 			@notificationToast("SponsorBlock skipped a video segment")
 		</div>
 	</div>
-	@shared.EmbedScript(hotkeyScript(props.ReturnURL), props.ReturnURL)
 }
 
 templ videoPlayer(player types.VideoPlayerProps) {
-	<div id="player" class="grow overflow-hidden"></div>
-	<script id="" src="https://www.youtube.com/iframe_api"></script>
-	@shared.EmbedScript(sponsorBlockInit(player.SkipSegments), player.SkipSegments)
-	@shared.EmbedScript(youtubePlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress)
+	<div id="player" class="grow overflow-hidden relative" style="min-height: 0"></div>
+	<script src="/assets/js/feedlr-player.js"></script>
+	@shared.EmbedScript(feedlrPlayerInit(player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress, player.Authenticated, player.SkipSegments, player.ReturnURL), player.Video.Channel.ID, player.Video.ID, player.Video.Progress, player.PlayerVolumeLevel, player.ReportProgress, player.Authenticated, player.SkipSegments, player.ReturnURL)
+}
+
+script feedlrPlayerInit(channel, video string, progress, volume int, withProgress, authenticated bool, segments []types.SegmentProps, returnURL string) {
+	const options = { channel, video, progress, volume, withProgress, authenticated, segments, returnURL }
+	if (window.FeedlrPlayer) {
+		window.FeedlrPlayer.mount(options)
+	} else {
+		// HTMX executes inline scripts while external scripts are still loading.
+		window.feedlrPendingPlayer = { options, root: document.getElementById("player") }
+	}
 }
 
 templ buttonChannel(id string) {
@@ -104,140 +131,4 @@ templ notificationToast(message string) {
 	<div class="fixed left-1/2 bottom-4 z-40 -translate-x-1/2">
 		<div class="ui-motion-toast ui-toast ui-toast-info opacity-90"><span>{ message }</span></div>
 	</div>
-}
-
-script hotkeyScript(returnUrl string) {
-	window.addEventListener("keydown", (event) => {
-		if (event.keyCode === 27) {
-			event.preventDefault()
-			document.getElementById("player-loading").classList.remove("hidden")
-			if (window.feedlr_player) {
-				window.feedlr_player.pauseVideo()
-			}
-			window.location.href = window.location.origin + returnUrl
-			setTimeout(() => {
-				window.location.href = window.location.origin + returnUrl
-			}, 250)
-			return false
-		}
-		// Check if the player exists
-		if (!window.feedlr_player) {
-			return
-		}
-		// Check all mod keys
-		for (const k of ["Alt", "AltGraph", "Control", "Meta"]) {
-			if (event.getModifierState(k) === true) return
-		}
-
-		// Play/Pause
-		if (event.keyCode === 32) {
-			event.preventDefault()
-			if (window.feedlr_player.getPlayerState() === 1) {
-				window.feedlr_player.pauseVideo()
-			} else {
-				window.feedlr_player.playVideo()
-			}
-		}
-		// Seek 5 seconds
-		if (event.keyCode === 37) {
-			event.preventDefault()
-			window.feedlr_player.seekTo(window.feedlr_player.getCurrentTime() - 5, true)
-		}
-		if (event.keyCode === 39) {
-			event.preventDefault()
-			window.feedlr_player.seekTo(window.feedlr_player.getCurrentTime() + 5, true)
-		}
-		// Volume
-		if (event.keyCode === 38) {
-			event.preventDefault()
-			window.feedlr_player.setVolume(window.feedlr_player.getVolume() + 5)
-		}
-		if (event.keyCode === 40) {
-			event.preventDefault()
-			window.feedlr_player.setVolume(window.feedlr_player.getVolume() - 5)
-		}
-	})
-}
-
-script youtubePlayerInit(channel string, video string, progress, volume int, withProgress bool) {
-	if (withProgress) {
-		setTimeout(() => {
-			document.querySelector("#close-button").addEventListener("click", saveProgress);
-		}, 100)
-		setInterval(saveProgress, 10000)
-	}
-	let player;
-	var frame = document.getElementById("player")
-	const waitForYT = setInterval(() => {
-		if (typeof YT !== 'undefined' && YT.loaded === 1) {
-			clearInterval(waitForYT);
-			player = new YT.Player(frame, {
-				height: '100%',
-				width: '100%',
-				videoId: video,
-				playerVars: {
-					'start': progress,
-					'rel': 0,
-					'autoplay': 1,
-					'playsinline': 1,
-					'enablejsapi': 1,
-					'iv_load_policy': 3
-				},
-				events: {
-					'onReady': onPlayerReady,
-					'onStateChange': onPlayerStateChange
-				}
-			})
-			window.feedlr_player = player
-		}
-	}, 100)
-
-	function onPlayerReady(event) {
-		document.getElementById("player-loading").classList.add("hidden")
-		const volume = parseInt(window.localStorage.getItem(`player-volume-${channel}`) || window.localStorage.getItem("player-volume"))
-		if (Number.isInteger(volume) && volume > 0) window.feedlr_player.setVolume(volume)
-		try { window.feedlr_player.unloadModule('captions') } catch (e) {}
-	}
-	function onPlayerStateChange(event) {
-		withProgress && saveProgress()
-		if ([0, 2].includes(event.data)) {
-			window.focus() // Focus the window when the video ends or is paused to allow hotkeys to work
-		}
-	}
-	let lastProgress = 0
-	function saveProgress() {
-		if (!window.feedlr_player) return;
-		const currentVolume = Math.floor(window.feedlr_player.getVolume())
-		if (currentVolume > 0) {
-			window.localStorage.setItem("player-volume", currentVolume)
-			window.localStorage.setItem(`player-volume-${channel}`, currentVolume)
-		}
-		const currentTime = Math.floor(window.feedlr_player.getCurrentTime())
-		if (lastProgress === currentTime) {
-			return true
-		}
-		lastProgress = currentTime
-		fetch(`/api/videos/${video}/progress?progress=${currentTime}`, {
-			method: 'POST',
-			credentials: 'include'
-		}).catch(e => console.error(e))
-		return true
-	}
-}
-
-script sponsorBlockInit(segments []types.SegmentProps) {
-  setTimeout(() => { document.getElementById("notification-toast")?.classList.add("transition-all", "duration-[500ms]", "ease-out") }, 501)
-	if (segments && segments.length > 0) {
-		setInterval(() => {
-			if (window.feedlr_player && window.feedlr_player.getPlayerState && window.feedlr_player.getPlayerState() === 1) {
-				var currentTime = window.feedlr_player.getCurrentTime()
-				var segment = segments.find(segment => segment.start <= currentTime && segment.end >= currentTime)
-				if (segment) {
-					window.feedlr_player.seekTo(segment.end, true)
-					document.getElementById("notification-toast")?.classList.remove("opacity-0")
-					setTimeout(() => document.getElementById("notification-toast")?.classList.add("opacity-0"), 1500)
-				}
-			}
-		}, 1000)
-	}
 }

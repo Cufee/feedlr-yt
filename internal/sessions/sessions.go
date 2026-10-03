@@ -18,6 +18,21 @@ import (
 
 var ErrNotFound = errors.New("session not found")
 
+// GetReadOnly checks revocation and expiry without refreshing database state.
+func (c *SessionClient) GetReadOnly(ctx context.Context, id string) (Session, error) {
+	reader, ok := c.db.(interface {
+		GetSessionReadOnly(context.Context, string) (*models.Session, error)
+	})
+	if !ok || id == "" {
+		return Session{}, ErrNotFound
+	}
+	record, err := reader.GetSessionReadOnly(ctx, id)
+	if err != nil || record == nil || record.Deleted {
+		return Session{}, ErrNotFound
+	}
+	return Session{db: c.db, data: record, exists: true}, nil
+}
+
 type SessionClient struct {
 	db database.SessionsClient
 }

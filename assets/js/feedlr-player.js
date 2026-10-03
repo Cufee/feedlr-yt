@@ -1,0 +1,701 @@
+/* Feedlr's shared native / YouTube controller. No expiring URLs belong in page HTML. */
+(function (global) {
+  "use strict";
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+  const read = (storage, key) => { try { return storage.getItem(key); } catch (_) { return null; } };
+  const write = (storage, key, value) => { try { storage.setItem(key, String(value)); } catch (_) {} };
+  const qualityKey = "feedlr-player-quality";
+  const qualityPreference = (value) => value === "audio" ? "audio" : /^\d+$/.test(value) && Number(value) > 0 ? String(Number(value)) : "auto";
+  function qualityHeight(track) {
+    let height = track.height || 0;
+    let width = track.width || 0;
+    // Match familiar YouTube resolution names for portrait and ultrawide video.
+    if (width > 0 && height > width) [width, height] = [height, width];
+    if (height > 0 && width / height > 16 / 9) height = Math.round(width * 9 / 16);
+    return height;
+  }
+  const qualityNames = { 1440: "2K", 2160: "4K", 2880: "5K", 4320: "8K", 8640: "16K" };
+  function qualityLabel(height) { return qualityNames[height] || `${height}p`; }
+  function qualityFromLabel(label) {
+    const named = Object.entries(qualityNames).find(([, name]) => name === label);
+    return named ? named[0] : /^\d+p$/.test(label) ? label.slice(0, -1) : null;
+  }
+  function initialVolume(saved, server) {
+    // Older progress requests omitted volume and left a zero database default.
+    // New pages start audibly; in-page switches preserve their exact snapshot.
+    return clamp(finite(saved) > 0 ? finite(saved) : finite(server) > 0 ? finite(server) : 100, 0, 100);
+  }
+  const modeKey = (video) => `feedlr-player-mode:${video}`;
+  function preferredMode(storage, video, authenticated) {
+    return authenticated && read(storage, modeKey(video)) !== "iframe" ? "native" : "iframe";
+  }
+  function usableResolution(result, now = Date.now()) {
+    if (result.mode !== "native") return false;
+    try {
+      const url = new URL(result.manifestUrl, global.location.origin);
+      return url.origin === global.location.origin && url.pathname.startsWith("/api/") && Date.parse(result.expiresAt) > now;
+    } catch (_) { return false; }
+  }
+  function expirationError(error, expiresAt, now = Date.now()) {
+    return now >= expiresAt || (error?.category === 1 && (error.data || []).some((value) => [401, 403, 404, 410].includes(value)));
+  }
+
+  // Iframe commands and Shaka's initial seek are asynchronous. Keep each
+  // restored value until the adapter acknowledges it, rather than saving the
+  // temporary zero/default state emitted during initialization.
+  function restoredState(actual, pending) {
+    const state = { ...actual };
+    for (const key of Object.keys(pending)) {
+      const tolerance = key === "position" ? 2 : key === "volume" ? 1 : 0;
+      const acknowledged = typeof pending[key] === "number"
+        ? Number.isFinite(actual[key]) && Math.abs(actual[key] - pending[key]) <= tolerance
+        : actual[key] === pending[key];
+      if (acknowledged) delete pending[key];
+      else state[key] = pending[key];
+    }
+    return state;
+  }
+
+  // Count only time during which the browser can actually play. Visibility,
+  // connectivity, pause and autoplay policy suspend both deadlines.
+  class PlaybackWatchdog {
+    constructor() { this.reset(); }
+    reset() { this.firstFrame = false; this.startup = 0; this.stall = 0; this.position = null; }
+    tick(seconds, active, position, decoded) {
+      if (!active) return null;
+      const moved = this.position !== null && Math.abs(position - this.position) > 0.01;
+      this.position = position;
+      if (decoded || moved) this.firstFrame = true;
+      if (!this.firstFrame) {
+        this.startup += seconds;
+        return this.startup >= 10 ? "startup_timeout" : null;
+      }
+      this.stall = moved ? 0 : this.stall + seconds;
+      return this.stall >= 15 ? "playback_stall" : null;
+    }
+  }
+
+  function applyQuality(player, quality) {
+    // Clear both kinds of restrictions when returning to Auto, including any
+    // previous manual selection or defaults supplied by a UI integration.
+    const unrestricted = { minWidth: 0, maxWidth: Infinity, minHeight: 0, maxHeight: Infinity, minPixels: 0, maxPixels: Infinity, minBandwidth: 0, maxBandwidth: Infinity, minFrameRate: 0, maxFrameRate: Infinity };
+    if (quality === "auto") {
+      player.configure({ abr: { enabled: true, restrictions: unrestricted }, restrictions: unrestricted });
+      return "auto";
+    }
+    const variants = player.getVideoTracks ? player.getVideoTracks() : player.getVariantTracks();
+    const heights = variants.map(qualityHeight).filter((height) => height > 0);
+    const below = heights.filter((height) => height <= Number(quality));
+    // If every track exceeds the preference, the smallest is the only playable fallback.
+    const height = below.length ? Math.max(...below) : Math.min(...heights);
+    const tracks = variants.filter((track) => qualityHeight(track) === height);
+    const active = tracks.find((track) => track.active);
+    const track = active || tracks.sort((a, b) => finite(b.bandwidth) - finite(a.bandwidth))[0];
+    if (!track) return applyQuality(player, "auto");
+    player.configure({ abr: { enabled: false } });
+    if (player.selectVideoTrack) player.selectVideoTrack(track, true, 2);
+    else player.selectVariantTrack(track, true, 2);
+    return String(height);
+  }
+
+  const scripts = new Map();
+  function loadScript(src) {
+    if (scripts.has(src)) return scripts.get(src);
+    const promise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      const timeout = global.setTimeout(() => { script.remove(); reject(new Error("script_timeout")); }, 10000);
+      script.src = src;
+      script.onload = () => { global.clearTimeout(timeout); resolve(); };
+      script.onerror = () => { global.clearTimeout(timeout); script.remove(); reject(new Error("script_failed")); };
+      document.head.append(script);
+    }).catch((error) => { scripts.delete(src); throw error; });
+    scripts.set(src, promise);
+    return promise;
+  }
+  async function loadShaka() {
+    if (!document.querySelector('link[data-feedlr-player]')) {
+      const css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = "/assets/css/player.css";
+      css.dataset.feedlrPlayer = "true";
+      document.head.append(css);
+    }
+    if (!global.shaka?.ui) {
+      if (!document.querySelector('link[data-feedlr-shaka]')) {
+        const css = document.createElement("link");
+        css.rel = "stylesheet";
+        css.href = "/assets/vendor/controls.css";
+        css.dataset.feedlrShaka = "true";
+        document.head.append(css);
+      }
+      await loadScript("/assets/vendor/shaka-player.ui.js");
+    }
+    global.shaka.polyfill.installAll();
+    if (!global.shaka.Player.isBrowserSupported()) throw new Error("unsupported_browser");
+  }
+  let youtubeReady;
+  function loadYouTube() {
+    if (global.YT?.Player) return Promise.resolve();
+    if (youtubeReady) return youtubeReady;
+    youtubeReady = new Promise((resolve, reject) => {
+      const prior = global.onYouTubeIframeAPIReady;
+      const timeout = global.setTimeout(() => reject(new Error("youtube_api_timeout")), 12000);
+      global.onYouTubeIframeAPIReady = () => {
+        global.clearTimeout(timeout);
+        try { prior?.(); } finally { resolve(); }
+      };
+      loadScript("https://www.youtube.com/iframe_api").catch((error) => { global.clearTimeout(timeout); reject(error); });
+    }).catch((error) => { youtubeReady = null; throw error; });
+    return youtubeReady;
+  }
+
+  class Controller {
+    constructor(options) {
+      this.options = options;
+      this.root = document.getElementById("player");
+      this.toggle = document.getElementById("player-mode-toggle");
+      this.loading = document.getElementById("player-loading");
+      this.abort = new AbortController();
+      this.generation = 0;
+      this.disposed = false;
+      this.ready = false;
+      this.switching = false;
+      this.quality = qualityPreference(read(global.localStorage, qualityKey));
+      this.availableQualities = [];
+      this.audioOnly = false;
+      this.mode = preferredMode(global.sessionStorage, options.video, options.authenticated);
+      this.lastProgress = -1;
+      this.expiresAt = Infinity;
+      this.renewAt = Infinity;
+      this.expiryRetryUsed = false;
+      this.watchdog = new PlaybackWatchdog();
+      const savedVolume = read(global.localStorage, `player-volume-${options.channel}`) ?? read(global.localStorage, "player-volume");
+      this.state = { position: finite(options.progress), playing: true, volume: initialVolume(savedVolume, options.volume), muted: false, rate: 1 };
+      this.listen(this.toggle, "click", () => {
+        const mode = this.mode === "native" ? "iframe" : "native";
+        write(global.sessionStorage, modeKey(options.video), mode);
+        this.expiryRetryUsed = false;
+        this.switchPlayer(mode, this.snapshot(), "manual_switch");
+      });
+      this.listen(document.getElementById("close-button"), "click", () => this.cleanup());
+      this.listen(document, "keydown", (event) => this.hotkey(event));
+      this.listen(document, "htmx:beforeSwap", (event) => {
+        if (event.detail?.target?.contains(this.root)) this.cleanup();
+      });
+      this.listen(document, "htmx:historyRestore", () => {
+        if (document.getElementById("player") !== this.root) this.cleanup();
+      });
+      this.listen(global, "pagehide", (event) => {
+        if (event.persisted) {
+          this.historyState = this.snapshot();
+          this.saveProgress();
+          this.adapter?.pause();
+        } else this.cleanup();
+      });
+      this.listen(global, "pageshow", (event) => {
+        if (event.persisted && !this.disposed) this.switchPlayer(this.mode, this.historyState || this.snapshot(), "history_restore");
+      });
+      this.listen(document, "visibilitychange", () => { if (!document.hidden) this.checkRenewal(); else this.saveProgress(); });
+      this.listen(global, "online", () => this.checkRenewal());
+      this.lastTick = performance.now();
+      this.timer = global.setInterval(() => this.tick(), 500);
+      this.progressTimer = options.withProgress ? global.setInterval(() => this.saveProgress(), 10000) : null;
+      this.start = this.switchPlayer(this.mode, null, "initial");
+    }
+
+    listen(target, event, callback) { target?.addEventListener(event, callback, { signal: this.abort.signal }); }
+    metric(event, reason, seconds) {
+      if (!this.options.authenticated) return;
+      fetch(`/api/videos/${encodeURIComponent(this.options.video)}/playback/events`, {
+        method: "POST", credentials: "same-origin", keepalive: true,
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event, reason, seconds }),
+      }).catch(() => {});
+    }
+    snapshot() {
+      if (this.adapter && this.ready) {
+        const current = this.adapter.snapshot();
+        this.state = { ...this.state, ...current, position: Math.max(0, finite(current.position, this.state.position)) };
+      }
+      return { ...this.state };
+    }
+    showLoading(loading) { this.loading?.classList.toggle("hidden", !loading); }
+    updateToggle() {
+      if (!this.toggle) return;
+      const label = this.mode === "native" ? "Use YouTube player" : "Use Feedlr player";
+      this.toggle.setAttribute("aria-label", label);
+      this.toggle.title = label;
+      for (const icon of this.toggle.querySelectorAll("[data-player-icon]")) {
+        icon.hidden = icon.dataset.playerIcon === this.mode;
+      }
+      this.toggle.disabled = this.switching;
+    }
+    notice(message) {
+      const toast = document.getElementById("notification-toast");
+      const text = toast?.querySelector("span");
+      if (text) text.textContent = message;
+      toast?.classList.remove("opacity-0");
+      global.clearTimeout(this.toastTimer);
+      this.toastTimer = global.setTimeout(() => toast?.classList.add("opacity-0"), 2500);
+    }
+    async resolve(mode, signal) {
+      const response = await fetch(`/api/videos/${encodeURIComponent(this.options.video)}/playback`, {
+        method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, audioOnly: this.quality === "audio" }), signal,
+      });
+      if (!response.ok) throw new Error("resolution_failed");
+      return response.json();
+    }
+    async destroyAdapter() {
+      // Detach listeners before pause/destroy: teardown must never save a zero.
+      this.playerAbort?.abort();
+      this.playerCleanup?.();
+      this.playerCleanup = null;
+      const adapter = this.adapter;
+      this.adapter = null;
+      this.ready = false;
+      const previous = this.teardown || Promise.resolve();
+      this.teardown = previous.then(async () => { if (adapter) { try { await adapter.destroy(); } catch (_) {} } });
+      await this.teardown;
+    }
+    async switchPlayer(requestedMode, preservedState, reason) {
+      if (this.disposed) return;
+      this.saveProgress();
+      const generation = ++this.generation;
+      const current = () => !this.disposed && generation === this.generation;
+      this.resolveAbort?.abort();
+      this.resolveAbort = new AbortController();
+      const requestAbort = this.resolveAbort;
+      this.switching = true;
+      if (reason === "renewal") this.metric("renewal", "scheduled");
+      if (reason === "manual_switch") this.metric("switch", requestedMode);
+      if (preservedState) this.state = { ...preservedState };
+      this.mode = requestedMode;
+      this.blocked = false;
+      this.showLoading(true);
+      this.updateToggle();
+      await this.destroyAdapter();
+      if (!current()) return;
+      this.root.replaceChildren();
+      let resolution = { mode: "iframe", reason: "guest", progress: this.state.position };
+      if (this.options.authenticated) {
+        const timeout = global.setTimeout(() => requestAbort.abort(), 9000);
+        try { resolution = await this.resolve(requestedMode, requestAbort.signal); }
+        catch (_) { resolution = { mode: "iframe", reason: "resolution_failed", progress: this.state.position }; }
+        finally { global.clearTimeout(timeout); }
+        if (!current()) return;
+      }
+      if (!preservedState) this.state.position = Math.max(0, finite(resolution.progress, this.state.position));
+      if (requestedMode === "native" && resolution.mode === "native" && !usableResolution(resolution)) {
+        resolution = { ...resolution, mode: "iframe", reason: "invalid_resolution" };
+      }
+      this.mode = requestedMode === "native" ? resolution.mode : "iframe";
+      this.updateToggle();
+      try {
+        if (this.mode === "native") {
+          this.audioOnly = resolution.audioOnly === true;
+          if (Array.isArray(resolution.qualities)) {
+            this.availableQualities = [...new Set(resolution.qualities.map(qualityHeight).filter((height) => height > 0))].sort((a, b) => b - a);
+          }
+          this.expiresAt = Date.parse(resolution.expiresAt);
+          this.renewAt = Math.max(Date.now() + 30000, this.expiresAt - 120000);
+          this.watchdog.reset();
+          this.started = false;
+          this.resolvedAt = performance.now();
+          this.monitoring = true;
+          await this.createNative(resolution, current);
+        } else {
+          this.monitoring = false;
+          if (requestedMode === "native" || reason === "fallback") {
+            this.notice("Switched to YouTube player");
+            if (reason !== "fallback") this.metric("fallback", resolution.reason || "server_fallback");
+          }
+          await this.createIframe(current);
+        }
+      } catch (error) {
+        if (!current()) return;
+        if (this.mode === "native") {
+          await this.nativeError(error);
+          return;
+        }
+        this.notice("YouTube player could not load. Reload to try again.");
+        this.showLoading(false);
+        this.metric("media_error", "iframe_failed");
+      }
+      if (!current()) return;
+      this.switching = false;
+      this.updateToggle();
+    }
+
+    async createNative(resolution, current) {
+      await loadShaka();
+      if (!current()) return;
+      const box = document.createElement("div");
+      box.style.cssText = "position:absolute;inset:0;background:#000";
+      const video = document.createElement("video");
+      video.style.cssText = "width:100%;height:100%;object-fit:contain";
+      video.playsInline = true;
+      video.controls = false;
+      video.autoplay = this.state.playing;
+      video.volume = this.state.volume / 100;
+      video.muted = this.state.muted;
+      box.append(video);
+      let waveform;
+      if (this.audioOnly) {
+        video.style.opacity = "0";
+        waveform = document.createElement("div");
+        waveform.className = "feedlr-audio-visual";
+        waveform.dataset.playing = "false";
+        waveform.setAttribute("aria-label", "Audio only");
+        const bars = document.createElement("div");
+        bars.className = "feedlr-audio-wave";
+        bars.setAttribute("aria-hidden", "true");
+        for (let i = 0; i < 24; i++) {
+          const bar = document.createElement("span");
+          bar.style.setProperty("--bar", String(i));
+          bars.append(bar);
+        }
+        waveform.append(bars);
+        box.append(waveform);
+      }
+      this.root.append(box);
+      const player = new global.shaka.Player();
+      const ui = new global.shaka.ui.Overlay(player, box, video);
+      ui.configure({
+        overflowMenuButtons: ["quality", "playback_rate", "picture_in_picture"],
+        controlPanelElements: ["play_pause", "time_and_duration", "spacer", "mute", "volume", "overflow_menu", "fullscreen"],
+        singleClickForPlayAndPause: true,
+        seekOnTaps: false,
+        qualityMarks: { 720: "", 1080: "", 1440: "", 2160: "", 4320: "" },
+        customTrackLabel: (label, track, type) => type === "video" && track.height ? qualityLabel(qualityHeight(track)) : label,
+      });
+      ui.setEnabled(true);
+      this.playerAbort = new AbortController();
+      const signal = this.playerAbort.signal;
+      const listen = (event, callback) => video.addEventListener(event, callback, { signal });
+      let destroyed = false;
+      const pending = { ...this.state };
+      this.adapter = {
+        video, player, waveform,
+        snapshot: () => restoredState({ position: video.currentTime, playing: !video.paused && !video.ended, volume: video.volume * 100, muted: video.muted, rate: player.getPlaybackRate?.() || this.state.rate }, pending),
+        play: () => { pending.playing = true; return this.playNative(video, pending); }, pause: () => { pending.playing = false; video.pause(); },
+        seek: (time) => { pending.position = clamp(time, 0, Number.isFinite(video.duration) ? video.duration : Infinity); video.currentTime = pending.position; },
+        volume: (value) => { pending.volume = clamp(value, 0, 100); video.volume = pending.volume / 100; },
+        destroy: async () => {
+          destroyed = true;
+          video.pause();
+          // Overlay.destroy owns and destroys its Shaka Player as well.
+          await ui.destroy();
+          video.removeAttribute("src");
+          video.load();
+        },
+      };
+      const onError = (event) => {
+        if (current() && !destroyed && event.detail?.severity === 2) this.nativeError(event.detail);
+      };
+      player.addEventListener("error", onError);
+      const controls = ui.getControls();
+      const renderQualityMenu = () => {
+        const menu = box.querySelector(".shaka-resolutions");
+        if (!menu || !current() || destroyed) return;
+        for (const button of menu.querySelectorAll("[data-feedlr-quality]")) button.remove();
+        if (this.audioOnly) {
+          // Shaka's default audio quality entries are bitrates. This menu keeps
+          // the same video choices so listening can switch back to watching.
+          for (const button of menu.querySelectorAll(".explicit-resolution, .shaka-enable-abr-button")) button.remove();
+        } else {
+          const seen = new Map();
+          for (const button of menu.querySelectorAll(".explicit-resolution")) {
+            const label = button.querySelector("span")?.textContent;
+            const previous = seen.get(label);
+            if (previous && button.getAttribute("aria-checked") !== "true") button.remove();
+            else { previous?.remove(); seen.set(label, button); }
+          }
+          const active = player.getVariantTracks().find((track) => track.active);
+          if (active?.height) {
+            for (const label of box.querySelectorAll(".shaka-current-auto-quality")) label.textContent = qualityLabel(qualityHeight(active));
+          }
+        }
+        const addChoice = (value, label, selected = false) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.feedlrQuality = value;
+          button.setAttribute("role", "menuitemradio");
+          button.setAttribute("aria-checked", String(selected));
+          const text = document.createElement("span");
+          text.textContent = label;
+          button.append(text);
+          if (selected) {
+            const check = document.createElement("span");
+            check.textContent = "✓";
+            check.setAttribute("aria-hidden", "true");
+            button.append(check);
+          }
+          menu.append(button);
+        };
+        if (this.audioOnly) {
+          for (const height of this.availableQualities) addChoice(String(height), qualityLabel(height));
+          addChoice("auto", "Auto");
+          const button = box.querySelector(".shaka-resolution-button");
+          button?.setAttribute("shaka-status", "Audio only");
+          const selection = button?.querySelector(".shaka-current-selection-span");
+          if (selection) selection.textContent = "Audio only";
+          for (const label of box.querySelectorAll(".shaka-current-auto-quality")) label.style.display = "none";
+        }
+        addChoice("audio", "Audio only", this.audioOnly);
+      };
+      let menuUpdatePending = false;
+      const updateQualityLabels = () => {
+        if (menuUpdatePending) return;
+        menuUpdatePending = true;
+        // Shaka writes its own labels after dispatching the menu event.
+        Promise.resolve().then(() => { menuUpdatePending = false; renderQualityMenu(); });
+      };
+      controls.addEventListener("resolutionselectionupdated", updateQualityLabels);
+      player.addEventListener("adaptation", updateQualityLabels);
+      box.addEventListener("click", (event) => {
+        const button = event.target.closest?.("[data-feedlr-quality], .explicit-resolution, .shaka-enable-abr-button");
+        if (!button?.closest(".shaka-resolutions")) return;
+        const custom = button.dataset.feedlrQuality;
+        if (custom) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          this.selectQuality(custom);
+        } else if (button.classList.contains("shaka-enable-abr-button")) {
+          this.selectQuality("auto");
+        } else {
+          // Record the clicked preference, not the old, still-active track.
+          const selected = qualityFromLabel(button.querySelector("span")?.textContent);
+          if (selected) {
+            this.quality = selected;
+            write(global.localStorage, qualityKey, selected);
+          }
+        }
+      }, { capture: true, signal });
+      this.playerCleanup = () => {
+        player.removeEventListener("error", onError);
+        player.removeEventListener("adaptation", updateQualityLabels);
+        controls.removeEventListener("resolutionselectionupdated", updateQualityLabels);
+      };
+      listen("play", () => { pending.playing = true; this.state.playing = true; this.blocked = false; this.checkRenewal(); });
+      listen("pause", () => { if (this.ready) { pending.playing = false; this.state.playing = false; this.saveProgress(); } });
+      listen("ended", () => { pending.playing = false; this.state.playing = false; this.saveProgress(); });
+      listen("playing", () => { this.showLoading(false); });
+      listen("volumechange", () => this.saveVolume());
+      listen("error", () => { if (current() && !destroyed) this.nativeError({ category: 3, code: video.error?.code }); });
+      player.configure({ streaming: { bufferingGoal: 30, rebufferingGoal: 2, retryParameters: { maxAttempts: 2, timeout: 10000, connectionTimeout: 5000, stallTimeout: 5000 } }, manifest: { retryParameters: { maxAttempts: 1, timeout: 8000 } } });
+      await player.attach(video);
+      if (!current()) return;
+      await player.load(resolution.manifestUrl, this.state.position);
+      if (!current()) return;
+      const heights = [...new Set(player.getVariantTracks().map((track) => track.height).filter((height) => height > 0))].sort((a, b) => b - a);
+      if (!this.audioOnly) {
+        if (!heights.length) throw new Error("unsupported_codec");
+        this.availableQualities = [...new Set(player.getVariantTracks().map(qualityHeight).filter((height) => height > 0))].sort((a, b) => b - a);
+      }
+      applyQuality(player, this.audioOnly ? "auto" : this.quality);
+      updateQualityLabels();
+      video.volume = this.state.volume / 100;
+      video.muted = this.state.muted;
+      try { player.trickPlay(this.state.rate, false); } catch (_) { pending.rate = 1; player.trickPlay(1, false); }
+      this.ready = true;
+      this.showLoading(false);
+      if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(() => { if (current()) this.watchdog.firstFrame = true; });
+      if (this.state.playing) await this.playNative(video, pending);
+      this.snapshot();
+    }
+    selectQuality(value) {
+      const quality = qualityPreference(value);
+      this.quality = quality;
+      write(global.localStorage, qualityKey, quality);
+      if ((quality === "audio") !== this.audioOnly) {
+        return this.switchPlayer("native", this.snapshot(), "quality_switch");
+      }
+      if (!this.audioOnly && this.adapter?.player) applyQuality(this.adapter.player, quality);
+      return Promise.resolve();
+    }
+    async playNative(video, pending) {
+      this.state.playing = true;
+      try { await video.play(); }
+      catch (error) {
+        if (error.name === "NotAllowedError") {
+          this.blocked = true;
+          pending.playing = false;
+          this.state.playing = false;
+          this.showLoading(false);
+        } else if (error.name !== "AbortError") await this.nativeError(error);
+      }
+    }
+
+    async createIframe(current) {
+      await loadYouTube();
+      if (!current()) return;
+      const frame = document.createElement("div");
+      frame.style.cssText = "position:absolute;inset:0;width:100%;height:100%";
+      this.root.append(frame);
+      await new Promise((resolve, reject) => {
+        let destroyed = false;
+        const pending = { ...this.state };
+        const timer = global.setTimeout(() => reject(new Error("iframe_timeout")), 15000);
+        const player = new global.YT.Player(frame, {
+          height: "100%", width: "100%", videoId: this.options.video,
+          playerVars: { start: Math.floor(this.state.position), autoplay: this.state.playing ? 1 : 0, playsinline: 1, rel: 0, enablejsapi: 1, iv_load_policy: 3, origin: global.location.origin },
+          events: {
+            onReady: () => {
+              if (!current() || destroyed) return;
+              global.clearTimeout(timer);
+              player.setVolume(this.state.volume);
+              if (this.state.muted) player.mute(); else player.unMute();
+              const rates = player.getAvailablePlaybackRates();
+              if (rates.includes(this.state.rate)) player.setPlaybackRate(this.state.rate);
+              else pending.rate = 1;
+              player.seekTo(this.state.position, true);
+              if (this.state.playing) player.playVideo(); else player.pauseVideo();
+              try { player.unloadModule("captions"); } catch (_) {}
+              this.ready = true;
+              this.showLoading(false);
+              resolve();
+            },
+            onStateChange: (event) => {
+              if (!current() || destroyed || !this.ready) return;
+              if ([0, 1, 2].includes(event.data)) this.state.playing = event.data === 1;
+              this.saveProgress();
+            },
+            onError: () => { if (current() && !destroyed) { global.clearTimeout(timer); reject(new Error("iframe_failed")); } },
+            onAutoplayBlocked: () => { if (current()) { pending.playing = false; this.state.playing = false; } },
+          },
+        });
+        this.adapter = {
+          snapshot: () => restoredState({ position: player.getCurrentTime(), playing: [1, 3].includes(player.getPlayerState()), volume: player.getVolume(), muted: player.isMuted(), rate: player.getPlaybackRate() }, pending),
+          play: () => { pending.playing = true; player.playVideo(); }, pause: () => { pending.playing = false; player.pauseVideo(); },
+          seek: (time) => { pending.position = Math.max(0, time); player.seekTo(pending.position, true); }, volume: (value) => { pending.volume = clamp(value, 0, 100); player.setVolume(pending.volume); },
+          destroy: async () => { destroyed = true; global.clearTimeout(timer); player.destroy(); resolve(); },
+        };
+      });
+    }
+
+    async nativeError(error) {
+      if (this.mode !== "native" || this.disposed || this.handlingError) return;
+      this.handlingError = true;
+      const state = this.snapshot();
+      const expired = expirationError(error, this.expiresAt);
+      const reason = expired ? "expired_media" : (["unsupported_browser", "unsupported_codec"].includes(error.message) ? error.message : "native_error");
+      this.metric("media_error", reason);
+      if (expired && !this.expiryRetryUsed) {
+        this.expiryRetryUsed = true;
+        // Release before awaiting so a failed fresh player can itself fall back.
+        this.handlingError = false;
+        await this.switchPlayer("native", state, "expiry_retry");
+      } else {
+        this.handlingError = false;
+        await this.fallback(reason, state);
+      }
+    }
+    fallback(reason, state = this.snapshot()) {
+      if (this.mode !== "native" || this.disposed) return Promise.resolve();
+      this.monitoring = false;
+      this.metric("fallback", reason);
+      return this.switchPlayer("iframe", state, "fallback");
+    }
+    checkRenewal() {
+      if (this.mode !== "native" || !this.ready || this.switching || this.disposed || document.hidden || global.navigator.onLine === false) return;
+      if (this.snapshot().playing && Date.now() >= this.renewAt) {
+        this.renewAt = Infinity;
+        this.switchPlayer("native", this.snapshot(), "renewal");
+      }
+    }
+    tick() {
+      const now = performance.now();
+      // Discard scheduler suspension rather than treating a sleeping device as a stall.
+      const elapsed = Math.min(1, (now - this.lastTick) / 1000);
+      this.lastTick = now;
+      if (this.disposed) return;
+      const state = this.snapshot();
+      if (this.mode === "native" && this.monitoring) {
+        const active = state.playing && !this.blocked && !document.hidden && global.navigator.onLine !== false;
+        const hadFrame = this.started;
+        const reason = this.watchdog.tick(elapsed, active, state.position, this.watchdog.firstFrame);
+        if (this.watchdog.firstFrame && !hadFrame) {
+          this.started = true;
+          this.metric("startup", "native", (performance.now() - this.resolvedAt) / 1000);
+        }
+        if (reason) { this.fallback(reason); return; }
+        this.checkRenewal();
+      }
+      if (this.ready && state.playing) {
+        const segment = (this.options.segments || []).find((item) => state.position >= item.start && state.position < item.end);
+        if (segment) { this.adapter.seek(segment.end); this.notice("SponsorBlock skipped a video segment"); }
+      }
+    }
+    saveVolume() {
+      if (!this.ready || !this.adapter) return;
+      const volume = Math.round(this.adapter.snapshot().volume);
+      write(global.localStorage, "player-volume", volume);
+      write(global.localStorage, `player-volume-${this.options.channel}`, volume);
+    }
+    saveProgress() {
+      if (!this.ready || !this.adapter || this.disposed) return;
+      this.saveVolume();
+      if (!this.options.withProgress) return;
+      const position = Math.floor(this.snapshot().position);
+      if (position <= 0 || position === this.lastProgress) return;
+      this.lastProgress = position;
+      fetch(`/api/videos/${encodeURIComponent(this.options.video)}/progress?progress=${position}&volume=${Math.round(this.snapshot().volume)}`, { method: "POST", credentials: "same-origin", keepalive: true }).catch(() => {});
+    }
+    hotkey(event) {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.target?.closest?.("input,textarea,select,button,a,[contenteditable=true]")) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        this.cleanup();
+        global.location.href = this.options.returnURL;
+        return;
+      }
+      if (!this.ready || !this.adapter) return;
+      const state = this.snapshot();
+      const actions = {
+        " ": () => state.playing ? this.adapter.pause() : this.adapter.play(),
+        ArrowLeft: () => this.adapter.seek(state.position - 5), ArrowRight: () => this.adapter.seek(state.position + 5),
+        ArrowUp: () => this.adapter.volume(state.volume + 5), ArrowDown: () => this.adapter.volume(state.volume - 5),
+      };
+      if (actions[event.key]) { event.preventDefault(); actions[event.key](); }
+    }
+    cleanup() {
+      if (this.disposed) return;
+      this.saveProgress();
+      this.disposed = true;
+      this.generation++;
+      this.abort.abort();
+      this.resolveAbort?.abort();
+      global.clearInterval(this.timer);
+      global.clearInterval(this.progressTimer);
+      global.clearTimeout(this.toastTimer);
+      this.destroyAdapter();
+      if (global.feedlr_player === this) delete global.feedlr_player;
+    }
+    // The existing integration surface remains available for other page scripts.
+    playVideo() { this.adapter?.play(); }
+    pauseVideo() { this.adapter?.pause(); }
+    seekTo(time) { this.adapter?.seek(time); }
+    getCurrentTime() { return this.snapshot().position; }
+    getPlayerState() { return this.snapshot().playing ? 1 : 2; }
+    getVolume() { return this.snapshot().volume; }
+    setVolume(value) { this.adapter?.volume(value); }
+  }
+
+  function mount(options) {
+    global.feedlr_player?.cleanup?.();
+    global.feedlrPodcastPlayer?.cleanup?.();
+    const controller = new Controller(options);
+    global.feedlr_player = controller;
+    return controller;
+  }
+  const api = { mount, Controller, PlaybackWatchdog, preferredMode, usableResolution, expirationError, applyQuality, restoredState, initialVolume, qualityLabel, qualityPreference, qualityHeight, qualityFromLabel };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else {
+    global.FeedlrPlayer = api;
+    const pending = global.feedlrPendingPlayer;
+    delete global.feedlrPendingPlayer;
+    // Do not revive an obsolete page if navigation completed during the load.
+    if (pending?.root && pending.root === document.getElementById("player")) mount(pending.options);
+  }
+})(typeof window !== "undefined" ? window : globalThis);

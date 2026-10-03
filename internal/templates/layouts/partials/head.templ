@@ -32,6 +32,7 @@ templ Head(htmxReplace bool, content ...templ.Component) {
 			}
 			{ children... }
 			<link href="/assets/css/style.css" rel="stylesheet"/>
+			<link href="/assets/css/player.css" rel="stylesheet" data-feedlr-player="true"/>
 			<script src="/assets/js/htmx.min.js"></script>
 			<script src="/assets/js/hyperscript.min.js" async></script>
 		</head>

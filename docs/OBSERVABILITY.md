@@ -43,6 +43,14 @@ All metrics use the `feedlr` namespace.
 - `feedlr_youtube_tv_sync_events_total{event,outcome}`
   - TV sync connects/disconnects/reconnects/progress/sponsor skip events.
 
+- `feedlr_playback_events_total{event,reason}`
+  - Native/iframe selection, resolution, shared playback health, media errors, renewal, and browser fallback outcomes. Labels use finite server-controlled or validated values.
+
+- `feedlr_playback_startup_seconds`
+  - Histogram of browser native playback startup latency.
+
+Native playback is operationally healthy only when real audio/video probes succeed; Companion's `/healthz` reports process liveness. Compare health failures with selection/fallback reasons and startup latency. These are separate event counts, so summing every event type does not yield a viewer or playback count. See [Native Playback](NATIVE-PLAYBACK.md) for circuit behavior and rollout checks.
+
 ## Concrete Rollout Plan
 
 1. Enable secure scraping:
@@ -56,6 +64,7 @@ All metrics use the `feedlr` namespace.
    - YouTube dependency health (`feedlr_youtube_api_calls_total`, `feedlr_youtube_oauth_calls_total`, `feedlr_youtube_tv_calls_total`).
    - Background/video refresh throughput (`feedlr_background_tasks_total`, `feedlr_video_refresh_*`).
    - TV sync reliability (`feedlr_youtube_tv_sync_events_total`).
+   - Native playback health/fallback reasons and startup latency (`feedlr_playback_events_total`, `feedlr_playback_startup_seconds`).
    - Import starter dashboard: `docs/observability/feedlr-service-obsv.dashboard.json`.
 4. Add alert rules:
    - YouTube API/OAuth error ratio spikes.

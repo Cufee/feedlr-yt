@@ -1,7 +1,5 @@
 services:
   feedlr-migrate:
-    env_file:
-      - .env
     build:
       dockerfile: Dockerfile.migrate
     pull_policy: always
@@ -16,10 +14,9 @@ services:
       dockerfile: Dockerfile
     environment:
       - PORT=3000 # the port does not matter, but it needs to match Traefik labels. we set it here explicitly in order to avoid any issues
-    expose:
-      - 3000
-    env_file:
-      - .env
+      - NATIVE_PLAYBACK_ENABLED=${NATIVE_PLAYBACK_ENABLED:-true}
+      - COMPANION_URL=${COMPANION_URL:-http://companion:8282}
+      - COMPANION_SECRET=${COMPANION_SECRET:-}
     volumes:
       - ${DATABASE_DIR}:/data
     restart: always
@@ -28,7 +25,34 @@ services:
         condition: service_completed_successfully
     networks:
       - dokploy-network
+      - playback
+
+  companion:
+    image: quay.io/invidious/invidious-companion:latest
+    profiles: [native]
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8282
+      SERVER_SECRET_KEY: ${COMPANION_SECRET:-}
+      SERVER_VERIFY_REQUESTS: "true"
+    restart: always
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - companion-cache:/var/tmp/youtubei.js:rw
+    networks:
+      - playback
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
 networks:
   dokploy-network:
     external: true
+  playback:
+    driver: bridge
+
+volumes:
+  companion-cache:

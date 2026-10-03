@@ -1,11 +1,14 @@
 {
   "name": "feedlr",
   "scripts": {
-    "build": "npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css",
-    "dev": "npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css --watch"
+    "build": "npm run build:vendor && npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css",
+    "build:vendor": "node scripts/build-vendor.mjs",
+    "test": "node --test assets/js/feedlr-player.test.cjs",
+    "dev": "npm run build:vendor && npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css --watch"
   },
   "dependencies": {
     "@tailwindcss/cli": "^4.1.4",
+    "shaka-player": "5.2.12",
     "tailwindcss": "^4.1.4"
   }
 }

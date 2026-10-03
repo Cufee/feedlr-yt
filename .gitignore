@@ -4,6 +4,7 @@ tmp
 **/.DS_Store
 node_modules
 assets/css/style.css
+assets/vendor/
 
 .env
 

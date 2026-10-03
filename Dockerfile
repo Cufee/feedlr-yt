@@ -19,6 +19,7 @@ RUN --mount=type=cache,target=$GOPATH/pkg/mod go mod download
 
 COPY . ./
 COPY --from=styles-builder /workspace/assets/css/style.css /workspace/assets/css/style.css
+COPY --from=styles-builder /workspace/assets/vendor /workspace/assets/vendor
 
 # generate code
 RUN --mount=type=cache,target=$GOPATH/pkg/mod go generate ./...

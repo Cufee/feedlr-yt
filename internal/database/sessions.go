@@ -21,7 +21,7 @@ type SessionsClient interface {
 }
 
 func (c *sqliteClient) GetSession(ctx context.Context, id string) (*models.Session, error) {
-	session, err := models.Sessions(models.SessionWhere.ID.EQ(id), models.SessionWhere.ExpiresAt.GT(time.Now()), models.SessionWhere.Deleted.EQ(false)).One(ctx, c.db)
+	session, err := c.GetSessionReadOnly(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +33,12 @@ func (c *sqliteClient) GetSession(ctx context.Context, id string) (*models.Sessi
 	}
 
 	return session, nil
+}
+
+// GetSessionReadOnly authenticates frequent media requests without a write to
+// last_used or the login expiration on each range request.
+func (c *sqliteClient) GetSessionReadOnly(ctx context.Context, id string) (*models.Session, error) {
+	return models.Sessions(models.SessionWhere.ID.EQ(id), models.SessionWhere.ExpiresAt.GT(time.Now()), models.SessionWhere.Deleted.EQ(false)).One(ctx, c.db)
 }
 
 func (c *sqliteClient) CreateSession(ctx context.Context, session *models.Session) (*models.Session, error) {

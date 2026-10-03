@@ -259,22 +259,17 @@ Usage:
 | HTMX | Server-driven UI updates | `/assets/js/htmx.min.js` |
 | Hyperscript | Lightweight interactions | `/assets/js/hyperscript.min.js` |
 | Fuse.js | Client-side search | CDN |
+| Shaka Player | Native YouTube video and audio-only playback | `/assets/vendor/`, pinned and built locally |
 
-### Inline Scripts in Templ
+### Video Player Lifecycle
 
-```templ
-script initPlayer(videoId string, startTime int) {
-    const player = new YT.Player('player', {
-        videoId: videoId,
-        playerVars: { start: startTime }
-    });
-}
+`pages/video.templ` passes initial options to `FeedlrPlayer.mount()` in `/assets/js/feedlr-player.js`. The controller owns both Shaka and iframe adapters, progress, SponsorBlock, hotkeys, renewal, and teardown. It resolves fresh playback URLs and saved progress when mounted. The layout loads `/assets/css/player.css` before initialization so the black video stage and initial spinner match the native player; podcast pages retain their own layout styling and controller.
 
-templ VideoPlayer(videoId string, startTime int) {
-    <div id="player"></div>
-    @shared.EmbedScript(initPlayer(videoId, startTime), videoId, startTime)
-}
-```
+Mounting first cleans up the previous player. `htmx:beforeSwap` cleans up when the replacement contains the current player; unrelated swaps leave it running. History restoration and `pagehide`/`pageshow` handle stale DOM and back/forward cache restoration. A pending script initialization checks that its root is still current before mounting. Listener abort signals and timer teardown prevent duplicate handlers and progress writes after navigation.
+
+Player mode is remembered per video in `sessionStorage`. Native quality is a separate `localStorage` preference: a manual resolution ceiling, Auto, or Audio only. Quality controls appear only in Shaka's settings menu, with labels such as 1080p, 2K, and 4K. Audio only resolves a session without video resources and shows a static translucent accent waveform on black, without visible label text. See [Native Playback](NATIVE-PLAYBACK.md) for behavior and fallback details.
+
+Run `npm run build` to bundle Shaka assets and styles, and `npm test` for controller tests. Keep player initialization in the shared controller rather than creating iframe or Shaka instances directly in templates.
 
 ### HTMX Patterns
 
