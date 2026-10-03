@@ -33,7 +33,6 @@ services:
 
   companion:
     image: quay.io/invidious/invidious-companion:latest
-    profiles: [native]
     environment:
       HOST: 0.0.0.0
       PORT: 8282
