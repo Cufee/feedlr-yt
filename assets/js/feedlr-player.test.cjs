@@ -42,7 +42,7 @@ test('only expiry or authentication HTTP failures justify an expiry retry', () =
   assert.equal(expirationError({ category: 3 }, 10000, 10001), true);
 });
 
-function harness({ resolutions = [], authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume } = {}) {
+function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume } = {}) {
   const timers = new Map();
   let nextTimer = 1;
   const requests = [];
@@ -73,7 +73,11 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
     pause() { if (!this.paused) { this.paused = true; this.dispatchEvent(event('pause')); } }
     requestVideoFrameCallback(callback) { this.frameCallback = callback; return 1; }
   }
-  const elements = new Map(['player', 'player-loading', 'close-button', 'notification-toast'].map((id) => [id, new Element('div')]));
+  const elements = new Map(['player', 'player-loading', 'close-button', 'notification-toast', 'send-to-tv-btn'].map((id) => [id, new Element('div')]));
+  elements.get('send-to-tv-btn').hidden = true;
+  elements.get('send-to-tv-btn').disabled = true;
+  const toastText = new Element('span');
+  elements.get('notification-toast').querySelector = () => toastText;
   const doc = Object.assign(new EventTarget(), {
     getElementById: (id) => elements.get(id), createElement: (tag) => new Element(tag),
     querySelector: () => null, head: new Element('head'), hidden: false,
@@ -83,7 +87,12 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
     constructor() { super(); this.configs = []; players.push(this); order.push('create'); }
     configure(config) { this.configs.push(config); }
     async attach(video) { this.video = video; }
-    async load(url, position) { if (shakaLoadError) throw shakaLoadError; this.video.currentTime = position; this.url = url; this.audioOnly = url.endsWith("audio.mpd"); }
+    async load(url, position) {
+      if (shakaLoadError) throw shakaLoadError;
+      if (shakaLoads.length) await shakaLoads.shift();
+      this.video.currentTime = position; this.url = url; this.audioOnly = url.endsWith("audio.mpd");
+      if (nativeAutoplay && this.video.autoplay) await this.video.play();
+    }
     getPlaybackRate() { return this.video.playbackRate; }
     trickPlay(rate) { this.video.playbackRate = rate; }
     getVariantTracks() { return this.audioOnly ? [{id: 3, bandwidth: 128000}] : [{ id: 1, height: 720, bandwidth: 1500 }, { id: 2, height: 1080, bandwidth: 3000 }]; }
@@ -143,6 +152,17 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
   const fresh = (progress = 120, audioOnly = false) => ({ mode: 'native', reason: 'available', progress, audioOnly, qualities: [{width:1280,height:720},{width:1920,height:1080}], manifestUrl: audioOnly ? '/api/playback/session/audio.mpd' : '/api/playback/session/manifest.mpd', expiresAt: new Date(Date.now() + 3600000).toISOString() });
   const fetch = async (url, options) => {
     requests.push({ url, ...options });
+    if (url === '/api/tv/status') {
+      const next = tvStatuses.length ? await tvStatuses.shift() : { online: false, screenName: '' };
+      if (next instanceof Error) throw next;
+      return next.ok === undefined ? { ok: true, json: async () => next } : next;
+    }
+    if (url.endsWith('/tv')) {
+      const next = tvSends.length ? await tvSends.shift() : { ok: true, status: 204 };
+      if (next instanceof Error) throw next;
+      return next;
+    }
+    if (url.includes('/progress?') && progressResponses.length) return progressResponses.shift();
     if (url.endsWith('/playback')) {
       const next = resolutions.length ? resolutions.shift() : (JSON.parse(options.body).mode === 'iframe' ? { mode: 'iframe', progress: 120 } : fresh(120, JSON.parse(options.body).audioOnly));
       if (next instanceof Error) throw next;
@@ -156,10 +176,314 @@ function harness({ resolutions = [], authenticated = true, blocked = false, shak
   if (queued) win.feedlrPendingPlayer = { options, root: staleQueue ? new Element('div') : elements.get('player') };
   vm.runInNewContext(fs.readFileSync(require.resolve('./feedlr-player.js'), 'utf8'), { window: win, document: doc, fetch, performance, AbortController, URL, console });
   const controller = queued ? win.feedlr_player : win.FeedlrPlayer.mount(options);
-  return { controller, win, doc, timers, requests, players, elements, order, fresh, event };
+  return { controller, win, doc, timers, requests, players, elements, order, fresh, event, toastText };
 }
 
 async function settle() { for (let i = 0; i < 6; i++) await new Promise(setImmediate); }
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+test('TV action appears for an online paired screen and waits for a ready player', async () => {
+  const h = harness({ tvStatuses: [{ online: false }, { online: true, screenName: 'Living room' }] });
+  const button = h.elements.get('send-to-tv-btn');
+  assert.equal(button.hidden, true);
+  await h.controller.start;
+  assert.equal(button.hidden, true);
+  const poll = h.timers.get(h.controller.tvTimer);
+  assert.equal(poll.ms, 15000);
+  await poll.callback();
+  assert.equal(button.hidden, false);
+  assert.equal(button.disabled, false);
+  assert.equal(button['aria-label'], 'Send to TV (Living room)');
+  assert.equal(button.title, button['aria-label']);
+  const switching = h.controller.switchPlayer('iframe', h.controller.snapshot(), 'manual_switch');
+  assert.equal(button.disabled, true);
+  await h.controller.sendToTV();
+  assert.equal(h.requests.some((request) => request.url.endsWith('/tv')), false);
+  await switching;
+  assert.equal(button.disabled, false);
+  h.controller.cleanup();
+});
+
+test('TV polling pauses when hidden or offline and refreshes on visibility, pageshow and reconnect', async () => {
+  const h = harness();
+  await h.controller.start;
+  const statusCount = () => h.requests.filter((request) => request.url === '/api/tv/status').length;
+  assert.equal(statusCount(), 1);
+  h.doc.hidden = true;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  await h.controller.refreshTVStatus();
+  assert.equal(h.controller.tvTimer, null);
+  assert.equal(statusCount(), 1);
+  h.doc.hidden = false;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  await settle();
+  assert.equal(statusCount(), 2);
+  h.win.dispatchEvent(h.event('pageshow', { persisted: false }));
+  await settle();
+  assert.equal(statusCount(), 3);
+  h.win.navigator.onLine = false;
+  h.win.dispatchEvent(h.event('offline'));
+  await h.controller.refreshTVStatus();
+  assert.equal(h.controller.tvTimer, null);
+  assert.equal(statusCount(), 3);
+  h.win.navigator.onLine = true;
+  h.win.dispatchEvent(h.event('online'));
+  await settle();
+  assert.equal(statusCount(), 4);
+  h.controller.cleanup();
+  h.win.dispatchEvent(h.event('online'));
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  await settle();
+  assert.equal(statusCount(), 4);
+  assert.equal(h.timers.size, 0);
+});
+
+test('failed TV status checks hide a previously available action', async () => {
+  const h = harness({ tvStatuses: [{ online: true }, { ok: false }, new Error('offline')] });
+  await h.controller.start;
+  const button = h.elements.get('send-to-tv-btn');
+  assert.equal(button.hidden, false);
+  await h.controller.refreshTVStatus();
+  assert.equal(button.hidden, true);
+  await h.controller.refreshTVStatus();
+  assert.equal(button.hidden, true);
+  h.controller.cleanup();
+});
+
+for (const mode of ['native', 'iframe']) {
+  test(`${mode} TV handoff sends the current position, pauses on success and protects TV progress`, async () => {
+    const send = deferred();
+    const h = harness({ tvStatuses: [{ online: true }], tvSends: [send.promise], resolutions: mode === 'iframe' ? [{ mode: 'iframe', progress: 120 }] : [] });
+    await h.controller.start;
+    const button = h.elements.get('send-to-tv-btn');
+    h.controller.seekTo(321.75);
+    const progressCount = () => h.requests.filter((request) => request.url.includes('/progress?')).length;
+    const savedBefore = progressCount();
+    const sending = h.controller.sendToTV();
+    assert.equal(button.disabled, true);
+    assert.equal(button['aria-busy'], 'true');
+    await settle();
+    assert.equal(h.controller.snapshot().playing, true);
+    const request = h.requests.find((item) => item.url.endsWith('/tv'));
+    assert.equal(request.method, 'POST');
+    assert.deepEqual(JSON.parse(request.body), { position: 321.75 });
+    await h.controller.sendToTV();
+    assert.equal(h.requests.filter((item) => item.url.endsWith('/tv')).length, 1);
+    h.controller.seekTo(323.25);
+    h.controller.saveProgress();
+    assert.equal(progressCount(), savedBefore);
+    send.resolve({ ok: true, status: 204 });
+    await sending;
+    assert.equal(h.controller.snapshot().playing, false);
+    assert.equal(h.toastText.textContent, 'Sent to TV');
+    assert.equal(button.disabled, false);
+    assert.equal(button['aria-busy'], 'false');
+    h.controller.saveProgress();
+    // Seeking while paused must also leave the TV's newer progress alone.
+    h.controller.seekTo(400);
+    h.controller.saveProgress();
+    assert.equal(progressCount(), savedBefore);
+    h.controller.cleanup();
+    await settle();
+    assert.equal(progressCount(), savedBefore);
+    assert.equal(h.timers.size, 0);
+  });
+
+  test(`${mode} progress resumes if the user plays locally after sending to TV`, async () => {
+    const h = harness({ tvStatuses: [{ online: true }], resolutions: mode === 'iframe' ? [{ mode: 'iframe', progress: 120 }] : [] });
+    await h.controller.start;
+    await h.controller.sendToTV();
+    h.controller.seekTo(450);
+    h.controller.playVideo();
+    h.controller.saveProgress();
+    assert.equal(h.requests.some((request) => request.url.includes('/progress?progress=450&')), true);
+    h.controller.cleanup();
+  });
+}
+
+test('TV handoff waits for older progress writes and captures position when it sends', async () => {
+  const progress = deferred();
+  const h = harness({ tvStatuses: [{ online: true }], progressResponses: [progress.promise] });
+  await h.controller.start;
+  h.controller.seekTo(300);
+  h.controller.saveProgress();
+  const sending = h.controller.sendToTV();
+  await settle();
+  assert.equal(h.requests.some((request) => request.url.endsWith('/tv')), false);
+  h.controller.seekTo(301.5);
+  progress.resolve({ ok: true });
+  await sending;
+  const request = h.requests.find((item) => item.url.endsWith('/tv'));
+  assert.deepEqual(JSON.parse(request.body), { position: 301.5 });
+  assert.equal(h.controller.snapshot().playing, false);
+  h.controller.cleanup();
+});
+
+test('TV handoff failure keeps local playback and progress active with a retryable error', async () => {
+  const h = harness({ tvStatuses: [{ online: true }, { online: true }], tvSends: [{ ok: false, json: async () => ({ error: 'The connected TV is offline' }) }] });
+  await h.controller.start;
+  await h.controller.sendToTV();
+  await settle();
+  assert.equal(h.controller.snapshot().playing, true);
+  assert.equal(h.toastText.textContent, 'The connected TV is offline');
+  assert.equal(h.elements.get('send-to-tv-btn').disabled, false);
+  h.controller.seekTo(500);
+  h.controller.saveProgress();
+  assert.equal(h.requests.some((request) => request.url.includes('/progress?progress=500&')), true);
+  await h.controller.sendToTV();
+  assert.equal(h.controller.snapshot().playing, false);
+  assert.equal(h.toastText.textContent, 'Sent to TV');
+  h.controller.cleanup();
+});
+
+test('TV handoff rejects a successful HTTP response from an expired-session login redirect', async () => {
+  const h = harness({ tvStatuses: [{ online: true }], tvSends: [{ ok: true, status: 200, redirected: true, json: async () => { throw new SyntaxError('HTML login page'); } }] });
+  await h.controller.start;
+  await h.controller.sendToTV();
+  assert.equal(h.controller.snapshot().playing, true);
+  assert.equal(h.controller.tvHandedOff, false);
+  assert.equal(h.toastText.textContent, 'Could not send video to TV. Try again.');
+  h.controller.cleanup();
+});
+
+test('navigation aborts TV status and ignores a late response after remount', async () => {
+  const status = deferred();
+  const h = harness({ tvStatuses: [status.promise, { online: true, screenName: 'New TV' }] });
+  await h.controller.start;
+  const oldRequest = h.requests.find((request) => request.url === '/api/tv/status');
+  const again = h.win.FeedlrPlayer.mount(h.controller.options);
+  await again.start;
+  assert.equal(oldRequest.signal.aborted, true);
+  status.resolve({ online: false });
+  await settle();
+  assert.equal(h.elements.get('send-to-tv-btn').hidden, false);
+  assert.equal(h.elements.get('send-to-tv-btn').title, 'Send to TV (New TV)');
+  again.cleanup();
+  await settle();
+  assert.equal(h.timers.size, 0);
+});
+
+test('navigation aborts an in-flight handoff without pausing a newly mounted player', async () => {
+  const send = deferred();
+  const h = harness({ tvStatuses: [{ online: true }, { online: true }], tvSends: [send.promise] });
+  await h.controller.start;
+  const sending = h.controller.sendToTV();
+  await settle();
+  const request = h.requests.find((item) => item.url.endsWith('/tv'));
+  const again = h.win.FeedlrPlayer.mount(h.controller.options);
+  await again.start;
+  assert.equal(request.signal.aborted, true);
+  send.resolve({ ok: true, status: 204 });
+  await sending;
+  assert.equal(again.snapshot().playing, true);
+  assert.notEqual(h.toastText.textContent, 'Sent to TV');
+  assert.equal(h.elements.get('send-to-tv-btn').hidden, false);
+  again.cleanup();
+  await settle();
+  assert.equal(h.timers.size, 0);
+});
+
+test('handoff timeout while waiting for progress preserves local playback', async () => {
+  const progress = deferred();
+  const h = harness({ tvStatuses: [{ online: true }, { online: true }], progressResponses: [progress.promise] });
+  await h.controller.start;
+  h.controller.saveProgress();
+  const sending = h.controller.sendToTV();
+  h.timers.get(h.controller.tvSendTimeout).callback();
+  await sending;
+  assert.equal(h.controller.snapshot().playing, true);
+  assert.equal(h.requests.some((request) => request.url.endsWith('/tv')), false);
+  assert.equal(h.toastText.textContent, 'Could not send video to TV. Try again.');
+  progress.resolve({ ok: true });
+  h.controller.cleanup();
+});
+
+test('successful TV handoff survives a concurrent native renewal with delayed autoplay', async () => {
+  const send = deferred();
+  const loading = deferred();
+  const h = harness({ tvStatuses: [{ online: true }], tvSends: [send.promise], shakaLoads: [Promise.resolve(), loading.promise], nativeAutoplay: true });
+  await h.controller.start;
+  h.controller.seekTo(300);
+  const sending = h.controller.sendToTV();
+  await settle();
+  const switching = h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  await settle();
+  send.resolve({ ok: true, status: 204 });
+  await sending;
+  loading.resolve();
+  await switching;
+  assert.equal(h.controller.snapshot().playing, false);
+  assert.equal(h.controller.tvHandedOff, true);
+  assert.equal(h.controller.adapter.video.autoplay, false);
+  h.controller.saveProgress();
+  h.controller.cleanup();
+  assert.equal(h.requests.some((request) => request.url.includes('/progress?')), false);
+});
+
+test('a pending iframe switch preserves the successful TV handoff', async () => {
+  const send = deferred();
+  const h = harness({ tvStatuses: [{ online: true }], tvSends: [send.promise] });
+  await h.controller.start;
+  const sending = h.controller.sendToTV();
+  await settle();
+  const switching = h.controller.switchPlayer('iframe', h.controller.snapshot(), 'manual_switch');
+  send.resolve({ ok: true, status: 204 });
+  await sending;
+  await switching;
+  assert.equal(h.controller.mode, 'iframe');
+  assert.equal(h.controller.snapshot().playing, false);
+  assert.equal(h.controller.tvHandedOff, true);
+  h.controller.seekTo(600);
+  h.controller.saveProgress();
+  assert.equal(h.requests.some((request) => request.url.includes('/progress?')), false);
+  h.controller.playVideo();
+  assert.equal(h.controller.tvHandedOff, false);
+  assert.equal(h.controller.snapshot().playing, true);
+  h.controller.cleanup();
+});
+
+test('a failed handoff lets a pending player switch resume the latest local position', async () => {
+  const send = deferred();
+  const h = harness({ tvStatuses: [{ online: true }, { online: true }], tvSends: [send.promise] });
+  await h.controller.start;
+  h.controller.seekTo(400);
+  const sending = h.controller.sendToTV();
+  await settle();
+  const switching = h.controller.switchPlayer('iframe', h.controller.snapshot(), 'manual_switch');
+  h.controller.seekTo(410);
+  send.resolve({ ok: false, json: async () => ({ error: 'TV disconnected' }) });
+  await sending;
+  await switching;
+  assert.equal(h.controller.mode, 'iframe');
+  assert.equal(h.controller.snapshot().playing, true);
+  assert.equal(h.controller.getCurrentTime(), 410);
+  assert.equal(h.controller.tvHandedOff, false);
+  h.controller.cleanup();
+});
+
+test('scheduled renewal waits for a TV send and remains available after failure', async () => {
+  const send = deferred();
+  const h = harness({ tvStatuses: [{ online: true }, { online: true }], tvSends: [send.promise] });
+  await h.controller.start;
+  const sending = h.controller.sendToTV();
+  h.controller.renewAt = 0;
+  h.controller.checkRenewal();
+  h.controller.checkRenewal();
+  assert.equal(h.controller.renewAt, 0);
+  assert.equal(h.requests.filter((request) => request.url.endsWith('/playback')).length, 1);
+  send.resolve({ ok: false, json: async () => ({ error: 'TV disconnected' }) });
+  await sending;
+  h.controller.checkRenewal();
+  await settle();
+  assert.equal(h.requests.filter((request) => request.url.endsWith('/playback')).length, 2);
+  assert.equal(h.controller.snapshot().playing, true);
+  h.controller.cleanup();
+});
 
 test('initial resolution uses fresh database progress; switch preserves full state and native quality', async () => {
   const h = harness();

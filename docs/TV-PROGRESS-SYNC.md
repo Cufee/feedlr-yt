@@ -281,6 +281,37 @@ Default constants:
 
 ## API and UI Plan
 
+### Send to TV
+
+The YouTube video player's action rail includes **Send to TV** beside Pin and
+Playlist. The button appears only when the user's paired, enabled receiver is
+online on the current live Lounge subscription. Pairing credentials or a saved
+`connected` status alone do not make a receiver available. `loungeStatus` device
+lists identify the `LOUNGE_SCREEN` receiver; disconnects, stale streams, disabled
+sync, re-pairing, and worker shutdown remove availability. Idle receivers can be
+online without playing a video.
+
+`GET /api/tv/status` returns only receiver availability and the screen name. The
+player checks on load, every 15 seconds while visible, and when returning to the
+page or network. These checks read the existing subscription state; they do not
+send additional requests to YouTube. `POST /api/videos/:id/tv` rechecks availability
+for the signed-in user and sends `setPlaylist` with `videoId` and `currentTime` on
+that user's existing session. Podcast episodes are not supported.
+
+Sending uses the browser player's current position. A successful command pauses
+the browser and shows “Sent to TV”; failures leave local playback available. The
+browser waits for pending progress writes before sending and suppresses subsequent
+writes until local playback resumes. An explicit handoff takes precedence over
+older saved resume progress on the TV. Command acceptance is not confirmation
+that the TV actually started playback.
+
+The private Lounge protocol is based on receiver presence handling in
+[PyYtLounge](https://pyytlounge.readthedocs.io/en/latest/_modules/pyytlounge/wrapper.html)
+and `setPlaylist` position handling in
+[youtube-remote](https://github.com/alxhotel/youtube-remote/blob/master/index.js)
+and [Plaincast](https://github.com/aykevl/plaincast/blob/master/apps/youtube/youtube.go).
+Physical receiver behavior still requires testing with a paired TV.
+
 ### Settings/API endpoints (new)
 
 - `POST /api/settings/youtube-sync/tv/connect` (pair via TV code)

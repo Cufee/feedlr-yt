@@ -206,6 +206,11 @@
       this.deviceVolume = usesDeviceVolume();
       this.mode = options.authenticated ? "native" : "iframe";
       this.lastProgress = -1;
+      this.progressWrites = new Set();
+      this.tvButton = options.authenticated ? document.getElementById("send-to-tv-btn") : null;
+      this.tvOnline = false;
+      this.tvSending = false;
+      this.tvHandedOff = false;
       this.expiresAt = Infinity;
       this.renewAt = Infinity;
       this.expiryRetryUsed = false;
@@ -213,6 +218,7 @@
       const savedVolume = read(global.localStorage, `player-volume-${options.channel}`) ?? read(global.localStorage, "player-volume");
       this.state = { position: finite(options.progress), playing: true, volume: this.deviceVolume ? 100 : initialVolume(savedVolume, options.volume), muted: false, rate: 1 };
       this.listen(document.getElementById("close-button"), "click", () => this.cleanup());
+      this.listen(this.tvButton, "click", () => this.sendToTV());
       this.listen(document, "keydown", (event) => this.hotkey(event));
       this.listen(document, "htmx:beforeSwap", (event) => {
         if (event.detail?.target?.contains(this.root)) this.cleanup();
@@ -221,6 +227,7 @@
         if (document.getElementById("player") !== this.root) this.cleanup();
       });
       this.listen(global, "pagehide", (event) => {
+        this.stopTVStatus();
         if (event.persisted) {
           this.historyState = this.snapshot();
           this.saveProgress();
@@ -229,16 +236,112 @@
       });
       this.listen(global, "pageshow", (event) => {
         if (event.persisted && !this.disposed) this.switchPlayer(this.mode, this.historyState || this.snapshot(), "history_restore");
+        this.startTVStatus();
       });
-      this.listen(document, "visibilitychange", () => { if (!document.hidden) this.checkRenewal(); else this.saveProgress(); });
-      this.listen(global, "online", () => this.checkRenewal());
+      this.listen(document, "visibilitychange", () => {
+        if (!document.hidden) { this.checkRenewal(); this.startTVStatus(); }
+        else { this.saveProgress(); this.stopTVStatus(); }
+      });
+      this.listen(global, "online", () => { this.checkRenewal(); this.startTVStatus(); });
+      this.listen(global, "offline", () => this.stopTVStatus());
       this.lastTick = performance.now();
       this.timer = global.setInterval(() => this.tick(), 500);
       this.progressTimer = options.withProgress ? global.setInterval(() => this.saveProgress(), 10000) : null;
       this.start = this.switchPlayer(this.mode, null, "initial");
+      this.startTVStatus();
     }
 
     listen(target, event, callback) { target?.addEventListener(event, callback, { signal: this.abort.signal }); }
+    updateTVButton() {
+      if (!this.tvButton) return;
+      this.tvButton.hidden = !this.tvOnline || this.disposed;
+      this.tvButton.disabled = !this.tvOnline || this.tvSending || !this.ready || this.switching || this.disposed;
+      const label = this.tvScreenName ? `Send to TV (${this.tvScreenName})` : "Send to TV";
+      this.tvButton.title = label;
+      this.tvButton.setAttribute("aria-label", label);
+      this.tvButton.setAttribute("aria-busy", String(this.tvSending));
+    }
+    startTVStatus() {
+      if (!this.tvButton || this.disposed || document.hidden || global.navigator.onLine === false) return;
+      if (!this.tvTimer) this.tvTimer = global.setInterval(() => this.refreshTVStatus(), 15000);
+      this.refreshTVStatus();
+    }
+    stopTVStatus() {
+      global.clearInterval(this.tvTimer);
+      this.tvTimer = null;
+      global.clearTimeout(this.tvStatusTimeout);
+      this.tvStatusAbort?.abort();
+      this.tvStatusAbort = null;
+      this.tvOnline = false;
+      this.updateTVButton();
+    }
+    async refreshTVStatus() {
+      if (!this.tvButton || this.disposed || document.hidden || global.navigator.onLine === false || this.tvStatusAbort) return;
+      const request = this.tvStatusAbort = new AbortController();
+      const timeout = this.tvStatusTimeout = global.setTimeout(() => request.abort(), 6000);
+      try {
+        const response = await fetch("/api/tv/status", { credentials: "same-origin", cache: "no-store", signal: request.signal });
+        if (!response.ok) throw new Error("tv_status_failed");
+        const status = await response.json();
+        if (this.disposed || request.signal.aborted || this.tvStatusAbort !== request) return;
+        this.tvOnline = status.online === true;
+        this.tvScreenName = typeof status.screenName === "string" ? status.screenName : "";
+      } catch (_) {
+        if (this.tvStatusAbort === request) this.tvOnline = false;
+      } finally {
+        global.clearTimeout(timeout);
+        if (this.tvStatusAbort === request) {
+          this.tvStatusAbort = null;
+          this.updateTVButton();
+        }
+      }
+    }
+    async sendToTV() {
+      if (!this.tvButton || !this.tvOnline || this.tvSending || !this.ready || this.switching || this.disposed) return;
+      this.tvSending = true;
+      this.updateTVButton();
+      let complete;
+      this.tvSendCompletion = new Promise((resolve) => { complete = resolve; });
+      const request = this.tvSendAbort = new AbortController();
+      const timeout = this.tvSendTimeout = global.setTimeout(() => request.abort(), 15000);
+      try {
+        // Complete older progress writes before handing off. From here until
+        // local playback resumes, pause/timer/cleanup must not overwrite the TV.
+        await Promise.race([
+          Promise.all(this.progressWrites),
+          new Promise((_, reject) => request.signal.addEventListener("abort", () => reject(new Error("tv_send_cancelled")), { once: true })),
+        ]);
+        if (this.disposed || request.signal.aborted) return;
+        const response = await fetch(`/api/videos/${encodeURIComponent(this.options.video)}/tv`, {
+          method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ position: this.snapshot().position }), signal: request.signal,
+        });
+        if (response.status !== 204 || response.redirected) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(typeof result.error === "string" ? result.error : "Could not send video to TV. Try again.");
+        }
+        if (this.disposed || request.signal.aborted) return;
+        this.tvHandedOff = true;
+        this.lastProgress = Math.floor(this.snapshot().position);
+        this.state.playing = false;
+        if (this.historyState) this.historyState.playing = false;
+        this.adapter?.pause();
+        this.notice("Sent to TV");
+      } catch (error) {
+        if (!this.disposed) {
+          this.notice(request.signal.aborted ? "Could not send video to TV. Try again." : error.message || "Could not send video to TV. Try again.");
+          this.refreshTVStatus();
+        }
+      } finally {
+        global.clearTimeout(timeout);
+        request.abort();
+        this.tvSendAbort = null;
+        this.tvSending = false;
+        this.tvSendCompletion = null;
+        complete();
+        if (!this.disposed) this.updateTVButton();
+      }
+    }
     metric(event, reason, seconds) {
       if (!this.options.authenticated) return;
       fetch(`/api/videos/${encodeURIComponent(this.options.video)}/playback/events`, {
@@ -282,6 +385,13 @@
       await this.teardown;
     }
     async switchPlayer(requestedMode, preservedState, reason) {
+      if (this.tvSendCompletion) {
+        // A replacement must not retain an autoplay request from before the
+        // handoff. Keep the current adapter until the send has settled, then
+        // capture its latest position and desired playback state.
+        await this.tvSendCompletion;
+        if (preservedState) preservedState = this.snapshot();
+      }
       if (this.disposed) return;
       this.saveProgress();
       const generation = ++this.generation;
@@ -290,6 +400,7 @@
       this.resolveAbort = new AbortController();
       const requestAbort = this.resolveAbort;
       this.switching = true;
+      this.updateTVButton();
       if (reason === "renewal") this.metric("renewal", "scheduled");
       if (reason === "manual_switch") this.metric("switch", requestedMode);
       if (preservedState) this.state = { ...preservedState };
@@ -346,6 +457,7 @@
       }
       if (!current()) return;
       this.switching = false;
+      this.updateTVButton();
     }
 
     async createNative(resolution, current) {
@@ -510,7 +622,7 @@
         player.removeEventListener("adaptation", updateQualityLabels);
         controls.removeEventListener("resolutionselectionupdated", updateQualityLabels);
       };
-      listen("play", () => { pending.playing = true; this.state.playing = true; this.blocked = false; this.checkRenewal(); });
+      listen("play", () => { pending.playing = true; this.state.playing = true; this.tvHandedOff = false; this.blocked = false; this.checkRenewal(); });
       listen("pause", () => { if (this.ready) { pending.playing = false; this.state.playing = false; this.saveProgress(); } });
       listen("ended", () => { pending.playing = false; this.state.playing = false; this.saveProgress(); });
       listen("playing", () => { this.showLoading(false); });
@@ -598,6 +710,7 @@
             onStateChange: (event) => {
               if (!current() || destroyed || !this.ready) return;
               if ([0, 1, 2].includes(event.data)) this.state.playing = event.data === 1;
+              if (event.data === 1) this.tvHandedOff = false;
               this.saveProgress();
             },
             onError: () => { if (current() && !destroyed) { global.clearTimeout(timer); reject(new Error("iframe_failed")); } },
@@ -637,7 +750,7 @@
       return this.switchPlayer("iframe", state, "fallback");
     }
     checkRenewal() {
-      if (this.mode !== "native" || !this.ready || this.switching || this.disposed || document.hidden || global.navigator.onLine === false) return;
+      if (this.mode !== "native" || !this.ready || this.switching || this.tvSending || this.disposed || document.hidden || global.navigator.onLine === false) return;
       if (this.snapshot().playing && Date.now() >= this.renewAt) {
         this.renewAt = Infinity;
         this.switchPlayer("native", this.snapshot(), "renewal");
@@ -675,11 +788,12 @@
     saveProgress() {
       if (!this.ready || !this.adapter || this.disposed) return;
       this.saveVolume();
-      if (!this.options.withProgress) return;
+      if (!this.options.withProgress || this.tvSending || this.tvHandedOff) return;
       const position = Math.floor(this.snapshot().position);
       if (position <= 0 || position === this.lastProgress) return;
       this.lastProgress = position;
-      fetch(`/api/videos/${encodeURIComponent(this.options.video)}/progress?progress=${position}&volume=${Math.round(this.snapshot().volume)}`, { method: "POST", credentials: "same-origin", keepalive: true }).catch(() => {});
+      const request = fetch(`/api/videos/${encodeURIComponent(this.options.video)}/progress?progress=${position}&volume=${Math.round(this.snapshot().volume)}`, { method: "POST", credentials: "same-origin", keepalive: true }).catch(() => {}).finally(() => this.progressWrites.delete(request));
+      this.progressWrites.add(request);
     }
     hotkey(event) {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.target?.closest?.("input,textarea,select,button,a,[contenteditable=true]")) return;
@@ -706,6 +820,9 @@
       this.generation++;
       this.abort.abort();
       this.resolveAbort?.abort();
+      this.stopTVStatus();
+      this.tvSendAbort?.abort();
+      global.clearTimeout(this.tvSendTimeout);
       global.clearInterval(this.timer);
       global.clearInterval(this.progressTimer);
       global.clearTimeout(this.toastTimer);

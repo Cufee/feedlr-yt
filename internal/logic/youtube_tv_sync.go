@@ -94,7 +94,9 @@ type tvSyncVideoRuntime struct {
 }
 
 type tvSyncRuntime struct {
-	mu sync.Mutex
+	mu           sync.Mutex
+	screenOnline bool
+	handoff      *tvSyncHandoff
 
 	lastEventAt          time.Time
 	lastStatusPersistAt  time.Time
@@ -260,8 +262,10 @@ type YouTubeTVSyncService struct {
 	metrics  *tvSyncMetrics
 	metadata *tvMetadataImporter
 
-	workersMu sync.Mutex
-	workers   map[string]*tvSyncWorker
+	workersMu     sync.Mutex
+	workers       map[string]*tvSyncWorker
+	connectionsMu sync.Mutex
+	connections   map[string]*tvSyncConnection
 }
 
 type youTubeTVSyncStore interface {
@@ -369,6 +373,7 @@ func (s *YouTubeTVSyncService) PairWithCode(ctx context.Context, userID, pairing
 		return errors.Wrap(err, "failed to persist tv sync credentials")
 	}
 
+	s.stopWorker(userID)
 	s.kickConnectionTick()
 	return nil
 }
@@ -538,6 +543,7 @@ func (s *YouTubeTVSyncService) kickConnectionTick() {
 }
 
 func (s *YouTubeTVSyncService) stopWorker(userID string) {
+	s.removeTVConnection(userID, nil)
 	s.workersMu.Lock()
 	worker, ok := s.workers[userID]
 	if ok {
@@ -670,6 +676,9 @@ func (s *YouTubeTVSyncService) connectAndRun(ctx context.Context, account *datab
 
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	connection := &tvSyncConnection{ctx: subCtx, cancel: cancel, session: session, runtime: runtime}
+	s.registerTVConnection(userID, connection)
+	defer s.removeTVConnection(userID, connection)
 
 	var timedOut atomic.Bool
 	watchdogDone := make(chan struct{})
@@ -740,6 +749,8 @@ func (s *YouTubeTVSyncService) connectAndRun(ctx context.Context, account *datab
 	}()
 
 	subscribeErr := s.lounge.Subscribe(subCtx, session, func(event lounge.Event) error {
+		connection.eventsMu.Lock()
+		defer connection.eventsMu.Unlock()
 		now := time.Now().UTC()
 		runtime.markEvent(now)
 
@@ -769,7 +780,10 @@ func (s *YouTubeTVSyncService) connectAndRun(ctx context.Context, account *datab
 
 	// The stream can close without a final onStateChange. Flush only observations
 	// already validated by the event handler, including those still throttled.
+	s.removeTVConnection(userID, connection)
+	connection.eventsMu.Lock()
 	s.flushCurrentTVProgress(ctx, account.UserID, runtime)
+	connection.eventsMu.Unlock()
 	cancel()
 	<-watchdogDone
 	<-nowPlayingPollDone
@@ -867,6 +881,11 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 		return err
 	}
 	now := time.Now().UTC()
+	if online, known := lounge.ExtractScreenPresence(event); known {
+		runtime.mu.Lock()
+		runtime.screenOnline = online
+		runtime.mu.Unlock()
+	}
 	if event.Type == "loungeScreenDisconnected" {
 		s.flushCurrentTVProgress(ctx, account.UserID, runtime)
 		runtime.clearCurrentVideo()
@@ -936,6 +955,23 @@ func (s *YouTubeTVSyncService) processEvent(ctx context.Context, account *databa
 	previousState := videoRuntime.lastState
 	videoRuntime.lastState = state
 	runtime.observePlayback(state, playback, now)
+
+	// An explicit handoff owns its start position; do not resume from an older
+	// database snapshot when the receiver starts the selected video.
+	if handoff := runtime.handoff; handoff != nil {
+		if now.Sub(handoff.at) > tvSyncResumeConfirmationTimeout {
+			runtime.handoff = nil
+		} else if handoff.videoID == videoID && state == "1" && playback.HasCurrentTime {
+			videoRuntime.resumeLoaded = true
+			videoRuntime.resumeTarget = handoff.position
+			videoRuntime.resumeAttempts = 0
+			videoRuntime.resumeWaitForAdvance = false
+			runtime.mu.Lock()
+			runtime.resumeApplied = false
+			runtime.mu.Unlock()
+			runtime.handoff = nil
+		}
+	}
 
 	// Ended snapshots never initiate resume. A zero/absent terminal timestamp
 	// flushes our last valid observation instead of replacing it with zero.

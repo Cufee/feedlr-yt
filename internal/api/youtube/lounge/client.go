@@ -384,6 +384,21 @@ func (c *Client) GetNowPlaying(ctx context.Context, session *Session) error {
 	return c.command(ctx, session, "getNowPlaying", nil)
 }
 
+// PlayVideo starts the selected video at position, in seconds.
+func (c *Client) PlayVideo(ctx context.Context, session *Session, videoID string, position float64) error {
+	videoID = strings.TrimSpace(videoID)
+	if videoID == "" {
+		return errors.New("video id is required")
+	}
+	if position < 0 || math.IsNaN(position) || math.IsInf(position, 0) {
+		return errors.New("video position must be finite and nonnegative")
+	}
+	return c.command(ctx, session, "setPlaylist", map[string]string{
+		"videoId":     videoID,
+		"currentTime": strconv.FormatFloat(position, 'f', 3, 64),
+	})
+}
+
 func (c *Client) command(ctx context.Context, session *Session, command string, commandParameters map[string]string) error {
 	if session == nil || !session.connected() {
 		metrics.ObserveYouTubeTVCall("command_"+command, ErrNotConnected)
@@ -431,13 +446,67 @@ func (c *Client) command(ctx context.Context, session *Session, command string, 
 	}
 	defer res.Body.Close()
 
-	payload, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
+	payload, err := io.ReadAll(io.LimitReader(res.Body, 4096))
+	if err != nil {
+		if reqCtx.Err() != nil {
+			err = reqCtx.Err()
+		}
+		metrics.ObserveYouTubeTVCall("command_"+command, err)
+		return err
+	}
 	if err := sessionResponseError(res.StatusCode, string(payload)); err != nil {
+		metrics.ObserveYouTubeTVCall("command_"+command, err)
+		return err
+	}
+	if err := reqCtx.Err(); err != nil {
 		metrics.ObserveYouTubeTVCall("command_"+command, err)
 		return err
 	}
 	metrics.ObserveYouTubeTVCall("command_"+command, nil)
 	return nil
+}
+
+// ExtractScreenPresence identifies receiver presence updates, independently of
+// the remote's cloud session. Malformed presence updates count as offline.
+func ExtractScreenPresence(event Event) (online bool, known bool) {
+	switch event.Type {
+	case "loungeScreenDisconnected":
+		return false, true
+	case "loungeStatus":
+	default:
+		return false, false
+	}
+	if len(event.Args) == 0 {
+		return false, true
+	}
+	payload, ok := event.Args[0].(map[string]any)
+	if !ok {
+		return false, true
+	}
+
+	var devices []any
+	switch value := payload["devices"].(type) {
+	case string:
+		if err := json.Unmarshal([]byte(value), &devices); err != nil {
+			return false, true
+		}
+	case []any:
+		devices = value
+	default:
+		return false, true
+	}
+	for _, value := range devices {
+		device, ok := value.(map[string]any)
+		if !ok {
+			return false, true
+		}
+		deviceType, ok := device["type"].(string)
+		if !ok {
+			return false, true
+		}
+		online = online || deviceType == "LOUNGE_SCREEN"
+	}
+	return online, true
 }
 
 func ExtractPlaybackEvent(event Event) (PlaybackEvent, bool) {

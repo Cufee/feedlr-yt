@@ -35,6 +35,7 @@ templ Video(props types.VideoPlayerProps) {
 					if len(props.UserPlaylists) > 0 {
 						@shared.AddToPlaylistSelect(props.Video.ID, props.UserPlaylists, props.VideoInPlaylistIDs)
 					}
+					@buttonTV()
 				}
 			</div>
 			<div class="ui-video-rail-actions">
@@ -60,7 +61,7 @@ templ Video(props types.VideoPlayerProps) {
 			</div>
 			@videoPlayer(props)
 		</div>
-		<div id="notification-toast" class="opacity-0 pointer-events-none">
+		<div id="notification-toast" class="opacity-0 pointer-events-none" role="status" aria-live="polite">
 			@notificationToast("SponsorBlock skipped a video segment")
 		</div>
 	</div>
@@ -96,6 +97,12 @@ templ buttonShare(id string) {
 		@icons.Share()
 	</button>
 	@shared.EmbedScript(shareButtonScript(id), id)
+}
+
+templ buttonTV() {
+	<button id="send-to-tv-btn" type="button" class="ui-video-rail-btn" aria-label="Send to TV" title="Send to TV" hidden disabled>
+		@icons.TV()
+	</button>
 }
 
 script shareButtonScript(id string) {
