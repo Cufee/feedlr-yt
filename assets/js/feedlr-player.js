@@ -701,7 +701,7 @@
       const mediaSession = controls.getMediaSession();
       mediaSession.setupTitle(this.options.title || "");
       mediaSession.setupArtist(this.options.channelTitle || "");
-      mediaSession.setupPoster(new URL(`/thumb/video/${encodeURIComponent(this.options.video)}/hqdefault`, global.location.origin).href);
+      mediaSession.setupPoster(new URL(`/thumb/video/${encodeURIComponent(this.options.video)}/maxresdefault`, global.location.origin).href);
       applyQuality(player, this.audioOnly ? "auto" : this.quality);
       updateQualityLabels();
       video.volume = this.state.volume / 100;
