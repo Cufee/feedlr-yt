@@ -14,67 +14,21 @@ Feedlr is a subscription reader for YouTube channels and podcasts. The main goal
 Core functionality is complete and working reliably. Implemented in this repository:
 
 - Passkey auth (WebAuthn) with sessions
-- YouTube and podcast subscriptions, including RSS feed URL subscriptions
-- Feed pages (`/app`, `/app/recent`, `/app/watch-later`, onboarding)
-- Watch later playlist and cleanup task
+- YouTube and podcast RSS subscriptions
+- Watch later playlist
 - YouTube playlist sync via OAuth (home feed, Watch Later, and all user/imported playlists)
 - YouTube TV lounge sync (pairing, progress sync, SponsorBlock skip, send video to an online TV)
-- Optional native YouTube playback with persistent quality/audio-only choices and automatic iframe fallback
+- Native player through YouTube proxy
 - Background cron jobs for cache and sync tasks
-- Prometheus metrics endpoint (`METRICS_PORT` / `METRICS_PATH`)
-
-For implementation details, see `docs/`.
-
-## Stack
-
-- Go 1.26.5
-- Fiber
-- Templ + HTMX + Hyperscript
-- Tailwind CSS v4 + shared `ui-*` primitives
-- SQLite + SQLBoiler
 
 ## Setup Examples
 
 ### 1. Local development (recommended)
 
 `task dev` runs:
+
 - Go with `-tags dev` (mock auth middleware)
 - Tailwind in watch mode
-
-Prerequisites:
-- Go 1.25+
-- Node.js + npm
-- `task` (Taskfile runner)
-- `air`
-- `atlas` (for migrations)
-- `sqlboiler` (used by `task generate` / migration flow)
-
-Example `.env`:
-
-```bash
-cat <<EOF > .env
-PORT=3000
-YOUTUBE_API_KEY=replace-me
-DATABASE_PATH=$(pwd)/tmp/database/local.db
-DATABASE_DIR=$(pwd)/tmp/database
-SPONSORBLOCK_API_URL=https://sponsor.ajay.app/api
-VIDEO_CACHE_UPDATE_CRON="0 0 * * *"
-YOUTUBE_SYNC_ENCRYPTION_SECRET=
-YOUTUBE_OAUTH_CLIENT_ID=
-YOUTUBE_OAUTH_CLIENT_SECRET=
-YOUTUBE_OAUTH_REDIRECT_URL=
-PLAYLIST_SYNC_CRON="*/30 * * * *"
-PLAYLIST_SYNC_MAX_EXPENSIVE_CALLS=4
-PLAYLIST_SYNC_MAX_USERS_PER_TICK=100
-PODCASTINDEX_API_KEY=
-PODCASTINDEX_API_SECRET=
-PODCAST_CACHE_UPDATE_CRON="0 */6 * * *"
-MAINTENANCE_MODE=false
-COOKIE_DOMAIN=localhost:3000
-METRICS_PORT=9090
-METRICS_PATH=/metrics
-EOF
-```
 
 Run locally:
 
@@ -88,6 +42,7 @@ task dev
 Open `http://localhost:3000`.
 
 Notes:
+
 - YouTube playlist sync starts only when `YOUTUBE_OAUTH_CLIENT_ID`, `YOUTUBE_OAUTH_CLIENT_SECRET`, `YOUTUBE_OAUTH_REDIRECT_URL`, and `YOUTUBE_SYNC_ENCRYPTION_SECRET` are all set.
 - PodcastIndex credentials enable catalog search. Users can subscribe to a direct RSS feed URL without them.
 - The YouTube auth client may ask for device authentication on first run. Check the server logs.
@@ -118,15 +73,3 @@ task generate
 # Apply DB migrations
 task migrate-apply
 ```
-
-## Documentation
-
-- `docs/ARCHITECTURE.md`
-- `docs/FRONTEND.md`
-- `docs/DATABASE.md`
-- `docs/YOUTUBE-API.md`
-- `docs/PLAYLIST-SYNC.md`
-- `docs/TV-PROGRESS-SYNC.md`
-- `docs/OBSERVABILITY.md`
-- `docs/PODCASTS.md`
-- [Native playback and deployment](docs/NATIVE-PLAYBACK.md)
