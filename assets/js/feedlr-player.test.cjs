@@ -9,6 +9,13 @@ function storage() {
   return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) };
 }
 
+function chooseAudio(player, index) {
+  const track = player.getAudioTracks()[index];
+  // The built-in Shaka menu both selects the track and updates preferences.
+  player.selectAudioTrack(track);
+  player.configure({ preferredAudio: [{ language: track.language, role: '', label: track.label || '', channelCount: track.channelsCount || 0, spatialAudio: track.spatialAudio }] });
+}
+
 test('startup and continuous stall deadlines exclude suspended playback', () => {
   const watchdog = new PlaybackWatchdog();
   assert.equal(watchdog.tick(9, true, 60, false), null);
@@ -42,7 +49,7 @@ test('only expiry or authentication HTTP failures justify an expiry retry', () =
   assert.equal(expirationError({ category: 3 }, 10000, 10001), true);
 });
 
-function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume } = {}) {
+function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume } = {}) {
   const timers = new Map();
   let nextTimer = 1;
   const requests = [];
@@ -84,10 +91,13 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
   });
   class Shaka extends EventTarget {
     static isBrowserSupported() { return true; }
-    constructor() { super(); this.configs = []; players.push(this); order.push('create'); }
+    constructor() { super(); this.configs = []; this.audioTracks = structuredClone(audioTracks); players.push(this); order.push('create'); }
     configure(config) { this.configs.push(config); }
+    getConfiguration() { return { preferredAudio: this.configs.findLast((config) => config.preferredAudio)?.preferredAudio }; }
     async attach(video) { this.video = video; }
     async load(url, position) {
+      this.autoplayAtLoad = this.video.autoplay;
+      this.audioPreferencesAtLoad = this.configs.findLast((config) => config.preferredAudio)?.preferredAudio;
       if (shakaLoadError) throw shakaLoadError;
       if (shakaLoads.length) await shakaLoads.shift();
       this.video.currentTime = position; this.url = url; this.audioOnly = url.endsWith("audio.mpd");
@@ -96,6 +106,8 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     getPlaybackRate() { return this.video.playbackRate; }
     trickPlay(rate) { this.video.playbackRate = rate; }
     getVariantTracks() { return this.audioOnly ? [{id: 3, bandwidth: 128000}] : [{ id: 1, height: 720, bandwidth: 1500 }, { id: 2, height: 1080, bandwidth: 3000 }]; }
+    getAudioTracks() { return this.audioTracks; }
+    selectAudioTrack(track) { this.audioTracks.forEach((item) => { item.active = item === track; }); }
     selectVariantTrack(track) { this.selected = track; }
     async destroy() { order.push('destroy'); this.video.pause(); this.video.currentTime = 0; this.video.dispatchEvent(event('ended')); }
   }
@@ -111,6 +123,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     release() { this.abort.abort(); }
   }
   class Overlay {
+    static TrackLabelFormat = { LABEL: 3, LABEL_OR_LANGUAGE: 4 };
     constructor(player) {
       this.player = player;
       player.ui = this;
@@ -118,9 +131,9 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
       this.children = [];
     }
     configure(config) {
-      this.config = config;
+      this.config = { ...this.config, ...config };
       this.children.forEach((child) => child.release());
-      this.children = config.overflowMenuButtons.filter((name) => menuFactories.has(name)).map((name) => menuFactories.get(name).create(new Element('div'), this.controls));
+      this.children = this.config.overflowMenuButtons.filter((name) => menuFactories.has(name)).map((name) => menuFactories.get(name).create(new Element('div'), this.controls));
     }
     setEnabled() {}
     getControls() { return this.controls; }
@@ -858,4 +871,100 @@ test('audio-only persists on reload and renews as audio', async () => {
   const request = h.requests.filter(item => item.url.endsWith('/playback')).at(-1);
   assert.equal(JSON.parse(request.body).audioOnly, true);
   again.cleanup();
+});
+
+test('native audio starts original regardless of language, track order, or channel count', async () => {
+  for (const [originalLanguage, dubLanguage, channelsCount] of [['ja', 'en', 2], ['en', 'ja', 6], ['uk', 'uk', 2]]) {
+    const h = harness({ nativeAutoplay: true, audioTracks: [
+      { language: dubLanguage, label: 'Dub', roles: ['alternate', 'dub'], channelsCount: 2, active: true },
+      { language: originalLanguage, label: 'Source', roles: ['main'], channelsCount, active: false },
+    ] });
+    await h.controller.start;
+    const player = h.players[0];
+    assert.equal(h.controller.mode, 'native');
+    assert.equal(player.autoplayAtLoad, false, 'audio must be checked before autoplay');
+    assert.deepEqual(JSON.parse(JSON.stringify(player.audioPreferencesAtLoad)), [{ role: 'main', channelCount: 2 }, { role: 'main' }]);
+    assert.equal(player.getAudioTracks().find((track) => track.active).label, 'Source');
+    assert.equal(player.video.paused, false);
+    assert.equal(player.getAudioTracks().length, 2, 'dubs remain selectable');
+    assert.equal(player.ui.config.overflowMenuButtons.includes('language'), true);
+    assert.equal(player.ui.config.trackLabelFormat, 3);
+    h.controller.cleanup();
+  }
+});
+
+test('native playback does not autoplay a dub when no playable original is identified', async () => {
+  for (const audioTracks of [
+    [{ language: 'en', roles: ['alternate', 'dub'], active: true }],
+    [{ language: 'en', roles: [], active: true }, { language: 'ja', roles: [], active: false }],
+    [{ language: 'en', label: 'One', roles: [], active: true }, { language: 'en', label: 'Two', roles: [], active: false }],
+    [{ language: 'en', roles: ['main', 'dub'], active: true }],
+  ]) {
+    const h = harness({ nativeAutoplay: true, audioTracks });
+    await h.controller.start;
+    assert.equal(h.controller.mode, 'iframe');
+    assert.equal(h.players[0].autoplayAtLoad, false);
+    assert.equal(h.players[0].video.paused, true);
+    h.controller.cleanup();
+  }
+});
+
+test('explicit audio choice survives renewal and audio-only switches but resets for a new page', async () => {
+  const h = harness({ audioTracks: [
+    { language: 'en', label: 'English dub', roles: ['alternate', 'dub'], channelsCount: 2, active: true },
+    { language: 'ja', label: 'Japanese original', roles: ['main'], channelsCount: 2, active: false },
+  ] });
+  await h.controller.start;
+  const selected = () => h.controller.adapter.player.getAudioTracks().find((track) => track.active);
+  assert.equal(selected().language, 'ja');
+  const player = h.controller.adapter.player;
+  chooseAudio(player, 0);
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  assert.equal(selected().label, 'English dub');
+  assert.equal(h.players.at(-1).audioPreferencesAtLoad[0].language, 'en');
+  await h.controller.selectQuality('audio');
+  assert.equal(selected().label, 'English dub');
+  await h.controller.selectQuality('720');
+  assert.equal(selected().label, 'English dub');
+  const again = h.win.FeedlrPlayer.mount({ ...h.controller.options, video: 'two' });
+  await again.start;
+  assert.equal(again.adapter.player.getAudioTracks().find((track) => track.active).language, 'ja');
+  again.cleanup();
+});
+
+test('a missing saved dub returns to original while ordinary roleless audio remains playable', async () => {
+  const audioTracks = [
+    { language: 'en', label: 'Dub', roles: ['alternate', 'dub'], active: true },
+    { language: 'ja', label: 'Source', roles: ['main'], active: false },
+  ];
+  const h = harness({ audioTracks });
+  await h.controller.start;
+  chooseAudio(h.controller.adapter.player, 0);
+  audioTracks.shift();
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  assert.equal(h.controller.adapter.player.getAudioTracks().find((track) => track.active).label, 'Source');
+  h.controller.cleanup();
+  const legacy = harness({ audioTracks: [{ language: 'fr', roles: [], active: true }] });
+  await legacy.controller.start;
+  assert.equal(legacy.controller.mode, 'native');
+  assert.equal(legacy.controller.adapter.video.paused, false);
+  legacy.controller.cleanup();
+});
+
+test('an automatic legacy track never becomes a language override on renewal', async () => {
+  const audioTracks = [{ language: 'en', roles: [], channelsCount: 2, active: true }];
+  const h = harness({ audioTracks });
+  await h.controller.start;
+  assert.equal(h.controller.mode, 'native');
+  audioTracks.splice(0, 1,
+    { language: 'en', label: 'Dub', roles: ['alternate', 'dub'], channelsCount: 2, active: true },
+    { language: 'en', label: 'Source', roles: ['main'], channelsCount: 2, active: false });
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  assert.equal(h.controller.audioPreference, null);
+  assert.equal(h.controller.adapter.player.getAudioTracks().find((track) => track.active).label, 'Source');
+  chooseAudio(h.controller.adapter.player, 0);
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  assert.equal(h.controller.audioPreference.role, 'dub');
+  assert.equal(h.controller.adapter.player.getAudioTracks().find((track) => track.active).label, 'Dub');
+  h.controller.cleanup();
 });

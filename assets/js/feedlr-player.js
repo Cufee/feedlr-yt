@@ -100,6 +100,38 @@
     return String(height);
   }
 
+  // Companion marks original audio with the DASH role "main", independently
+  // of its language or YouTube's default track. Keep stereo as a preference,
+  // but never let a stereo dub beat an original with a different channel count.
+  const originalAudioPreferences = [{ role: "main", channelCount: 2 }, { role: "main" }];
+  function audioPreference(track) {
+    if (!track) return null;
+    return {
+      language: track.language,
+      role: ["main", "dub", "description", "enhanced-audio-intelligibility", "alternate"].find((role) => track.roles?.includes(role)) || "",
+      label: track.label || "", channelCount: track.channelsCount || 0, spatialAudio: track.spatialAudio,
+    };
+  }
+  function selectInitialAudio(player, preference) {
+    const tracks = player.getAudioTracks();
+    const isOriginal = (track) => track.roles?.includes("main") && !track.roles.some((role) => ["dub", "description", "alternate"].includes(role));
+    const matches = (track) => (!preference.language || track.language === preference.language) &&
+      (!preference.role || track.roles?.includes(preference.role)) &&
+      (preference.role !== "main" || isOriginal(track)) &&
+      (!preference.label || track.label === preference.label) &&
+      (!preference.channelCount || track.channelsCount === preference.channelCount) &&
+      (preference.spatialAudio === undefined || track.spatialAudio === preference.spatialAudio);
+    let candidates = preference ? tracks.filter(matches) : [];
+    if (!candidates.length) candidates = tracks.filter(isOriginal);
+    // Ordinary single-track Companion manifests can omit roles entirely.
+    // Missing original metadata in a multilingual/alternate manifest is unsafe
+    // to guess from track order, labels, or the viewer's language.
+    if (!candidates.length && tracks.every((track) => !track.roles?.length) && new Set(tracks.map((track) => JSON.stringify([track.language, track.label || ""]))).size <= 1) candidates = tracks;
+    const track = candidates.find((track) => track.active) || candidates[0];
+    if (!track) throw new Error("unsupported_audio");
+    if (!track.active) player.selectAudioTrack(track);
+  }
+
   const scripts = new Map();
   function loadScript(src) {
     if (scripts.has(src)) return scripts.get(src);
@@ -203,6 +235,8 @@
       this.quality = qualityPreference(read(global.localStorage, qualityKey));
       this.availableQualities = [];
       this.audioOnly = false;
+      // Scoped to this video/page; a different video always starts original.
+      this.audioPreference = null;
       this.deviceVolume = usesDeviceVolume();
       this.mode = options.authenticated ? "native" : "iframe";
       this.lastProgress = -1;
@@ -378,6 +412,14 @@
       this.playerCleanup?.();
       this.playerCleanup = null;
       const adapter = this.adapter;
+      if (this.ready && adapter?.player) {
+        // Shaka's language menu changes preferredAudio on an explicit choice.
+        // Do not turn an automatically selected, unmarked legacy track into a
+        // language preference that could outrank original audio on renewal.
+        const configured = adapter.player.getConfiguration().preferredAudio[0];
+        this.audioPreference = configured.role === "main" && !configured.language && !configured.label ? null :
+          audioPreference(adapter.player.getAudioTracks().find((track) => track.active));
+      }
       this.adapter = null;
       this.ready = false;
       const previous = this.teardown || Promise.resolve();
@@ -469,7 +511,9 @@
       video.style.cssText = "width:100%;height:100%;object-fit:contain";
       video.playsInline = true;
       video.controls = false;
-      video.autoplay = this.state.playing;
+      // Check Shaka's playable audio choices before allowing autoplay. A role
+      // preference alone falls back to a dub if the original is unsupported.
+      video.autoplay = false;
       video.volume = this.state.volume / 100;
       video.muted = this.state.muted;
       box.append(video);
@@ -502,7 +546,8 @@
       });
       const ui = new global.shaka.ui.Overlay(player, box, video);
       ui.configure({
-        overflowMenuButtons: ["quality", "playback_rate", "picture_in_picture", "feedlr_youtube"],
+        overflowMenuButtons: ["quality", "language", "playback_rate", "picture_in_picture", "feedlr_youtube"],
+        trackLabelFormat: global.shaka.ui.Overlay.TrackLabelFormat.LABEL_OR_LANGUAGE,
         controlPanelElements: [...(this.deviceVolume ? [] : ["play_pause"]), "time_and_duration", "spacer", ...(this.deviceVolume ? [] : ["mute", "volume"]), "overflow_menu", "fullscreen"],
         alwaysShowVolumeBar: true,
         singleClickForPlayAndPause: !this.deviceVolume,
@@ -628,11 +673,16 @@
       listen("playing", () => { this.showLoading(false); });
       listen("volumechange", () => this.saveVolume());
       listen("error", () => { if (current() && !destroyed) this.nativeError({ category: 3, code: video.error?.code }); });
-      player.configure({ streaming: { bufferingGoal: 30, rebufferingGoal: 2, retryParameters: { maxAttempts: 2, timeout: 10000, connectionTimeout: 5000, stallTimeout: 5000 } }, manifest: { retryParameters: { maxAttempts: 1, timeout: 8000 } } });
+      player.configure({ preferredAudio: [...(this.audioPreference ? [this.audioPreference] : []), ...originalAudioPreferences], streaming: { bufferingGoal: 30, rebufferingGoal: 2, retryParameters: { maxAttempts: 2, timeout: 10000, connectionTimeout: 5000, stallTimeout: 5000 } }, manifest: { retryParameters: { maxAttempts: 1, timeout: 8000 } } });
       await player.attach(video);
       if (!current()) return;
       await player.load(resolution.manifestUrl, this.state.position);
       if (!current()) return;
+      selectInitialAudio(player, this.audioPreference);
+      // Shaka 5.2 only includes labels in audio-menu deduplication in LABEL
+      // mode. Keep human and AI dubs in the same language separately selectable.
+      ui.configure({ trackLabelFormat: player.getAudioTracks().every((track) => track.label) ? global.shaka.ui.Overlay.TrackLabelFormat.LABEL : global.shaka.ui.Overlay.TrackLabelFormat.LABEL_OR_LANGUAGE });
+      video.autoplay = this.state.playing;
       const heights = [...new Set(player.getVariantTracks().map((track) => track.height).filter((height) => height > 0))].sort((a, b) => b - a);
       if (!this.audioOnly) {
         if (!heights.length) throw new Error("unsupported_codec");

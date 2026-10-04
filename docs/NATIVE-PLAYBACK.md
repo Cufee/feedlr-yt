@@ -12,6 +12,10 @@ Quality lives in Shaka's settings menu: **Auto**, supported resolutions, and **A
 - Auto clears manual restrictions and enables adaptive quality. Automatic adaptation never overwrites the preference.
 - Audio only requests an audio-only manifest and session resource list. The viewer downloads no video media, and sees a static translucent accent waveform on black without a visible text label. Switching back to a resolution or Auto restores video at the current position. Shared instance health probes still sample both audio and video.
 
+Audio starts with the video's **original** track, regardless of the viewer's language or the source language. The settings menu exposes Shaka's **Language** selector when multiple audio choices are available, including dubbed tracks. An explicit choice survives URL renewals and switches between video and audio-only playback for the current page; opening another video or reloading starts with original audio again.
+
+Original audio is identified by Companion's DASH `main` role, which [YouTube.js derives from the source track classification](https://github.com/LuanRT/YouTube.js/blob/v18.0.0-deno/deno/src/utils/StreamingInfo.ts#L411), rather than the language, display label, or YouTube's default track. Stereo is preferred only among original tracks. If no original is playable in a manifest with alternate tracks, native playback falls back before starting audio. Ordinary manifests with one unmarked audio choice remain supported; their originality depends on the metadata provided by Companion. The YouTube iframe fallback controls its own audio selection.
+
 The iframe manages its own quality; returning to Feedlr restores the native preference. Both players share progress reporting, hotkeys, SponsorBlock, and teardown through `assets/js/feedlr-player.js`.
 
 Native playback supplies the video title, channel name, and proxied thumbnail to Shaka's Media Session integration for system media controls, including the iOS lock screen and Control Center. Metadata is restored after URL renewals and audio-only switches, and Shaka clears it on teardown.
