@@ -635,6 +635,11 @@
         position: static;
     }
 
+    #main:has(.ui-action-menu[open])::after {
+        content: "";
+        @apply fixed inset-0 z-30;
+    }
+
     .ui-action-menu:not(:has(.ui-action-menu-item:not([hidden]))) {
         display: none;
     }
@@ -876,20 +881,25 @@
         @apply border-danger/35 text-red-100 hover:bg-danger/20;
     }
 
+    .ui-playlist-dialog {
+        height: 100dvh;
+    }
+
     .ui-playlist-dialog[open] {
         @apply items-end md:items-center;
     }
 
     .ui-playlist-dialog-panel {
-        @apply mb-0 max-h-[82vh] w-full max-w-none overflow-hidden rounded-b-none p-0 md:mb-6 md:w-[min(92vw,24rem)] md:rounded-[var(--radius-panel)];
+        @apply mb-0 flex max-h-[82dvh] w-full max-w-none flex-col overflow-hidden rounded-b-none p-0 md:mb-6 md:w-[min(92vw,24rem)] md:rounded-[var(--radius-panel)];
     }
 
     .ui-playlist-picker-list {
-        @apply flex max-h-[64vh] flex-col gap-1 overflow-y-auto p-2;
+        @apply flex min-h-0 flex-col gap-1 overflow-y-auto overscroll-contain p-2;
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
     }
 
     .ui-playlist-picker-item {
-        @apply flex w-full cursor-pointer items-center gap-3 rounded-[var(--radius-control-compact)] bg-glass-fill/18 px-3 py-3 text-left transition-colors duration-150 hover:bg-glass-fill/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
+        @apply flex w-full shrink-0 cursor-pointer items-center gap-3 rounded-[var(--radius-control-compact)] bg-glass-fill/18 px-3 py-3 text-left transition-colors duration-150 hover:bg-glass-fill/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
     }
 
     .ui-playlist-picker-item-active {

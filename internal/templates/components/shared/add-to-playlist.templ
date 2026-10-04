@@ -31,7 +31,7 @@ templ AddToPlaylistSelect(videoID string, playlists []types.PlaylistProps, inPla
 		</button>
 		<dialog id={ fmt.Sprintf("add-to-playlist-dialog-%s", videoID) } class="ui-dialog ui-playlist-dialog" onclick="if (event.target === this) this.close()" onkeydown="event.stopPropagation()">
 			<div class="ui-dialog-panel ui-playlist-dialog-panel">
-				<div class="flex items-center justify-between gap-3 border-b border-glass-stroke/15 px-4 py-3">
+				<div class="flex shrink-0 items-center justify-between gap-3 border-b border-glass-stroke/15 px-4 py-3">
 					<h2 class="text-sm font-semibold text-text-primary">Playlists</h2>
 					<button
 						type="button"
