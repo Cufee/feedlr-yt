@@ -5,6 +5,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/templates/components/feed"
 	"github.com/cufee/feedlr-yt/internal/templates/components/icons"
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"time"
 )
@@ -27,17 +28,7 @@ func durationToString(videoDuration int) string {
 templ Video(props types.VideoPlayerProps) {
 	<div class="feedlr-video-page relative flex grow flex-col">
 		<div class="ui-video-rail">
-			<div class="ui-video-rail-actions">
-				@buttonChannel(props.Video.Channel.ID)
-				@buttonShare(props.Video.ID)
-				if props.Authenticated {
-					@feed.WatchLaterButton(props.Video.ID, props.Video.InWatchLater, feed.WatchLaterVideo)
-					if len(props.UserPlaylists) > 0 {
-						@shared.AddToPlaylistSelect(props.Video.ID, props.UserPlaylists, props.VideoInPlaylistIDs)
-					}
-					@buttonTV()
-				}
-			</div>
+			@playerActions(props)
 			<div class="ui-video-rail-actions">
 				if (props.Authenticated) {
 					@buttonBack(props.ReturnURL)
@@ -67,6 +58,60 @@ templ Video(props types.VideoPlayerProps) {
 	</div>
 }
 
+templ playerActions(props types.VideoPlayerProps) {
+	<div id="player-actions" class="ui-video-rail-actions relative">
+		@buttonChannel(props.Video.Channel.ID)
+		if props.Authenticated {
+			if props.Video.InWatchLater {
+				@feed.WatchLaterButton(props.Video.ID, true, feed.WatchLaterVideo)
+			}
+			if len(props.UserPlaylists) > 0 && shared.AnyInPlaylist(props.VideoInPlaylistIDs) {
+				@shared.AddToPlaylistSelect(props.Video.ID, props.UserPlaylists, props.VideoInPlaylistIDs)
+			}
+		}
+		@playerActionMenu(props)
+	</div>
+	@shared.EmbedScript(playerActionsInit())
+}
+
+func playerActionMenu(props types.VideoPlayerProps) templ.Component {
+	var actions []templ.Component
+	if props.Authenticated {
+		if !props.Video.InWatchLater {
+			actions = append(actions, feed.WatchLaterButton(props.Video.ID, false, feed.WatchLaterVideo))
+		}
+		if len(props.UserPlaylists) > 0 && !shared.AnyInPlaylist(props.VideoInPlaylistIDs) {
+			actions = append(actions, shared.AddToPlaylistSelect(props.Video.ID, props.UserPlaylists, props.VideoInPlaylistIDs))
+		}
+	}
+	actions = append(actions, buttonShare(props.Video.ID))
+	if props.Authenticated && !props.Video.IsPodcast() {
+		actions = append(actions, buttonTV())
+	}
+	return ui.ActionMenu(actions...)
+}
+
+script playerActionsInit() {
+	const root = document.getElementById("player-actions")
+	root.addEventListener("htmx:afterSettle", (event) => {
+		const action = event.detail.elt
+		if (!action.matches("[data-player-action]")) return
+		const menu = root.querySelector(".ui-action-menu")
+		const panel = menu.querySelector(".ui-action-menu-panel")
+		const active = action.dataset.active === "true"
+		if (active) {
+			const next = action.dataset.playerAction === "pin" ? root.querySelector(':scope > [data-player-action="playlist"]') : null
+			root.insertBefore(action, next || menu)
+		} else {
+			const next = action.dataset.playerAction === "pin" ? panel.querySelector('[data-player-action="playlist"]') : null
+			panel.insertBefore(action, next || panel.querySelector("#share-video-link-btn"))
+		}
+		menu.open = false
+		const focusTarget = active ? (action.matches("button") ? action : action.querySelector("button")) : menu.querySelector("summary")
+		focusTarget.focus()
+	})
+}
+
 templ videoPlayer(player types.VideoPlayerProps) {
 	<div id="player" class="grow overflow-hidden relative" style="min-height: 0"></div>
 	<template id="feedlr-iframe-menu-icon">
@@ -93,15 +138,17 @@ templ buttonChannel(id string) {
 }
 
 templ buttonShare(id string) {
-	<button id="share-video-link-btn" class="ui-video-rail-btn" aria-label="Share video">
+	<button id="share-video-link-btn" type="button" class="ui-action-menu-item">
 		@icons.Share()
+		<span>Share</span>
 	</button>
 	@shared.EmbedScript(shareButtonScript(id), id)
 }
 
 templ buttonTV() {
-	<button id="send-to-tv-btn" type="button" class="ui-video-rail-btn" aria-label="Send to TV" title="Send to TV" hidden disabled>
+	<button id="send-to-tv-btn" type="button" class="ui-action-menu-item" aria-label="Send to TV" title="Send to TV" hidden disabled>
 		@icons.TV()
+		<span>Send to TV</span>
 	</button>
 }
 

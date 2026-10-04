@@ -6,7 +6,8 @@ import (
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
-func anyInPlaylist(ids map[string]bool) bool {
+// AnyInPlaylist reports whether the item belongs to at least one playlist.
+func AnyInPlaylist(ids map[string]bool) bool {
 	for _, v := range ids {
 		if v {
 			return true
@@ -16,19 +17,22 @@ func anyInPlaylist(ids map[string]bool) bool {
 }
 
 templ AddToPlaylistSelect(videoID string, playlists []types.PlaylistProps, inPlaylistIDs map[string]bool) {
-	<div id={ fmt.Sprintf("add-to-playlist-%s", videoID) } class="relative">
+	<div id={ fmt.Sprintf("add-to-playlist-%s", videoID) } class="relative" data-player-action="playlist" data-active={ fmt.Sprint(AnyInPlaylist(inPlaylistIDs)) }>
 		<button
 			type="button"
-			class={ "ui-video-rail-btn cursor-pointer", templ.KV("ui-video-rail-btn-active", anyInPlaylist(inPlaylistIDs)) }
-			title="Add to playlist"
+			class={ templ.KV("ui-video-rail-btn ui-video-rail-btn-active", AnyInPlaylist(inPlaylistIDs)), templ.KV("ui-action-menu-item", !AnyInPlaylist(inPlaylistIDs)) }
+			title="Playlists"
 			onclick="this.nextElementSibling.showModal()"
 		>
 			@icons.Playlist()
+			if !AnyInPlaylist(inPlaylistIDs) {
+				<span>Playlists</span>
+			}
 		</button>
-		<dialog id={ fmt.Sprintf("add-to-playlist-dialog-%s", videoID) } class="ui-dialog ui-playlist-dialog" onclick="if (event.target === this) this.close()">
+		<dialog id={ fmt.Sprintf("add-to-playlist-dialog-%s", videoID) } class="ui-dialog ui-playlist-dialog" onclick="if (event.target === this) this.close()" onkeydown="event.stopPropagation()">
 			<div class="ui-dialog-panel ui-playlist-dialog-panel">
 				<div class="flex items-center justify-between gap-3 border-b border-glass-stroke/15 px-4 py-3">
-					<h2 class="text-sm font-semibold text-text-primary">Add to playlist</h2>
+					<h2 class="text-sm font-semibold text-text-primary">Playlists</h2>
 					<button
 						type="button"
 						class="ui-channel-action-btn cursor-pointer"
@@ -45,7 +49,7 @@ templ AddToPlaylistSelect(videoID string, playlists []types.PlaylistProps, inPla
 							class={ "ui-playlist-picker-item", templ.KV("ui-playlist-picker-item-active", inPlaylistIDs[p.ID]) }
 							hx-post={ fmt.Sprintf("/api/playlists/add-video?videoID=%s&playlistID=%s", videoID, p.ID) }
 							hx-target={ fmt.Sprintf("#add-to-playlist-%s", videoID) }
-							hx-swap="outerHTML"
+							hx-swap="outerHTML settle:0"
 							hx-on::after-request="this.closest('dialog')?.close()"
 						>
 							<span class="min-w-0 flex-1">

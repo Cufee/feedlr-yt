@@ -1,0 +1,25 @@
+package ui
+
+templ ActionMenu(actions ...templ.Component) {
+	if len(actions) > 0 {
+		<details
+			class="ui-action-menu"
+			_="on click from elsewhere remove @open from me"
+			onkeydown="event.stopPropagation(); if (event.key === 'Escape' && !event.target.closest('dialog')) { event.preventDefault(); this.open = false; this.querySelector('summary').focus(); }"
+			onclick="if (event.target.closest('.ui-action-menu-item') && !this.querySelector('dialog[open]')) { this.open = false; this.querySelector('summary').focus(); }"
+		>
+			<summary class="ui-video-rail-btn" aria-label="More actions" title="More actions">
+				<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<circle cx="5" cy="12" r="2"></circle>
+					<circle cx="12" cy="12" r="2"></circle>
+					<circle cx="19" cy="12" r="2"></circle>
+				</svg>
+			</summary>
+			<div class="ui-action-menu-panel">
+				for _, action := range actions {
+					@action
+				}
+			</div>
+		</details>
+	}
+}

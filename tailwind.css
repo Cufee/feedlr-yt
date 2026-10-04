@@ -612,11 +612,11 @@
     }
 
     .ui-video-rail {
-        @apply mb-0 flex w-full items-center justify-between gap-2 rounded-none border-0 bg-black p-2 shadow-none;
+        @apply relative z-40 mb-0 flex w-full items-center justify-between gap-2 rounded-none border-0 bg-black p-2 shadow-none;
     }
 
     .ui-podcast-rail {
-        @apply flex w-full items-center justify-between gap-2 border-b border-glass-stroke/14 bg-chrome/90 px-3 py-2 backdrop-blur-[var(--blur-glass-md)] sm:px-4;
+        @apply relative z-40 flex w-full items-center justify-between gap-2 border-b border-glass-stroke/14 bg-chrome/90 px-3 py-2 backdrop-blur-[var(--blur-glass-md)] sm:px-4;
     }
 
     .ui-video-rail-actions {
@@ -625,6 +625,34 @@
 
     .ui-video-rail-btn {
         @apply inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control-compact)] border border-glass-stroke/18 bg-glass-fill/22 p-0 text-text-secondary transition-[background-color,color,border-color] duration-150 ease-[var(--ease-standard)] hover:bg-glass-fill/35 hover:text-text-primary active:bg-glass-fill/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.8];
+    }
+
+    .ui-action-menu {
+        @apply relative;
+    }
+
+    #player-actions > .ui-action-menu {
+        position: static;
+    }
+
+    .ui-action-menu:not(:has(.ui-action-menu-item:not([hidden]))) {
+        display: none;
+    }
+
+    .ui-action-menu > summary {
+        @apply cursor-pointer list-none;
+    }
+
+    .ui-action-menu > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .ui-action-menu-panel {
+        @apply absolute left-0 top-full z-50 mt-2 w-max min-w-56 max-w-[calc(100vw-1.5rem)] rounded-[var(--radius-control-compact)] border border-glass-stroke/18 bg-chrome p-1 shadow-xl;
+    }
+
+    .ui-action-menu-item {
+        @apply flex min-h-10 w-full cursor-pointer items-center gap-3 whitespace-nowrap rounded-[var(--radius-control-compact)] px-3 py-2 text-left text-sm text-text-secondary hover:bg-glass-fill/35 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-default disabled:opacity-50 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:shrink-0;
     }
 
     .ui-video-rail-btn-active {
