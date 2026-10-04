@@ -968,3 +968,38 @@ test('an automatic legacy track never becomes a language override on renewal', a
   assert.equal(h.controller.adapter.player.getAudioTracks().find((track) => track.active).label, 'Dub');
   h.controller.cleanup();
 });
+
+test('regular original beats processed stereo; explicit codec choices survive renewal', async () => {
+  const audioTracks = [
+    { language: 'en', label: 'English (Original)', roles: ['main', 'enhanced-audio-intelligibility'], channelsCount: 2, codecs: 'mp4a.40.2', active: true },
+    { language: 'en', label: 'English (Original)', roles: ['main'], channelsCount: 6, codecs: 'ec-3', active: false },
+  ];
+  const h = harness({ audioTracks });
+  await h.controller.start;
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.controller.adapter.player.getAudioTracks().find((track) => track.active).codecs, 'ec-3');
+  // Stable volume remains usable when its codec is the viewer's explicit choice.
+  chooseAudio(h.controller.adapter.player, 0);
+  // On renewal both encodings are stereo and Shaka initially activates regular
+  // audio: restoring the explicit choice must distinguish them by codec.
+  audioTracks[0].active = false;
+  audioTracks[1].active = true;
+  audioTracks[1].channelsCount = 2;
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  assert.equal(h.controller.audioPreference.codec, 'mp4a.40.2');
+  assert.equal(h.controller.adapter.player.getAudioTracks().find((track) => track.active).codecs, 'mp4a.40.2');
+  await h.controller.selectQuality('audio');
+  assert.equal(h.controller.adapter.player.getAudioTracks().find((track) => track.active).codecs, 'mp4a.40.2');
+  h.controller.cleanup();
+});
+
+test('original available only with stable volume remains playable', async () => {
+  const h = harness({ audioTracks: [
+    { language: 'en', label: 'English (auto-dubbed)', roles: ['alternate', 'dub'], active: true },
+    { language: 'ja', label: 'Japanese (Original)', roles: ['main', 'enhanced-audio-intelligibility'], active: false },
+  ] });
+  await h.controller.start;
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.controller.adapter.player.getAudioTracks().find((track) => track.active).language, 'ja');
+  h.controller.cleanup();
+});

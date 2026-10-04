@@ -109,7 +109,7 @@
     return {
       language: track.language,
       role: ["main", "dub", "description", "enhanced-audio-intelligibility", "alternate"].find((role) => track.roles?.includes(role)) || "",
-      label: track.label || "", channelCount: track.channelsCount || 0, spatialAudio: track.spatialAudio,
+      label: track.label || "", channelCount: track.channelsCount || 0, codec: track.codecs || "", spatialAudio: track.spatialAudio,
     };
   }
   function selectInitialAudio(player, preference) {
@@ -120,9 +120,17 @@
       (preference.role !== "main" || isOriginal(track)) &&
       (!preference.label || track.label === preference.label) &&
       (!preference.channelCount || track.channelsCount === preference.channelCount) &&
+      (!preference.codec || track.codecs === preference.codec) &&
       (preference.spatialAudio === undefined || track.spatialAudio === preference.spatialAudio);
     let candidates = preference ? tracks.filter(matches) : [];
-    if (!candidates.length) candidates = tracks.filter(isOriginal);
+    if (!candidates.length) {
+      const originals = tracks.filter(isOriginal);
+      // A processed version may be retained for a different codec. Prefer the
+      // regular original among the browser's playable choices, even if Shaka
+      // initially preferred a stereo processed track over a surround original.
+      const regular = originals.filter((track) => !track.roles.includes("enhanced-audio-intelligibility"));
+      candidates = regular.length ? regular : originals;
+    }
     // Ordinary single-track Companion manifests can omit roles entirely.
     // Missing original metadata in a multilingual/alternate manifest is unsafe
     // to guess from track order, labels, or the viewer's language.

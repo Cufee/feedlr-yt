@@ -73,6 +73,78 @@ type resolved struct {
 	ExpiresAt time.Time
 }
 
+type audioTrackKey struct {
+	ID, Language, MIME, Codec string
+	VoiceBoost                bool
+}
+
+// YouTube.js names audio representations itag[-trackID][-drc][-vb]. Track IDs
+// distinguish recordings in the same language; itags distinguish encodings.
+// DRC and Voice Boost share a DASH role, so that role cannot identify DRC.
+func (a adaptation) audioTrack(rep representation) (key audioTrackKey, drc, ok bool) {
+	key.MIME = rep.MIME
+	if key.MIME == "" {
+		key.MIME = a.MIME
+	}
+	if !strings.HasPrefix(key.MIME, "audio/") {
+		return key, false, false
+	}
+	key.Codec = rep.Codecs
+	if key.Codec == "" {
+		key.Codec = a.Codecs
+	}
+	// A regular track in another codec must not displace a stable-volume
+	// encoding that may be the only one the browser can decode.
+	id, vb := strings.CutSuffix(rep.ID, "-vb")
+	id, drc = strings.CutSuffix(id, "-drc")
+	if drc && !slices.Contains(a.Roles, role{Scheme: "urn:mpeg:dash:role:2011", Value: "enhanced-audio-intelligibility"}) {
+		// An unfamiliar ID ending in -drc is not sufficient evidence to drop it.
+		return key, false, false
+	}
+	itag, trackID, named := strings.Cut(id, "-")
+	n, err := strconv.Atoi(itag)
+	if err != nil || n <= 0 || (named && trackID == "") {
+		return key, false, false
+	}
+	key.ID, key.Language, key.VoiceBoost = trackID, a.Lang, vb
+	return key, drc, true
+}
+
+func (p period) withoutStableVolumeDuplicates() period {
+	regular := make(map[audioTrackKey]bool)
+	for _, a := range p.Sets {
+		for _, rep := range a.Representations {
+			if key, drc, ok := a.audioTrack(rep); ok && !drc {
+				regular[key] = true
+			}
+		}
+	}
+	var filtered period
+	for _, a := range p.Sets {
+		kept := a
+		kept.Representations = nil
+		stableOnly := true
+		for _, rep := range a.Representations {
+			key, drc, ok := a.audioTrack(rep)
+			if ok && drc && regular[key] {
+				continue
+			}
+			stableOnly = stableOnly && ok && drc
+			kept.Representations = append(kept.Representations, rep)
+		}
+		if len(kept.Representations) == 0 {
+			continue
+		}
+		if stableOnly {
+			// Preserve the recording's label (including original/dub/description)
+			// while removing Companion's volume-processing suffix.
+			kept.Label = strings.TrimSuffix(kept.Label, " (Stable Volume)")
+		}
+		filtered.Sets = append(filtered.Sets, kept)
+	}
+	return filtered
+}
+
 // qualities reports the complete video's dimensions even for audio-only
 // sessions, so the browser can offer switching back to a video resolution.
 func (r *resolved) qualities() []Quality {
@@ -174,6 +246,9 @@ func (s *Service) parseManifest(data []byte) (*resolved, error) {
 	if m.Type != "static" || len(m.Periods) != 1 || m.Duration == "" {
 		return nil, errors.New("nonstatic manifest")
 	}
+	// Filter before constructing the media allowlist so manifest indices and
+	// resources stay aligned in both video and audio-only sessions.
+	m.Periods[0] = m.Periods[0].withoutStableVolumeDuplicates()
 	m.XMLNS = "urn:mpeg:dash:schema:mpd:2011"
 	r := &resolved{MPD: m}
 	kinds := map[string]bool{}
