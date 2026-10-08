@@ -195,9 +195,9 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
 async function settle() { for (let i = 0; i < 6; i++) await new Promise(setImmediate); }
 
 function deferred() {
-  let resolve;
-  const promise = new Promise((done) => { resolve = done; });
-  return { promise, resolve };
+  let resolve, reject;
+  const promise = new Promise((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
 }
 
 test('TV action appears for an online paired screen and waits for a ready player', async () => {
@@ -653,6 +653,303 @@ test('autoplay rejection suspends deadlines and keeps manual native playback ava
   for (let i = 0; i < 100; i++) h.controller.tick();
   assert.equal(h.controller.watchdog.startup, 0);
   assert.equal(h.controller.mode, 'native');
+  h.controller.cleanup();
+});
+
+test('a background media interruption waits for visibility and recovers native with its current state', async () => {
+  const h = harness({ mobile: true });
+  await h.controller.start;
+  const video = h.controller.adapter.video;
+  video.currentTime = 321.75; video.muted = true; video.playbackRate = 1.5;
+  h.doc.hidden = true;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  video.pause();
+  video.error = { code: 1 }; // Interrupted media fetch, including app suspension.
+  video.dispatchEvent(h.event('error'));
+  await settle();
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.players.length, 1);
+  assert.ok(h.controller.pendingNativeError);
+  assert.equal(h.requests.some((request) => request.url.endsWith('/playback/events') && JSON.parse(request.body).event === 'fallback'), false);
+  h.doc.hidden = false;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  await settle();
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.players.length, 2);
+  assert.equal(h.controller.ready, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.controller.snapshot())), { position: 321.75, playing: false, volume: 100, muted: true, rate: 1.5 });
+  h.controller.cleanup();
+});
+
+test('an offline native error waits for both foreground visibility and connectivity', async () => {
+  const h = harness();
+  await h.controller.start;
+  h.win.navigator.onLine = false;
+  h.doc.hidden = true;
+  h.players[0].dispatchEvent(h.event('error', { detail: { severity: 2, category: 1, code: 1002 } }));
+  h.doc.hidden = false;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  await settle();
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.players.length, 1);
+  h.win.navigator.onLine = true;
+  h.win.dispatchEvent(h.event('online'));
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  await settle();
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.players.length, 2);
+  assert.equal(h.controller.pendingNativeError, null);
+  h.controller.cleanup();
+});
+
+test('a native load interrupted in the background recovers even before the adapter was ready', async () => {
+  const load = deferred();
+  const h = harness({ shakaLoads: [load.promise] });
+  await settle();
+  assert.equal(h.players.length, 1);
+  h.doc.hidden = true;
+  load.reject(new Error('interrupted load'));
+  await h.controller.start;
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.controller.ready, false);
+  h.doc.hidden = false;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  await settle();
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.controller.ready, true);
+  assert.equal(h.controller.switching, false);
+  assert.equal(h.controller.getCurrentTime(), 120);
+  assert.equal(h.players.length, 2);
+  h.controller.cleanup();
+});
+
+test('an interrupted renewal resolution waits for foreground recovery instead of selecting iframe', async () => {
+  const resolution = deferred();
+  const h = harness();
+  await h.controller.start;
+  h.controller.adapter.video.currentTime = 654;
+  h.controller.resolve = () => resolution.promise;
+  const switching = h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  await settle();
+  h.doc.hidden = true;
+  resolution.reject(new Error('network interrupted'));
+  await switching;
+  assert.equal(h.controller.mode, 'native');
+  assert.ok(h.controller.pendingNativeError);
+  h.controller.resolve = async () => h.fresh(1);
+  h.doc.hidden = false;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  await settle();
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.controller.ready, true);
+  assert.equal(h.controller.getCurrentTime(), 654);
+  h.controller.cleanup();
+});
+
+for (const reason of ['busy', 'resolution_timeout', 'health_unavailable']) {
+  test(`a background renewal receiving ${reason} retries native on return`, async () => {
+    const resolution = deferred();
+    const h = harness();
+    await h.controller.start;
+    h.controller.adapter.video.currentTime = 654;
+    h.controller.resolve = () => resolution.promise;
+    const switching = h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+    await settle();
+    h.doc.hidden = true;
+    resolution.resolve({ mode: 'iframe', reason, progress: 1 });
+    await switching;
+    assert.equal(h.controller.mode, 'native');
+    assert.ok(h.controller.pendingNativeError);
+    h.controller.resolve = async () => h.fresh(1);
+    h.doc.hidden = false;
+    h.doc.dispatchEvent(h.event('visibilitychange'));
+    await settle();
+    assert.equal(h.controller.mode, 'native');
+    assert.equal(h.controller.ready, true);
+    assert.equal(h.controller.getCurrentTime(), 654);
+    assert.equal(h.players.length, 2);
+    h.controller.cleanup();
+  });
+}
+
+test('persistent temporary server failures retry once and then settle on iframe', async () => {
+  const h = harness({ resolutions: [{ mode: 'iframe', reason: 'resolution_timeout', progress: 456 }, { mode: 'iframe', reason: 'resolution_timeout', progress: 1 }] });
+  await h.controller.start;
+  assert.equal(h.controller.mode, 'iframe');
+  assert.equal(h.controller.getCurrentTime(), 456);
+  assert.equal(h.players.length, 0);
+  assert.equal(h.requests.filter((request) => request.url.endsWith('/playback') && JSON.parse(request.body).mode === 'native').length, 2);
+  h.controller.cleanup();
+});
+
+test('a foreground native error retries once before falling back and preserves a paused snapshot', async () => {
+  const h = harness();
+  await h.controller.start;
+  const video = h.controller.adapter.video;
+  video.currentTime = 444; video.volume = 0.35; video.muted = true; video.playbackRate = 1.5; video.pause();
+  await h.controller.nativeError({ category: 3, code: 2 });
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.players.length, 2);
+  await h.controller.nativeError({ category: 3, code: 2 });
+  assert.equal(h.controller.mode, 'iframe');
+  assert.deepEqual(JSON.parse(JSON.stringify(h.controller.snapshot())), { position: 444, playing: false, volume: 35, muted: true, rate: 1.5 });
+  assert.equal(h.requests.filter((request) => request.url.endsWith('/playback') && JSON.parse(request.body).mode === 'native').length, 2);
+  h.controller.cleanup();
+});
+
+for (const success of [true, false]) {
+  test(`duplicate native errors during a ${success ? 'successful' : 'failed'} TV handoff share one recovery`, async () => {
+    const send = deferred();
+    const h = harness({ tvStatuses: [{ online: true }], tvSends: [send.promise] });
+    await h.controller.start;
+    h.controller.adapter.video.currentTime = 500;
+    const sending = h.controller.sendToTV();
+    await settle();
+    const video = h.controller.adapter.video;
+    video.error = { code: 2 };
+    video.dispatchEvent(h.event('error'));
+    h.players[0].dispatchEvent(h.event('error', { detail: { severity: 2, category: 3, code: 3016 } }));
+    assert.equal(h.players.length, 1);
+    assert.equal(h.controller.handlingError, true);
+    assert.equal(h.requests.some((request) => request.url.endsWith('/playback/events') && JSON.parse(request.body).event === 'fallback'), false);
+    send.resolve(success ? { status: 204 } : { status: 503, json: async () => ({ error: 'TV disconnected' }) });
+    await sending;
+    await settle();
+    assert.equal(h.controller.mode, 'native');
+    assert.equal(h.controller.ready, true);
+    assert.equal(h.controller.handlingError, false);
+    assert.equal(h.players.length, 2);
+    assert.equal(h.controller.getCurrentTime(), 500);
+    assert.equal(h.controller.snapshot().playing, !success);
+    h.controller.cleanup();
+  });
+}
+
+test('persistent native load failures exhaust recovery without a retry loop', async () => {
+  const h = harness({ shakaLoadError: new Error('load failed') });
+  await h.controller.start;
+  assert.equal(h.controller.mode, 'iframe');
+  assert.equal(h.controller.switching, false);
+  assert.equal(h.players.length, 2);
+  assert.equal(h.controller.getCurrentTime(), 120);
+  h.controller.cleanup();
+});
+
+test('sustained advancing playback re-arms native and expiry recovery for independent interruptions', async () => {
+  const h = harness();
+  await h.controller.start;
+  await h.controller.nativeError({ category: 3, code: 2 });
+  await h.controller.nativeError({ category: 1, data: ['media', 403] });
+  assert.equal(h.controller.nativeRetryUsed, true);
+  assert.equal(h.controller.expiryRetryUsed, true);
+  const video = h.controller.adapter.video;
+  for (let i = 0; i < 6; i++) {
+    video.currentTime += 1;
+    h.controller.lastTick = performance.now() - 1000;
+    h.controller.tick();
+  }
+  assert.equal(h.controller.nativeRetryUsed, false);
+  assert.equal(h.controller.expiryRetryUsed, false);
+  await h.controller.nativeError({ category: 3, code: 2 });
+  await h.controller.nativeError({ category: 1, data: ['media', 403] });
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.players.length, 5);
+  h.controller.cleanup();
+});
+
+test('pauses and seeking cannot re-arm recovery without sustained playback', async () => {
+  const h = harness();
+  await h.controller.start;
+  await h.controller.nativeError({ category: 3, code: 2 });
+  const video = h.controller.adapter.video;
+  const tick = (advance) => {
+    video.currentTime += advance;
+    h.controller.lastTick = performance.now() - 1000;
+    h.controller.tick();
+  };
+  for (let i = 0; i < 4; i++) tick(1);
+  assert.equal(h.controller.recoveryProgress, 3);
+  video.pause();
+  tick(0);
+  assert.equal(h.controller.recoveryProgress, 0);
+  await h.controller.adapter.play();
+  for (let i = 0; i < 2; i++) tick(1);
+  assert.equal(h.controller.nativeRetryUsed, true);
+  video.seeking = true;
+  for (let i = 0; i < 6; i++) tick(1);
+  assert.equal(h.controller.nativeRetryUsed, true);
+  video.seeking = false;
+  for (let i = 0; i < 6; i++) tick(100);
+  assert.equal(h.controller.nativeRetryUsed, true);
+  for (let i = 0; i < 5; i++) tick(1);
+  assert.equal(h.controller.nativeRetryUsed, false);
+  h.controller.cleanup();
+});
+
+test('foreground recovery gets a fresh watchdog deadline and a stalled retry remains bounded', async () => {
+  const h = harness();
+  await h.controller.start;
+  h.controller.watchdog.firstFrame = true;
+  h.controller.watchdog.stall = 14;
+  h.controller.watchdog.position = h.controller.getCurrentTime();
+  h.doc.hidden = true;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  h.controller.tick();
+  h.doc.hidden = false;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  assert.equal(h.controller.watchdog.stall, 0);
+  assert.equal(h.controller.watchdog.firstFrame, true);
+  for (let i = 0; i < 15; i++) {
+    h.controller.lastTick = performance.now() - 1000;
+    h.controller.tick();
+  }
+  await settle();
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.players.length, 2);
+  for (let i = 0; i < 15; i++) {
+    h.controller.lastTick = performance.now() - 1000;
+    h.controller.tick();
+  }
+  await settle();
+  assert.equal(h.controller.mode, 'iframe');
+  assert.equal(h.players.length, 2);
+  h.controller.cleanup();
+});
+
+for (const name of ['Error', 'NotAllowedError', 'AbortError']) {
+  test(`a stale native play rejection (${name}) cannot affect a replacement player`, async () => {
+    const h = harness();
+    await h.controller.start;
+    const play = deferred();
+    h.controller.adapter.video.play = () => play.promise;
+    const playing = h.controller.adapter.play();
+    await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+    const replacement = h.controller.adapter;
+    const error = new Error('old play failed');
+    error.name = name;
+    play.reject(error);
+    await playing;
+    assert.equal(h.controller.mode, 'native');
+    assert.equal(h.controller.adapter, replacement);
+    assert.equal(h.controller.blocked, false);
+    assert.equal(h.controller.snapshot().playing, true);
+    assert.equal(h.players.length, 2);
+    h.controller.cleanup();
+  });
+}
+
+test('an explicit player switch clears deferred recovery and visibility cannot override the selection', async () => {
+  const h = harness();
+  await h.controller.start;
+  h.doc.hidden = true;
+  await h.controller.nativeError({ category: 3, code: 1 });
+  await h.controller.switchPlayer('iframe', h.controller.snapshot(), 'manual_switch');
+  h.doc.hidden = false;
+  h.doc.dispatchEvent(h.event('visibilitychange'));
+  await settle();
+  assert.equal(h.controller.mode, 'iframe');
+  assert.equal(h.players.length, 1);
+  assert.equal(h.controller.pendingNativeError, null);
   h.controller.cleanup();
 });
 

@@ -38,6 +38,7 @@
       return url.origin === global.location.origin && url.pathname.startsWith("/api/") && Date.parse(result.expiresAt) > now;
     } catch (_) { return false; }
   }
+  const retryableResolutionReasons = ["busy", "resolution_timeout", "health_unavailable"];
   function expirationError(error, expiresAt, now = Date.now()) {
     return now >= expiresAt || (error?.category === 1 && (error.data || []).some((value) => [401, 403, 404, 410].includes(value)));
   }
@@ -62,7 +63,8 @@
   // connectivity, pause and autoplay policy suspend both deadlines.
   class PlaybackWatchdog {
     constructor() { this.reset(); }
-    reset() { this.firstFrame = false; this.startup = 0; this.stall = 0; this.position = null; }
+    reset() { this.firstFrame = false; this.resetDeadlines(); }
+    resetDeadlines() { this.startup = 0; this.stall = 0; this.position = null; }
     tick(seconds, active, position, decoded) {
       if (!active) return null;
       const moved = this.position !== null && Math.abs(position - this.position) > 0.01;
@@ -256,6 +258,9 @@
       this.expiresAt = Infinity;
       this.renewAt = Infinity;
       this.expiryRetryUsed = false;
+      this.nativeRetryUsed = false;
+      this.recoveryProgress = 0;
+      this.pendingNativeError = null;
       this.watchdog = new PlaybackWatchdog();
       const savedVolume = read(global.localStorage, `player-volume-${options.channel}`) ?? read(global.localStorage, "player-volume");
       this.state = { position: finite(options.progress), playing: true, volume: this.deviceVolume ? 100 : initialVolume(savedVolume, options.volume), muted: false, rate: 1 };
@@ -278,13 +283,14 @@
       });
       this.listen(global, "pageshow", (event) => {
         if (event.persisted && !this.disposed) this.switchPlayer(this.mode, this.historyState || this.snapshot(), "history_restore");
+        else this.resumePlayback();
         this.startTVStatus();
       });
       this.listen(document, "visibilitychange", () => {
-        if (!document.hidden) { this.checkRenewal(); this.startTVStatus(); }
+        if (!document.hidden) { this.resumePlayback(); this.startTVStatus(); }
         else { this.saveProgress(); this.stopTVStatus(); }
       });
-      this.listen(global, "online", () => { this.checkRenewal(); this.startTVStatus(); });
+      this.listen(global, "online", () => { this.resumePlayback(); this.startTVStatus(); });
       this.listen(global, "offline", () => this.stopTVStatus());
       this.lastTick = performance.now();
       this.timer = global.setInterval(() => this.tick(), 500);
@@ -445,6 +451,9 @@
       if (this.disposed) return;
       this.saveProgress();
       const generation = ++this.generation;
+      // Coalesce errors from the old player while waiting for a TV handoff.
+      // The replacement generation may report its own failure independently.
+      this.handlingError = false;
       const current = () => !this.disposed && generation === this.generation;
       this.resolveAbort?.abort();
       this.resolveAbort = new AbortController();
@@ -457,6 +466,8 @@
       if (this.deviceVolume) this.state.volume = 100;
       this.mode = requestedMode;
       this.blocked = false;
+      this.pendingNativeError = null;
+      this.recoveryProgress = 0;
       this.showLoading(true);
       await this.destroyAdapter();
       if (!current()) return;
@@ -465,11 +476,22 @@
       if (this.options.authenticated) {
         const timeout = global.setTimeout(() => requestAbort.abort(), 9000);
         try { resolution = await this.resolve(requestedMode, requestAbort.signal); }
-        catch (_) { resolution = { mode: "iframe", reason: "resolution_failed", progress: this.state.position }; }
+        catch (_) {
+          if (!current()) return;
+          if (requestedMode === "native") {
+            await this.nativeError(new Error("resolution_failed"));
+            return;
+          }
+          resolution = { mode: "iframe", reason: "resolution_failed", progress: this.state.position };
+        }
         finally { global.clearTimeout(timeout); }
         if (!current()) return;
       }
       if (!preservedState) this.state.position = Math.max(0, finite(resolution.progress, this.state.position));
+      if (requestedMode === "native" && resolution.mode === "iframe" && retryableResolutionReasons.includes(resolution.reason)) {
+        await this.nativeError(new Error(resolution.reason));
+        return;
+      }
       if (requestedMode === "native" && resolution.mode === "native" && !usableResolution(resolution)) {
         resolution = { ...resolution, mode: "iframe", reason: "invalid_resolution" };
       }
@@ -727,6 +749,9 @@
       this.state.playing = true;
       try { await video.play(); }
       catch (error) {
+        // A play promise can settle after renewal or navigation destroyed its
+        // video. It must not change the replacement's policy or error state.
+        if (this.disposed || this.adapter?.video !== video) return;
         if (error.name === "NotAllowedError") {
           this.blocked = true;
           pending.playing = false;
@@ -786,18 +811,27 @@
 
     async nativeError(error) {
       if (this.mode !== "native" || this.disposed || this.handlingError) return;
+      // Background suspension and lost connectivity can interrupt either media
+      // requests or initialization. Retry only once the browser can play again.
+      if (document.hidden || global.navigator.onLine === false) {
+        this.pendingNativeError ||= error;
+        this.monitoring = false;
+        this.switching = false;
+        this.updateTVButton();
+        return;
+      }
       this.handlingError = true;
       const state = this.snapshot();
       const expired = expirationError(error, this.expiresAt);
-      const reason = expired ? "expired_media" : (["unsupported_browser", "unsupported_codec"].includes(error.message) ? error.message : "native_error");
+      const unsupported = ["unsupported_browser", "unsupported_codec"].includes(error.message);
+      const known = unsupported || retryableResolutionReasons.includes(error.message) || ["resolution_failed", "startup_timeout", "playback_stall"].includes(error.message);
+      const reason = expired ? "expired_media" : known ? error.message : "native_error";
       this.metric("media_error", reason);
-      if (expired && !this.expiryRetryUsed) {
-        this.expiryRetryUsed = true;
-        // Release before awaiting so a failed fresh player can itself fall back.
-        this.handlingError = false;
-        await this.switchPlayer("native", state, "expiry_retry");
+      if (!unsupported && !(expired ? this.expiryRetryUsed : this.nativeRetryUsed)) {
+        if (expired) this.expiryRetryUsed = true;
+        else this.nativeRetryUsed = true;
+        await this.switchPlayer("native", state, expired ? "expiry_retry" : "native_retry");
       } else {
-        this.handlingError = false;
         await this.fallback(reason, state);
       }
     }
@@ -806,6 +840,17 @@
       this.monitoring = false;
       this.metric("fallback", reason);
       return this.switchPlayer("iframe", state, "fallback");
+    }
+    resumePlayback() {
+      if (this.disposed || document.hidden || global.navigator.onLine === false) return;
+      this.lastTick = performance.now();
+      this.watchdog.resetDeadlines();
+      this.recoveryProgress = 0;
+      if (this.pendingNativeError) {
+        const error = this.pendingNativeError;
+        this.pendingNativeError = null;
+        this.nativeError(error);
+      } else this.checkRenewal();
     }
     checkRenewal() {
       if (this.mode !== "native" || !this.ready || this.switching || this.tvSending || this.disposed || document.hidden || global.navigator.onLine === false) return;
@@ -824,12 +869,19 @@
       if (this.mode === "native" && this.monitoring) {
         const active = state.playing && !this.blocked && !document.hidden && global.navigator.onLine !== false;
         const hadFrame = this.started;
+        const previousPosition = this.watchdog.position;
         const reason = this.watchdog.tick(elapsed, active, state.position, this.watchdog.firstFrame);
+        const advance = previousPosition === null ? 0 : state.position - previousPosition;
+        const advancing = active && this.ready && !this.adapter?.video?.seeking && advance > 0.01 && advance <= elapsed * state.rate + 1;
+        this.recoveryProgress = advancing ? this.recoveryProgress + elapsed : 0;
+        // Re-arm recovery after sustained playback, never just a successful
+        // load, seeks, or one decoded frame, which could cause retry loops.
+        if (this.recoveryProgress >= 5) this.nativeRetryUsed = this.expiryRetryUsed = false;
         if (this.watchdog.firstFrame && !hadFrame) {
           this.started = true;
           this.metric("startup", "native", (performance.now() - this.resolvedAt) / 1000);
         }
-        if (reason) { this.fallback(reason); return; }
+        if (reason) { this.nativeError(new Error(reason)); return; }
         this.checkRenewal();
       }
       if (this.ready && state.playing) {
