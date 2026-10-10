@@ -58,6 +58,11 @@ func registerPlaybackRoutes(app *fiber.App, service playbackBackend, db playback
 	requests := limiter.New(limiter.Config{Max: 30, Expiration: time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.Locals("playback_user").(string) }, LimitReached: func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusTooManyRequests) }})
 	app.Post("/api/videos/:id/playback", authenticate, playbackSameOrigin, requests, routes.resolve)
 	app.Post("/api/videos/:id/playback/events", authenticate, playbackSameOrigin, requests, routes.event)
+	chapters := chapterRoutes{db: db, cache: newChapterCache()}
+	thumbnailRequests := limiter.New(limiter.Config{Max: 120, Expiration: time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.Locals("playback_user").(string) }, LimitReached: func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusTooManyRequests) }})
+	app.Get("/api/videos/:id/chapters", authenticate, requests, chapters.chapters)
+	app.Get("/api/videos/:id/chapters/:index/thumbnail", authenticate, thumbnailRequests, chapters.thumbnail)
+	app.Head("/api/videos/:id/chapters/:index/thumbnail", authenticate, thumbnailRequests, chapters.thumbnail)
 	// These routes intentionally precede and bypass the generic API limiter and
 	// auth refresh. The service holds concurrency slots for the stream lifetime.
 	app.Get("/api/playback/:session/manifest.mpd", authenticate, routes.manifest)

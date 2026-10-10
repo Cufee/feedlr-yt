@@ -49,7 +49,7 @@ test('only expiry or authentication HTTP failures justify an expiry retry', () =
   assert.equal(expirationError({ category: 3 }, 10000, 10001), true);
 });
 
-function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume } = {}) {
+function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], chapterResponses = [], segments = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume } = {}) {
   const timers = new Map();
   let nextTimer = 1;
   const requests = [];
@@ -64,6 +64,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
       this.currentTime = 0; this.playbackRate = 1; this.paused = true; this.ended = false; this.duration = 5000;
     }
     append(...children) { this.children.push(...children); }
+    insertBefore(child, before) { const index = this.children.indexOf(before); this.children.splice(index < 0 ? this.children.length : index, 0, child); }
     replaceChildren(...children) { this.children = children; }
     setAttribute(key, value) { this[key] = value; }
     removeAttribute() {}
@@ -109,6 +110,8 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     getAudioTracks() { return this.audioTracks; }
     selectAudioTrack(track) { this.audioTracks.forEach((item) => { item.active = item === track; }); }
     selectVariantTrack(track) { this.selected = track; }
+    async addChaptersTrack(uri, language, mimeType) { (this.chapterTracks ||= []).push({ vtt: decodeURIComponent(uri.split(',')[1]), language, mimeType }); }
+    async addThumbnailsTrack(uri, mimeType) { (this.thumbnailTracks ||= []).push({ vtt: decodeURIComponent(uri.split(',')[1]), mimeType }); }
     async destroy() { order.push('destroy'); this.video.pause(); this.video.currentTime = 0; this.video.dispatchEvent(event('ended')); }
   }
   const menuFactories = new Map();
@@ -170,6 +173,11 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
       if (next instanceof Error) throw next;
       return next.ok === undefined ? { ok: true, json: async () => next } : next;
     }
+    if (url.endsWith('/chapters')) {
+      const next = chapterResponses.length ? await chapterResponses.shift() : { chapters: [] };
+      if (next instanceof Error) throw next;
+      return next.ok === undefined ? { ok: true, json: async () => next } : next;
+    }
     if (url.endsWith('/tv')) {
       const next = tvSends.length ? await tvSends.shift() : { ok: true, status: 204 };
       if (next instanceof Error) throw next;
@@ -183,7 +191,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     }
     return { ok: true };
   };
-  const options = { video: 'one', channel: 'channel', progress: 1, volume: 50, authenticated, withProgress: authenticated, returnURL: '/', segments: [] };
+  const options = { video: 'one', channel: 'channel', progress: 1, volume: 50, authenticated, withProgress: authenticated, returnURL: '/', segments };
   if (legacyIframeChoice) win.sessionStorage.setItem('feedlr-player-mode:one', 'iframe');
   if (savedVolume !== undefined) win.localStorage.setItem('player-volume', savedVolume);
   if (queued) win.feedlrPendingPlayer = { options, root: staleQueue ? new Element('div') : elements.get('player') };
@@ -1299,4 +1307,103 @@ test('original available only with stable volume remains playable', async () => 
   assert.equal(h.controller.mode, 'native');
   assert.equal(h.controller.adapter.player.getAudioTracks().find((track) => track.active).language, 'ja');
   h.controller.cleanup();
+});
+
+test('chapter metadata loads without delaying playback and merges sponsor priority into optional tracks', async () => {
+  const metadata = deferred();
+  const h = harness({ chapterResponses: [metadata.promise], segments: [{ start: 20.5, end: 43, category: 'sponsor' }] });
+  await h.controller.start;
+  assert.equal(h.controller.ready, true);
+  assert.equal(h.players[0].chapterTracks, undefined);
+  metadata.resolve({ chapters: [{ start: 0, end: 30, title: 'Setup', thumbnails: [{url:'https://i.ytimg.com/example.jpg'}] }, { start: 30, end: 5000, title: 'Build' }] });
+  await settle();
+  const track = h.players[0].chapterTracks[0];
+  assert.match(track.vtt, /00:00:20\.500 --> 00:00:43\.000\nSponsored segment/);
+  assert.match(track.vtt, /00:00:43\.000 --> 01:23:20\.000\nBuild/);
+  assert.equal(track.language, 'und');
+  assert.match(h.players[0].thumbnailTracks[0].vtt, /https:\/\/feedlr.test\/api\/videos\/one\/chapters\/0\/thumbnail/);
+  assert.equal(h.requests.filter(request => request.url.endsWith('/chapters')).length, 1);
+  h.controller.cleanup();
+});
+
+test('a late chapter response installs only on the current adapter and renewals reuse its metadata', async () => {
+  const metadata = deferred();
+  const h = harness({ chapterResponses: [metadata.promise] });
+  await h.controller.start;
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  metadata.resolve({ chapters: [{ start: 0, end: 5000, title: 'Chapter' }] });
+  await settle();
+  assert.equal(h.players[0].chapterTracks, undefined);
+  assert.equal(h.players[1].chapterTracks.length, 1);
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  await settle();
+  assert.equal(h.players[2].chapterTracks.length, 1);
+  assert.equal(h.requests.filter(request => request.url.endsWith('/chapters')).length, 1);
+  h.controller.cleanup();
+});
+
+test('chapter fetch failure keeps sponsor markers and playback available', async () => {
+  const h = harness({ chapterResponses: [new Error('unavailable')], segments: [{start: 20.5, end: 30.75, category: 'sponsor'}, {start: 28, end: 40.25, category: 'selfpromo'}] });
+  await h.controller.start;
+  await settle();
+  assert.equal(h.controller.ready, true);
+  assert.equal(h.controller.mode, 'native');
+  assert.match(h.players[0].chapterTracks[0].vtt, /00:00:20\.500 --> 00:00:40\.250\nSponsored segment/);
+  h.controller.adapter.video.currentTime = 29;
+  h.controller.tick();
+  assert.equal(h.controller.adapter.video.currentTime, 40.25);
+  h.controller.cleanup();
+});
+
+test('navigation aborts chapter metadata and ignores a late result', async () => {
+  const metadata = deferred();
+  const h = harness({ chapterResponses: [metadata.promise] });
+  await h.controller.start;
+  const request = h.requests.find(request => request.url.endsWith('/chapters'));
+  h.controller.cleanup();
+  assert.equal(request.signal.aborted, true);
+  metadata.resolve({ chapters: [{start: 0, end: 5000, title: 'Obsolete'}] });
+  await settle();
+  assert.equal(h.players[0].chapterTracks, undefined);
+  assert.equal(h.controller.chapters.length, 0);
+});
+
+test('native chapter label opens the hidden menu and rebuilds markers on duration changes', async () => {
+  const h = harness();
+  await h.controller.start;
+  const video = h.controller.adapter.video;
+  const controls = h.players[0].ui.controls;
+  controls.getChapters = () => [{title:'Setup'}];
+  const box = h.doc.createElement('div'), bar = h.doc.createElement('div'), panel = h.doc.createElement('div');
+  const overflow = h.doc.createElement('div'), menu = h.doc.createElement('div'), row = h.doc.createElement('button');
+  const overflowButton = h.doc.createElement('button'), chapterButton = h.doc.createElement('button');
+  overflow.classList.add('shaka-hidden'); menu.classList.add('shaka-hidden');
+  const nodes = { '.shaka-seek-bar-container':bar, '.shaka-controls-button-panel':panel, '.shaka-overflow-menu':overflow, '.shaka-chapters':menu, '.shaka-overflow-menu-button':overflowButton, '.shaka-chapter-button':chapterButton };
+  box.querySelector = selector => nodes[selector];
+  box.querySelectorAll = () => [row];
+  panel.insertBefore = button => panel.append(button);
+  controls.hideSettingsMenus = () => { overflow.classList.add('shaka-hidden'); menu.classList.add('shaka-hidden'); };
+  overflowButton.click = () => overflow.classList.remove('shaka-hidden');
+  chapterButton.click = () => menu.classList.remove('shaka-hidden');
+  const signal = new AbortController();
+  const timeline = new h.win.FeedlrPlayer.NativeTimeline(box, video, controls, signal.signal);
+  video.duration = NaN;
+  timeline.setData([{start:0,end:100,title:'Setup'}], [{start:20,end:40,category:'sponsor'}]);
+  assert.equal(timeline.markers.children.length, 0);
+  video.duration = 100; video.currentTime = 10;
+  video.dispatchEvent(h.event('durationchange'));
+  controls.dispatchEvent(h.event('chaptersupdated'));
+  assert.equal(timeline.markers.children.length, 1);
+  assert.equal(timeline.button.textContent, 'Setup ›');
+  const click = new Event('click', { bubbles:true });
+  timeline.button.dispatchEvent(click);
+  assert.equal(overflow.classList.contains('shaka-hidden'), false);
+  assert.equal(menu.classList.contains('shaka-hidden'), false);
+  assert.equal(click.cancelBubble, true);
+  timeline.button.dispatchEvent(h.event('click'));
+  assert.equal(overflow.classList.contains('shaka-hidden'), true);
+  video.duration = 30;
+  video.dispatchEvent(h.event('durationchange'));
+  assert.equal(timeline.items.at(-1).end, 30);
+  signal.abort(); timeline.destroy(); h.controller.cleanup();
 });

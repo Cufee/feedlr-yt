@@ -19,6 +19,7 @@ Core functionality is complete and working reliably. Implemented in this reposit
 - YouTube playlist sync via OAuth (home feed, Watch Later, and all user/imported playlists)
 - YouTube TV lounge sync (pairing, progress sync, SponsorBlock skip, send video to an online TV)
 - Native player through YouTube proxy
+- YouTube chapter navigation and previews with a SponsorBlock-aware timeline
 - Cached podcast sponsor scanning with optional OpenRouter transcript generation
 - Background cron jobs for cache and sync tasks
 
@@ -30,6 +31,14 @@ Core functionality is complete and working reliably. Implemented in this reposit
 
 - Go with `-tags dev` (mock auth middleware)
 - Tailwind in watch mode
+- Companion in Docker/Podman, with its local port taken from `COMPANION_URL`
+
+Copy `.env.example` to `.env` and fill in the database paths and API credentials.
+Set `COMPANION_URL="http://localhost:18282"` and `COMPANION_SECRET` to 16 random
+alphanumeric characters (`openssl rand -hex 8`); both are required by `task dev`.
+Set `NATIVE_PLAYBACK_ENABLED="true"` to use Companion for playback.
+Docker Compose must be available;
+Podman with a Compose provider also works.
 
 Run locally:
 
@@ -41,6 +50,10 @@ task dev
 ```
 
 Open `http://localhost:3000`.
+
+`task dev` waits for Companion's HTTP health check before starting the app.
+Companion stays running between dev sessions; `task dev:companion:stop` stops it
+and preserves its cache. `task dev:companion` starts it independently.
 
 Notes:
 
@@ -62,8 +75,11 @@ Use this mode when you want the non-dev runtime behavior (passkeys + production 
 ## Common Commands
 
 ```bash
-# Development (Go + Tailwind watch)
+# Development (Companion + Go + Tailwind watch)
 task dev
+
+# Stop the local Companion container
+task dev:companion:stop
 
 # Test suite
 task test

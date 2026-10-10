@@ -31,6 +31,176 @@
     // New pages start audibly; in-page switches preserve their exact snapshot.
     return clamp(finite(saved) > 0 ? finite(saved) : finite(server) > 0 ? finite(server) : 100, 0, 100);
   }
+
+  const segmentTitles = { sponsor: "Sponsored segment", selfpromo: "Self promotion", interaction: "Interaction reminder", intro: "Intro", outro: "Outro", preview: "Preview", music_offtopic: "Non-music segment", filler: "Filler" };
+  function normalizeSponsors(segments, duration = Infinity) {
+    if (!(duration > 0)) return [];
+    const ranges = (Array.isArray(segments) ? segments : []).flatMap((segment) => {
+      if (!segment || !Number.isFinite(segment.start) || !Number.isFinite(segment.end)) return [];
+      const start = clamp(segment.start, 0, duration), end = clamp(segment.end, 0, duration);
+      return end > start ? [{ start, end, categories: [segment.category || "sponsor"] }] : [];
+    }).sort((a, b) => a.start - b.start || a.end - b.end);
+    const merged = [];
+    for (const range of ranges) {
+      const previous = merged[merged.length - 1];
+      if (previous && range.start <= previous.end) {
+        previous.end = Math.max(previous.end, range.end);
+        previous.categories = [...new Set([...previous.categories, ...range.categories])];
+      } else merged.push(range);
+    }
+    return merged.map((range) => ({ ...range, title: range.categories.includes("sponsor") ? segmentTitles.sponsor : range.categories.length === 1 ? segmentTitles[range.categories[0]] || "SponsorBlock segment" : "SponsorBlock segment" }));
+  }
+
+  // Partition once so sponsor ranges own both their labels and boundaries.
+  // A chapter resumes after a sponsor, even when the sponsor crosses chapters.
+  function blendTimeline(chapters, segments, duration) {
+    if (!Number.isFinite(duration) || duration <= 0) return [];
+    const ordered = (Array.isArray(chapters) ? chapters : []).flatMap((chapter, chapterIndex) => {
+      if (!chapter || !Number.isFinite(chapter.start) || !Number.isFinite(chapter.end) || typeof chapter.title !== "string" || !chapter.title.trim()) return [];
+      const start = clamp(chapter.start, 0, duration), end = clamp(chapter.end, 0, duration);
+      return end > start ? [{ start, end, title: chapter.title.trim(), chapterIndex }] : [];
+    }).sort((a, b) => a.start - b.start);
+    const normal = ordered.map((chapter, i) => ({ ...chapter, end: Math.min(chapter.end, ordered[i + 1]?.start ?? duration) })).filter((chapter) => chapter.end > chapter.start);
+    const sponsors = normalizeSponsors(segments, duration);
+    // Shaka extends the last chapter's hover label to the media end. Supply
+    // ordinary content in gaps so a final sponsor never labels the whole tail.
+    const content = sponsors.length ? { title: "Video" } : null;
+    const points = [...new Set([...normal, ...sponsors].flatMap((range) => [range.start, range.end]).concat(content ? [0, duration] : []))].sort((a, b) => a - b);
+    const result = [];
+    for (let i = 0; i < points.length - 1; i++) {
+      const start = points[i], end = points[i + 1];
+      const sponsor = sponsors.find((range) => range.start <= start && start < range.end);
+      const chapter = normal.find((range) => range.start <= start && start < range.end);
+      const source = sponsor || chapter || content;
+      if (!source) continue;
+      const previous = result[result.length - 1];
+      if (previous && previous.end === start && previous.source === source) previous.end = end;
+      else result.push({ start, end, title: source.title, sponsor: Boolean(sponsor), ...(chapter && !sponsor ? { chapterIndex: chapter.chapterIndex } : {}), source });
+    }
+    return result.map(({ source, ...range }) => range);
+  }
+  function formatTimelineTime(seconds) {
+    const value = Math.max(0, Math.floor(finite(seconds)));
+    const hours = Math.floor(value / 3600), minutes = Math.floor(value / 60) % 60;
+    return `${hours ? `${hours}:${String(minutes).padStart(2, "0")}` : minutes}:${String(value % 60).padStart(2, "0")}`;
+  }
+  function cueTime(seconds) {
+    const ms = Math.max(0, Math.round(seconds * 1000));
+    return `${String(Math.floor(ms / 3600000)).padStart(2, "0")}:${String(Math.floor(ms / 60000) % 60).padStart(2, "0")}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}.${String(ms % 1000).padStart(3, "0")}`;
+  }
+  const cueText = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/[\r\n]+/g, " ");
+  function chapterVTT(items) {
+    return "WEBVTT\n\n" + items.filter((item) => Math.round(item.end * 1000) > Math.round(item.start * 1000)).map((item) => `${cueTime(item.start)} --> ${cueTime(item.end)}\n${cueText(item.title)}\n\n`).join("");
+  }
+  function thumbnailVTT(items, chapters, videoID, origin) {
+    // Images follow the original chapters independently of sponsor labels.
+    // This covers sponsor ranges and switches images at the actual chapter
+    // boundary, while reusing the same cached URL in menus and scrub previews.
+    const previews = blendTimeline(chapters, [], Math.max(0, ...items.map((item) => item.end)));
+    const sources = new Map();
+    return "WEBVTT\n\n" + previews.flatMap((item) => {
+      const images = chapters[item.chapterIndex]?.thumbnails;
+      if (!Array.isArray(images) || Math.round(item.end * 1000) <= Math.round(item.start * 1000)) return [];
+      // Match the proxy's image choice. Reuse one browser cache entry when
+      // different chapter frames occupy the same storyboard sheet.
+      const image = images.reduce((best, candidate) => !best || candidate.width > best.width ? candidate : best, null);
+      if (!image?.url) return [];
+      if (!sources.has(image.url)) sources.set(image.url, item.chapterIndex);
+      const crop = image.sprite || { x: 0, y: 0, width: image.width, height: image.height };
+      const rectangle = [crop.x, crop.y, crop.width, crop.height].every(Number.isInteger)
+        && crop.x >= 0 && crop.y >= 0 && crop.width > 0 && crop.height > 0
+        ? `#xywh=${crop.x},${crop.y},${crop.width},${crop.height}` : "";
+      return [`${cueTime(item.start)} --> ${cueTime(item.end)}\n${origin}/api/videos/${encodeURIComponent(videoID)}/chapters/${sources.get(image.url)}/thumbnail?v=3${rectangle}\n\n`];
+    }).join("");
+  }
+
+  class NativeTimeline {
+    constructor(box, video, controls, signal) {
+      this.box = box;
+      this.video = video;
+      this.controls = controls;
+      this.items = [];
+      this.trackReady = false;
+      this.markers = document.createElement("div");
+      this.markers.className = "feedlr-sponsor-markers";
+      this.markers.setAttribute("aria-hidden", "true");
+      this.button = document.createElement("button");
+      this.button.type = "button";
+      this.button.className = "feedlr-current-chapter shaka-no-propagation";
+      this.button.hidden = true;
+      this.button.setAttribute("aria-label", "Show chapters");
+      this.button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const menu = box.querySelector(".shaka-chapters");
+        const wasOpen = menu && !menu.classList.contains("shaka-hidden") && !box.querySelector(".shaka-overflow-menu")?.classList.contains("shaka-hidden");
+        controls.hideSettingsMenus();
+        if (!wasOpen) {
+          box.querySelector(".shaka-overflow-menu-button")?.click();
+          box.querySelector(".shaka-chapter-button")?.click();
+        }
+      }, { signal });
+      for (const event of ["timeupdate", "seeking", "seeked"]) video.addEventListener(event, () => this.update(), { signal });
+      video.addEventListener("durationchange", () => this.setData(this.chapters, this.segments), { signal });
+      controls.addEventListener("chaptersupdated", () => { this.trackReady = controls.getChapters().length > 0; this.mount(); this.paint(); this.update(); }, { signal });
+      // Thumbnail-track installation can recreate chapter menu rows.
+      controls.getLocalPlayer().addEventListener("trackschanged", () => {
+        Promise.resolve().then(() => { if (!signal.aborted) { this.paint(); this.update(); } });
+      }, { signal });
+      // Shaka recreates controls when their configuration changes.
+      controls.addEventListener("uiupdated", () => { this.mount(); this.paint(); }, { signal });
+      this.mount();
+    }
+    mount() {
+      const bar = this.box.querySelector(".shaka-seek-bar-container");
+      if (bar) bar.insertBefore(this.markers, bar.querySelector(".shaka-chapter-markers"));
+      const panel = this.box.querySelector(".shaka-controls-button-panel");
+      if (panel) panel.insertBefore(this.button, panel.querySelector(".shaka-spacer"));
+    }
+    setData(chapters, segments) {
+      this.chapters = chapters;
+      this.segments = segments;
+      this.items = blendTimeline(chapters, segments, this.video.duration);
+      this.paint();
+      this.update();
+    }
+    paint() {
+      this.markers.replaceChildren();
+      for (const item of this.items.filter((item) => item.sponsor)) {
+        const marker = document.createElement("span");
+        const start = item.start / this.video.duration, end = item.end / this.video.duration;
+        // Native chapter seams use the thumb's center along its travel range.
+        marker.style.left = start === 0 ? "0" : `calc(${start * 100}% + var(--shaka-thumb-size, 12px) * ${0.5 - start})`;
+        marker.style.right = end === 1 ? "0" : `calc(${(1 - end) * 100}% + var(--shaka-thumb-size, 12px) * ${end - 0.5})`;
+        this.markers.append(marker);
+      }
+      const buttons = this.box.querySelectorAll(".shaka-chapter-item");
+      buttons.forEach((button, i) => {
+        button.dataset.sponsor = String(this.items[i]?.sponsor === true);
+        button.dataset.time = formatTimelineTime(this.items[i]?.start);
+      });
+    }
+    update() {
+      const time = this.video.currentTime;
+      const item = this.items.find((range) => range.start <= time && time < range.end);
+      this.button.hidden = !item;
+      this.button.disabled = !this.trackReady;
+      if (!item) { this.paintMenuSelection(null); return; }
+      this.button.textContent = `${item.title} ›`;
+      this.button.dataset.sponsor = String(item.sponsor);
+      this.button.title = `${item.title} · ${formatTimelineTime(item.start)}–${formatTimelineTime(item.end)}${item.sponsor ? " · Automatically skipped" : ""}`;
+      this.button.setAttribute("aria-label", `${item.title}. Show chapters`);
+      this.paintMenuSelection(item);
+    }
+    paintMenuSelection(active) {
+      this.box.querySelectorAll(".shaka-chapter-item").forEach((button, i) => {
+        button.dataset.sponsor = String(this.items[i]?.sponsor === true);
+        button.dataset.time = formatTimelineTime(this.items[i]?.start);
+        if (this.items[i] === active) button.setAttribute("aria-current", "true");
+        else button.removeAttribute("aria-current");
+      });
+    }
+    destroy() { this.markers.remove(); this.button.remove(); }
+  }
   function usableResolution(result, now = Date.now()) {
     if (result.mode !== "native") return false;
     try {
@@ -238,6 +408,9 @@
       this.root = document.getElementById("player");
       this.loading = document.getElementById("player-loading");
       this.abort = new AbortController();
+      this.chapters = [];
+      this.sponsors = normalizeSponsors(options.segments);
+      this.chapterRequest = options.authenticated ? this.loadChapters() : Promise.resolve();
       this.generation = 0;
       this.disposed = false;
       this.ready = false;
@@ -300,6 +473,32 @@
     }
 
     listen(target, event, callback) { target?.addEventListener(event, callback, { signal: this.abort.signal }); }
+    async loadChapters() {
+      const request = new AbortController();
+      this.abort.signal.addEventListener("abort", () => request.abort(), { once: true });
+      const timeout = global.setTimeout(() => request.abort(), 8000);
+      try {
+        const response = await fetch(`/api/videos/${encodeURIComponent(this.options.video)}/chapters`, { credentials: "same-origin", signal: request.signal });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (!this.disposed && Array.isArray(result.chapters)) this.chapters = result.chapters;
+      } catch (_) { /* Chapter metadata is optional; playback continues. */ }
+      finally { global.clearTimeout(timeout); }
+    }
+    async installTimeline(adapter, current) {
+      await this.chapterRequest;
+      if (!current() || this.adapter !== adapter) return;
+      adapter.timeline?.setData(this.chapters, this.options.segments);
+      const items = blendTimeline(this.chapters, this.options.segments, adapter.video.duration);
+      if (!items.length || !adapter.player.addChaptersTrack) return;
+      const uri = (vtt) => `data:text/vtt;charset=utf-8,${encodeURIComponent(vtt)}`;
+      try {
+        await adapter.player.addChaptersTrack(uri(chapterVTT(items)), "und", "text/vtt");
+        if (!current() || this.adapter !== adapter) return;
+        const thumbnails = thumbnailVTT(items, this.chapters, this.options.video, global.location.origin);
+        if (thumbnails !== "WEBVTT\n\n" && adapter.player.addThumbnailsTrack) await adapter.player.addThumbnailsTrack(uri(thumbnails), "text/vtt");
+      } catch (_) { /* Optional tracks must never interrupt playback. */ }
+    }
     updateTVButton() {
       if (!this.tvButton) return;
       this.tvButton.hidden = !this.tvOnline || this.disposed;
@@ -568,6 +767,7 @@
       this.root.append(box);
       const player = new global.shaka.Player();
       let destroyed = false;
+      let timeline;
       registerIframeMenu();
       iframeMenuActions.set(player, () => {
         if (current() && !destroyed && this.ready && !this.switching) {
@@ -576,7 +776,8 @@
       });
       const ui = new global.shaka.ui.Overlay(player, box, video);
       ui.configure({
-        overflowMenuButtons: ["quality", "language", "playback_rate", "picture_in_picture", "feedlr_youtube"],
+        overflowMenuButtons: ["chapter", "quality", "language", "playback_rate", "picture_in_picture", "feedlr_youtube"],
+        seekBarColors: { chapters: "rgba(0, 0, 0, 0.85)" },
         trackLabelFormat: global.shaka.ui.Overlay.TrackLabelFormat.LABEL_OR_LANGUAGE,
         controlPanelElements: [...(this.deviceVolume ? [] : ["play_pause"]), "time_and_duration", "spacer", ...(this.deviceVolume ? [] : ["mute", "volume"]), "overflow_menu", "fullscreen"],
         alwaysShowVolumeBar: true,
@@ -603,6 +804,7 @@
         destroy: async () => {
           destroyed = true;
           iframeMenuActions.delete(player);
+          timeline?.destroy();
           video.pause();
           // Overlay.destroy owns and destroys its Shaka Player as well.
           await ui.destroy();
@@ -730,6 +932,9 @@
       video.muted = this.state.muted;
       try { player.trickPlay(this.state.rate, false); } catch (_) { pending.rate = 1; player.trickPlay(1, false); }
       this.ready = true;
+      this.adapter.timeline = timeline = new NativeTimeline(box, video, controls, signal);
+      this.adapter.timeline.setData(this.chapters, this.options.segments);
+      this.installTimeline(this.adapter, current);
       this.showLoading(false);
       if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(() => { if (current()) this.watchdog.firstFrame = true; });
       if (this.state.playing) await this.playNative(video, pending);
@@ -885,7 +1090,7 @@
         this.checkRenewal();
       }
       if (this.ready && state.playing) {
-        const segment = (this.options.segments || []).find((item) => state.position >= item.start && state.position < item.end);
+        const segment = this.sponsors.find((item) => state.position >= item.start && state.position < item.end);
         if (segment) { this.adapter.seek(segment.end); this.notice("SponsorBlock skipped a video segment"); }
       }
     }
@@ -956,7 +1161,7 @@
     global.feedlr_player = controller;
     return controller;
   }
-  const api = { mount, Controller, PlaybackWatchdog, usableResolution, expirationError, applyQuality, restoredState, initialVolume, qualityLabel, qualityPreference, qualityHeight, qualityFromLabel };
+  const api = { mount, Controller, PlaybackWatchdog, usableResolution, expirationError, applyQuality, restoredState, initialVolume, qualityLabel, qualityPreference, qualityHeight, qualityFromLabel, normalizeSponsors, blendTimeline, chapterVTT, thumbnailVTT, formatTimelineTime, NativeTimeline };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else {
     global.FeedlrPlayer = api;

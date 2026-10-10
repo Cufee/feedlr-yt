@@ -3,7 +3,7 @@
   "scripts": {
     "build": "npm run build:vendor && npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css",
     "build:vendor": "node scripts/build-vendor.mjs",
-    "test": "node --test assets/js/feedlr-player.test.cjs assets/js/podcast-player.test.cjs",
+    "test": "node --test assets/js/feedlr-player.test.cjs assets/js/player-timeline.test.cjs assets/js/podcast-player.test.cjs",
     "dev": "npm run build:vendor && npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css --watch"
   },
   "dependencies": {

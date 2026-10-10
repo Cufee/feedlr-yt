@@ -1,0 +1,28 @@
+# Isolated from the deployment stack and its external networks.
+name: feedlr-dev
+services:
+  companion:
+    image: quay.io/invidious/invidious-companion:latest
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8282
+      SERVER_SECRET_KEY: ${COMPANION_SECRET:-}
+      SERVER_VERIFY_REQUESTS: "true"
+    ports:
+      - target: 8282
+        published: "${FEEDLR_COMPANION_PORT:-18282}"
+        host_ip: "${FEEDLR_COMPANION_BIND:-127.0.0.1}"
+    healthcheck:
+      test: ["CMD", "/thc"]
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+      retries: 12
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - companion-cache:/var/tmp/youtubei.js:rw
+
+volumes:
+  companion-cache:

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"math"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
@@ -183,8 +184,9 @@ func (v VideoProps) MediaSource() MediaSource {
 }
 
 type SegmentProps struct {
-	Start int `json:"start"`
-	End   int `json:"end"`
+	Start    float64 `json:"start"`
+	End      float64 `json:"end"`
+	Category string  `json:"category,omitempty"`
 }
 
 type PodcastSegmentProps struct {
@@ -245,9 +247,14 @@ func (v *VideoPlayerProps) AddSegments(segments ...sponsorblock.Segment) error {
 		if len(segment.Segment) != 2 {
 			continue
 		}
+		start, end := segment.Segment[0], segment.Segment[1]
+		if math.IsNaN(start) || math.IsInf(start, 0) || math.IsNaN(end) || math.IsInf(end, 0) || start < 0 || end <= start {
+			continue
+		}
 		v.SkipSegments = append(v.SkipSegments, SegmentProps{
-			Start: int(segment.Segment[0]),
-			End:   int(segment.Segment[1]),
+			Start:    start,
+			End:      end,
+			Category: segment.Category,
 		})
 	}
 

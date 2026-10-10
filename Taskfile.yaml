@@ -11,10 +11,20 @@ vars:
 
 tasks:
   dev:
-    desc: Run the application in development mode with hot reload (Go + Tailwind)
-    deps: [tailwind:build]
+    desc: Run Companion and the application with hot reload (Go + Tailwind)
+    deps: [tailwind:build, dev:companion]
     cmds:
       - task --parallel dev:go dev:tailwind
+
+  dev:companion:
+    desc: Start local Companion at COMPANION_URL and wait until ready
+    cmds:
+      - node scripts/dev-companion.mjs start
+
+  dev:companion:stop:
+    desc: Stop local Companion (preserves its cache)
+    cmds:
+      - node scripts/dev-companion.mjs stop
 
   dev:go:
     desc: Run Go hot reload with air

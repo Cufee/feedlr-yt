@@ -38,6 +38,116 @@
     margin-inline-end: 10px;
 }
 
+/* Tint the native chapter track without changing its geometry or separators. */
+.feedlr-sponsor-markers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    overflow: hidden;
+}
+
+.feedlr-sponsor-markers > span {
+    position: absolute;
+    inset-block: 0;
+    background: color-mix(in oklab, var(--color-accent, #b6a1cd) 22%, transparent);
+}
+
+.shaka-controls-button-panel .feedlr-current-chapter {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 0;
+    max-width: min(32vw, 360px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--shaka-font-size-sm, 12px);
+    text-align: start;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.feedlr-current-chapter[hidden] {
+    display: none;
+}
+
+.feedlr-current-chapter:disabled {
+    opacity: 0.8;
+    cursor: default;
+}
+
+.shaka-chapters .shaka-chapter-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    column-gap: 10px;
+}
+
+.shaka-chapters .shaka-chapter {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shaka-chapters:has(.shaka-chapter-thumbnail) .shaka-chapter-item {
+    grid-template-columns: 60px minmax(0, 1fr) max-content;
+    grid-template-rows: minmax(34px, auto);
+}
+
+.shaka-chapters:has(.shaka-chapter-thumbnail) .shaka-chapter {
+    grid-column: 2;
+}
+
+.shaka-chapters .shaka-chapter-thumbnail {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+/* Sprite sheets must retain their natural size before Shaka scales and crops
+   them. Tailwind's image max-width would squeeze the entire sheet into a tile. */
+.shaka-chapter-thumbnail img,
+.shaka-player-ui-thumbnail-image {
+    max-width: none;
+}
+
+.shaka-chapter-item[data-sponsor="true"]::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 4px;
+    top: calc(50% - 2px);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--color-accent, #b6a1cd) 40%, transparent);
+}
+
+.shaka-chapter-item[aria-current="true"] {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.shaka-chapters .shaka-chapter-item::after {
+    content: attr(data-time);
+    grid-column: 2;
+    grid-row: 1;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: var(--shaka-font-size-sm, 12px);
+    font-variant-numeric: tabular-nums;
+}
+
+.shaka-chapters:has(.shaka-chapter-thumbnail) .shaka-chapter-item::after {
+    grid-column: 3;
+}
+
+@media (max-width: 480px) {
+    .shaka-controls-button-panel .feedlr-current-chapter {
+        max-width: 28vw;
+        margin-inline: 2px;
+        padding-inline: 2px;
+    }
+}
+
 .feedlr-audio-visual {
     position: absolute;
     inset: 0;
