@@ -52,7 +52,12 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
   ];
   const elements = new Map(selectors.map((selector) => [selector, new Element()]));
   root.querySelector = (selector) => elements.get(selector) || null;
-  root.querySelectorAll = () => [];
+  const skipButtons = [-15, 15].map((seconds) => {
+    const button = new Element('button');
+    button.dataset.podcastSkip = String(seconds);
+    return button;
+  });
+  root.querySelectorAll = (selector) => selector === '[data-podcast-skip]' ? skipButtons : [];
   root.append(audio, ...elements.values());
   const close = new Element('button');
   const doc = Object.assign(new EventTarget(), {
@@ -78,12 +83,17 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
     return { ok: true, json: async () => next };
   };
   const initialize = vm.runInNewContext(`(function(episode, title, channel, progress, withProgress, initialSegments) {${script[1]}\n})`, {
-    window: win, document: doc, navigator: {}, HTMLMediaElement: { HAVE_METADATA: 1 }, Element, AbortController, URL, fetch,
+    window: win, document: doc, navigator: {}, HTMLMediaElement: { HAVE_METADATA: 1, HAVE_FUTURE_DATA: 3 }, Element, AbortController, URL, fetch,
   });
   initialize('episode-one', 'Episode', 'Podcast', 0, false, initialSegments);
   const text = (node) => [node.textContent, ...node.children.map(text)].filter(Boolean).join(' ');
   return {
-    audio, win, doc, elements, timers, requests,
+    audio, win, doc, elements, timers, requests, skipButtons,
+    reopen: () => {
+      win.feedlrPodcastPlayer.cleanup();
+      audio.currentTime = 0;
+      initialize('episode-one', 'Episode', 'Podcast', 0, false, initialSegments);
+    },
     text: () => text(elements.get('#podcast-segments-panel')),
     emit: (type) => audio.dispatchEvent(new Event(type)),
     cleanup: () => win.feedlrPodcastPlayer.cleanup(),
@@ -266,27 +276,27 @@ test('HTTP and network errors stop the spinner and report analysis failure', asy
   }
 });
 
-test('generated segments only skip with validated input and known durations within two seconds', async () => {
-  for (const [duration, transcriptDuration, canSkip] of [[600, 600000, true], [602, 600000, true], [598, 600000, true], [602.001, 600000, false], [600, 0, false], [600, NaN, false], [NaN, 600000, false], [Infinity, 600000, false]]) {
+test('validated generated segments use their timestamps regardless of reported total duration', async () => {
+  for (const [duration, transcriptDuration] of [[600, 600000], [602, 600000], [598, 600000], [720, 600000], [600, 0], [600, NaN], [NaN, 600000], [Infinity, 600000]]) {
     const state = ready({ duration_ms: transcriptDuration });
     const h = harness({ initialSegments: state, responses: [state], duration, currentTime: 12 });
     await h.audio.play();
     await settle();
     h.emit('timeupdate');
-    assert.equal(h.audio.currentTime, canSkip ? 20 : 12, `audio ${duration}, transcript ${transcriptDuration}`);
+    assert.equal(h.audio.currentTime, 20, `audio ${duration}, transcript ${transcriptDuration}`);
     assert.match(h.text(), /Sponsor start/);
-    if (!canSkip) assert.match(h.text(), /Automatic skipping is paused/);
+    assert.doesNotMatch(h.text(), /Automatic skipping is paused/);
     h.cleanup();
   }
 });
 
-test('duration changes update skip safety without discarding displayed segments', async () => {
+test('duration changes update the timeline without blocking skipping or discarding segments', async () => {
   const h = harness({ initialSegments: ready(), responses: [ready()], duration: 603, currentTime: 12 });
   await h.audio.play();
   await settle();
   h.emit('timeupdate');
-  assert.equal(h.audio.currentTime, 12);
-  assert.match(h.text(), /audio length differs/);
+  assert.equal(h.audio.currentTime, 20);
+  assert.doesNotMatch(h.text(), /audio length differs/);
   h.audio.duration = 600;
   h.emit('durationchange');
   assert.equal(h.audio.currentTime, 20);
@@ -294,7 +304,7 @@ test('duration changes update skip safety without discarding displayed segments'
   h.audio.duration = 603;
   h.audio.currentTime = 12;
   h.emit('durationchange');
-  assert.equal(h.audio.currentTime, 12);
+  assert.equal(h.audio.currentTime, 20);
   assert.match(h.text(), /Sponsor start/);
   h.cleanup();
 });
@@ -310,20 +320,134 @@ test('validated publisher segments do not need a transcript duration for automat
   h.cleanup();
 });
 
-test('manual seeking into a sponsor retains the user position', async () => {
+test('manual forward seeking into a sponsor still automatically skips it', async () => {
   const h = harness({ initialSegments: ready(), responses: [ready()] });
   await h.audio.play();
   await settle();
   const progress = h.elements.get('#podcast-progress');
   progress.value = '12';
   progress.dispatchEvent(new Event('input'));
+  progress.dispatchEvent(new Event('change'));
   h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 20);
+  h.cleanup();
+});
+
+test('rewinding into a sponsor disables skipping only for that segment and player session', async () => {
+  const later = { ...sponsor, start_ms: 30000, end_ms: 40000 };
+  const state = ready({ segments: [sponsor, later] });
+  const h = harness({ initialSegments: state, responses: [state, state], currentTime: 12 });
+  await h.audio.play();
+  await settle();
+  assert.equal(h.audio.currentTime, 20);
+  const progress = h.elements.get('#podcast-progress');
+  progress.value = '12';
+  progress.dispatchEvent(new Event('input'));
+  progress.dispatchEvent(new Event('change'));
+  h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 12);
+  h.audio.currentTime = 21;
+  h.emit('timeupdate');
+  h.audio.pause();
+  await h.audio.play();
+  h.audio.currentTime = 12;
+  h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 12);
+  h.audio.currentTime = 31;
+  h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 40);
+  h.reopen();
+  await h.audio.play();
+  await settle();
+  progress.value = '12';
+  progress.dispatchEvent(new Event('input'));
+  progress.dispatchEvent(new Event('change'));
+  h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 20);
+  h.cleanup();
+});
+
+test('rewind controls opt out only when they land inside the segment', async () => {
+  const h = harness({ initialSegments: ready(), responses: [ready()], currentTime: 12 });
+  await h.audio.play();
+  await settle();
+  h.skipButtons[0].dispatchEvent(new Event('click'));
+  assert.equal(h.audio.currentTime, 5);
+  h.audio.currentTime = 12;
+  h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 20);
+  h.audio.currentTime = 28;
+  h.skipButtons[0].dispatchEvent(new Event('click'));
+  h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 13);
+  h.audio.currentTime = 25;
+  h.emit('timeupdate');
+  h.audio.currentTime = 12;
+  h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 12);
+  h.cleanup();
+});
+
+test('a rewind override survives refreshed segment objects', async () => {
+  const validation = deferred();
+  const h = harness({ initialSegments: ready(), responses: [validation.promise], currentTime: 25 });
+  await h.audio.play();
+  await settle();
+  const progress = h.elements.get('#podcast-progress');
+  progress.value = '12';
+  progress.dispatchEvent(new Event('input'));
+  progress.dispatchEvent(new Event('change'));
+  validation.resolve(ready({ segments: [{ ...sponsor }] }));
+  await settle();
   assert.equal(h.audio.currentTime, 12);
   h.audio.currentTime = 21;
   h.emit('timeupdate');
   h.audio.currentTime = 12;
   h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 12);
+  h.cleanup();
+});
+
+test('autoplay before initialization still validates and enables automatic skipping', async () => {
+  const h = harness({ initialSegments: ready(), responses: [ready()], currentTime: 12, readyState: 3, paused: false });
+  await settle();
+  assert.deepEqual(h.requests.map((request) => request.method), ['POST']);
   assert.equal(h.audio.currentTime, 20);
+  h.emit('playing');
+  await settle();
+  assert.equal(h.requests.length, 1);
+  h.cleanup();
+});
+
+test('continuous forward scrubbing does not register a rewind override', async () => {
+  const h = harness({ initialSegments: ready(), responses: [ready()] });
+  await h.audio.play();
+  await settle();
+  const progress = h.elements.get('#podcast-progress');
+  for (const time of [12, 13]) {
+    progress.value = String(time);
+    progress.dispatchEvent(new Event('input'));
+    h.emit('timeupdate');
+    assert.equal(h.audio.currentTime, time);
+  }
+  progress.dispatchEvent(new Event('change'));
+  assert.equal(h.audio.currentTime, 20);
+  h.cleanup();
+});
+
+test('segments extending past the actual audio end cannot cause repeated seeks', async () => {
+  const h = harness({ initialSegments: ready(), responses: [ready()], duration: 15, currentTime: 12 });
+  const seeks = [];
+  let position = h.audio.currentTime;
+  Object.defineProperty(h.audio, 'currentTime', {
+    get: () => position,
+    set: (time) => { seeks.push(time); position = Math.min(time, h.audio.duration); },
+  });
+  await h.audio.play();
+  await settle();
+  assert.equal(h.audio.currentTime, 15);
+  for (let i = 0; i < 3; i++) h.emit('timeupdate');
+  assert.deepEqual(seeks, [15]);
   h.cleanup();
 });
 

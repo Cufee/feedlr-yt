@@ -54,6 +54,11 @@
 }
 
 @layer base {
+    /* Prevent double-tap zoom while retaining scrolling and pinch zoom. */
+    * {
+        touch-action: manipulation;
+    }
+
     html {
         font-family: var(--font-sans);
         background-color: var(--color-canvas);

@@ -113,13 +113,11 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		let analysisStatus = initialSegments?.status || "idle"
 		let analysisPhase = initialSegments?.phase || ""
 		let analysisError = initialSegments?.error || ""
-		let segmentSource = initialSegments?.source || ""
-		let transcriptDurationMS = Number(initialSegments?.duration_ms || 0)
 			let analysisStarted = false
 			let playbackValidationAccepted = false
 		let statusRequestGeneration = 0
-	let lastSkippedSegmentID = ""
-	let manuallyEnteredSegmentID = ""
+	const manuallyRewoundSegments = new Set()
+	let scrubbing = false
 	let pollTimer
 	let progressInput
 	const segmentTab = root.querySelector("#podcast-segments-tab")
@@ -153,12 +151,6 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		messagePanel.append(element("span", "", message))
 			segmentsPanel.replaceChildren(messagePanel)
 		}
-		function durationSafetyMessage() {
-			if (segmentSource !== "generated") return ""
-			if (!Number.isFinite(audio.duration) || audio.duration <= 0 || !Number.isFinite(transcriptDurationMS) || transcriptDurationMS <= 0) return "Automatic skipping is paused until the audio and transcript lengths are available."
-			if (Math.abs(audio.duration * 1000 - transcriptDurationMS) > 2000) return "Automatic skipping is paused because the audio length differs from the transcript."
-			return ""
-		}
 		function analysisFailureMessage() {
 			if (analysisError === "request_failed") return "Could not load episode segment analysis. Playback will continue."
 			if (analysisStatus === "unavailable") return "Episode segment analysis is unavailable for this episode."
@@ -177,7 +169,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 			segmentCount.textContent = String(segments.length)
 			segmentsPanel.replaceChildren()
 			if (!segments.length) { panelMessage("No selected episode segments identified.", false); return }
-				const warning = durationSafetyMessage() || (!playbackValidationAccepted ? "Automatic skipping starts after the episode audio is checked when playback begins." : "")
+				const warning = !playbackValidationAccepted ? "Automatic skipping starts after the episode audio is checked when playback begins." : ""
 			if (warning) segmentsPanel.append(element("p", "mb-3 text-sm text-text-secondary", warning))
 		const list = element("div", "flex flex-col gap-2")
 		for (const segment of segments) {
@@ -198,8 +190,6 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 			analysisStatus = payload.status || "idle"
 			analysisPhase = payload.phase || ""
 			analysisError = payload.error || ""
-			segmentSource = payload.source || ""
-			transcriptDurationMS = Number(payload.duration_ms || 0)
 			segments = payload.segments || []
 			renderSegments()
 			if (analysisStatus === "ready") skipSegmentAtCurrentTime()
@@ -312,23 +302,22 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	function segmentID(segment) { return `${segment.start_ms}:${segment.end_ms}` }
 	function segmentAt(time) { return segments.find((segment) => segment.skippable && time >= segment.start_ms / 1000 && time < segment.end_ms / 1000) }
 	function setManualPosition(time) {
-		const segment = segmentAt(time)
-		manuallyEnteredSegmentID = segment ? segmentID(segment) : ""
-		lastSkippedSegmentID = ""
+		if (time < audio.currentTime) {
+			for (const segment of segments) {
+				if (segment.skippable && time >= segment.start_ms / 1000 && time < segment.end_ms / 1000) manuallyRewoundSegments.add(segmentID(segment))
+			}
+		}
 		audio.currentTime = time
 		updateTimeline()
+		skipSegmentAtCurrentTime()
 	}
-		function skipSegmentAtCurrentTime() {
-				if (!segmentsEnabled || !playbackValidationAccepted || analysisStatus !== "ready" || durationSafetyMessage()) return
+	function skipSegmentAtCurrentTime() {
+		if (scrubbing || !segmentsEnabled || !playbackValidationAccepted || analysisStatus !== "ready") return
 		const segment = segmentAt(audio.currentTime)
-		if (!segment) {
-			manuallyEnteredSegmentID = ""
-			return
-		}
-		const id = segmentID(segment)
-		if (id === manuallyEnteredSegmentID || id === lastSkippedSegmentID) return
-		lastSkippedSegmentID = id
-		audio.currentTime = segment.end_ms / 1000
+		if (!segment || manuallyRewoundSegments.has(segmentID(segment))) return
+		const end = Number.isFinite(audio.duration) ? Math.min(segment.end_ms / 1000, audio.duration) : segment.end_ms / 1000
+		if (end <= audio.currentTime) return
+		audio.currentTime = end
 		updateTimeline()
 		saveProgress()
 	}
@@ -385,7 +374,12 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		button.addEventListener("click", () => seek(Number.parseInt(button.dataset.podcastSkip, 10)), { signal: controller.signal })
 	})
 	progressInput.addEventListener("input", () => {
+		scrubbing = true
 		setManualPosition(Number(progressInput.value))
+	}, { signal: controller.signal })
+	progressInput.addEventListener("change", () => {
+		scrubbing = false
+		skipSegmentAtCurrentTime()
 	}, { signal: controller.signal })
 		audio.addEventListener("loadedmetadata", updateTimeline, { signal: controller.signal })
 		audio.addEventListener("loadedmetadata", renderSegments, { signal: controller.signal })
@@ -422,4 +416,5 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	if (withProgress) progressTimer = window.setInterval(saveProgress, 10000)
 	updateTimeline()
 	setLoading(loading)
+	if (!audio.paused && !audio.ended && audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) startSegmentAnalysis()
 }
