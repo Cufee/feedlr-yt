@@ -71,27 +71,50 @@ func GetPodcastSegmentStatus(ctx context.Context, db database.Client, videoID st
 	if err != nil {
 		return PodcastSegmentStatus{}, err
 	}
-	job, err := db.GetPodcastProcessingJob(ctx, videoID, input.jobKey, podcastModel(), podcastSegmentsPromptVersion)
-	if errors.Is(err, sql.ErrNoRows) {
-		return PodcastSegmentStatus{Status: "idle"}, nil
-	}
-	if err != nil {
-		return PodcastSegmentStatus{}, err
-	}
-	status := PodcastSegmentStatus{Status: job.Status, Phase: job.Phase, Error: job.Error, DurationMS: job.DurationMS}
+	status := PodcastSegmentStatus{Status: "idle"}
 	content, err := db.GetPodcastTranscriptContent(ctx, videoID, input.transcriptKey)
 	if err == nil {
 		status.Source = content.Source
 		status.DurationMS = content.DurationMS
+		status.TranscriptReady = content.Source == "generated" || content.Source == "publisher"
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return PodcastSegmentStatus{}, err
 	}
-	if job.Status == database.PodcastSegmentReady {
+	job, err := db.GetPodcastProcessingJob(ctx, videoID, input.jobKey, podcastModel(), podcastSegmentsPromptVersion)
+	if errors.Is(err, sql.ErrNoRows) {
+		return status, nil
+	}
+	if err != nil {
+		return PodcastSegmentStatus{}, err
+	}
+	status.Status, status.Phase, status.Error = job.Status, job.Phase, job.Error
+	if content.Source == "" {
+		status.DurationMS = job.DurationMS
+	}
+	switch job.Error {
+	case "source_changed", "source_validation_failed", "configuration_changed":
+		// These failures invalidate the provenance of retained intervals.
+		return status, nil
+	}
+	if job.AnalysisID != "" {
 		analysis, err := db.GetPodcastSegmentAnalysis(ctx, videoID, job.TranscriptHash, job.Model, job.PromptVersion)
 		if err != nil {
 			return PodcastSegmentStatus{}, err
 		}
-		status.Segments = analysis.Segments
+		if analysis.ID == job.AnalysisID {
+			status.Segments = analysis.Segments
+			if status.Source == "" {
+				data, err := db.GetPodcastSegmentAnalysisInputs(ctx, analysis.ID)
+				if err != nil {
+					return PodcastSegmentStatus{}, err
+				}
+				var details struct {
+					Source string `json:"transcript_source"`
+				}
+				_ = json.Unmarshal(data, &details)
+				status.Source = details.Source
+			}
+		}
 	}
 	return status, nil
 }
@@ -144,16 +167,18 @@ func StartPodcastProcessingWorkers(db database.Client) {
 	if _, exists := podcastProcessors.LoadOrStore(db, struct{}{}); exists {
 		return
 	}
-	p := &podcastProcessor{db: db, generate: generatePodcastTranscript, scan: inferPodcastSegments}
+	p := &podcastProcessor{db: db, generateChunks: generatePodcastTranscriptChunks, scanChunk: inferPodcastChunkSegments}
 	for i := 0; i < 2; i++ {
 		go p.work()
 	}
 }
 
 type podcastProcessor struct {
-	db       database.Client
-	generate func(context.Context, database.Client, podcastInput) (database.PodcastTranscriptContent, error)
-	scan     func(context.Context, []transcriptCue, string, string) ([]database.PodcastSegment, error)
+	db              database.Client
+	generate        func(context.Context, database.Client, podcastInput) (database.PodcastTranscriptContent, error)
+	generateChunks  func(context.Context, database.Client, podcastInput, func(podcastTranscriptChunk) error) (database.PodcastTranscriptContent, error)
+	scanChunk       podcastChunkScanner
+	extractSponsors func(context.Context, string) string
 }
 
 func (p *podcastProcessor) work() {
@@ -232,88 +257,11 @@ func (p *podcastProcessor) run(job database.PodcastProcessingJob) {
 		fail(processingError("episode_too_long", nil))
 		return
 	}
-	preparationStart := time.Now()
-	owned, err := p.db.UpdatePodcastProcessingJob(ctx, job.ID, job.Token, "preparing", job.TranscriptHash, job.AnalysisID, job.DurationMS)
-	if err != nil || !owned {
-		fail(processingError("lease_lost", err))
-		return
-	}
-	content, cues, err := p.prepare(ctx, input)
-	if err != nil {
+	if err := p.processProgressive(ctx, job, input); err != nil {
 		fail(err)
-		return
-	}
-	metrics.ObservePodcastProcessingStage("preparing", "ready", time.Since(preparationStart).Seconds())
-	hash := hashTranscript(content.CuesJSON, input.transcriptKey, "", input.video.Description, input.video.Title)
-	ok, err := p.db.UpdatePodcastProcessingJob(ctx, job.ID, job.Token, "scanning", hash, "", content.DurationMS)
-	if err != nil || !ok {
-		fail(processingError("lease_lost", err))
-		return
-	}
-	analysis, err := p.db.GetPodcastSegmentAnalysis(ctx, job.VideoID, hash, job.Model, job.PromptVersion)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		fail(err)
-		return
-	}
-	if err == nil && analysis.Status == database.PodcastSegmentReady {
+	} else {
 		finish(database.PodcastSegmentReady, "")
-		return
 	}
-	// This durable job's lease is the owner for this source and scan input.
-	// A failed/interrupted analysis can be reused and overwritten by its successor.
-	analysis, _, err = p.db.AcquirePodcastSegmentAnalysis(ctx, job.VideoID, hash, content.SourceURL, job.Model, job.PromptVersion)
-	if err != nil {
-		fail(err)
-		return
-	}
-	analysisInputs, _ := json.Marshal(map[string]any{
-		"version": podcastInputVersion, "transcript_source_key": content.SourceKey, "transcript_content_sha256": content.ContentHash,
-		"scan_input_hash": hash, "source_fingerprint": input.validation.Fingerprint,
-		"title_sha256": podcastSHA256([]byte(input.video.Title)), "notes_sha256": podcastSHA256([]byte(input.video.Description)),
-		"model": job.Model, "prompt_version": job.PromptVersion,
-		"prompts_sha256": podcastSHA256([]byte(segmentDiscoveryPrompt + "\x00" + segmentConfirmationPrompt + "\x00" + segmentBoundaryReviewPrompt + "\x00" + segmentResponsePrompt + "\x00" + sponsorExtractionPrompt)),
-	})
-	if err = p.db.SetPodcastSegmentAnalysisInputs(ctx, analysis.ID, analysisInputs); err != nil {
-		fail(err)
-		return
-	}
-	ok, err = p.db.UpdatePodcastProcessingJob(ctx, job.ID, job.Token, "scanning", hash, analysis.ID, content.DurationMS)
-	if err != nil || !ok {
-		fail(processingError("lease_lost", err))
-		return
-	}
-	scanStart := time.Now()
-	var segments []database.PodcastSegment
-	if len(cues) > 0 {
-		notes := extractPodcastSponsors(ctx, input.video.Description)
-		segments, err = p.scan(ctx, cues, notes, input.video.Title)
-	}
-	outcome := "ready"
-	if err != nil {
-		outcome = "failed"
-	}
-	metrics.ObservePodcastProcessingStage("scanning", outcome, time.Since(scanStart).Seconds())
-	// Renew before persisting results so a superseded worker cannot complete a job.
-	owned, leaseErr := p.db.RenewPodcastProcessingJob(ctx, job.ID, job.Token, podcastJobLease)
-	if leaseErr != nil || !owned {
-		fail(processingError("lease_lost", leaseErr))
-		return
-	}
-	if err != nil {
-		_ = p.db.CompletePodcastSegmentAnalysis(ctx, analysis.ID, database.PodcastSegmentFailed, "model_output_invalid", nil)
-		fail(processingError("model_output_invalid", err))
-		return
-	}
-	if err = p.db.CompletePodcastSegmentAnalysis(ctx, analysis.ID, database.PodcastSegmentReady, "", segments); err != nil {
-		fail(err)
-		return
-	}
-	categories := make([]string, 0, len(segments))
-	for _, segment := range segments {
-		categories = append(categories, segment.Category)
-	}
-	metrics.ObservePodcastSegmentAnalysis("ready", time.Since(scanStart).Seconds(), categories)
-	finish(database.PodcastSegmentReady, "")
 }
 
 type podcastProcessingError struct {
@@ -328,11 +276,20 @@ func processingError(code string, err error) error {
 }
 
 func (p *podcastProcessor) prepare(ctx context.Context, input podcastInput) (database.PodcastTranscriptContent, []transcriptCue, error) {
+	return p.prepareChunks(ctx, input, nil)
+}
+
+func (p *podcastProcessor) prepareChunks(ctx context.Context, input podcastInput, ready func(podcastTranscriptChunk) error) (database.PodcastTranscriptContent, []transcriptCue, error) {
 	cached, err := p.db.GetPodcastTranscriptContent(ctx, input.video.ID, input.transcriptKey)
 	if err == nil {
 		var cues []transcriptCue
 		if json.Unmarshal(cached.CuesJSON, &cues) != nil || validateTranscriptCues(cues, cached.DurationMS, cached.Source == "generated") != nil {
 			return cached, nil, processingError("cached_transcript_invalid", nil)
+		}
+		if ready != nil {
+			if err := emitPodcastTranscriptChunks(cached, cues, ready); err != nil {
+				return cached, nil, err
+			}
 		}
 		return cached, cues, nil
 	}
@@ -341,6 +298,7 @@ func (p *podcastProcessor) prepare(ctx context.Context, input podcastInput) (dat
 	}
 	var content database.PodcastTranscriptContent
 	var cues []transcriptCue
+	streamed := false
 	if input.publisher.URL != "" && isTimedTranscript(input.publisher.MIMEType) {
 		data, failure := fetchTranscript(ctx, input.publisher.URL, input.publisher.MIMEType)
 		if failure == "" {
@@ -360,7 +318,12 @@ func (p *podcastProcessor) prepare(ctx context.Context, input podcastInput) (dat
 		if !podcastTranscriptionEnabled() {
 			return content, nil, processingError("transcription_disabled", nil)
 		}
-		content, err = p.generate(ctx, p.db, input)
+		if p.generateChunks != nil {
+			content, err = p.generateChunks(ctx, p.db, input, ready)
+			streamed = ready != nil
+		} else {
+			content, err = p.generate(ctx, p.db, input)
+		}
 		if err != nil {
 			return content, nil, err
 		}
@@ -393,6 +356,11 @@ func (p *podcastProcessor) prepare(ctx context.Context, input podcastInput) (dat
 	}
 	if err = p.db.SavePodcastTranscriptContent(ctx, content); err != nil {
 		return content, nil, err
+	}
+	if ready != nil && !streamed {
+		if err := emitPodcastTranscriptChunks(content, cues, ready); err != nil {
+			return content, nil, err
+		}
 	}
 	return content, cues, nil
 }

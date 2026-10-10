@@ -20,11 +20,12 @@ import (
 	"github.com/cufee/feedlr-yt/internal/metrics"
 )
 
-const podcastSegmentsPromptVersion = "podcast-segments-v8"
+const podcastSegmentsPromptVersion = "podcast-segments-v11"
 
 type PodcastSegmentStatus struct {
 	Status, Phase, Error, Source string
 	DurationMS                   int
+	TranscriptReady              bool
 	Segments                     []database.PodcastSegment
 }
 type transcriptCue struct {

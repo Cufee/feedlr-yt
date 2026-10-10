@@ -38,12 +38,15 @@ type PodcastProcessingClient interface {
 	GetPodcastSourceValidation(context.Context, string, string) (PodcastSourceValidation, error)
 	SavePodcastSourceValidation(context.Context, PodcastSourceValidation) error
 	SetPodcastSegmentAnalysisInputs(context.Context, string, []byte) error
+	SetPodcastProcessingAnalysisInputs(context.Context, string, string, string, []byte) (bool, error)
 	GetPodcastSegmentAnalysisInputs(context.Context, string) ([]byte, error)
 	EnqueuePodcastProcessingJob(context.Context, string, string, string, string) (PodcastProcessingJob, error)
 	GetPodcastProcessingJob(context.Context, string, string, string, string) (PodcastProcessingJob, error)
 	ClaimPodcastProcessingJob(context.Context, string, time.Duration) (PodcastProcessingJob, bool, error)
 	RenewPodcastProcessingJob(context.Context, string, string, time.Duration) (bool, error)
 	UpdatePodcastProcessingJob(context.Context, string, string, string, string, string, int) (bool, error)
+	PublishPodcastSegmentAnalysis(context.Context, string, string, string, []PodcastSegment) (bool, error)
+	CompletePodcastProcessingAnalysis(context.Context, string, string, string, []PodcastSegment) (bool, error)
 	FinishPodcastProcessingJob(context.Context, string, string, string, string) (bool, error)
 	AcquirePodcastTranscriptionSlot(context.Context, string, time.Duration) (bool, error)
 	ReleasePodcastTranscriptionSlot(context.Context, string) error
@@ -108,6 +111,31 @@ func (c *sqliteClient) SetPodcastSegmentAnalysisInputs(ctx context.Context, id s
 		return sql.ErrNoRows
 	}
 	return err
+}
+
+// SetPodcastProcessingAnalysisInputs writes aggregate provenance only while the
+// caller still owns the live job linked to that analysis. Immutable per-core
+// caches use SetPodcastSegmentAnalysisInputs instead.
+func (c *sqliteClient) SetPodcastProcessingAnalysisInputs(ctx context.Context, jobID, token, analysisID string, inputs []byte) (bool, error) {
+	if len(inputs) == 0 {
+		inputs = []byte("{}")
+	}
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	if owned, err := fencePodcastProcessingAnalysis(ctx, tx, jobID, token, analysisID); err != nil || !owned {
+		return false, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE podcast_segment_analyses SET input_json = ? WHERE id = ?`, inputs, analysisID); err != nil {
+		return false, err
+	}
+	if owned, err := fencePodcastProcessingAnalysis(ctx, tx, jobID, token, analysisID); err != nil || !owned {
+		return false, err
+	}
+	err = tx.Commit()
+	return err == nil, err
 }
 
 func (c *sqliteClient) GetPodcastSegmentAnalysisInputs(ctx context.Context, id string) ([]byte, error) {
@@ -192,6 +220,64 @@ func (c *sqliteClient) UpdatePodcastProcessingJob(ctx context.Context, id, token
 		SET phase = ?, transcript_hash = ?, analysis_id = ?, duration_ms = ?, updated_at_ms = ?
 		WHERE id = ? AND status = 'running' AND token = ? AND lease_until_ms > ?`,
 		phase, hash, analysisID, durationMS, now, id, token, now))
+}
+
+// PublishPodcastSegmentAnalysis replaces the job's aggregate with the complete
+// accumulated, validated canonical slice. Chunk scan caches remain separate
+// analyses. Every replacement is fenced by the job's active owner and link.
+func (c *sqliteClient) PublishPodcastSegmentAnalysis(ctx context.Context, jobID, token, analysisID string, segments []PodcastSegment) (bool, error) {
+	return c.writePodcastProcessingAnalysis(ctx, jobID, token, analysisID, segments, PodcastSegmentRunning)
+}
+
+// CompletePodcastProcessingAnalysis commits the final aggregate and ready state
+// under the same ownership fence as partial publication. The job remains owned
+// until FinishPodcastProcessingJob records its terminal status.
+func (c *sqliteClient) CompletePodcastProcessingAnalysis(ctx context.Context, jobID, token, analysisID string, segments []PodcastSegment) (bool, error) {
+	return c.writePodcastProcessingAnalysis(ctx, jobID, token, analysisID, segments, PodcastSegmentReady)
+}
+
+func (c *sqliteClient) writePodcastProcessingAnalysis(ctx context.Context, jobID, token, analysisID string, segments []PodcastSegment, status string) (bool, error) {
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	// The first operation acquires SQLite's write lock before reading any state.
+	// Database time is evaluated after acquiring that lock, and again before
+	// commit, so neither lock contention nor a lengthy replacement bypasses expiry.
+	if owned, err := fencePodcastProcessingAnalysis(ctx, tx, jobID, token, analysisID); err != nil || !owned {
+		return false, err
+	}
+	var videoID string
+	if err := tx.QueryRowContext(ctx, `SELECT video_id FROM podcast_segment_analyses WHERE id = ?`, analysisID).Scan(&videoID); err != nil {
+		return false, err
+	}
+	now := time.Now()
+	var completedAt any
+	if status == PodcastSegmentReady {
+		completedAt = now
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE podcast_segment_analyses
+		SET status = ?, error = NULL, completed_at = ?, updated_at = ? WHERE id = ?`, status, completedAt, now, analysisID); err != nil {
+		return false, err
+	}
+	if err := replacePodcastSegments(ctx, tx, analysisID, videoID, segments); err != nil {
+		return false, err
+	}
+	if owned, err := fencePodcastProcessingAnalysis(ctx, tx, jobID, token, analysisID); err != nil || !owned {
+		return false, err
+	}
+	err = tx.Commit()
+	return err == nil, err
+}
+
+func fencePodcastProcessingAnalysis(ctx context.Context, tx *sql.Tx, jobID, token, analysisID string) (bool, error) {
+	const nowSQL = `CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`
+	return podcastProcessingChanged(tx.ExecContext(ctx, `UPDATE podcast_processing_jobs
+		SET updated_at_ms = `+nowSQL+`
+		WHERE id = ? AND status = 'running' AND token = ? AND analysis_id = ? AND lease_until_ms > `+nowSQL+`
+		AND EXISTS (SELECT 1 FROM podcast_segment_analyses
+		 WHERE id = ? AND video_id = podcast_processing_jobs.video_id)`, jobID, token, analysisID, analysisID))
 }
 
 func (c *sqliteClient) FinishPodcastProcessingJob(ctx context.Context, id, token, status, failure string) (bool, error) {

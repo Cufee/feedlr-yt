@@ -13,14 +13,16 @@ import (
 )
 
 type podcastSegmentsResponse struct {
-	Status      string                   `json:"status"`
-	Enabled     bool                     `json:"enabled"`
-	Phase       string                   `json:"phase,omitempty"`
-	Error       string                   `json:"error,omitempty"`
-	Source      string                   `json:"source,omitempty"`
-	DurationMS  int                      `json:"duration_ms,omitempty"`
-	PollAfterMS int                      `json:"poll_after_ms,omitempty"`
-	Segments    []podcastSegmentResponse `json:"segments"`
+	Status          string                   `json:"status"`
+	Enabled         bool                     `json:"enabled"`
+	Phase           string                   `json:"phase,omitempty"`
+	Error           string                   `json:"error,omitempty"`
+	Source          string                   `json:"source,omitempty"`
+	TranscriptReady bool                     `json:"transcript_ready"`
+	HasSegments     bool                     `json:"has_segments"`
+	DurationMS      int                      `json:"duration_ms,omitempty"`
+	PollAfterMS     int                      `json:"poll_after_ms,omitempty"`
+	Segments        []podcastSegmentResponse `json:"segments"`
 }
 type podcastSegmentResponse struct {
 	Category  string `json:"category"`
@@ -64,19 +66,35 @@ func podcastSponsorSegments(start bool) brewed.Partial[*handler.Context] {
 		if err != nil {
 			return nil, podcastSegmentsJSON(ctx, http.StatusBadRequest, nil)
 		}
-		response := podcastSegmentsResponse{Enabled: true, Status: status.Status, Phase: status.Phase, Error: status.Error, Source: status.Source, DurationMS: status.DurationMS, Segments: []podcastSegmentResponse{}}
-		if status.Status == database.PodcastSegmentPending || status.Status == database.PodcastSegmentRunning {
-			response.PollAfterMS = 2000
-		}
-		for _, segment := range status.Segments {
-			selected := slices.Contains(settings.PodcastSegments.SelectedCategories, segment.Category)
-			if !selected {
-				continue
-			}
-			response.Segments = append(response.Segments, podcastSegmentResponse{Category: segment.Category, StartMS: segment.StartMS, EndMS: segment.EndMS, StartTime: logic.FormatPodcastSegmentTime(segment.StartMS), EndTime: logic.FormatPodcastSegmentTime(segment.EndMS), StartText: segment.StartText, EndText: segment.EndText, Reason: segment.Reason, Brand: segment.Brand, Skippable: selected})
-		}
+		response := podcastSegmentSnapshot(status, settings.PodcastSegments.SelectedCategories)
 		return nil, podcastSegmentsJSON(ctx, http.StatusOK, response)
 	}
+}
+
+func podcastSegmentSnapshot(status logic.PodcastSegmentStatus, selectedCategories []string) podcastSegmentsResponse {
+	response := podcastSegmentsResponse{Enabled: true, Status: status.Status, Phase: status.Phase, Error: status.Error, Source: status.Source, TranscriptReady: status.TranscriptReady, HasSegments: len(status.Segments) > 0, DurationMS: status.DurationMS, Segments: []podcastSegmentResponse{}}
+	if status.Status == database.PodcastSegmentPending || status.Status == database.PodcastSegmentRunning {
+		response.PollAfterMS = 2000
+	}
+	// Confirmed snapshots remain useful while the rest of a scan is running
+	// or has failed. Repeated publication must not create duplicate rows.
+	type identity struct {
+		category, brand string
+		start, end      int
+	}
+	seen := make(map[identity]bool)
+	for _, segment := range status.Segments {
+		if !slices.Contains(selectedCategories, segment.Category) {
+			continue
+		}
+		key := identity{segment.Category, segment.Brand, segment.StartMS, segment.EndMS}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		response.Segments = append(response.Segments, podcastSegmentResponse{Category: segment.Category, StartMS: segment.StartMS, EndMS: segment.EndMS, StartTime: logic.FormatPodcastSegmentTime(segment.StartMS), EndTime: logic.FormatPodcastSegmentTime(segment.EndMS), StartText: segment.StartText, EndText: segment.EndText, Reason: segment.Reason, Brand: segment.Brand, Skippable: true})
+	}
+	return response
 }
 
 func podcastSegmentsJSON(ctx *handler.Context, status int, body any) error {

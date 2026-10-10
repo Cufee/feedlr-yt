@@ -19,6 +19,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
+	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/feedlr-yt/internal/types"
@@ -80,7 +81,12 @@ func (db *podcastRouteDatabase) GetPodcastTranscriptContent(_ context.Context, v
 func (db *podcastRouteDatabase) GetPodcastSegmentAnalysis(_ context.Context, videoID, hash, model, prompt string) (database.PodcastSegmentAnalysis, error) {
 	db.calls = append(db.calls, "analysis:"+videoID)
 	db.analysis = [4]string{videoID, hash, model, prompt}
-	return database.PodcastSegmentAnalysis{Status: database.PodcastSegmentReady, Segments: db.segments}, nil
+	return database.PodcastSegmentAnalysis{ID: db.job.AnalysisID, Status: database.PodcastSegmentReady, Segments: db.segments}, nil
+}
+
+func (db *podcastRouteDatabase) GetPodcastSegmentAnalysisInputs(_ context.Context, id string) ([]byte, error) {
+	db.calls = append(db.calls, "inputs:"+id)
+	return []byte(`{"transcript_source":"generated"}`), nil
 }
 
 func (db *podcastRouteDatabase) EnqueuePodcastProcessingJob(context.Context, string, string, string, string) (database.PodcastProcessingJob, error) {
@@ -214,27 +220,41 @@ func TestPodcastSegmentGETReadsCachedStatusAndFiltersCategories(t *testing.T) {
 	guardPodcastRouteNetwork(t, openrouter.New("test-key", "route-model"))
 	sponsor := database.PodcastSegment{Category: "sponsor", StartMS: 65000, EndMS: 75000, StartText: "Our sponsor", EndText: "Back to the episode", Reason: "Paid promotion", Brand: "Example"}
 	for _, tc := range []struct {
-		name       string
-		status     string
-		phase      string
-		failure    string
-		duration   int
-		cached     database.PodcastTranscriptContent
-		selected   []string
-		segments   []database.PodcastSegment
-		wantSource string
+		name        string
+		status      string
+		phase       string
+		failure     string
+		duration    int
+		cached      database.PodcastTranscriptContent
+		selected    []string
+		segments    []database.PodcastSegment
+		wantSource  string
+		invalidated bool
 	}{
 		{name: "missing job returns idle"},
+		{name: "cached transcript bypasses waiting even without a current scan job", cached: database.PodcastTranscriptContent{Source: "generated", DurationMS: 95000}, wantSource: "generated"},
+		{name: "cached publisher transcript is ready without a scan job", cached: database.PodcastTranscriptContent{Source: "publisher", DurationMS: 95000}, wantSource: "publisher"},
 		{name: "pending job returns poll interval", status: database.PodcastSegmentPending, phase: "queued"},
 		{name: "running job reports progress before transcript cache exists", status: database.PodcastSegmentRunning, phase: "transcribing", duration: 90000},
+		{name: "generated chunks alone do not constitute a complete transcript", status: database.PodcastSegmentRunning, phase: "preparing", cached: database.PodcastTranscriptContent{Source: "generated_chunk", DurationMS: 90000}, wantSource: "generated_chunk"},
+		{name: "early confirmed interval is exposed before complete transcript", status: database.PodcastSegmentRunning, phase: "scanning", duration: 90000, selected: []string{"sponsor"}, segments: []database.PodcastSegment{sponsor}, wantSource: "generated"},
 		{name: "running job reports cached generated source and actual duration", status: database.PodcastSegmentRunning, phase: "scanning", duration: 1000, cached: database.PodcastTranscriptContent{Source: "generated", DurationMS: 95000}, wantSource: "generated"},
+		{name: "running job includes selected confirmed intervals before completion", status: database.PodcastSegmentRunning, phase: "scanning", cached: database.PodcastTranscriptContent{Source: "generated", DurationMS: 90000}, selected: []string{"sponsor"}, segments: []database.PodcastSegment{sponsor}, wantSource: "generated"},
 		{name: "failed job exposes durable error without retrying", status: database.PodcastSegmentFailed, phase: "failed", failure: "transcription_failed"},
+		{name: "failed job retains selected confirmed intervals", status: database.PodcastSegmentFailed, phase: "failed", failure: "transcription_failed", cached: database.PodcastTranscriptContent{Source: "generated", DurationMS: 90000}, selected: []string{"sponsor"}, segments: []database.PodcastSegment{sponsor}, wantSource: "generated"},
+		{name: "changed source suppresses previously confirmed intervals", status: database.PodcastSegmentFailed, phase: "failed", failure: "source_changed", cached: database.PodcastTranscriptContent{Source: "generated", DurationMS: 90000}, selected: []string{"sponsor"}, segments: []database.PodcastSegment{sponsor}, wantSource: "generated", invalidated: true},
+		{name: "failed source validation suppresses previously confirmed intervals", status: database.PodcastSegmentFailed, phase: "failed", failure: "source_validation_failed", cached: database.PodcastTranscriptContent{Source: "generated", DurationMS: 90000}, selected: []string{"sponsor"}, segments: []database.PodcastSegment{sponsor}, wantSource: "generated", invalidated: true},
+		{name: "changed configuration suppresses previously confirmed intervals", status: database.PodcastSegmentFailed, phase: "failed", failure: "configuration_changed", cached: database.PodcastTranscriptContent{Source: "generated", DurationMS: 90000}, selected: []string{"sponsor"}, segments: []database.PodcastSegment{sponsor}, wantSource: "generated", invalidated: true},
 		{name: "ready job includes only selected categories", status: database.PodcastSegmentReady, phase: "ready", cached: database.PodcastTranscriptContent{Source: "publisher", DurationMS: 90000}, selected: []string{"sponsor"}, segments: []database.PodcastSegment{sponsor, {Category: "selfpromo", StartMS: 1000, EndMS: 2000}}, wantSource: "publisher"},
-		{name: "ready job with no selected categories returns empty array", status: database.PodcastSegmentReady, phase: "ready", selected: []string{}, segments: []database.PodcastSegment{sponsor}},
+		{name: "repeated confirmed publication produces one selected row", status: database.PodcastSegmentReady, phase: "ready", cached: database.PodcastTranscriptContent{Source: "generated", DurationMS: 90000}, selected: []string{"sponsor"}, segments: []database.PodcastSegment{sponsor, sponsor}, wantSource: "generated"},
+		{name: "ready job with no selected categories returns empty array", status: database.PodcastSegmentReady, phase: "ready", cached: database.PodcastTranscriptContent{Source: "generated", DurationMS: 90000}, selected: []string{}, segments: []database.PodcastSegment{sponsor}, wantSource: "generated"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			db := newPodcastRouteDatabase(t, true, tc.selected)
 			db.job = database.PodcastProcessingJob{ID: "job", VideoID: "episode", Status: tc.status, Phase: tc.phase, Error: tc.failure, DurationMS: tc.duration, TranscriptHash: "current-transcript", Model: "route-model", PromptVersion: "current-prompt"}
+			if tc.status == database.PodcastSegmentReady || len(tc.segments) > 0 {
+				db.job.AnalysisID = "current-analysis"
+			}
 			db.content, db.segments = tc.cached, tc.segments
 			payload := testPodcastRouteResponse(t, newPodcastRouteTestApp(t, db, true), http.MethodGet, http.StatusOK, true)
 			wantStatus, wantDuration := tc.status, tc.duration
@@ -251,24 +271,28 @@ func TestPodcastSegmentGETReadsCachedStatusAndFiltersCategories(t *testing.T) {
 			if !payload.Enabled || payload.Status != wantStatus || payload.Phase != tc.phase || payload.Error != tc.failure || payload.Source != tc.wantSource || payload.DurationMS != wantDuration || payload.PollAfterMS != wantPoll {
 				t.Errorf("unexpected cached status response: %+v", payload)
 			}
+			wantTranscriptReady := tc.cached.Source == "publisher" || tc.cached.Source == "generated"
+			if payload.TranscriptReady != wantTranscriptReady || payload.HasSegments != (len(tc.segments) > 0 && !tc.invalidated) {
+				t.Errorf("incorrect playback readiness flags: %+v", payload)
+			}
 			var wantSegments []podcastSegmentResponse
-			if slices.Contains(tc.selected, "sponsor") {
+			if slices.Contains(tc.selected, "sponsor") && !tc.invalidated {
 				wantSegments = []podcastSegmentResponse{{Category: "sponsor", StartMS: 65000, EndMS: 75000, StartTime: "1:05", EndTime: "1:15", StartText: sponsor.StartText, EndText: sponsor.EndText, Reason: sponsor.Reason, Brand: sponsor.Brand, Skippable: true}}
 			}
 			if !slices.Equal(payload.Segments, wantSegments) {
 				t.Errorf("segments = %+v, want %+v", payload.Segments, wantSegments)
 			}
-			wantCalls := []string{"settings:user", "video:episode", "metadata:episode", "validation:episode", "job:episode"}
-			if tc.status != "" {
-				wantCalls = append(wantCalls, "content:episode")
-				if db.cacheKey == "" {
-					t.Error("transcript content lookup did not specify the current source key")
-				}
+			wantCalls := []string{"settings:user", "video:episode", "metadata:episode", "validation:episode", "content:episode", "job:episode"}
+			if db.cacheKey == "" {
+				t.Error("transcript content lookup did not specify the current source key")
 			}
-			if tc.status == database.PodcastSegmentReady {
+			if db.job.AnalysisID != "" && !tc.invalidated {
 				wantCalls = append(wantCalls, "analysis:episode")
 				if db.analysis != [4]string{"episode", "current-transcript", "route-model", "current-prompt"} {
 					t.Errorf("analysis lookup used stale inputs: %v", db.analysis)
+				}
+				if tc.cached.Source == "" {
+					wantCalls = append(wantCalls, "inputs:"+db.job.AnalysisID)
 				}
 			}
 			if !slices.Equal(db.calls, wantCalls) {
@@ -278,6 +302,44 @@ func TestPodcastSegmentGETReadsCachedStatusAndFiltersCategories(t *testing.T) {
 				t.Errorf("job lookup did not select current processing inputs: %v", db.jobArgs)
 			}
 		})
+	}
+}
+
+func TestPodcastSegmentPartialSnapshotsPreserveConfirmedIntervals(t *testing.T) {
+	sponsor := database.PodcastSegment{Category: "sponsor", StartMS: 65000, EndMS: 75000, StartText: "Our sponsor", EndText: "Back to the episode", Reason: "Paid promotion", Brand: "Example"}
+	for _, status := range []string{database.PodcastSegmentPending, database.PodcastSegmentRunning, database.PodcastSegmentFailed} {
+		t.Run(status, func(t *testing.T) {
+			phase, failure := "scanning", ""
+			if status == database.PodcastSegmentFailed {
+				phase, failure = "failed", "transcription_failed"
+			}
+			payload := podcastSegmentSnapshot(logic.PodcastSegmentStatus{
+				Status: status, Phase: phase, Error: failure, Source: "generated", DurationMS: 90000,
+				Segments: []database.PodcastSegment{sponsor, sponsor, {Category: "selfpromo", StartMS: 1000, EndMS: 2000}},
+			}, []string{"sponsor"})
+			if !payload.Enabled || payload.Status != status || payload.Phase != phase || payload.Error != failure || payload.Source != "generated" || payload.DurationMS != 90000 {
+				t.Fatalf("partial result lost scan state or timing: %+v", payload)
+			}
+			if len(payload.Segments) != 1 || !payload.Segments[0].Skippable || payload.Segments[0].StartMS != 65000 || payload.Segments[0].EndMS != 75000 || payload.Segments[0].StartTime != "1:05" || payload.Segments[0].EndTime != "1:15" {
+				t.Fatalf("confirmed partial rows were lost, duplicated, or broadened: %+v", payload.Segments)
+			}
+			wantPoll := 2000
+			if status == database.PodcastSegmentFailed {
+				wantPoll = 0
+			}
+			if payload.PollAfterMS != wantPoll {
+				t.Fatalf("poll interval %d, want %d", payload.PollAfterMS, wantPoll)
+			}
+		})
+	}
+}
+
+func TestPodcastSegmentEmptyPartialSnapshotDoesNotImplyCompletion(t *testing.T) {
+	for _, status := range []string{database.PodcastSegmentPending, database.PodcastSegmentRunning, database.PodcastSegmentFailed} {
+		payload := podcastSegmentSnapshot(logic.PodcastSegmentStatus{Status: status, Phase: "scanning"}, []string{"sponsor"})
+		if payload.Status != status || payload.Segments == nil || len(payload.Segments) != 0 {
+			t.Fatalf("empty partial result became a completed or invalid snapshot: %+v", payload)
+		}
 	}
 }
 
@@ -294,7 +356,7 @@ func TestPodcastSegmentPOSTWithoutProviderReturnsUnavailable(t *testing.T) {
 func TestPodcastSegmentPOSTWithoutProviderRetainsReadyCache(t *testing.T) {
 	guardPodcastRouteNetwork(t, nil)
 	db := newPodcastRouteDatabase(t, true, []string{"sponsor"})
-	db.job = database.PodcastProcessingJob{VideoID: "episode", Status: database.PodcastSegmentReady, Phase: "ready", TranscriptHash: "cached-hash", Model: openrouter.DefaultModel, PromptVersion: "cached-prompt"}
+	db.job = database.PodcastProcessingJob{VideoID: "episode", Status: database.PodcastSegmentReady, Phase: "ready", AnalysisID: "cached-analysis", TranscriptHash: "cached-hash", Model: openrouter.DefaultModel, PromptVersion: "cached-prompt"}
 	db.content = database.PodcastTranscriptContent{Source: "generated", DurationMS: 95000}
 	db.segments = []database.PodcastSegment{{Category: "sponsor", StartMS: 1000, EndMS: 2000}}
 	payload := testPodcastRouteResponse(t, newPodcastRouteTestApp(t, db, true), http.MethodPost, http.StatusOK, true)

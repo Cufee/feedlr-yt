@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/aarondl/null/v8"
@@ -78,7 +79,9 @@ func (c *sqliteClient) GetPodcastSegmentAnalysis(ctx context.Context, videoID, h
 	return c.analysis(ctx, models.PodcastSegmentAnalysisWhere.VideoID.EQ(videoID), models.PodcastSegmentAnalysisWhere.TranscriptHash.EQ(hash), models.PodcastSegmentAnalysisWhere.Model.EQ(model), models.PodcastSegmentAnalysisWhere.PromptVersion.EQ(prompt))
 }
 func (c *sqliteClient) GetLatestPodcastSegmentAnalysis(ctx context.Context, videoID string) (PodcastSegmentAnalysis, error) {
-	return c.analysis(ctx, models.PodcastSegmentAnalysisWhere.VideoID.EQ(videoID), qm.OrderBy(models.PodcastSegmentAnalysisColumns.CreatedAt+" DESC"))
+	return c.analysis(ctx, models.PodcastSegmentAnalysisWhere.VideoID.EQ(videoID),
+		qm.Where(`EXISTS (SELECT 1 FROM podcast_processing_jobs WHERE analysis_id = podcast_segment_analyses.id AND video_id = podcast_segment_analyses.video_id)`),
+		qm.OrderBy(models.PodcastSegmentAnalysisColumns.CreatedAt+" DESC"))
 }
 
 func (c *sqliteClient) AcquirePodcastSegmentAnalysis(ctx context.Context, videoID, hash, url, model, prompt string) (PodcastSegmentAnalysis, bool, error) {
@@ -114,14 +117,21 @@ func (c *sqliteClient) CompletePodcastSegmentAnalysis(ctx context.Context, id, s
 	if _, err = v.Update(ctx, tx, boil.Whitelist(models.PodcastSegmentAnalysisColumns.Status, models.PodcastSegmentAnalysisColumns.Error, models.PodcastSegmentAnalysisColumns.CompletedAt, models.PodcastSegmentAnalysisColumns.UpdatedAt)); err != nil {
 		return rollback(err)
 	}
-	if _, err = models.PodcastEpisodeSegments(models.PodcastEpisodeSegmentWhere.AnalysisID.EQ(null.StringFrom(id))).DeleteAll(ctx, tx); err != nil {
+	if err = replacePodcastSegments(ctx, tx, id, v.VideoID, segments); err != nil {
 		return rollback(err)
 	}
+	return tx.Commit()
+}
+
+func replacePodcastSegments(ctx context.Context, tx *sql.Tx, analysisID, videoID string, segments []PodcastSegment) error {
+	if _, err := models.PodcastEpisodeSegments(models.PodcastEpisodeSegmentWhere.AnalysisID.EQ(null.StringFrom(analysisID))).DeleteAll(ctx, tx); err != nil {
+		return err
+	}
 	for i, s := range segments {
-		row := &models.PodcastEpisodeSegment{ID: cuid.New(), VideoID: v.VideoID, AnalysisID: null.StringFrom(id), Source: PodcastSegmentSourceLLM, Position: int64(i), Category: s.Category, StartMS: int64(s.StartMS), EndMS: int64(s.EndMS), StartCue: int64(s.StartCue), EndCue: int64(s.EndCue), StartText: s.StartText, EndText: s.EndText, Reason: s.Reason, Brand: null.StringFrom(s.Brand)}
-		if err = row.Insert(ctx, tx, boil.Infer()); err != nil {
-			return rollback(err)
+		row := &models.PodcastEpisodeSegment{ID: cuid.New(), VideoID: videoID, AnalysisID: null.StringFrom(analysisID), Source: PodcastSegmentSourceLLM, Position: int64(i), Category: s.Category, StartMS: int64(s.StartMS), EndMS: int64(s.EndMS), StartCue: int64(s.StartCue), EndCue: int64(s.EndCue), StartText: s.StartText, EndText: s.EndText, Reason: s.Reason, Brand: null.StringFrom(s.Brand)}
+		if err := row.Insert(ctx, tx, boil.Infer()); err != nil {
+			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }

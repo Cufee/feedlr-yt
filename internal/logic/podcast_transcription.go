@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -46,6 +47,10 @@ func podcastAudioChunks(durationMS int) ([]podcastAudioChunk, error) {
 }
 
 func generatePodcastTranscript(ctx context.Context, db database.Client, source podcastInput) (database.PodcastTranscriptContent, error) {
+	return generatePodcastTranscriptChunks(ctx, db, source, nil)
+}
+
+func generatePodcastTranscriptChunks(ctx context.Context, db database.Client, source podcastInput, ready func(podcastTranscriptChunk) error) (database.PodcastTranscriptContent, error) {
 	v := source.video
 	if openrouter.DefaultClient == nil {
 		return database.PodcastTranscriptContent{}, processingError("provider_disabled", nil)
@@ -90,12 +95,70 @@ func generatePodcastTranscript(ctx context.Context, db database.Client, source p
 	for i := range chunks {
 		chunks[i].Path = filepath.Join(dir, fmt.Sprintf("chunk-%02d.flac", i))
 	}
+	chunkByPath := make(map[string]int, len(chunks))
+	for i, chunk := range chunks {
+		chunkByPath[chunk.Path] = i
+	}
+	provenance, _ := json.Marshal(map[string]any{"audio_sha256": audioHash, "downloaded_audio": identity, "chunk_ms": podcastChunkMS, "overlap_ms": podcastOverlapMS, "sample_rate": 16000, "channels": 1, "sample_bits": 16})
+	cacheKey := func(i int) string {
+		return podcastSHA256([]byte(fmt.Sprintf("%s:%s:chunk-v1:%d", source.transcriptKey, audioHash, i)))
+	}
+	loadChunk := func(i int) (openrouter.TranscriptionResult, bool, error) {
+		content, err := db.GetPodcastTranscriptContent(ctx, v.ID, cacheKey(i))
+		if errors.Is(err, sql.ErrNoRows) {
+			return openrouter.TranscriptionResult{}, false, nil
+		}
+		if err != nil {
+			return openrouter.TranscriptionResult{}, false, err
+		}
+		var details podcastChunkInputs
+		var cues []transcriptCue
+		if json.Unmarshal(content.InputJSON, &details) != nil || details.SourceKey != source.transcriptKey || details.AudioHash != audioHash || details.Index != i || details.StartMS != chunks[i].StartMS || details.EndMS != chunks[i].EndMS || content.Model != openrouter.TranscriptionModel || content.DurationMS != durationMS || json.Unmarshal(content.CuesJSON, &cues) != nil || content.ContentHash != podcastSHA256(content.CuesJSON) || validateTranscriptCues(cues, durationMS, true) != nil {
+			return openrouter.TranscriptionResult{}, false, processingError("cached_transcript_invalid", nil)
+		}
+		return podcastResultFromCues(chunks[i], cues, details.Language, content.UsageJSON), true, nil
+	}
 	results, err := transcribePodcastAudioChunks(ctx, chunks,
 		func(ctx context.Context, chunk podcastAudioChunk) error {
+			_, cached, err := loadChunk(chunkByPath[chunk.Path])
+			if err != nil || cached {
+				return err
+			}
 			return convertPodcastChunk(ctx, input, chunk)
 		},
 		func(ctx context.Context, path, language string) (openrouter.TranscriptionResult, error) {
-			return transcribePodcastChunk(ctx, db, path, language)
+			i := chunkByPath[path]
+			if cached, ok, err := loadChunk(i); err != nil || ok {
+				return cached, err
+			}
+			result, err := transcribePodcastChunk(ctx, db, path, language)
+			if err != nil {
+				return result, err
+			}
+			cues, err := mergePodcastTranscription(chunks[i:i+1], []openrouter.TranscriptionResult{result}, durationMS)
+			if err != nil {
+				return result, err
+			}
+			encoded, _ := json.Marshal(cues)
+			lang := normalizedTranscriptionLanguage(result.Language)
+			if lang == "" {
+				lang = language
+			}
+			details, _ := json.Marshal(podcastChunkInputs{AudioHash: audioHash, Index: i, StartMS: chunks[i].StartMS, EndMS: chunks[i].EndMS, Language: lang, SourceKey: source.transcriptKey})
+			content := database.PodcastTranscriptContent{VideoID: v.ID, SourceKey: cacheKey(i), Source: "generated_chunk", SourceURL: v.MediaURL.String, ContentHash: podcastSHA256(encoded), Model: openrouter.TranscriptionModel, DurationMS: durationMS, CuesJSON: encoded, UsageJSON: result.Usage, InputJSON: details}
+			if len(content.UsageJSON) == 0 {
+				content.UsageJSON = []byte("{}")
+			}
+			if err := db.SavePodcastTranscriptContent(ctx, content); err != nil {
+				return result, err
+			}
+			return podcastResultFromCues(chunks[i], cues, lang, result.Usage), nil
+		},
+		func(i int, result openrouter.TranscriptionResult) error {
+			if ready == nil {
+				return nil
+			}
+			return ready(podcastTranscriptChunk{Index: i, Chunks: chunks, Result: result, DurationMS: durationMS, Source: "generated", SourceURL: v.MediaURL.String, InputJSON: provenance})
 		},
 	)
 	if err != nil {
@@ -123,7 +186,10 @@ func generatePodcastTranscript(ctx context.Context, db database.Client, source p
 		Language  string            `json:"language,omitempty"`
 		Chunks    []json.RawMessage `json:"chunks"`
 	}{audioHash, normalizedTranscriptionLanguage(results[0].Language), usages})
-	provenance, _ := json.Marshal(map[string]any{"audio_sha256": audioHash, "downloaded_audio": identity, "language": normalizedTranscriptionLanguage(results[0].Language), "chunk_ms": podcastChunkMS, "overlap_ms": podcastOverlapMS, "sample_rate": 16000, "channels": 1, "sample_bits": 16})
+	var completeInputs map[string]any
+	_ = json.Unmarshal(provenance, &completeInputs)
+	completeInputs["language"] = normalizedTranscriptionLanguage(results[0].Language)
+	provenance, _ = json.Marshal(completeInputs)
 	return database.PodcastTranscriptContent{Source: "generated", SourceURL: v.MediaURL.String, Model: openrouter.TranscriptionModel, DurationMS: durationMS, CuesJSON: encoded, UsageJSON: usage, InputJSON: provenance}, nil
 }
 
@@ -132,6 +198,7 @@ func generatePodcastTranscript(ctx context.Context, db database.Client, source p
 func transcribePodcastAudioChunks(ctx context.Context, chunks []podcastAudioChunk,
 	convert func(context.Context, podcastAudioChunk) error,
 	transcribe func(context.Context, string, string) (openrouter.TranscriptionResult, error),
+	ready ...func(int, openrouter.TranscriptionResult) error,
 ) ([]openrouter.TranscriptionResult, error) {
 	if len(chunks) == 0 {
 		return nil, errors.New("no audio chunks")
@@ -145,6 +212,11 @@ func transcribePodcastAudioChunks(ctx context.Context, chunks []podcastAudioChun
 		return nil, err
 	}
 	results[0] = first
+	for _, f := range ready {
+		if err := f(0, first); err != nil {
+			return nil, err
+		}
+	}
 	language := normalizedTranscriptionLanguage(first.Language)
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -164,6 +236,11 @@ func transcribePodcastAudioChunks(ctx context.Context, chunks []podcastAudioChun
 				return err
 			}
 			results[index] = result
+			for _, f := range ready {
+				if err := f(index, result); err != nil {
+					return err
+				}
+			}
 			return nil
 		})
 	}

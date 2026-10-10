@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cufee/feedlr-yt/internal/templates/components/shared"
+	"github.com/cufee/feedlr-yt/internal/templates/components/ui"
 	"github.com/cufee/feedlr-yt/internal/types"
 )
 
@@ -53,6 +54,13 @@ templ podcastPlayer(player types.VideoPlayerProps) {
 					<div id="podcast-segments-panel" class="podcast-player-notes-content hidden" role="tabpanel" aria-labelledby="podcast-segments-tab"></div>
 				</section>
 				<div class="podcast-player-controls">
+					<div id="podcast-scan-wait" class="hidden" role="status" aria-live="polite">
+						@ui.Toast("", ui.ToastInfo, ui.WithToastClass("flex items-center gap-3")) {
+							<span class="ui-spinner size-4 shrink-0 border-2" aria-hidden="true"></span>
+							<span class="min-w-0 grow">Finding episode segments… Up to 30 seconds.</span>
+							<button id="podcast-scan-wait-skip" type="button" class="ui-btn ui-btn-ghost ui-btn-sm shrink-0">Skip</button>
+						}
+					</div>
 					<audio id="podcast-player" data-feedlr-podcast-player autoplay preload="metadata" src={ templ.URL(player.Video.StreamURL) }></audio>
 					<div class="podcast-player-timeline">
 						<div class="relative">
@@ -106,33 +114,50 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	const controller = new AbortController()
 	let lastProgress = -1
 	let progressTimer
-		let disposed = false
-		let loading = true
-		const segmentsEnabled = initialSegments?.enabled === true
-		let segments = initialSegments?.segments || []
-		let analysisStatus = initialSegments?.status || "idle"
-		let analysisPhase = initialSegments?.phase || ""
-		let analysisError = initialSegments?.error || ""
-			let analysisStarted = false
-			let playbackValidationAccepted = false
-		let statusRequestGeneration = 0
+	let disposed = false
+	let loading = true
+	let playbackFailed = false
+	let segmentsEnabled = initialSegments?.enabled === true
+	let segments = segmentSnapshot(initialSegments?.segments)
+	let analysisStatus = initialSegments?.status || "idle"
+	let analysisPhase = initialSegments?.phase || ""
+	let analysisError = initialSegments?.error || ""
+	let transcriptReady = initialSegments?.transcript_ready
+	let hasConfirmedSegments = initialSegments?.has_segments === true || segments.length > 0
+	let analysisStarted = false
+	let playbackValidationAccepted = false
+	let statusRequestGeneration = 0
 	const manuallyRewoundSegments = new Set()
 	let scrubbing = false
 	let pollTimer
+	let scanHoldActive = false
+	let scanHoldFinished = false
+	let scanHoldResume = false
+	let scanHoldPauseEvents = 0
+	let scanHoldDeadline = 0
+	let scanHoldTimer
 	let progressInput
+	const scanWaitNotice = root.querySelector("#podcast-scan-wait")
+	const scanWaitSkip = root.querySelector("#podcast-scan-wait-skip")
 	const segmentTab = root.querySelector("#podcast-segments-tab")
 	const notesTab = root.querySelector("#podcast-notes-tab")
 	const notesPanel = root.querySelector("#podcast-notes-panel")
 	const segmentsPanel = root.querySelector("#podcast-segments-panel")
 	const segmentCount = root.querySelector("[data-podcast-segment-count]")
 	const segmentSpinner = root.querySelector("[data-podcast-segment-spinner]")
-		const segmentMarkers = root.querySelector("#podcast-segment-markers")
-		audio.addEventListener("playing", startSegmentAnalysis, { once: true, signal: controller.signal })
-		function element(tag, className, value) { const node = document.createElement(tag); if (className) node.className = className; if (value) node.textContent = value; return node }
+	const segmentMarkers = root.querySelector("#podcast-segment-markers")
+	audio.addEventListener("playing", startSegmentAnalysis, { once: true, signal: controller.signal })
+	function element(tag, className, value) { const node = document.createElement(tag); if (className) node.className = className; if (value) node.textContent = value; return node }
+	function segmentSnapshot(values) {
+		const snapshot = new Map()
+		for (const segment of values || []) snapshot.set(JSON.stringify([segment.category, segment.start_ms, segment.end_ms, segment.brand || ""]), segment)
+		return [...snapshot.values()]
+	}
+	function invalidatesSegmentValidation(error) { return ["source_changed", "source_validation_failed", "configuration_changed"].includes(error) }
 	function updateSegmentTrack() {
 		if (!progressInput) return
 		const duration = Number.isFinite(audio.duration) ? audio.duration : 0
-			const ranges = segmentsEnabled && duration > 0 ? segments.filter((segment) => segment.skippable).map((segment) => ({ start: Math.max(0, Math.min(100, segment.start_ms / 1000 / duration * 100)), end: Math.max(0, Math.min(100, segment.end_ms / 1000 / duration * 100)) })).filter((range) => range.end > range.start).sort((a, b) => a.start - b.start) : []
+		const ranges = segmentsEnabled && duration > 0 ? segments.filter((segment) => segment.skippable).map((segment) => ({ start: Math.max(0, Math.min(100, segment.start_ms / 1000 / duration * 100)), end: Math.max(0, Math.min(100, segment.end_ms / 1000 / duration * 100)) })).filter((range) => range.end > range.start).sort((a, b) => a.start - b.start) : []
 		segmentMarkers.replaceChildren()
 		for (const range of ranges) { const marker = document.createElement("span"); marker.className = "absolute h-full rounded-full bg-accent/80"; marker.style.left = `${range.start}%`; marker.style.width = `${range.end - range.start}%`; segmentMarkers.append(marker) }
 	}
@@ -145,32 +170,33 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		notesTab.setAttribute("aria-selected", String(notesActive))
 		segmentTab.setAttribute("aria-selected", String(!notesActive))
 	}
-		function panelMessage(message, pending) {
+	function panelMessage(message, pending) {
 		const messagePanel = element("div", "glass-panel flex items-center gap-3 p-4 text-sm text-text-secondary")
 		if (pending) messagePanel.append(element("span", "ui-spinner size-4 border-2"))
 		messagePanel.append(element("span", "", message))
-			segmentsPanel.replaceChildren(messagePanel)
-		}
-		function analysisFailureMessage() {
-			if (analysisError === "request_failed") return "Could not load episode segment analysis. Playback will continue."
-			if (analysisStatus === "unavailable") return "Episode segment analysis is unavailable for this episode."
-			return "Episode segment analysis failed. Playback will continue."
-		}
-		function renderSegments() {
-			updateSegmentTrack()
-			segmentTab.hidden = !segmentsEnabled
-			const active = analysisStatus === "pending" || analysisStatus === "running"
-			segmentSpinner.classList.toggle("hidden", !segmentsEnabled || !active)
-			segmentCount.classList.toggle("hidden", !segmentsEnabled || analysisStatus !== "ready")
-			if (!segmentsEnabled) { segmentsPanel.replaceChildren(); return }
-			if (analysisStatus === "idle") { panelMessage("Episode segment analysis starts when playback begins.", false); return }
-				if (active) { panelMessage(analysisPhase === "validating" ? "Checking episode audio…" : analysisPhase === "scanning" ? "Scanning the episode for sponsors…" : analysisPhase === "preparing" || analysisPhase === "preparation" ? "Preparing episode transcript…" : "Finding episode segments…", false); return }
-			if (analysisStatus === "failed" || analysisStatus === "unavailable") { panelMessage(analysisFailureMessage(), false); return }
-			segmentCount.textContent = String(segments.length)
-			segmentsPanel.replaceChildren()
-			if (!segments.length) { panelMessage("No selected episode segments identified.", false); return }
-				const warning = !playbackValidationAccepted ? "Automatic skipping starts after the episode audio is checked when playback begins." : ""
-			if (warning) segmentsPanel.append(element("p", "mb-3 text-sm text-text-secondary", warning))
+		segmentsPanel.replaceChildren(messagePanel)
+	}
+	function analysisFailureMessage() {
+		if (segments.length) return analysisError === "request_failed" ? "Could not refresh episode segment analysis. The scan may be incomplete; confirmed segments remain available." : "Episode segment scanning stopped before completion. Confirmed segments remain available."
+		if (analysisError === "request_failed") return "Could not load episode segment analysis. Playback will continue."
+		if (analysisStatus === "unavailable") return "Episode segment analysis is unavailable for this episode."
+		return "Episode segment analysis failed. Playback will continue."
+	}
+	function renderSegments() {
+		updateSegmentTrack()
+		segmentTab.hidden = !segmentsEnabled
+		const active = analysisStatus === "pending" || analysisStatus === "running"
+		segmentSpinner.classList.toggle("hidden", !segmentsEnabled || !active)
+		segmentCount.classList.toggle("hidden", !segmentsEnabled || (!segments.length && analysisStatus !== "ready"))
+		if (!segmentsEnabled) { segmentsPanel.replaceChildren(); return }
+		segmentCount.textContent = String(segments.length)
+		segmentsPanel.replaceChildren()
+		if (analysisStatus === "idle") { panelMessage("Episode segment analysis starts when playback begins.", false); return }
+		if (active) panelMessage(analysisPhase === "validating" ? "Checking episode audio…" : analysisPhase === "scanning" ? "Scanning the episode for sponsors…" : analysisPhase === "preparing" || analysisPhase === "preparation" || analysisPhase === "transcribing" ? "Preparing episode transcript…" : "Finding episode segments…", false)
+		if (analysisStatus === "failed" || analysisStatus === "unavailable") panelMessage(analysisFailureMessage(), false)
+		if (!segments.length) { if (analysisStatus === "ready") panelMessage("No selected episode segments identified.", false); return }
+		const warning = !playbackValidationAccepted ? "Automatic skipping starts after the episode audio is checked when playback begins." : ""
+		if (warning) segmentsPanel.append(element("p", "mb-3 text-sm text-text-secondary", warning))
 		const list = element("div", "flex flex-col gap-2")
 		for (const segment of segments) {
 			const row = element("div", "glass-panel w-full p-3")
@@ -186,47 +212,99 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		}
 		segmentsPanel.append(list)
 	}
-		function applyStatus(payload) {
-			analysisStatus = payload.status || "idle"
-			analysisPhase = payload.phase || ""
-			analysisError = payload.error || ""
-			segments = payload.segments || []
-			renderSegments()
-			if (analysisStatus === "ready") skipSegmentAtCurrentTime()
+	function applyStatus(payload, allowHold = false) {
+		if (typeof payload.enabled === "boolean") segmentsEnabled = payload.enabled
+		analysisStatus = payload.status || "idle"
+		analysisPhase = payload.phase || ""
+		analysisError = payload.error || ""
+		if (typeof payload.transcript_ready === "boolean") transcriptReady = payload.transcript_ready
+		segments = segmentsEnabled && !invalidatesSegmentValidation(analysisError) ? segmentSnapshot(payload.segments) : []
+		hasConfirmedSegments = !invalidatesSegmentValidation(analysisError) && (payload.has_segments === true || segments.length > 0)
+		if (invalidatesSegmentValidation(analysisError)) playbackValidationAccepted = false
+		if (scanHoldActive && (!segmentsEnabled || analysisError || hasConfirmedSegments || !["pending", "running"].includes(analysisStatus))) finishScanHold()
+		else if (allowHold && playbackValidationAccepted) beginScanHold()
+		renderSegments()
+		skipSegmentAtCurrentTime()
+	}
+	async function loadSegmentStatus(method) {
+		if (disposed || !segmentsEnabled) return
+		if (pollTimer) window.clearTimeout(pollTimer)
+		pollTimer = undefined
+		const generation = ++statusRequestGeneration
+		try {
+			const response = await fetch(`/api/videos/${episode}/sponsor-segments`, { method, credentials: "include", signal: controller.signal })
+			if (disposed || generation !== statusRequestGeneration) return
+			if (!response.ok) throw new Error("segment_request_failed")
+			const payload = await response.json()
+			if (disposed || generation !== statusRequestGeneration) return
+			if (method === "POST") playbackValidationAccepted = !invalidatesSegmentValidation(payload.error) && (payload.status === "ready" || payload.status === "pending" || payload.status === "running" || (payload.status === "failed" && payload.segments?.length > 0))
+			applyStatus(payload, method === "POST")
+			if (segmentsEnabled && (payload.status === "pending" || payload.status === "running")) pollTimer = window.setTimeout(() => { pollTimer = undefined; loadSegmentStatus("GET") }, Number(payload.poll_after_ms) > 0 ? Number(payload.poll_after_ms) : 2000)
+		} catch (error) {
+			if (disposed || generation !== statusRequestGeneration || error.name === "AbortError") return
+			applyStatus({ status: "failed", error: "request_failed", segments: playbackValidationAccepted ? segments : [] })
 		}
-		async function loadSegmentStatus(method) {
-			if (disposed || !segmentsEnabled) return
-			if (pollTimer) window.clearTimeout(pollTimer)
-			pollTimer = undefined
-			const generation = ++statusRequestGeneration
-			try {
-				const response = await fetch(`/api/videos/${episode}/sponsor-segments`, { method, credentials: "include", signal: controller.signal })
-				if (disposed || generation !== statusRequestGeneration) return
-				if (!response.ok) throw new Error("segment_request_failed")
-					const payload = await response.json()
-					if (disposed || generation !== statusRequestGeneration) return
-					if (method === "POST") playbackValidationAccepted = payload.status === "ready" || payload.status === "pending" || payload.status === "running"
-				applyStatus(payload)
-				if (payload.status === "pending" || payload.status === "running") pollTimer = window.setTimeout(() => { pollTimer = undefined; loadSegmentStatus("GET") }, Number(payload.poll_after_ms) > 0 ? Number(payload.poll_after_ms) : 2000)
-			} catch (error) {
-				if (disposed || generation !== statusRequestGeneration || error.name === "AbortError") return
-				applyStatus({ status: "failed", error: "request_failed", segments: [] })
-			}
-		}
-		function startSegmentAnalysis() {
-			if (disposed || !segmentsEnabled || analysisStarted) return
-				analysisStarted = true
-				playbackValidationAccepted = false
-				analysisPhase = analysisStatus === "ready" ? "validating" : "preparing"
-				analysisStatus = "pending"
-			analysisError = ""
-			renderSegments()
-			loadSegmentStatus("POST")
-		}
+	}
+	function startSegmentAnalysis() {
+		if (disposed || !segmentsEnabled || analysisStarted) return
+		const canHoldInitially = transcriptReady === false && !analysisError && !["failed", "unavailable"].includes(analysisStatus) && !hasConfirmedSegments
+		analysisStarted = true
+		scanHoldDeadline = Date.now() + 30000
+		playbackValidationAccepted = false
+		analysisPhase = analysisStatus === "ready" ? "validating" : "preparing"
+		analysisStatus = "pending"
+		analysisError = ""
+		setLoading(false)
+		if (canHoldInitially) beginScanHold()
+		renderSegments()
+		loadSegmentStatus("POST")
+	}
+	function pauseForScanHold() {
+		if (!audio.paused) { scanHoldPauseEvents++; audio.pause() }
+	}
+	function beginScanHold() {
+		if (disposed || scanHoldActive || scanHoldFinished || playbackFailed || !analysisStarted || !segmentsEnabled || transcriptReady !== false || analysisError || hasConfirmedSegments || !["pending", "running"].includes(analysisStatus)) return
+		const remaining = scanHoldDeadline - Date.now()
+		if (remaining <= 0) { scanHoldFinished = true; return }
+		scanHoldActive = true
+		scanHoldResume = !audio.paused && !audio.ended
+		scanWaitNotice.classList.remove("hidden")
+		pauseForScanHold()
+		updatePlayButton()
+		scanHoldTimer = window.setTimeout(finishScanHold, remaining)
+	}
+	function finishScanHold() {
+		if (disposed || !scanHoldActive) return
+		scanHoldActive = false
+		scanHoldFinished = true
+		if (scanHoldTimer) window.clearTimeout(scanHoldTimer)
+		scanHoldTimer = undefined
+		scanWaitNotice.classList.add("hidden")
+		const resume = scanHoldResume && !audio.ended
+		scanHoldResume = false
+		updatePlayButton()
+		if (resume) audio.play().catch(() => {})
+	}
+	function requestPlay() {
+		if (disposed) return
+		if (scanHoldActive) { scanHoldResume = true; updatePlayButton(); return }
+		audio.play().catch(() => {})
+	}
+	function requestPause() {
+		if (disposed) return
+		scanHoldResume = false
+		audio.pause()
+		updatePlayButton()
+	}
+	function togglePlayback() {
+		if (scanHoldActive ? scanHoldResume : !audio.paused && !audio.ended) requestPause()
+		else requestPlay()
+	}
+	scanWaitSkip.addEventListener("click", () => { scanHoldResume = true; finishScanHold() }, { signal: controller.signal })
 	notesTab?.addEventListener("click",()=>setActivePanel("notes"),{signal:controller.signal})
 	segmentTab?.addEventListener("click",()=>setActivePanel("segments"),{signal:controller.signal})
 	renderSegments()
-		if (segmentsEnabled && (analysisStatus === "pending" || analysisStatus === "running")) loadSegmentStatus("GET")
+	if (segmentsEnabled && (analysisStatus === "pending" || analysisStatus === "running")) loadSegmentStatus("GET")
 
 	function saveProgress() {
 		if (!withProgress || disposed) return
@@ -246,6 +324,10 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		disposed = true
 		if (progressTimer) window.clearInterval(progressTimer)
 		if (pollTimer) window.clearTimeout(pollTimer)
+		if (scanHoldTimer) window.clearTimeout(scanHoldTimer)
+		scanHoldActive = false
+		scanHoldResume = false
+		scanWaitNotice.classList.add("hidden")
 		controller.abort()
 		audio.pause()
 		audio.removeAttribute("src")
@@ -278,6 +360,8 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 			})
 			navigator.mediaSession.setActionHandler("seekbackward", () => seek(-15))
 			navigator.mediaSession.setActionHandler("seekforward", () => seek(15))
+			navigator.mediaSession.setActionHandler("play", requestPlay)
+			navigator.mediaSession.setActionHandler("pause", requestPause)
 		} catch (_) {}
 	}
 	function formatTime(seconds) {
@@ -312,7 +396,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		skipSegmentAtCurrentTime()
 	}
 	function skipSegmentAtCurrentTime() {
-		if (scrubbing || !segmentsEnabled || !playbackValidationAccepted || analysisStatus !== "ready") return
+		if (scanHoldActive || scrubbing || !segmentsEnabled || !playbackValidationAccepted || !["pending", "running", "ready", "failed"].includes(analysisStatus)) return
 		const segment = segmentAt(audio.currentTime)
 		if (!segment || manuallyRewoundSegments.has(segmentID(segment))) return
 		const end = Number.isFinite(audio.duration) ? Math.min(segment.end_ms / 1000, audio.duration) : segment.end_ms / 1000
@@ -325,23 +409,17 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	const loadingIcon = root.querySelector("[data-podcast-loading-icon]")
 	function setLoading(value) {
 		loading = value
-		playToggle.disabled = value
-		playToggle.setAttribute("aria-busy", String(value))
-		loadingIcon.classList.toggle("hidden", !value)
-		if (value) {
-			root.querySelector("[data-podcast-play-icon]").classList.add("hidden")
-			root.querySelector("[data-podcast-pause-icon]").classList.add("hidden")
-			playToggle.setAttribute("aria-label", "Loading episode")
-			return
-		}
 		updatePlayButton()
 	}
 	function updatePlayButton() {
-		if (loading) return
-		const playing = !audio.paused && !audio.ended
-		root.querySelector("[data-podcast-play-icon]").classList.toggle("hidden", playing)
-		root.querySelector("[data-podcast-pause-icon]").classList.toggle("hidden", !playing)
-		playToggle.setAttribute("aria-label", playing ? "Pause episode" : "Play episode")
+		const busy = loading || scanHoldActive
+		const playing = scanHoldActive ? scanHoldResume : !audio.paused && !audio.ended
+		playToggle.disabled = loading && !scanHoldActive
+		playToggle.setAttribute("aria-busy", String(busy))
+		loadingIcon.classList.toggle("hidden", !busy)
+		root.querySelector("[data-podcast-play-icon]").classList.toggle("hidden", busy || playing)
+		root.querySelector("[data-podcast-pause-icon]").classList.toggle("hidden", busy || !playing)
+		playToggle.setAttribute("aria-label", busy && !scanHoldActive ? "Loading episode" : playing ? "Pause episode" : "Play episode")
 	}
 
 	function restoreProgress() {
@@ -366,10 +444,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 	const volumeInput = root.querySelector("#podcast-volume")
 	volumeInput.value = String(Math.round(audio.volume * 100))
 	volumeInput.addEventListener("input", () => { audio.volume = Number(volumeInput.value) / 100 }, { signal: controller.signal })
-	playToggle.addEventListener("click", () => {
-		if (audio.paused) audio.play()
-		else audio.pause()
-	}, { signal: controller.signal })
+	playToggle.addEventListener("click", togglePlayback, { signal: controller.signal })
 	root.querySelectorAll("[data-podcast-skip]").forEach((button) => {
 		button.addEventListener("click", () => seek(Number.parseInt(button.dataset.podcastSkip, 10)), { signal: controller.signal })
 	})
@@ -381,15 +456,22 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		scrubbing = false
 		skipSegmentAtCurrentTime()
 	}, { signal: controller.signal })
-		audio.addEventListener("loadedmetadata", updateTimeline, { signal: controller.signal })
-		audio.addEventListener("loadedmetadata", renderSegments, { signal: controller.signal })
-		audio.addEventListener("durationchange", () => { updateTimeline(); renderSegments(); skipSegmentAtCurrentTime() }, { signal: controller.signal })
-	audio.addEventListener("loadstart", () => setLoading(true), { signal: controller.signal })
+	audio.addEventListener("loadedmetadata", updateTimeline, { signal: controller.signal })
+	audio.addEventListener("loadedmetadata", renderSegments, { signal: controller.signal })
+	audio.addEventListener("durationchange", () => { updateTimeline(); renderSegments(); skipSegmentAtCurrentTime() }, { signal: controller.signal })
+	audio.addEventListener("loadstart", () => { playbackFailed = false; setLoading(true) }, { signal: controller.signal })
 	audio.addEventListener("canplay", () => setLoading(false), { signal: controller.signal })
-	audio.addEventListener("error", () => setLoading(false), { signal: controller.signal })
+	audio.addEventListener("error", () => { playbackFailed = true; scanHoldResume = false; finishScanHold(); setLoading(false) }, { signal: controller.signal })
 	audio.addEventListener("timeupdate", () => { updateTimeline(); skipSegmentAtCurrentTime() }, { signal: controller.signal })
-	audio.addEventListener("play", updatePlayButton, { signal: controller.signal })
-	audio.addEventListener("pause", updatePlayButton, { signal: controller.signal })
+	audio.addEventListener("play", () => {
+		if (scanHoldActive) { scanHoldResume = true; pauseForScanHold() }
+		updatePlayButton()
+	}, { signal: controller.signal })
+	audio.addEventListener("pause", () => {
+		if (scanHoldPauseEvents > 0) scanHoldPauseEvents--
+		else if (scanHoldActive) scanHoldResume = false
+		updatePlayButton()
+	}, { signal: controller.signal })
 	audio.addEventListener("ended", updatePlayButton, { signal: controller.signal })
 	audio.addEventListener("volumechange", () => {
 		volumeInput.value = String(Math.round(audio.volume * 100))
@@ -403,8 +485,7 @@ script podcastPlayerInit(episode, title, channel string, progress int, withProgr
 		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, button, a, [contenteditable=true]")) return
 		if (event.key === " ") {
 			event.preventDefault()
-			if (audio.paused) audio.play()
-			else audio.pause()
+			togglePlayback()
 		} else if (event.key === "ArrowLeft") {
 			event.preventDefault()
 			seek(-15)

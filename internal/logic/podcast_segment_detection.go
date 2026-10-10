@@ -34,6 +34,10 @@ type segmentDetector struct {
 	cues         []transcriptCue
 	title, notes string
 	calls        atomic.Int32
+	progressive  *podcastScanInput
+	sharedCalls  *atomic.Int32
+	limiter      chan struct{}
+	confirmed    func([]database.PodcastSegment, groundedSegment) error
 }
 
 type segmentWindow struct{ id, coreStart, coreEnd, from, to int }
@@ -65,14 +69,6 @@ type segmentWindowAnswer struct {
 	Segments  *[]segmentAnswer `json:"segments"`
 }
 
-func inferPodcastSegments(ctx context.Context, cues []transcriptCue, notes, title string) ([]database.PodcastSegment, error) {
-	if openrouter.DefaultClient == nil {
-		return nil, errors.New("segment provider unavailable")
-	}
-	d := &segmentDetector{client: openrouter.DefaultClient, cues: cues, title: title, notes: notes}
-	return d.detect(ctx)
-}
-
 func (d *segmentDetector) window(start, end, padding int) segmentWindow {
 	w := segmentWindow{id: start, coreStart: start, coreEnd: end, from: start, to: end}
 	return d.expand(w, padding, padding)
@@ -92,9 +88,13 @@ func (d *segmentDetector) expand(w segmentWindow, left, right int) segmentWindow
 func (d *segmentDetector) windows() []segmentWindow {
 	var windows []segmentWindow
 	for start := 0; start < len(d.cues); {
+		if d.progressive != nil && !d.progressive.owns(d.cues[start]) {
+			start++
+			continue
+		}
 		end, size := start, len(d.cues[start].Text)
 		// The byte bound also handles dense or malformed publisher timestamps.
-		for end+1 < len(d.cues) && d.cues[end+1].StartMS < d.cues[start].StartMS+segmentCoreMS && size+len(d.cues[end+1].Text) < 40_000 {
+		for end+1 < len(d.cues) && (d.progressive == nil || d.progressive.owns(d.cues[end+1])) && d.cues[end+1].StartMS < d.cues[start].StartMS+segmentCoreMS && size+len(d.cues[end+1].Text) < 40_000 {
 			end++
 			size += len(d.cues[end].Text)
 		}
@@ -115,18 +115,47 @@ func (d *segmentDetector) detect(ctx context.Context) ([]database.PodcastSegment
 	for batch := range batches {
 		group.Go(func() error {
 			pack := windows[batch*segmentPack : min(len(windows), (batch+1)*segmentPack)]
+			publishNonSponsors := func(segments []groundedSegment) error {
+				if d.confirmed == nil {
+					return nil
+				}
+				for _, s := range segments {
+					if s.category != "sponsor" {
+						if err := d.confirmed(d.interior(s), s); err != nil {
+							return err
+						}
+					}
+				}
+				return nil
+			}
 			segments, err := d.review(groupCtx, pack, segmentDiscoveryPrompt, "medium", false, 0)
-			if err != nil && groupCtx.Err() == nil {
+			var deferred *podcastContextDeferred
+			if err != nil && groupCtx.Err() == nil && !errors.As(err, &deferred) {
 				// An invalid discovery response is never an ad-free verdict. Give
 				// each source window a bounded independent review before failing.
+				recovered := make([][]groundedSegment, len(pack))
+				fallback, fallbackCtx := errgroup.WithContext(groupCtx)
+				fallback.SetLimit(segmentWorkers)
+				for i, w := range pack {
+					fallback.Go(func() error {
+						var err error
+						recovered[i], err = d.review(fallbackCtx, []segmentWindow{w}, segmentDiscoveryPrompt, "high", false, 0)
+						if err != nil {
+							return err
+						}
+						return publishNonSponsors(recovered[i])
+					})
+				}
+				if err = fallback.Wait(); err != nil {
+					return err
+				}
 				segments = nil
-				for _, w := range pack {
-					var recovered []groundedSegment
-					recovered, err = d.review(groupCtx, []segmentWindow{w}, segmentDiscoveryPrompt, "high", false, 0)
-					if err != nil {
-						return err
-					}
-					segments = append(segments, recovered...)
+				for _, result := range recovered {
+					segments = append(segments, result...)
+				}
+			} else if err == nil {
+				if err := publishNonSponsors(segments); err != nil {
+					return err
 				}
 			}
 			batches[batch] = segments
@@ -165,6 +194,10 @@ func (d *segmentDetector) detect(ctx context.Context) ([]database.PodcastSegment
 					// Review only when the support guard clips otherwise skippable
 					// ad speech. Mixed edge cues stay audible in either outcome.
 					boundaries, err := d.review(groupCtx, []segmentWindow{d.window(final.start.cue, final.end.cue, segmentExpansionMS)}, segmentBoundaryReviewPrompt, "high", true, 0)
+					var deferred *podcastContextDeferred
+					if errors.As(err, &deferred) {
+						return err
+					}
 					if err == nil {
 						supported = d.supportedInteriors(final, boundaries)
 					}
@@ -172,6 +205,11 @@ func (d *segmentDetector) detect(ctx context.Context) ([]database.PodcastSegment
 					// (empty boundaries) removes the skip entirely.
 				}
 				confirmed[i] = append(confirmed[i], supported...)
+				if d.confirmed != nil {
+					if err := d.confirmed(supported, final); err != nil {
+						return err
+					}
+				}
 			}
 			return nil
 		})
@@ -195,6 +233,10 @@ func (d *segmentDetector) review(ctx context.Context, windows []segmentWindow, p
 		payloadWindows[i] = map[string]any{"window_id": w.id, "core": [2]int{w.coreStart, w.coreEnd}, "cues": cues}
 	}
 	payload := map[string]any{"episode_title": d.title, "windows": payloadWindows}
+	if d.progressive != nil {
+		payload["context_start_is_episode_start"] = d.progressive.FirstChunk == 0
+		payload["context_end_is_episode_end"] = d.progressive.LastChunk == d.progressive.TotalChunks-1
+	}
 	if !sponsorOnly && d.notes != "" {
 		var sponsors []string
 		if json.Unmarshal([]byte(d.notes), &sponsors) == nil {
@@ -207,14 +249,28 @@ func (d *segmentDetector) review(ctx context.Context, windows []segmentWindow, p
 		if err = ctx.Err(); err != nil {
 			return nil, err
 		}
-		if d.calls.Add(1) > segmentMaxCalls {
+		calls := d.calls.Add(1)
+		if d.sharedCalls != nil {
+			calls = d.sharedCalls.Add(1)
+		}
+		if calls > segmentMaxCalls {
 			return nil, errors.New("segment request limit reached")
 		}
 		encoded, _ := json.Marshal(payload)
 		if len(encoded) > 300_000 {
 			return nil, errors.New("segment context too large")
 		}
+		if d.limiter != nil {
+			select {
+			case d.limiter <- struct{}{}:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
 		result, callErr := d.client.CompleteWithOptions(ctx, prompt+segmentResponsePrompt, string(encoded), openrouter.CompletionOptions{MaxTokens: 16_384, ReasoningEffort: effort})
+		if d.limiter != nil {
+			<-d.limiter
+		}
 		metrics.ObservePodcastProviderCost("sponsor_scanning", result.Usage.Cost)
 		if callErr != nil {
 			return nil, callErr
@@ -233,6 +289,13 @@ func (d *segmentDetector) review(ctx context.Context, windows []segmentWindow, p
 	for i, answer := range answers {
 		w := windows[i]
 		if *answer.NeedLeft || *answer.NeedRight {
+			if d.progressive != nil {
+				left := *answer.NeedLeft && w.from == 0 && d.progressive.FirstChunk > 0
+				right := *answer.NeedRight && w.to == len(d.cues)-1 && d.progressive.LastChunk < d.progressive.TotalChunks-1
+				if left || right {
+					return nil, &podcastContextDeferred{Left: left, Right: right}
+				}
+			}
 			if round >= segmentExpansionRounds {
 				return nil, errors.New("segment context remains unresolved")
 			}
@@ -258,6 +321,13 @@ func (d *segmentDetector) review(ctx context.Context, windows []segmentWindow, p
 			grounded, err := d.ground(s, w, sponsorOnly)
 			if err != nil {
 				return nil, err
+			}
+			if d.progressive != nil {
+				left := grounded.start.cue == 0 && d.progressive.FirstChunk > 0
+				right := grounded.end.cue == len(d.cues)-1 && d.progressive.LastChunk < d.progressive.TotalChunks-1
+				if left || right {
+					return nil, &podcastContextDeferred{Left: left, Right: right}
+				}
 			}
 			segments = append(segments, grounded)
 		}
@@ -377,6 +447,11 @@ func (d *segmentDetector) interior(s groundedSegment) []database.PodcastSegment 
 		return nil
 	}
 	first, last := d.cues[a], d.cues[b]
+	// Intro skips cover a brief greeting or hook. A long opening conversation
+	// contains too much potentially substantive material to skip conservatively.
+	if s.category == "intro" && last.EndMS-first.StartMS > 60_000 {
+		return nil
+	}
 	if last.EndMS <= first.StartMS || (last.EndMS-first.StartMS < 1500 && s.category != "interaction") {
 		return nil
 	}
@@ -470,6 +545,14 @@ func mergePodcastSegments(segments []database.PodcastSegment) []database.Podcast
 		}
 		merged = append(merged, s)
 	}
+	kept := merged[:0]
+	for _, segment := range merged {
+		if segment.Category == "intro" && segment.EndMS-segment.StartMS > 60_000 {
+			continue
+		}
+		kept = append(kept, segment)
+	}
+	merged = kept
 	sort.Slice(merged, func(i, j int) bool { return merged[i].StartMS < merged[j].StartMS })
 	return merged
 }

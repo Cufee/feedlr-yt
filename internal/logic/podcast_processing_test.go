@@ -22,6 +22,12 @@ import (
 
 func podcastLogicFixture(t *testing.T) database.Client {
 	t.Helper()
+	db, _ := podcastLogicFixtureDatabase(t)
+	return db
+}
+
+func podcastLogicFixtureDatabase(t *testing.T) (database.Client, string) {
+	t.Helper()
 	path := filepath.Join(t.TempDir(), "podcast.db")
 	raw, err := sql.Open("sqlite3", path)
 	if err != nil {
@@ -61,7 +67,7 @@ func podcastLogicFixture(t *testing.T) database.Client {
 	if err := db.SavePodcastSourceValidation(context.Background(), database.PodcastSourceValidation{VideoID: "episode", MetadataKey: input.metadataKey, Fingerprint: "fixture", InputJSON: []byte("{}"), ValidatedAt: time.Now()}); err != nil {
 		t.Fatal(err)
 	}
-	return db
+	return db, path
 }
 
 func fakeGeneratedContent() database.PodcastTranscriptContent {
@@ -200,37 +206,22 @@ func TestPodcastTranscriptionFlagAndInputInvalidation(t *testing.T) {
 	}
 }
 
-func TestPodcastScanRetryAndCrashReuseCompleteTranscript(t *testing.T) {
+func TestPodcastProgressiveRecoveryAndRetryReuseCompleteTranscript(t *testing.T) {
 	t.Setenv("PODCAST_TRANSCRIPTION_ENABLED", "true")
 	previous := openrouter.DefaultClient
 	openrouter.DefaultClient = nil
 	t.Cleanup(func() { openrouter.DefaultClient = previous })
-	db := podcastLogicFixture(t)
+	db, path := podcastLogicFixtureDatabase(t)
 	ctx := context.Background()
 	input, err := loadPodcastInput(ctx, db, "episode")
 	if err != nil {
 		t.Fatal(err)
 	}
-	generated, scans := 0, 0
-	p := podcastProcessor{db: db, generate: func(context.Context, database.Client, podcastInput) (database.PodcastTranscriptContent, error) {
-		generated++
+	var generated, scans atomic.Int32
+	preparer := podcastProcessor{db: db, generate: func(context.Context, database.Client, podcastInput) (database.PodcastTranscriptContent, error) {
+		generated.Add(1)
 		return fakeGeneratedContent(), nil
 	}}
-	p.scan = func(ctx context.Context, cues []transcriptCue, notes, title string) ([]database.PodcastSegment, error) {
-		scans++
-		content, err := db.GetPodcastTranscriptContent(ctx, "episode", input.transcriptKey)
-		if err != nil || len(content.CuesJSON) == 0 {
-			t.Fatal("scan started before complete transcript was persisted")
-		}
-		status, err := GetPodcastSegmentStatus(ctx, db, "episode")
-		if err != nil || status.Phase != "scanning" || status.Source != "generated" || status.DurationMS != 3600000 {
-			t.Fatalf("scanning status: %+v, %v", status, err)
-		}
-		if scans == 1 {
-			return nil, errors.New("transient scan error")
-		}
-		return []database.PodcastSegment{{Category: "sponsor", StartMS: 1000, EndMS: 3000, StartText: "Welcome", EndText: "episode"}}, nil
-	}
 	job, err := db.EnqueuePodcastProcessingJob(ctx, "episode", input.jobKey, podcastModel(), podcastSegmentsPromptVersion)
 	if err != nil {
 		t.Fatal(err)
@@ -240,35 +231,73 @@ func TestPodcastScanRetryAndCrashReuseCompleteTranscript(t *testing.T) {
 	if err != nil || !claimed {
 		t.Fatalf("claim: %v", err)
 	}
-	if _, _, err = p.prepare(ctx, input); err != nil {
+	if _, _, err = preparer.prepare(ctx, input); err != nil {
 		t.Fatal(err)
 	}
+	recoveredDB, err := database.NewSQLiteClient(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { recoveredDB.Close() })
+	joined, err := recoveredDB.EnqueuePodcastProcessingJob(ctx, "episode", input.jobKey, podcastModel(), podcastSegmentsPromptVersion)
+	if err != nil || joined.ID != job.ID || joined.Token != old.Token || joined.Status != database.PodcastSegmentRunning {
+		t.Fatalf("shared job join changed active ownership: %+v %v", joined, err)
+	}
+	p := podcastProcessor{db: recoveredDB, generateChunks: func(context.Context, database.Client, podcastInput, func(podcastTranscriptChunk) error) (database.PodcastTranscriptContent, error) {
+		t.Error("recovery or retry regenerated a persisted complete transcript")
+		return database.PodcastTranscriptContent{}, errors.New("unexpected transcription")
+	}, scanChunk: func(ctx context.Context, scan podcastScanInput, _, _ string, publish func(podcastScanPiece) error) ([]podcastScanPiece, error) {
+		attempt := scans.Add(1)
+		if scan.CoreIndex != 0 || scan.FirstChunk != 0 || scan.LastChunk != 1 || scan.TotalChunks != 6 || scan.DurationMS != 3600000 || len(scan.Cues) != 1 {
+			t.Errorf("cached transcript was not split into scan cores with neighbor context: %+v", scan)
+			return nil, errors.New("invalid scan context")
+		}
+		status, err := GetPodcastSegmentStatus(ctx, recoveredDB, "episode")
+		if err != nil || status.Phase != "scanning" || status.Source != "generated" || status.DurationMS != 3600000 {
+			t.Errorf("scanning status: %+v, %v", status, err)
+			return nil, errors.New("invalid scanning status")
+		}
+		if attempt == 1 {
+			return nil, errors.New("transient scan error")
+		}
+		cue := scan.Cues[0]
+		piece := podcastScanPiece{FirstChunk: scan.CoreIndex, LastChunk: scan.CoreIndex, Segments: []database.PodcastSegment{{Category: "sponsor", Reason: "Paid sponsor message", StartMS: cue.StartMS, EndMS: cue.EndMS, StartCue: 0, EndCue: 0, StartText: cue.Text, EndText: cue.Text}}}
+		if err := publish(piece); err != nil {
+			return nil, err
+		}
+		return []podcastScanPiece{piece}, nil
+	}}
 	time.Sleep(15 * time.Millisecond)
-	recovered, claimed, err := db.ClaimPodcastProcessingJob(ctx, "recovered", podcastJobLease)
-	if err != nil || !claimed || recovered.ID != old.ID {
-		t.Fatalf("recover: %v", err)
+	recovered, claimed, err := recoveredDB.ClaimPodcastProcessingJob(ctx, "recovered", podcastJobLease)
+	if err != nil || !claimed || recovered.ID != old.ID || recovered.Token == old.Token {
+		t.Fatalf("recover shared expired job: %+v %v", recovered, err)
+	}
+	if ok, err := db.FinishPodcastProcessingJob(ctx, old.ID, old.Token, database.PodcastSegmentReady, ""); err != nil || ok {
+		t.Fatalf("expired worker could finish the reclaimed job: %v %v", ok, err)
 	}
 	p.run(recovered)
-	status, err := GetPodcastSegmentStatus(ctx, db, "episode")
-	if err != nil || status.Status != "failed" || status.Error != "model_output_invalid" {
-		t.Fatalf("scan failure: %+v, %v", status, err)
+	for i := 0; i < 3; i++ {
+		status, err := GetPodcastSegmentStatus(ctx, db, "episode")
+		if err != nil || status.Status != "failed" || status.Error != "model_output_invalid" || scans.Load() != 1 || generated.Load() != 1 {
+			t.Fatalf("GET retried failed processing or lost its error: %+v scans=%d generated=%d err=%v", status, scans.Load(), generated.Load(), err)
+		}
 	}
 	retry, err := db.EnqueuePodcastProcessingJob(ctx, "episode", input.jobKey, podcastModel(), podcastSegmentsPromptVersion)
-	if err != nil || retry.ID != job.ID {
+	if err != nil || retry.ID != job.ID || retry.Status != database.PodcastSegmentPending || retry.Token != "" {
 		t.Fatalf("retry: %v", err)
 	}
-	claimedJob, claimed, err := db.ClaimPodcastProcessingJob(ctx, "retry", podcastJobLease)
+	claimedJob, claimed, err := recoveredDB.ClaimPodcastProcessingJob(ctx, "retry", podcastJobLease)
 	if err != nil || !claimed {
 		t.Fatalf("retry claim: %v", err)
 	}
 	p.run(claimedJob)
-	status, err = GetPodcastSegmentStatus(ctx, db, "episode")
-	if err != nil || status.Status != "ready" || len(status.Segments) != 1 || generated != 1 || scans != 2 {
-		t.Fatalf("ready: %+v, gen=%d scans=%d err=%v", status, generated, scans, err)
+	status, err := GetPodcastSegmentStatus(ctx, db, "episode")
+	if err != nil || status.Status != "ready" || len(status.Segments) != 1 || generated.Load() != 1 || scans.Load() != 2 {
+		t.Fatalf("ready: %+v, gen=%d scans=%d err=%v", status, generated.Load(), scans.Load(), err)
 	}
 	readyJob, err := db.GetPodcastProcessingJob(ctx, "episode", input.jobKey, podcastModel(), podcastSegmentsPromptVersion)
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || readyJob.AnalysisID == "" || readyJob.ID != job.ID {
+		t.Fatalf("completed retry lost its shared analysis identity: %+v %v", readyJob, err)
 	}
 	inputs, err := db.GetPodcastSegmentAnalysisInputs(ctx, readyJob.AnalysisID)
 	var provenance map[string]any
@@ -279,8 +308,8 @@ func TestPodcastScanRetryAndCrashReuseCompleteTranscript(t *testing.T) {
 	if err != nil || cached.Status != "ready" || len(cached.Segments) != 1 {
 		t.Fatalf("provider disabled lost completed cached scan: %+v %v", cached, err)
 	}
-	joined, err := db.EnqueuePodcastProcessingJob(ctx, "episode", input.jobKey, podcastModel(), podcastSegmentsPromptVersion)
-	if err != nil || joined.Status != "ready" {
+	joined, err = db.EnqueuePodcastProcessingJob(ctx, "episode", input.jobKey, podcastModel(), podcastSegmentsPromptVersion)
+	if err != nil || joined.Status != "ready" || joined.ID != job.ID {
 		t.Fatalf("ready join: %+v %v", joined, err)
 	}
 	if _, claim, err := db.ClaimPodcastProcessingJob(ctx, "unneeded", podcastJobLease); err != nil || claim {
@@ -304,7 +333,7 @@ func TestPodcastJobPreparationAndSilentTranscript(t *testing.T) {
 		content := fakeGeneratedContent()
 		content.CuesJSON = []byte("[]")
 		return content, nil
-	}, scan: func(context.Context, []transcriptCue, string, string) ([]database.PodcastSegment, error) {
+	}, scanChunk: func(context.Context, podcastScanInput, string, string, func(podcastScanPiece) error) ([]podcastScanPiece, error) {
 		t.Fatal("silence should not scan")
 		return nil, nil
 	}}

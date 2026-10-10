@@ -9,12 +9,17 @@ const script = template.match(/script podcastPlayerInit\([^)]*\)\s*\{([\s\S]*)\n
 assert.ok(script, 'podcastPlayerInit script exists in the template');
 
 const sponsor = { category: 'sponsor', start_ms: 10000, end_ms: 20000, start_text: 'Sponsor start', end_text: 'Sponsor end', skippable: true };
-const ready = (overrides = {}) => ({ enabled: true, status: 'ready', phase: '', duration_ms: 600000, source: 'generated', error: '', segments: [sponsor], ...overrides });
+const ready = (overrides = {}) => {
+  const state = { enabled: true, status: 'ready', phase: '', duration_ms: 600000, source: 'generated', error: '', transcript_ready: true, segments: [sponsor], ...overrides };
+  return { has_segments: state.segments.length > 0, ...state };
+};
 
 function harness({ initialSegments = { enabled: true, status: 'idle', segments: [] }, responses = [], duration = 600, currentTime = 0, readyState = 0, paused = true } = {}) {
   const requests = [];
   const timers = new Map();
   let nextTimer = 1;
+  let now = 0;
+  class ClockDate extends Date { static now() { return now; } }
   class Element extends EventTarget {
     constructor(tag = 'div') {
       super();
@@ -39,7 +44,7 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
     closest() { return null; }
     load() {}
     pause() { if (!this.paused) { this.paused = true; this.dispatchEvent(new Event('pause')); } }
-    async play() { this.paused = false; this.dispatchEvent(new Event('play')); this.dispatchEvent(new Event('playing')); }
+    async play() { this.playCalls = (this.playCalls || 0) + 1; this.paused = false; this.dispatchEvent(new Event('play')); if (!this.paused) this.dispatchEvent(new Event('playing')); }
   }
   const root = new Element();
   const audio = Object.assign(new Element('audio'), { duration, currentTime, readyState, paused, ended: false, volume: 1, playbackRate: 1 });
@@ -49,8 +54,10 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
     '#podcast-progress', '#podcast-elapsed', '#podcast-remaining', '#podcast-play-toggle',
     '[data-podcast-loading-icon]', '[data-podcast-play-icon]', '[data-podcast-pause-icon]',
     '#podcast-speed', '#podcast-volume',
+    '#podcast-scan-wait', '#podcast-scan-wait-skip',
   ];
   const elements = new Map(selectors.map((selector) => [selector, new Element()]));
+  elements.get('#podcast-scan-wait').classList.add('hidden');
   root.querySelector = (selector) => elements.get(selector) || null;
   const skipButtons = [-15, 15].map((seconds) => {
     const button = new Element('button');
@@ -69,7 +76,7 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
   const win = Object.assign(new EventTarget(), {
     localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)) },
     location: { origin: 'https://feedlr.test' },
-    setTimeout: (callback, ms) => { const id = nextTimer++; timers.set(id, { callback, ms, type: 'timeout' }); return id; },
+    setTimeout: (callback, ms) => { const id = nextTimer++; timers.set(id, { callback, ms, due: now + ms, type: 'timeout' }); return id; },
     clearTimeout: (id) => timers.delete(id),
     setInterval: (callback, ms) => { const id = nextTimer++; timers.set(id, { callback, ms, type: 'interval' }); return id; },
     clearInterval: (id) => timers.delete(id),
@@ -83,7 +90,7 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
     return { ok: true, json: async () => next };
   };
   const initialize = vm.runInNewContext(`(function(episode, title, channel, progress, withProgress, initialSegments) {${script[1]}\n})`, {
-    window: win, document: doc, navigator: {}, HTMLMediaElement: { HAVE_METADATA: 1, HAVE_FUTURE_DATA: 3 }, Element, AbortController, URL, fetch,
+    window: win, document: doc, navigator: {}, HTMLMediaElement: { HAVE_METADATA: 1, HAVE_FUTURE_DATA: 3 }, Element, AbortController, URL, Date: ClockDate, fetch,
   });
   initialize('episode-one', 'Episode', 'Podcast', 0, false, initialSegments);
   const text = (node) => [node.textContent, ...node.children.map(text)].filter(Boolean).join(' ');
@@ -97,9 +104,24 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
     text: () => text(elements.get('#podcast-segments-panel')),
     emit: (type) => audio.dispatchEvent(new Event(type)),
     cleanup: () => win.feedlrPodcastPlayer.cleanup(),
+    waiting: () => !elements.get('#podcast-scan-wait').classList.contains('hidden'),
+    async advance(ms) {
+      const target = now + ms;
+      for (let count = 0; count < 100; count++) {
+        const [id, timer] = [...timers].filter(([, value]) => value.type === 'timeout' && value.due <= target).sort((a, b) => a[1].due - b[1].due)[0] || [];
+        if (!timer) break;
+        now = timer.due;
+        timers.delete(id);
+        timer.callback();
+        await settle();
+      }
+      now = target;
+      await settle();
+    },
     async poll() {
-      const [id, timer] = [...timers].find(([, value]) => value.type === 'timeout') || [];
+      const [id, timer] = [...timers].filter(([, value]) => value.type === 'timeout').sort((a, b) => a[1].due - b[1].due)[0] || [];
       assert.ok(timer, 'analysis poll is scheduled');
+      now = timer.due;
       timers.delete(id);
       timer.callback();
       await settle();
@@ -115,6 +137,283 @@ function deferred() {
   const promise = new Promise((done) => { resolve = done; });
   return { promise, resolve };
 }
+
+const newScan = (overrides = {}) => ready({ status: 'running', phase: 'scanning', transcript_ready: false, segments: [], ...overrides });
+
+test('known missing transcript waits only after first playing and keeps loading across canplay', async () => {
+  const pending = deferred();
+  const h = harness({ initialSegments: newScan({ status: 'idle' }), responses: [pending.promise] });
+  assert.equal(h.waiting(), false);
+  assert.equal(h.requests.length, 0);
+  h.emit('canplay');
+  await h.audio.play();
+  assert.equal(h.waiting(), true);
+  assert.equal(h.audio.paused, true);
+  assert.equal(h.elements.get('#podcast-play-toggle')['aria-busy'], 'true');
+  assert.equal(h.elements.get('#podcast-play-toggle').disabled, false, 'pause intent remains available during the hold');
+  h.emit('canplay');
+  assert.equal(h.elements.get('#podcast-play-toggle')['aria-busy'], 'true');
+  assert.equal([...h.timers.values()].filter((timer) => timer.ms === 30000).length, 1);
+  h.cleanup();
+  pending.resolve(newScan());
+  await settle();
+});
+
+test('a complete cached transcript bypasses waiting while its sponsor scan runs', async () => {
+  for (const initialSegments of [{ enabled: true, status: 'idle', segments: [] }, newScan({ status: 'idle', transcript_ready: true })]) {
+    const h = harness({ initialSegments, responses: [newScan({ transcript_ready: true })] });
+    await h.audio.play();
+    await settle();
+    assert.equal(h.audio.paused, false);
+    assert.equal(h.waiting(), false);
+    assert.equal(h.elements.get('#podcast-play-toggle')['aria-busy'], 'false');
+    assert.equal([...h.timers.values()].some((timer) => timer.ms === 30000), false);
+    h.cleanup();
+  }
+});
+
+test('initial cache-only GET readiness can activate waiting on first playing without an earlier kickoff', async () => {
+  const pending = deferred();
+  const h = harness({ initialSegments: { enabled: true, status: 'running', segments: [] }, responses: [newScan(), pending.promise] });
+  await settle();
+  assert.equal(h.waiting(), false);
+  assert.deepEqual(h.requests.map((request) => request.method), ['GET']);
+  await h.audio.play();
+  assert.equal(h.waiting(), true);
+  assert.equal(h.audio.paused, true);
+  assert.deepEqual(h.requests.map((request) => request.method), ['GET', 'POST']);
+  h.cleanup();
+  pending.resolve(newScan());
+  await settle();
+});
+
+test('the first confirmed detection releases waiting, including an unselected category', async () => {
+  for (const detected of [newScan({ segments: [sponsor] }), newScan({ has_segments: true })]) {
+    const h = harness({ responses: [newScan(), detected] });
+    await h.audio.play();
+    await settle();
+    assert.equal(h.waiting(), true);
+    assert.equal(h.audio.paused, true);
+    await h.poll();
+    assert.equal(h.waiting(), false);
+    assert.equal(h.audio.paused, false);
+    assert.equal(h.elements.get('#podcast-play-toggle')['aria-busy'], 'false');
+    assert.equal(h.requests.filter((request) => request.method === 'POST').length, 1);
+    assert.equal([...h.timers.values()].some((timer) => timer.ms === 30000), false);
+    h.cleanup();
+  }
+});
+
+test('a transcript completed during an active hold still waits for a detection or the deadline', async () => {
+  const h = harness({ responses: [newScan(), newScan({ transcript_ready: true }), newScan({ transcript_ready: true, has_segments: true })] });
+  await h.audio.play();
+  await settle();
+  await h.poll();
+  assert.equal(h.waiting(), true);
+  assert.equal(h.audio.paused, true);
+  await h.poll();
+  assert.equal(h.waiting(), false);
+  assert.equal(h.audio.paused, false);
+  h.cleanup();
+});
+
+test('waiting ends at thirty seconds from kickoff and cannot restart on resumed playback or polls', async () => {
+  const h = harness({ responses: [newScan()] });
+  await h.audio.play();
+  await settle();
+  await h.advance(29999);
+  assert.equal(h.waiting(), true);
+  assert.equal(h.audio.paused, true);
+  await h.advance(1);
+  assert.equal(h.waiting(), false);
+  assert.equal(h.audio.paused, false);
+  assert.equal(h.elements.get('#podcast-play-toggle')['aria-busy'], 'false');
+  await h.audio.play();
+  h.emit('playing');
+  await h.poll();
+  assert.equal(h.waiting(), false);
+  assert.equal(h.audio.paused, false);
+  assert.equal(h.requests.filter((request) => request.method === 'POST').length, 1);
+  h.cleanup();
+});
+
+test('POST latency consumes the same thirty-second wait budget', async () => {
+  const pending = deferred();
+  const h = harness({ responses: [pending.promise] });
+  await h.audio.play();
+  await h.advance(20000);
+  assert.equal(h.audio.paused, false, 'unknown transcript state leaves playback independent until POST confirms eligibility');
+  pending.resolve(newScan());
+  await settle();
+  assert.equal(h.waiting(), true);
+  assert.equal([...h.timers.values()].some((timer) => timer.ms === 10000), true);
+  await h.advance(9999);
+  assert.equal(h.audio.paused, true);
+  await h.advance(1);
+  assert.equal(h.waiting(), false);
+  assert.equal(h.audio.paused, false);
+  h.cleanup();
+});
+
+test('a response after the thirty-second deadline cannot start a late hold', async () => {
+  const pending = deferred();
+  const h = harness({ responses: [pending.promise] });
+  await h.audio.play();
+  await h.advance(30001);
+  pending.resolve(newScan());
+  await settle();
+  assert.equal(h.waiting(), false);
+  assert.equal(h.audio.paused, false);
+  h.cleanup();
+});
+
+test('Skip explicitly resumes playback and leaves the scan polling in the background', async () => {
+  const h = harness({ responses: [newScan()] });
+  await h.audio.play();
+  await settle();
+  h.elements.get('#podcast-play-toggle').dispatchEvent(new Event('click'));
+  assert.equal(h.elements.get('#podcast-play-toggle')['aria-label'], 'Play episode');
+  h.elements.get('#podcast-scan-wait-skip').dispatchEvent(new Event('click'));
+  await settle();
+  assert.equal(h.audio.paused, false, 'the explicit Skip action overrides the earlier pause intent');
+  assert.equal(h.waiting(), false);
+  assert.equal([...h.timers.values()].some((timer) => timer.ms === 30000), false);
+  await h.poll();
+  assert.equal(h.audio.paused, false);
+  assert.equal(h.waiting(), false);
+  assert.equal(h.requests.filter((request) => request.method === 'POST').length, 1);
+  h.cleanup();
+});
+
+test('scan failures and terminal empty results release waiting without claiming sponsors were found', async () => {
+  for (const response of [newScan({ status: 'failed', error: 'transcription_failed' }), newScan({ status: 'failed', error: 'source_changed' }), newScan({ status: 'unavailable', error: 'provider_disabled' }), new Error('offline'), { ok: false, status: 502 }, ready({ segments: [] })]) {
+    const h = harness({ responses: [newScan(), response] });
+    await h.audio.play();
+    await settle();
+    assert.equal(h.waiting(), true);
+    await h.poll();
+    assert.equal(h.waiting(), false);
+    assert.equal(h.audio.paused, false);
+    assert.equal(h.elements.get('#podcast-play-toggle')['aria-busy'], 'false');
+    assert.equal(h.timers.size, 0);
+    h.cleanup();
+  }
+});
+
+test('failed kickoff never activates a wait, and disabled settings release an active wait', async () => {
+  const failed = harness({ initialSegments: newScan({ status: 'failed', error: 'transcription_failed' }), responses: [newScan({ status: 'failed', error: 'transcription_failed' })] });
+  await failed.audio.play();
+  await settle();
+  assert.equal(failed.waiting(), false);
+  assert.equal(failed.audio.paused, false);
+  failed.cleanup();
+
+  const h = harness({ responses: [newScan(), newScan({ enabled: false, status: 'disabled' })] });
+  await h.audio.play();
+  await settle();
+  await h.poll();
+  assert.equal(h.audio.paused, false);
+  assert.equal(h.waiting(), false);
+  assert.equal(h.timers.size, 0);
+  h.cleanup();
+});
+
+for (const reason of ['unauthenticated', 'disabled settings']) {
+  test(`${reason} cannot activate waiting for a missing transcript`, async () => {
+    const h = harness({ initialSegments: newScan({ enabled: false }) });
+    await h.audio.play();
+    await h.advance(30000);
+    assert.equal(h.waiting(), false);
+    assert.equal(h.audio.paused, false);
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.timers.size, 0);
+    h.cleanup();
+  });
+}
+
+test('user pause while waiting prevents automatic resume on a result or timeout', async () => {
+  for (const result of [false, true]) {
+    const h = harness({ responses: result ? [newScan(), newScan({ has_segments: true })] : [newScan()] });
+    await h.audio.play();
+    await settle();
+    h.elements.get('#podcast-play-toggle').dispatchEvent(new Event('click'));
+    assert.equal(h.elements.get('#podcast-play-toggle')['aria-label'], 'Play episode');
+    const plays = h.audio.playCalls;
+    if (result) await h.poll();
+    else await h.advance(30000);
+    assert.equal(h.waiting(), false);
+    assert.equal(h.audio.paused, true);
+    assert.equal(h.audio.playCalls, plays);
+    h.cleanup();
+  }
+});
+
+test('a user pause before POST resolves is preserved when the deadline releases the hold', async () => {
+  const pending = deferred();
+  const h = harness({ responses: [pending.promise] });
+  await h.audio.play();
+  h.audio.pause();
+  pending.resolve(newScan());
+  await settle();
+  await h.advance(30000);
+  assert.equal(h.waiting(), false);
+  assert.equal(h.audio.paused, true);
+  assert.equal(h.audio.playCalls, 1);
+  h.cleanup();
+});
+
+test('play attempts during a hold keep loading and do not restart kickoff or the deadline', async () => {
+  const h = harness({ responses: [newScan()] });
+  await h.audio.play();
+  await settle();
+  await h.advance(5000);
+  const deadline = [...h.timers.values()].find((timer) => timer.ms === 30000).due;
+  await h.audio.play();
+  h.emit('playing');
+  assert.equal(h.audio.paused, true);
+  assert.equal(h.waiting(), true);
+  assert.equal(h.elements.get('#podcast-play-toggle')['aria-busy'], 'true');
+  assert.equal([...h.timers.values()].find((timer) => timer.ms === 30000).due, deadline);
+  assert.equal(h.requests.filter((request) => request.method === 'POST').length, 1);
+  await h.advance(25000);
+  assert.equal(h.audio.paused, false);
+  h.cleanup();
+});
+
+test('audio playback failure ends waiting without resuming, including a late POST', async () => {
+  const pending = deferred();
+  const h = harness({ initialSegments: newScan({ status: 'idle' }), responses: [pending.promise] });
+  await h.audio.play();
+  assert.equal(h.waiting(), true);
+  h.emit('error');
+  assert.equal(h.waiting(), false);
+  assert.equal(h.audio.paused, true);
+  assert.equal(h.elements.get('#podcast-play-toggle')['aria-busy'], 'false');
+  pending.resolve(newScan());
+  await settle();
+  await h.advance(30000);
+  assert.equal(h.waiting(), false);
+  assert.equal(h.audio.paused, true);
+  assert.equal(h.audio.playCalls, 1);
+  h.cleanup();
+});
+
+test('cleanup cancels the wait deadline and ignores late results without resuming the old player', async () => {
+  const pending = deferred();
+  const h = harness({ initialSegments: newScan({ status: 'idle' }), responses: [pending.promise] });
+  await h.audio.play();
+  const deadline = [...h.timers.values()].find((timer) => timer.ms === 30000);
+  h.cleanup();
+  assert.equal(h.timers.size, 0);
+  assert.equal(h.waiting(), false);
+  deadline.callback();
+  pending.resolve(newScan({ has_segments: true }));
+  await settle();
+  assert.equal(h.audio.paused, true);
+  assert.equal(h.audio.playCalls, 1);
+  assert.equal(h.requests.length, 1);
+  assert.equal(h.requests[0].signal.aborted, true);
+});
 
 test('opening a podcast waits for playing, then starts once across buffering and resume', async () => {
   const h = harness({ paused: false, readyState: 1, responses: [{ status: 'running', phase: 'scanning', poll_after_ms: 750, segments: [] }, ready({ segments: [] })] });
@@ -228,8 +527,8 @@ test('failed validation keeps cached sponsor times from skipping and preserves p
   }
 });
 
-test('a pending replacement job suppresses old segments until its current result is ready', async () => {
-  const h = harness({ initialSegments: ready(), responses: [{ status: 'running', phase: 'preparing', segments: [sponsor] }, ready({ segments: [{ ...sponsor, start_ms: 11000, end_ms: 25000 }] })], currentTime: 12 });
+test('a pending replacement job suppresses old segments until its current result is confirmed', async () => {
+  const h = harness({ initialSegments: ready(), responses: [{ status: 'running', phase: 'preparing', segments: [] }, ready({ status: 'running', phase: 'scanning', segments: [{ ...sponsor, start_ms: 11000, end_ms: 25000 }] })], currentTime: 12 });
   await h.audio.play();
   await settle();
   h.emit('timeupdate');
@@ -238,6 +537,170 @@ test('a pending replacement job suppresses old segments until its current result
   await h.poll();
   assert.equal(h.audio.currentTime, 25);
   assert.deepEqual(h.requests.map((request) => request.method), ['POST', 'GET']);
+  h.cleanup();
+});
+
+test('confirmed segments appear and skip while preparation and scanning continue', async () => {
+  const later = { ...sponsor, start_ms: 30000, end_ms: 40000, start_text: 'Later sponsor' };
+  const h = harness({ responses: [ready({ status: 'running', phase: 'preparing', segments: [] }), ready({ status: 'running', phase: 'scanning' }), ready({ status: 'running', phase: 'scanning', segments: [sponsor, later] }), ready({ segments: [sponsor, later] })], currentTime: 12 });
+  await h.audio.play();
+  await settle();
+  assert.equal(h.audio.currentTime, 12);
+  assert.match(h.text(), /Preparing episode transcript/);
+  assert.doesNotMatch(h.text(), /No selected episode segments/);
+  await h.poll();
+  assert.equal(h.audio.currentTime, 20);
+  assert.match(h.text(), /Scanning/);
+  assert.match(h.text(), /Sponsor start/);
+  assert.equal(h.elements.get('[data-podcast-segment-count]').textContent, '1');
+  assert.equal(h.elements.get('[data-podcast-segment-count]').classList.contains('hidden'), false);
+  assert.equal(h.elements.get('[data-podcast-segment-spinner]').classList.contains('hidden'), false);
+  h.audio.currentTime = 31;
+  await h.poll();
+  assert.equal(h.audio.currentTime, 40);
+  assert.equal(h.elements.get('[data-podcast-segment-count]').textContent, '2');
+  await h.poll();
+  assert.doesNotMatch(h.text(), /Scanning/);
+  assert.equal(h.elements.get('[data-podcast-segment-spinner]').classList.contains('hidden'), true);
+  assert.equal(h.timers.size, 0);
+  h.cleanup();
+});
+
+test('later scan failure retains confirmed segments with an incomplete message', async () => {
+  const h = harness({ responses: [ready({ status: 'running', phase: 'scanning' }), ready({ status: 'failed', phase: 'failed', error: 'transcription_failed' })] });
+  await h.audio.play();
+  await settle();
+  h.audio.currentTime = 12;
+  await h.poll();
+  assert.equal(h.audio.currentTime, 20);
+  assert.equal(h.audio.paused, false);
+  assert.match(h.text(), /stopped before completion/);
+  assert.match(h.text(), /Sponsor start/);
+  assert.doesNotMatch(h.text(), /No selected episode segments/);
+  assert.equal(h.elements.get('[data-podcast-segment-count]').textContent, '1');
+  assert.equal(h.elements.get('[data-podcast-segment-spinner]').classList.contains('hidden'), true);
+  assert.equal(h.timers.size, 0);
+  h.cleanup();
+});
+
+test('a validated POST may return an already failed scan with usable confirmed intervals', async () => {
+  const partial = ready({ status: 'failed', phase: 'failed', error: 'transcription_failed' });
+  const h = harness({ initialSegments: partial, responses: [partial], currentTime: 12, readyState: 1 });
+  assert.equal(h.audio.currentTime, 12);
+  await h.audio.play();
+  await settle();
+  assert.equal(h.audio.currentTime, 20);
+  assert.match(h.text(), /stopped before completion/);
+  assert.match(h.text(), /Sponsor start/);
+  h.cleanup();
+});
+
+for (const invalidation of ['source_changed', 'source_validation_failed', 'configuration_changed']) {
+  test(`${invalidation} clears a validated running snapshot instead of skipping retained intervals`, async () => {
+    const h = harness({ responses: [ready({ status: 'running', phase: 'scanning' }), ready({ status: 'failed', phase: 'failed', error: invalidation })] });
+    await h.audio.play();
+    await settle();
+    assert.match(h.text(), /Sponsor start/);
+    h.audio.currentTime = 12;
+    await h.poll();
+    h.emit('timeupdate');
+    assert.equal(h.audio.currentTime, 12);
+    assert.equal(h.audio.paused, false);
+    assert.doesNotMatch(h.text(), /Sponsor start|confirmed segments remain available/i);
+    assert.match(h.text(), /analysis failed/);
+    assert.equal(h.elements.get('#podcast-segment-markers').children.length, 0);
+    assert.equal(h.elements.get('[data-podcast-segment-count]').classList.contains('hidden'), true);
+    assert.equal(h.timers.size, 0);
+    assert.deepEqual(h.requests.map((request) => request.method), ['POST', 'GET']);
+    h.cleanup();
+  });
+
+  test(`a failed ${invalidation} POST cannot validate retained cached intervals`, async () => {
+    const h = harness({ initialSegments: ready(), currentTime: 12, responses: [ready({ status: 'failed', phase: 'failed', error: invalidation })] });
+    await h.audio.play();
+    await settle();
+    h.emit('timeupdate');
+    assert.equal(h.audio.currentTime, 12);
+    assert.equal(h.audio.paused, false);
+    assert.doesNotMatch(h.text(), /Sponsor start|confirmed segments remain available/i);
+    assert.match(h.text(), /analysis failed/);
+    assert.equal(h.elements.get('#podcast-segment-markers').children.length, 0);
+    assert.equal(h.timers.size, 0);
+    assert.deepEqual(h.requests.map((request) => request.method), ['POST']);
+    h.cleanup();
+  });
+}
+
+test('a failed status refresh retains the last validated confirmed snapshot', async () => {
+  const h = harness({ responses: [ready({ status: 'running', phase: 'scanning' }), new Error('offline')] });
+  await h.audio.play();
+  await settle();
+  h.audio.currentTime = 12;
+  await h.poll();
+  assert.equal(h.audio.currentTime, 20);
+  assert.match(h.text(), /Could not refresh/);
+  assert.match(h.text(), /scan may be incomplete/);
+  assert.match(h.text(), /Sponsor start/);
+  assert.equal(h.timers.size, 0);
+  h.cleanup();
+});
+
+test('poll snapshots replace rows and deduplicate repeated confirmed intervals', async () => {
+  const corrected = { ...sponsor, start_text: 'Corrected sponsor' };
+  const later = { ...sponsor, start_ms: 30000, end_ms: 40000, start_text: 'Later sponsor' };
+  const h = harness({ responses: [ready({ status: 'running', phase: 'scanning', segments: [sponsor, sponsor] }), ready({ status: 'running', phase: 'scanning', segments: [corrected, later, corrected] }), ready({ segments: [corrected] })] });
+  await h.audio.play();
+  await settle();
+  assert.equal(h.elements.get('[data-podcast-segment-count]').textContent, '1');
+  assert.equal(h.elements.get('#podcast-segment-markers').children.length, 1);
+  await h.poll();
+  assert.equal(h.elements.get('[data-podcast-segment-count]').textContent, '2');
+  assert.equal(h.elements.get('#podcast-segment-markers').children.length, 2);
+  assert.match(h.text(), /Corrected sponsor/);
+  assert.doesNotMatch(h.text(), /Sponsor start/);
+  await h.poll();
+  assert.equal(h.elements.get('[data-podcast-segment-count]').textContent, '1');
+  assert.equal(h.elements.get('#podcast-segment-markers').children.length, 1);
+  assert.doesNotMatch(h.text(), /Later sponsor/);
+  h.cleanup();
+});
+
+test('disabled settings suppress cached partial segments and stop an active poll', async () => {
+  const disabled = harness({ initialSegments: ready({ enabled: false, status: 'running', phase: 'scanning' }), currentTime: 12 });
+  await disabled.audio.play();
+  disabled.emit('timeupdate');
+  assert.equal(disabled.audio.currentTime, 12);
+  assert.equal(disabled.requests.length, 0);
+  disabled.cleanup();
+
+  const h = harness({ responses: [ready({ status: 'running', phase: 'scanning' }), ready({ enabled: false, status: 'disabled' })] });
+  await h.audio.play();
+  await settle();
+  h.audio.currentTime = 12;
+  await h.poll();
+  h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 12);
+  assert.equal(h.elements.get('#podcast-segments-tab').hidden, true);
+  assert.equal(h.elements.get('#podcast-segment-markers').children.length, 0);
+  assert.equal(h.timers.size, 0);
+  assert.deepEqual(h.requests.map((request) => request.method), ['POST', 'GET']);
+  h.cleanup();
+});
+
+test('partial confirmed segments skip despite injected-ad duration differences and scan failure', async () => {
+  const h = harness({ duration: 603, currentTime: 12, responses: [ready({ status: 'running', phase: 'scanning' }), ready({ status: 'failed', error: 'transcription_failed' })] });
+  await h.audio.play();
+  await settle();
+  assert.equal(h.audio.currentTime, 20);
+  assert.doesNotMatch(h.text(), /audio length differs/);
+  h.audio.currentTime = 12;
+  await h.poll();
+  assert.equal(h.audio.currentTime, 20);
+  assert.match(h.text(), /stopped before completion/);
+  assert.match(h.text(), /Sponsor start/);
+  h.audio.duration = 600;
+  h.emit('durationchange');
+  assert.equal(h.audio.currentTime, 20);
   h.cleanup();
 });
 
@@ -321,7 +784,7 @@ test('validated publisher segments do not need a transcript duration for automat
 });
 
 test('manual forward seeking into a sponsor still automatically skips it', async () => {
-  const h = harness({ initialSegments: ready(), responses: [ready()] });
+  const h = harness({ initialSegments: ready(), responses: [ready({ status: 'running', phase: 'scanning' })] });
   await h.audio.play();
   await settle();
   const progress = h.elements.get('#podcast-progress');

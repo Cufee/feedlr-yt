@@ -378,6 +378,8 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 					playerProps.PodcastSegments.Phase = status.Phase
 					playerProps.PodcastSegments.Error = status.Error
 					playerProps.PodcastSegments.Source = status.Source
+					playerProps.PodcastSegments.TranscriptReady = status.TranscriptReady
+					playerProps.PodcastSegments.HasSegments = len(status.Segments) > 0
 					playerProps.PodcastSegments.DurationMS = status.DurationMS
 					for _, segment := range status.Segments {
 						if !slices.Contains(settings.PodcastSegments.SelectedCategories, segment.Category) {
@@ -385,6 +387,9 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 						}
 						playerProps.PodcastSegments.Segments = append(playerProps.PodcastSegments.Segments, types.PodcastSegmentProps{Category: segment.Category, StartMS: segment.StartMS, EndMS: segment.EndMS, StartText: segment.StartText, EndText: segment.EndText, Brand: segment.Brand, Reason: segment.Reason, Skippable: true})
 					}
+				} else {
+					playerProps.PodcastSegments.Status = database.PodcastSegmentFailed
+					playerProps.PodcastSegments.Error = "request_failed"
 				}
 			}
 		}
