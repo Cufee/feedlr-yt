@@ -185,7 +185,9 @@ func TestTranscribeSilenceAndMalformedResponses(t *testing.T) {
 		{"negative timestamp", `{"text":"Hello","segments":[{"start":-1,"end":1,"text":"Hello"}]}`, false},
 		{"empty timestamp interval", `{"text":"Hello","segments":[{"start":1,"end":1,"text":"Hello"}]}`, false},
 		{"reversed timestamp interval", `{"text":"Hello","segments":[{"start":2,"end":1,"text":"Hello"}]}`, false},
-		{"overlapping timestamps", `{"text":"Hello world","segments":[{"start":0,"end":2,"text":"Hello"},{"start":1,"end":3,"text":"world"}]}`, false},
+		{"overlapping timestamps", `{"text":"Hello world","segments":[{"start":0,"end":2,"text":"Hello"},{"start":1,"end":3,"text":"world"}]}`, true},
+		{"equal start timestamps", `{"text":"Hello world","segments":[{"start":0,"end":2,"text":"Hello"},{"start":0,"end":3,"text":"world"}]}`, true},
+		{"unordered overlapping timestamps", `{"text":"Hello world","segments":[{"start":2,"end":3,"text":"Hello"},{"start":1,"end":4,"text":"world"}]}`, false},
 		{"unordered timestamps", `{"text":"Hello world","segments":[{"start":2,"end":3,"text":"Hello"},{"start":0,"end":1,"text":"world"}]}`, false},
 		{"nonfinite timestamp", `{"text":"Hello","segments":[{"start":0,"end":1e999,"text":"Hello"}]}`, false},
 		{"empty segment text", `{"text":"Hello","segments":[{"start":0,"end":1,"text":""}]}`, false},
@@ -209,6 +211,65 @@ func TestTranscribeSilenceAndMalformedResponses(t *testing.T) {
 			}
 			if tc.ok && result.Segments == nil {
 				t.Fatal("explicit segment array should remain an array")
+			}
+		})
+	}
+}
+
+func TestTranscribePreservesOverlappingSegments(t *testing.T) {
+	path, _ := transcriptionFile(t)
+	calls := 0
+	c := New("test-key", "model")
+	c.http = &http.Client{Transport: transportFunc(func(*http.Request) (*http.Response, error) {
+		calls++
+		// These intervals reproduce the 380 ms overlap from a real Whisper response.
+		return providerResponse(http.StatusOK, `{"text":"Hello world","duration":602,"segments":[{"start":294.51,"end":295.01,"text":"Hello"},{"start":294.63,"end":303.15,"text":"world"}]}`), nil
+	})}
+	result, err := c.Transcribe(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []TranscriptionSegment{
+		{Start: 294.51, End: 295.01, Text: "Hello"},
+		{Start: 294.63, End: 303.15, Text: "world"},
+	}
+	if calls != 1 || result.Text != "Hello world" || len(result.Segments) != len(want) {
+		t.Fatalf("unexpected overlapping response: %+v, calls=%d", result, calls)
+	}
+	for i, segment := range result.Segments {
+		if segment != want[i] {
+			t.Fatalf("segment %d changed: got=%+v want=%+v", i, segment, want[i])
+		}
+	}
+}
+
+func TestTranscriptionTimestampDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		name, body, want string
+	}{
+		{
+			"missing field",
+			`{"text":"private transcript","segments":[{"end":1,"text":"private transcript"}]}`,
+			"timestamp segment 0 omitted start, end, or text",
+		},
+		{
+			"invalid interval",
+			`{"text":"private transcript","segments":[{"start":2,"end":1,"text":"private transcript"}]}`,
+			"invalid timestamp segment 0 (start=2 end=1)",
+		},
+		{
+			"unordered starts",
+			`{"text":"private transcript","segments":[{"start":2,"end":3,"text":"private transcript"},{"start":1,"end":4,"text":"private transcript"}]}`,
+			"unordered timestamp segment 1 (start=1 end=4 previous_start=2)",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := decodeTranscription([]byte(tc.body))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("missing timestamp diagnostics: got=%v want=%q", err, tc.want)
+			}
+			if strings.Contains(err.Error(), "private transcript") {
+				t.Fatal("timestamp diagnostics exposed transcript text")
 			}
 		})
 	}

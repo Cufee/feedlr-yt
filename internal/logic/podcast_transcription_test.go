@@ -61,6 +61,36 @@ func TestPodcastAudioChunksAndMerge(t *testing.T) {
 	}
 }
 
+func TestPodcastMergePreservesOverlappingSegments(t *testing.T) {
+	chunks, err := podcastAudioChunks(1200000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := []openrouter.TranscriptionResult{
+		{},
+		{Segments: []openrouter.TranscriptionSegment{
+			{Start: 294.51, End: 295.01, Text: "Hello"},
+			{Start: 294.63, End: 303.15, Text: "world"},
+		}},
+	}
+	cues, err := mergePodcastTranscription(chunks, results, 1200000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []transcriptCue{
+		{Index: 0, StartMS: 892510, EndMS: 893010, Text: "Hello"},
+		{Index: 1, StartMS: 892630, EndMS: 901150, Text: "world"},
+	}
+	if len(cues) != len(want) {
+		t.Fatalf("overlapping cues lost: %+v", cues)
+	}
+	for i, cue := range cues {
+		if cue != want[i] {
+			t.Fatalf("cue %d changed: got=%+v want=%+v", i, cue, want[i])
+		}
+	}
+}
+
 func TestPodcastDownloadBoundsAndRetry(t *testing.T) {
 	for _, mode := range []string{"known oversized", "stream oversized", "empty", "retry", "terminal"} {
 		t.Run(mode, func(t *testing.T) {

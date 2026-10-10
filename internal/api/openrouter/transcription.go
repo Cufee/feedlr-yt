@@ -246,14 +246,19 @@ func decodeTranscription(body []byte) (TranscriptionResult, error) {
 	if len(*decoded.Segments) == 0 && strings.TrimSpace(result.Text) != "" {
 		return TranscriptionResult{}, errors.New("transcription response omitted timestamps for nonempty text")
 	}
-	previousEnd := 0.0
-	for _, segment := range *decoded.Segments {
-		if segment.Start == nil || segment.End == nil || segment.Text == nil ||
-			!validSeconds(*segment.Start) || !validSeconds(*segment.End) ||
-			*segment.End <= *segment.Start || *segment.Start < previousEnd {
-			return TranscriptionResult{}, errors.New("transcription response contained invalid or unordered timestamp segment")
+	// Whisper segments can overlap; chronological order is determined by starts.
+	previousStart := 0.0
+	for i, segment := range *decoded.Segments {
+		if segment.Start == nil || segment.End == nil || segment.Text == nil {
+			return TranscriptionResult{}, fmt.Errorf("transcription response timestamp segment %d omitted start, end, or text", i)
 		}
-		previousEnd = *segment.End
+		if !validSeconds(*segment.Start) || !validSeconds(*segment.End) || *segment.End <= *segment.Start {
+			return TranscriptionResult{}, fmt.Errorf("transcription response contained invalid timestamp segment %d (start=%g end=%g)", i, *segment.Start, *segment.End)
+		}
+		if *segment.Start < previousStart {
+			return TranscriptionResult{}, fmt.Errorf("transcription response contained unordered timestamp segment %d (start=%g end=%g previous_start=%g)", i, *segment.Start, *segment.End, previousStart)
+		}
+		previousStart = *segment.Start
 		if strings.TrimSpace(*segment.Text) == "" {
 			if strings.TrimSpace(result.Text) != "" {
 				return TranscriptionResult{}, errors.New("transcription response contained an empty timestamp segment for nonempty text")
