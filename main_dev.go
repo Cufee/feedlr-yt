@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/api/openrouter"
 	"github.com/cufee/feedlr-yt/internal/api/podcastindex"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
@@ -21,6 +22,7 @@ import (
 )
 
 func main() {
+	openrouter.DefaultClient = openrouter.NewFromEnvironment()
 	log.Info().Msg("Starting in DEVELOPMENT mode with mock auth")
 
 	db, err := database.NewSQLiteClient(os.Getenv("DATABASE_PATH"))

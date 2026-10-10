@@ -11,6 +11,7 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/api/openrouter"
 	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -214,6 +215,7 @@ func (d *segmentDetector) review(ctx context.Context, windows []segmentWindow, p
 			return nil, errors.New("segment context too large")
 		}
 		result, callErr := d.client.CompleteWithOptions(ctx, prompt+segmentResponsePrompt, string(encoded), openrouter.CompletionOptions{MaxTokens: 16_384, ReasoningEffort: effort})
+		metrics.ObservePodcastProviderCost("sponsor_scanning", result.Usage.Cost)
 		if callErr != nil {
 			return nil, callErr
 		}

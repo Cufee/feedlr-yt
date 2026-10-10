@@ -14,6 +14,7 @@ import (
 )
 
 func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *logic.YouTubeTVSyncService) (*gocron.Scheduler, error) {
+	logic.StartPodcastProcessingWorkers(db)
 	s := gocron.NewScheduler(time.UTC)
 
 	_, err := s.Cron(utils.MustGetEnv("VIDEO_CACHE_UPDATE_CRON")).Do(func() {

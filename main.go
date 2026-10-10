@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/api/openrouter"
 	"github.com/cufee/feedlr-yt/internal/api/podcastindex"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
@@ -33,6 +34,8 @@ import (
 var assetsFs embed.FS
 
 func main() {
+	// Environment loading has completed before provider setup and recovery.
+	openrouter.DefaultClient = openrouter.NewFromEnvironment()
 	db, err := database.NewSQLiteClient(os.Getenv("DATABASE_PATH"))
 	if err != nil {
 		panic(err)

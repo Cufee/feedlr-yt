@@ -18,6 +18,7 @@ type Client interface {
 
 	PodcastShowsClient
 	PodcastSegmentsClient
+	PodcastProcessingClient
 
 	UsersClient
 	SettingsClient

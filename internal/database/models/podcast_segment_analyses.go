@@ -36,6 +36,7 @@ type PodcastSegmentAnalysis struct {
 	CompletedAt    null.Time   `boil:"completed_at" json:"completed_at,omitempty" toml:"completed_at" yaml:"completed_at,omitempty"`
 	CreatedAt      time.Time   `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt      time.Time   `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	InputJSON      []byte      `boil:"input_json" json:"input_json" toml:"input_json" yaml:"input_json"`
 
 	R *podcastSegmentAnalysisR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L podcastSegmentAnalysisL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -54,6 +55,7 @@ var PodcastSegmentAnalysisColumns = struct {
 	CompletedAt    string
 	CreatedAt      string
 	UpdatedAt      string
+	InputJSON      string
 }{
 	ID:             "id",
 	VideoID:        "video_id",
@@ -67,6 +69,7 @@ var PodcastSegmentAnalysisColumns = struct {
 	CompletedAt:    "completed_at",
 	CreatedAt:      "created_at",
 	UpdatedAt:      "updated_at",
+	InputJSON:      "input_json",
 }
 
 var PodcastSegmentAnalysisTableColumns = struct {
@@ -82,6 +85,7 @@ var PodcastSegmentAnalysisTableColumns = struct {
 	CompletedAt    string
 	CreatedAt      string
 	UpdatedAt      string
+	InputJSON      string
 }{
 	ID:             "podcast_segment_analyses.id",
 	VideoID:        "podcast_segment_analyses.video_id",
@@ -95,6 +99,7 @@ var PodcastSegmentAnalysisTableColumns = struct {
 	CompletedAt:    "podcast_segment_analyses.completed_at",
 	CreatedAt:      "podcast_segment_analyses.created_at",
 	UpdatedAt:      "podcast_segment_analyses.updated_at",
+	InputJSON:      "podcast_segment_analyses.input_json",
 }
 
 // Generated where
@@ -136,6 +141,7 @@ var PodcastSegmentAnalysisWhere = struct {
 	CompletedAt    whereHelpernull_Time
 	CreatedAt      whereHelpertime_Time
 	UpdatedAt      whereHelpertime_Time
+	InputJSON      whereHelper__byte
 }{
 	ID:             whereHelperstring{field: "\"podcast_segment_analyses\".\"id\""},
 	VideoID:        whereHelperstring{field: "\"podcast_segment_analyses\".\"video_id\""},
@@ -149,6 +155,7 @@ var PodcastSegmentAnalysisWhere = struct {
 	CompletedAt:    whereHelpernull_Time{field: "\"podcast_segment_analyses\".\"completed_at\""},
 	CreatedAt:      whereHelpertime_Time{field: "\"podcast_segment_analyses\".\"created_at\""},
 	UpdatedAt:      whereHelpertime_Time{field: "\"podcast_segment_analyses\".\"updated_at\""},
+	InputJSON:      whereHelper__byte{field: "\"podcast_segment_analyses\".\"input_json\""},
 }
 
 // PodcastSegmentAnalysisRels is where relationship names are stored.
@@ -207,9 +214,9 @@ func (r *podcastSegmentAnalysisR) GetAnalysisPodcastEpisodeSegments() PodcastEpi
 type podcastSegmentAnalysisL struct{}
 
 var (
-	podcastSegmentAnalysisAllColumns            = []string{"id", "video_id", "transcript_hash", "transcript_url", "model", "prompt_version", "status", "error", "started_at", "completed_at", "created_at", "updated_at"}
+	podcastSegmentAnalysisAllColumns            = []string{"id", "video_id", "transcript_hash", "transcript_url", "model", "prompt_version", "status", "error", "started_at", "completed_at", "created_at", "updated_at", "input_json"}
 	podcastSegmentAnalysisColumnsWithoutDefault = []string{"id", "video_id", "transcript_hash", "transcript_url", "model", "prompt_version", "status", "error", "started_at", "completed_at", "created_at", "updated_at"}
-	podcastSegmentAnalysisColumnsWithDefault    = []string{}
+	podcastSegmentAnalysisColumnsWithDefault    = []string{"input_json"}
 	podcastSegmentAnalysisPrimaryKeyColumns     = []string{"id"}
 	podcastSegmentAnalysisGeneratedColumns      = []string{}
 )

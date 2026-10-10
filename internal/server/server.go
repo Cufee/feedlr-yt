@@ -108,6 +108,7 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 
 		api.Post("/videos/:id/progress", toFiber(rapi.SaveVideoProgress))
 		api.Get("/videos/:id/sponsor-segments", toFiber(rapi.PodcastSponsorSegments))
+		api.Post("/videos/:id/sponsor-segments", toFiber(rapi.StartPodcastSponsorSegments))
 		api.Post("/videos/:id/watch-later", toFiber(rapi.ToggleWatchLater))
 		api.Post("/videos/:id/tv", playbackSameOrigin, toFiber(rapi.SendVideoToTV))
 		api.Get("/tv/status", toFiber(rapi.TVPlayerStatus))

@@ -11,8 +11,12 @@ var TableNames = struct {
 	Playlists                 string
 	PodcastEpisodeSegments    string
 	PodcastEpisodeTranscripts string
+	PodcastProcessingJobs     string
 	PodcastSegmentAnalyses    string
 	PodcastShows              string
+	PodcastSourceValidations  string
+	PodcastTranscriptContents string
+	PodcastTranscriptionSlots string
 	Sessions                  string
 	Settings                  string
 	Subscriptions             string
@@ -30,8 +34,12 @@ var TableNames = struct {
 	Playlists:                 "playlists",
 	PodcastEpisodeSegments:    "podcast_episode_segments",
 	PodcastEpisodeTranscripts: "podcast_episode_transcripts",
+	PodcastProcessingJobs:     "podcast_processing_jobs",
 	PodcastSegmentAnalyses:    "podcast_segment_analyses",
 	PodcastShows:              "podcast_shows",
+	PodcastSourceValidations:  "podcast_source_validations",
+	PodcastTranscriptContents: "podcast_transcript_contents",
+	PodcastTranscriptionSlots: "podcast_transcription_slots",
 	Sessions:                  "sessions",
 	Settings:                  "settings",
 	Subscriptions:             "subscriptions",

@@ -367,13 +367,19 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 		return playerProps, nil
 	}
 	if playerProps.Video.IsPodcast() {
-		analysis, err := db.GetLatestPodcastSegmentAnalysis(ctx, videoId)
-		if err == nil {
-			playerProps.PodcastSegments.Status = analysis.Status
-			if userId != "" {
-				settings, settingsErr := GetUserSettings(ctx, db, userId)
-				if settingsErr == nil && settings.PodcastSegments.Enabled {
-					for _, segment := range analysis.Segments {
+		playerProps.PodcastSegments.Status = "idle"
+		if userId != "" {
+			settings, settingsErr := GetUserSettings(ctx, db, userId)
+			if settingsErr == nil && settings.PodcastSegments.Enabled {
+				playerProps.PodcastSegments.Enabled = true
+				status, statusErr := GetPodcastSegmentStatus(ctx, db, videoId)
+				if statusErr == nil {
+					playerProps.PodcastSegments.Status = status.Status
+					playerProps.PodcastSegments.Phase = status.Phase
+					playerProps.PodcastSegments.Error = status.Error
+					playerProps.PodcastSegments.Source = status.Source
+					playerProps.PodcastSegments.DurationMS = status.DurationMS
+					for _, segment := range status.Segments {
 						if !slices.Contains(settings.PodcastSegments.SelectedCategories, segment.Category) {
 							continue
 						}

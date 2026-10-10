@@ -29,6 +29,8 @@ RUN --mount=type=cache,target=$GOPATH/pkg/mod CGO_ENABLED=1 GOOS=linux go build 
 
 FROM debian:stable-slim
 
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+
 ENV TZ=Etc/UTC
 ENV ZONEINFO=/zoneinfo.zip
 COPY --from=builder /usr/local/go/lib/time/zoneinfo.zip /

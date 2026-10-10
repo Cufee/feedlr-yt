@@ -202,6 +202,9 @@ func upsertEpisodes(ctx context.Context, db database.Client, channelID, feedURL 
 	}
 	for _, episode := range episodes {
 		if episode.Transcript == nil {
+			if err := db.DeletePodcastTranscript(uctx, rss.EpisodeID(feedURL, episode.GUID)); err != nil {
+				return errors.Wrap(err, "failed to remove episode transcript metadata")
+			}
 			continue
 		}
 		if err := db.UpsertPodcastTranscript(uctx, database.PodcastTranscript{

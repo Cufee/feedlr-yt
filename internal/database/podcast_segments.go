@@ -33,6 +33,7 @@ type PodcastSegmentAnalysis struct {
 
 type PodcastSegmentsClient interface {
 	UpsertPodcastTranscript(context.Context, PodcastTranscript) error
+	DeletePodcastTranscript(context.Context, string) error
 	GetPodcastTranscript(context.Context, string) (PodcastTranscript, error)
 	GetPodcastSegmentAnalysis(context.Context, string, string, string, string) (PodcastSegmentAnalysis, error)
 	AcquirePodcastSegmentAnalysis(context.Context, string, string, string, string, string) (PodcastSegmentAnalysis, bool, error)
@@ -50,6 +51,10 @@ func (c *sqliteClient) GetPodcastTranscript(ctx context.Context, videoID string)
 		return PodcastTranscript{}, err
 	}
 	return PodcastTranscript{VideoID: v.VideoID, URL: v.URL, MIMEType: v.MimeType, Language: v.Language.String, Rel: v.Rel.String}, nil
+}
+func (c *sqliteClient) DeletePodcastTranscript(ctx context.Context, videoID string) error {
+	_, err := models.PodcastEpisodeTranscripts(models.PodcastEpisodeTranscriptWhere.VideoID.EQ(videoID)).DeleteAll(ctx, c.db)
+	return err
 }
 func mapAnalysis(v *models.PodcastSegmentAnalysis, rows models.PodcastEpisodeSegmentSlice) PodcastSegmentAnalysis {
 	a := PodcastSegmentAnalysis{ID: v.ID, VideoID: v.VideoID, TranscriptHash: v.TranscriptHash, TranscriptURL: v.TranscriptURL, Model: v.Model, PromptVersion: v.PromptVersion, Status: v.Status, Error: v.Error.String, StartedAt: v.StartedAt, CompletedAt: v.CompletedAt}

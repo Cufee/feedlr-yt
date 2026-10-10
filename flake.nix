@@ -25,6 +25,8 @@
             go_1_26
             # Frontend build
             nodejs
+            # Preparing timestamped podcast transcription chunks
+            ffmpeg
             # Live reload
             air
             # Task runner

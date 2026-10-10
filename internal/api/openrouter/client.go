@@ -80,7 +80,7 @@ func (c *Client) CompleteWithOptions(ctx context.Context, system, input string, 
 	}
 	req.Header.Set("Authorization", "Bearer "+c.key)
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.doWithRetry(req)
 	if err != nil {
 		return Result{}, err
 	}

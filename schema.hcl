@@ -691,6 +691,11 @@ table "podcast_segment_analyses" {
     null = false
     type = text
   }
+  column "input_json" {
+    null = false
+    type = blob
+    default = "{}"
+  }
   column "transcript_url" {
     null = false
     type = text
@@ -818,6 +823,189 @@ table "podcast_episode_segments" {
   index "idx_podcast_episode_segments_analysis_position" {
     columns = [column.analysis_id, column.position]
     unique = true
+  }
+}
+
+table "podcast_transcript_contents" {
+  schema = schema.main
+  column "video_id" {
+    null = false
+    type = text
+  }
+  column "source_key" {
+    null = false
+    type = text
+  }
+  column "source" {
+    null = false
+    type = text
+  }
+  column "source_url" {
+    null = false
+    type = text
+  }
+  column "content_hash" {
+    null = false
+    type = text
+  }
+  column "model" {
+    null = false
+    type = text
+  }
+  column "duration_ms" {
+    null = false
+    type = integer
+  }
+  column "cues_json" {
+    null = false
+    type = blob
+  }
+  column "usage_json" {
+    null = false
+    type = blob
+  }
+  column "input_json" {
+    null = false
+    type = blob
+    default = "{}"
+  }
+  column "updated_at_ms" {
+    null = false
+    type = integer
+  }
+  primary_key {
+    columns = [column.video_id, column.source_key]
+  }
+  foreign_key "podcast_transcript_contents_video_id_fkey" {
+    columns = [column.video_id]
+    ref_columns = [table.videos.column.id]
+    on_delete = CASCADE
+  }
+}
+
+table "podcast_source_validations" {
+  schema = schema.main
+  column "video_id" {
+    null = false
+    type = text
+  }
+  column "metadata_key" {
+    null = false
+    type = text
+  }
+  column "fingerprint" {
+    null = false
+    type = text
+  }
+  column "input_json" {
+    null = false
+    type = blob
+  }
+  column "validated_at" {
+    null = false
+    type = date
+  }
+  primary_key {
+    columns = [column.video_id, column.metadata_key]
+  }
+  foreign_key "podcast_source_validations_video_id_fkey" {
+    columns = [column.video_id]
+    ref_columns = [table.videos.column.id]
+    on_delete = CASCADE
+  }
+}
+
+table "podcast_processing_jobs" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = text
+  }
+  column "video_id" {
+    null = false
+    type = text
+  }
+  column "source_key" {
+    null = false
+    type = text
+  }
+  column "model" {
+    null = false
+    type = text
+  }
+  column "prompt_version" {
+    null = false
+    type = text
+  }
+  column "status" {
+    null = false
+    type = text
+  }
+  column "phase" {
+    null = false
+    type = text
+  }
+  column "error" {
+    null = false
+    type = text
+  }
+  column "transcript_hash" {
+    null = false
+    type = text
+  }
+  column "analysis_id" {
+    null = false
+    type = text
+  }
+  column "duration_ms" {
+    null = false
+    type = integer
+  }
+  column "token" {
+    null = false
+    type = text
+  }
+  column "lease_until_ms" {
+    null = false
+    type = integer
+  }
+  column "created_at_ms" {
+    null = false
+    type = integer
+  }
+  column "updated_at_ms" {
+    null = false
+    type = integer
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "podcast_processing_jobs_video_id_fkey" {
+    columns = [column.video_id]
+    ref_columns = [table.videos.column.id]
+    on_delete = CASCADE
+  }
+  index "idx_podcast_processing_jobs_input_unique" {
+    columns = [column.video_id, column.source_key, column.model, column.prompt_version]
+    unique = true
+  }
+  index "idx_podcast_processing_jobs_status_lease" {
+    columns = [column.status, column.lease_until_ms]
+  }
+}
+
+table "podcast_transcription_slots" {
+  schema = schema.main
+  column "token" {
+    null = false
+    type = text
+  }
+  column "lease_until_ms" {
+    null = false
+    type = integer
+  }
+  primary_key {
+    columns = [column.token]
   }
 }
 

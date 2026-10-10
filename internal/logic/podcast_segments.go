@@ -10,77 +10,36 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/openrouter"
-	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/metrics"
 )
 
-const podcastSegmentsPromptVersion = "podcast-segments-v7"
-const podcastSegmentLease = 10 * time.Minute
+const podcastSegmentsPromptVersion = "podcast-segments-v8"
 
 type PodcastSegmentStatus struct {
-	Status   string
-	Segments []database.PodcastSegment
+	Status, Phase, Error, Source string
+	DurationMS                   int
+	Segments                     []database.PodcastSegment
 }
 type transcriptCue struct {
 	Index, StartMS, EndMS int
 	Text                  string
 }
 
-var segmentRuns sync.Map
-
 func podcastModel() string {
 	if openrouter.DefaultClient != nil {
 		return openrouter.DefaultClient.Model()
 	}
+	if model := strings.TrimSpace(os.Getenv("PODCAST_SEGMENTS_MODEL")); model != "" {
+		return model
+	}
 	return openrouter.DefaultModel
-}
-
-// EnsurePodcastSegmentAnalysis obtains durable state and starts at most one
-// local goroutine. A duplicate process joins through the database uniqueness key.
-func EnsurePodcastSegmentAnalysis(ctx context.Context, db database.Client, videoID string) (PodcastSegmentStatus, error) {
-	v, err := db.GetVideoByID(ctx, videoID)
-	if err != nil {
-		return PodcastSegmentStatus{}, err
-	}
-	if v.Type != string(youtube.VideoTypePodcastEpisode) {
-		return PodcastSegmentStatus{}, errors.New("video is not a podcast episode")
-	}
-	source, err := db.GetPodcastTranscript(ctx, videoID)
-	if err != nil {
-		return PodcastSegmentStatus{Status: database.PodcastSegmentUnavailable}, nil
-	}
-	if openrouter.DefaultClient == nil {
-		return PodcastSegmentStatus{Status: database.PodcastSegmentUnavailable}, nil
-	}
-	bytes, failure := fetchTranscript(ctx, source.URL, source.MIMEType)
-	hash := hashTranscript(bytes, source.URL, failure, v.Description, v.Title)
-	model := podcastModel()
-	a, owner, err := db.AcquirePodcastSegmentAnalysis(ctx, videoID, hash, source.URL, model, podcastSegmentsPromptVersion)
-	if err != nil {
-		return PodcastSegmentStatus{}, err
-	}
-	if a.Status == database.PodcastSegmentRunning && a.StartedAt.Valid && time.Since(a.StartedAt.Time) > podcastSegmentLease {
-		_ = db.CompletePodcastSegmentAnalysis(context.Background(), a.ID, database.PodcastSegmentFailed, "analysis_interrupted", nil)
-		a.Status = database.PodcastSegmentFailed
-	}
-	if !owner {
-		return PodcastSegmentStatus{Status: a.Status, Segments: a.Segments}, nil
-	}
-	if failure != "" {
-		_ = db.CompletePodcastSegmentAnalysis(context.Background(), a.ID, database.PodcastSegmentUnavailable, failure, nil)
-		return PodcastSegmentStatus{Status: database.PodcastSegmentUnavailable}, nil
-	}
-	if _, loaded := segmentRuns.LoadOrStore(a.ID, struct{}{}); !loaded {
-		go runPodcastSegmentAnalysis(db, a.ID, bytes, v.Description, v.Title)
-	}
-	return PodcastSegmentStatus{Status: database.PodcastSegmentRunning}, nil
 }
 
 func hashTranscript(bytes []byte, url, failure, description, title string) string {
@@ -121,37 +80,6 @@ func isTimedTranscript(mime string) bool {
 	return false
 }
 
-func runPodcastSegmentAnalysis(db database.Client, id string, data []byte, description, title string) {
-	defer segmentRuns.Delete(id)
-	started := time.Now()
-	complete := func(status, failure string, segments []database.PodcastSegment) {
-		completionCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = db.CompletePodcastSegmentAnalysis(completionCtx, id, status, failure, segments)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
-	defer cancel()
-	cues, err := parseTimedTranscript(data)
-	if err != nil {
-		complete(database.PodcastSegmentUnavailable, "transcript_parse_failed", nil)
-		metrics.ObservePodcastSegmentAnalysis("transcript_parse_failed", time.Since(started).Seconds(), nil)
-		return
-	}
-	notes := extractPodcastSponsors(ctx, description)
-	segments, err := inferPodcastSegments(ctx, cues, notes, title)
-	if err != nil {
-		complete(database.PodcastSegmentFailed, "model_output_invalid", nil)
-		metrics.ObservePodcastSegmentAnalysis("model_output_invalid", time.Since(started).Seconds(), nil)
-		return
-	}
-	complete(database.PodcastSegmentReady, "", segments)
-	categories := make([]string, 0, len(segments))
-	for _, segment := range segments {
-		categories = append(categories, segment.Category)
-	}
-	metrics.ObservePodcastSegmentAnalysis("ready", time.Since(started).Seconds(), categories)
-}
-
 func parseTimedTranscript(data []byte) ([]transcriptCue, error) {
 	text := strings.ReplaceAll(string(data), "\r\n", "\n")
 	blocks := strings.Split(text, "\n\n")
@@ -179,7 +107,11 @@ func parseTimedTranscript(data []byte) ([]transcriptCue, error) {
 		if !ok {
 			return nil, errors.New("invalid cue start")
 		}
-		end, ok := parseCueTime(strings.Fields(parts[1])[0])
+		endFields := strings.Fields(parts[1])
+		if len(endFields) == 0 {
+			return nil, errors.New("missing cue end")
+		}
+		end, ok := parseCueTime(endFields[0])
 		if !ok || end <= start {
 			return nil, errors.New("invalid cue end")
 		}
@@ -267,6 +199,7 @@ func extractPodcastSponsors(ctx context.Context, description string) string {
 	extractionCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	result, err := openrouter.DefaultClient.CompleteWithOptions(extractionCtx, sponsorExtractionPrompt, notes, openrouter.CompletionOptions{MaxTokens: 2048, ReasoningEffort: "low"})
+	metrics.ObservePodcastProviderCost("sponsor_notes", result.Usage.Cost)
 	if err != nil {
 		return ""
 	}

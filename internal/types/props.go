@@ -199,8 +199,13 @@ type PodcastSegmentProps struct {
 }
 
 type PodcastSegmentAnalysisProps struct {
-	Status   string                `json:"status"`
-	Segments []PodcastSegmentProps `json:"segments"`
+	Enabled    bool                  `json:"enabled"`
+	Status     string                `json:"status"`
+	Phase      string                `json:"phase"`
+	Error      string                `json:"error"`
+	Source     string                `json:"source"`
+	DurationMS int                   `json:"duration_ms"`
+	Segments   []PodcastSegmentProps `json:"segments"`
 }
 
 type PlaylistProps struct {
