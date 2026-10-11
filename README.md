@@ -19,7 +19,7 @@ Core functionality is complete and working reliably. Implemented in this reposit
 - YouTube playlist sync via OAuth (home feed, Watch Later, and all user/imported playlists)
 - YouTube TV lounge sync (pairing, progress sync, SponsorBlock skip, send video to an online TV)
 - Native player through YouTube proxy
-- YouTube chapter navigation and previews with a SponsorBlock-aware timeline
+- YouTube chapter navigation, native scrub previews even without chapters, and a SponsorBlock-aware timeline
 - Cached podcast sponsor scanning with optional OpenRouter transcript generation
 - Background cron jobs for cache and sync tasks
 

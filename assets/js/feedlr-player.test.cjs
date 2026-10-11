@@ -1326,6 +1326,77 @@ test('chapter metadata loads without delaying playback and merges sponsor priori
   h.controller.cleanup();
 });
 
+const nativeStoryboard = { duration: 5000, interval: 1000, count: 5, width: 160, height: 90, columns: 2, rows: 2, sheets: ['sheet0', 'sheet1'] };
+
+test('native storyboard previews install without chapters or sponsors and persist across renewals', async () => {
+  const h = harness({ chapterResponses: [{ chapters: [], storyboard: nativeStoryboard }] });
+  await h.controller.start;
+  await settle();
+  assert.equal(h.players[0].chapterTracks, undefined);
+  const previews = h.players[0].thumbnailTracks[0].vtt;
+  assert.match(previews, /00:00:00\.000 --> 00:16:40\.000/);
+  assert.match(previews, /storyboards\/1\/thumbnail#xywh=0,0,160,90/);
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  await settle();
+  assert.equal(h.players[1].thumbnailTracks[0].vtt, previews);
+  assert.equal(h.requests.filter(request => request.url.endsWith('/chapters')).length, 1);
+  h.controller.cleanup();
+});
+
+test('storyboard previews remain available when chapter-track installation fails or is unsupported', async () => {
+  for (const supported of [true, false]) {
+    const metadata = deferred();
+    const h = harness({ chapterResponses: [metadata.promise] });
+    await h.controller.start;
+    h.players[0].addChaptersTrack = supported ? async () => { throw new Error('chapter track failed'); } : undefined;
+    metadata.resolve({ chapters: [{start: 0, end: 5000, title: 'Content'}], storyboard: nativeStoryboard });
+    await settle();
+    assert.match(h.players[0].thumbnailTracks[0].vtt, /storyboards\/0\/thumbnail/);
+    assert.equal(h.controller.mode, 'native');
+    assert.equal(h.controller.ready, true);
+    h.controller.cleanup();
+  }
+});
+
+test('malformed storyboards preserve chapter preview fallback', async () => {
+  const h = harness({ chapterResponses: [{
+    chapters: [{start: 0, end: 5000, title: 'Opening', thumbnails: [{url:'https://i.ytimg.com/cover.jpg',width:336,height:188}]}],
+    storyboard: { ...nativeStoryboard, interval: 0 },
+  }] });
+  await h.controller.start;
+  await settle();
+  assert.match(h.players[0].thumbnailTracks[0].vtt, /chapters\/0\/thumbnail\?v=3#xywh=0,0,336,188/);
+  h.controller.cleanup();
+});
+
+test('a late storyboard response installs only on the current native adapter', async () => {
+  const metadata = deferred();
+  const h = harness({ chapterResponses: [metadata.promise] });
+  await h.controller.start;
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  metadata.resolve({chapters: [], storyboard: nativeStoryboard});
+  await settle();
+  assert.equal(h.players[0].thumbnailTracks, undefined);
+  assert.equal(h.players[1].thumbnailTracks.length, 1);
+  h.controller.cleanup();
+});
+
+test('switching native adapters during chapter installation skips obsolete preview installation', async () => {
+  const metadata = deferred(), installed = deferred();
+  const h = harness({ chapterResponses: [metadata.promise] });
+  await h.controller.start;
+  h.players[0].addChaptersTrack = () => installed.promise;
+  metadata.resolve({chapters: [{start: 0, end: 5000, title: 'Content'}], storyboard: nativeStoryboard});
+  await settle();
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  await settle();
+  installed.resolve();
+  await settle();
+  assert.equal(h.players[0].thumbnailTracks, undefined);
+  assert.equal(h.players[1].thumbnailTracks.length, 1);
+  h.controller.cleanup();
+});
+
 test('a late chapter response installs only on the current adapter and renewals reuse its metadata', async () => {
   const metadata = deferred();
   const h = harness({ chapterResponses: [metadata.promise] });

@@ -39,44 +39,55 @@ type ChapterThumbnailCrop struct {
 	Height int `json:"height"`
 }
 
+// VideoTimeline keeps scrub previews independent of chapter navigation.
+type VideoTimeline struct {
+	Chapters   []Chapter   `json:"chapters"`
+	Storyboard *Storyboard `json:"storyboard,omitempty"`
+}
+
 var chapterVideoID = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 var initialPlayerAssignment = regexp.MustCompile(`(?:var\s+ytInitialPlayerResponse|window\["ytInitialPlayerResponse"\]|ytInitialPlayerResponse)\s*=\s*`)
 var descriptionChapterLine = regexp.MustCompile(`^\s*(\d{1,3}:\d{2}(?::\d{2})?)\s+[-–—|]?\s*(\S.*)$`)
 
-// GetVideoChapters fetches the public watch page through the configured YouTube
+func (c *client) GetVideoChapters(ctx context.Context, videoID string, duration float64) ([]Chapter, error) {
+	timeline, err := c.GetVideoTimeline(ctx, videoID, duration)
+	return timeline.Chapters, err
+}
+
+// GetVideoTimeline fetches the public watch page through the configured YouTube
 // transport. It never uses account credentials or consumes Data API quota.
-func (c *client) GetVideoChapters(ctx context.Context, videoID string, duration float64) (chapters []Chapter, err error) {
+func (c *client) GetVideoTimeline(ctx context.Context, videoID string, duration float64) (timeline VideoTimeline, err error) {
 	defer func() { metrics.ObserveYouTubeAPICall("web", "get_video_chapters", err) }()
 	if !chapterVideoID.MatchString(videoID) {
-		return nil, fmt.Errorf("invalid YouTube video ID")
+		return timeline, fmt.Errorf("invalid YouTube video ID")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.youtube.com/watch?v="+videoID+"&hl=en", nil)
 	if err != nil {
-		return nil, err
+		return timeline, err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	res, err := c.httpClientWithTimeout(8 * time.Second).Do(req)
 	if err != nil {
-		return nil, err
+		return timeline, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("watch page returned HTTP %d", res.StatusCode)
+		return timeline, fmt.Errorf("watch page returned HTTP %d", res.StatusCode)
 	}
 	const maxPageBytes = 8 << 20
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxPageBytes+1))
 	if err != nil {
-		return nil, err
+		return timeline, err
 	}
 	if len(body) > maxPageBytes {
-		return nil, fmt.Errorf("watch page exceeds size limit")
+		return timeline, fmt.Errorf("watch page exceeds size limit")
 	}
-	return parseChapterPage(strings.NewReader(string(body)), videoID, duration)
+	return parseTimelinePage(strings.NewReader(string(body)), videoID, duration)
 }
 
 // GetChapterThumbnail only accepts YouTube's image host, including redirects.
-// Callers obtain the URL from cached chapters rather than request parameters.
+// Callers obtain the URL from cached timeline metadata rather than request parameters.
 func (c *client) GetChapterThumbnail(ctx context.Context, imageURL string) ([]byte, string, error) {
 	allowed := func(raw string) bool {
 		parsed, err := url.Parse(raw)
@@ -135,9 +146,15 @@ func (t chapterText) text() string {
 }
 
 func parseChapterPage(page io.Reader, videoID string, duration float64) ([]Chapter, error) {
+	timeline, err := parseTimelinePage(page, videoID, duration)
+	return timeline.Chapters, err
+}
+
+func parseTimelinePage(page io.Reader, videoID string, duration float64) (VideoTimeline, error) {
+	var timeline VideoTimeline
 	doc, err := goquery.NewDocumentFromReader(page)
 	if err != nil {
-		return nil, err
+		return timeline, err
 	}
 	var data map[string]any
 	var player struct {
@@ -178,7 +195,7 @@ func parseChapterPage(page io.Reader, videoID string, duration float64) ([]Chapt
 		}
 	})
 	if playerFound && player.Details.VideoID != "" && player.Details.VideoID != videoID {
-		return nil, fmt.Errorf("watch page contains another video")
+		return timeline, fmt.Errorf("watch page contains another video")
 	}
 	if playerFound {
 		if seconds, err := strconv.ParseFloat(player.Details.Duration, 64); err == nil && seconds > 0 {
@@ -186,9 +203,10 @@ func parseChapterPage(page io.Reader, videoID string, duration float64) ([]Chapt
 		}
 	}
 	if data == nil && !playerFound {
-		return nil, fmt.Errorf("watch page contains no metadata")
+		return timeline, fmt.Errorf("watch page contains no metadata")
 	}
-	previews := func(chapters []Chapter) []Chapter {
+	timeline.Storyboard = parseStoryboard(player.Storyboards.Renderer.Spec, duration)
+	previews := func(chapters []Chapter) VideoTimeline {
 		// YouTube can reuse its static video cover in every chapter renderer.
 		// Use it for the opening chapter, where the first storyboard frame can
 		// be black. Later chapters should show their own time-specific frames.
@@ -216,11 +234,12 @@ func parseChapterPage(page io.Reader, videoID string, duration float64) ([]Chapt
 			}
 			chapters[i].Thumbnails = images
 		}
-		chapters = chapterStoryboardThumbnails(chapters, player.Storyboards.Renderer.Spec, duration)
+		chapters = storyboardChapterThumbnails(chapters, timeline.Storyboard)
 		if len(chapters) > 0 && chapters[0].Start == 0 && opening.URL != "" {
 			chapters[0].Thumbnails = []ChapterThumbnail{opening}
 		}
-		return chapters
+		timeline.Chapters = chapters
+		return timeline
 	}
 
 	// Restrict extraction to player markers and the dedicated chapters panel.

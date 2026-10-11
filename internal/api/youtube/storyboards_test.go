@@ -1,7 +1,11 @@
 package youtube
 
 import (
+	"context"
+	"encoding/json"
+	"io"
 	"math"
+	"net/http"
 	"net/url"
 	"reflect"
 	"strings"
@@ -9,6 +13,67 @@ import (
 )
 
 const storyboardTemplate = "https://i.ytimg.com/sb/abcdefghijk/storyboard3_L$L/$N.jpg?keep=value&sigh=old"
+
+func TestVideoTimelineIncludesEveryStoryboardSheetWithoutChapters(t *testing.T) {
+	player := map[string]any{
+		"videoDetails": map[string]any{"videoId": "abcdefghijk", "lengthSeconds": "123", "shortDescription": "No chapter timestamps"},
+		"storyboards":  map[string]any{"playerStoryboardSpecRenderer": map[string]any{"spec": storyboardTemplate + "|48#27#100#10#10#0#default#small|320#180#61#5#5#2000#M$M#rs$large"}},
+	}
+	encoded, err := json.Marshal(player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := `<script>var ytInitialPlayerResponse = ` + string(encoded) + `;</script>`
+	calls := 0
+	c := &client{http: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if r.URL.Host != "www.youtube.com" || r.Header.Get("Authorization") != "" {
+			t.Fatalf("timeline must use the public watch page: %s", r.URL)
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(page)), Header: make(http.Header)}, nil
+	})}}
+	timeline, err := c.GetVideoTimeline(context.Background(), "abcdefghijk", 99)
+	if err != nil || calls != 1 || len(timeline.Chapters) != 0 || timeline.Storyboard == nil {
+		t.Fatalf("storyboard-only timeline missing: %+v, %v, calls %d", timeline, err, calls)
+	}
+	board := timeline.Storyboard
+	if board.Duration != 123 || board.Interval != 2 || board.Count != 61 || board.Width != 320 || board.Height != 180 || board.Columns != 5 || board.Rows != 5 || len(board.Sheets) != 3 {
+		t.Fatalf("unexpected storyboard timing/grid: %+v", board)
+	}
+	for i, sheet := range board.Sheets {
+		parsed, err := url.Parse(sheet)
+		if err != nil || !strings.HasSuffix(parsed.Path, "/M"+string(rune('0'+i))+".jpg") || !strings.Contains(parsed.Path, "storyboard3_L1/") || parsed.Query().Get("sigh") != "rs$large" || parsed.Query().Get("keep") != "value" {
+			t.Fatalf("incorrect storyboard sheet: %s, %v", sheet, err)
+		}
+	}
+}
+
+func TestTimelineStoryboardCombinedSheetAndMissingPreviews(t *testing.T) {
+	for _, tc := range []struct {
+		spec string
+		want bool
+	}{
+		{storyboardTemplate + "|48#27#100#10#10#0#default#rs$combined", true},
+		{"", false},
+		{"malformed", false},
+		{"https://example.com/$N.jpg|160#90#6#3#2#10000#M$M#sig", false},
+	} {
+		player, err := json.Marshal(map[string]any{
+			"videoDetails": map[string]any{"videoId": "abcdefghijk", "lengthSeconds": "100"},
+			"storyboards":  map[string]any{"playerStoryboardSpecRenderer": map[string]any{"spec": tc.spec}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		timeline, err := parseTimelinePage(strings.NewReader(`<script>ytInitialPlayerResponse = `+string(player)+`;</script>`), "abcdefghijk", 50)
+		if err != nil || len(timeline.Chapters) != 0 || (timeline.Storyboard != nil) != tc.want {
+			t.Fatalf("unexpected storyboard for %q: %+v, %v", tc.spec, timeline, err)
+		}
+		if tc.want && (timeline.Storyboard.Interval != 1 || len(timeline.Storyboard.Sheets) != 1) {
+			t.Fatalf("combined sheet must infer frame timing: %+v", timeline.Storyboard)
+		}
+	}
+}
 
 func TestChapterPageOpeningCoverAndHighResolutionStoryboard(t *testing.T) {
 	page := chapterWatchFixture(`[{"key":"DESCRIPTION_CHAPTERS","value":{"chapters":[

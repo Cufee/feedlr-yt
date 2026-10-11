@@ -15,19 +15,57 @@ type chapterStoryboardLevel struct {
 	name, signature      string
 }
 
+// Storyboard describes one native YouTube preview level. Sheet URLs are kept in
+// the server cache; the browser uses the authenticated thumbnail proxy.
+type Storyboard struct {
+	Duration float64  `json:"duration"`
+	Interval float64  `json:"interval"`
+	Count    int      `json:"count"`
+	Width    int      `json:"width"`
+	Height   int      `json:"height"`
+	Columns  int      `json:"columns"`
+	Rows     int      `json:"rows"`
+	Sheets   []string `json:"sheets"`
+}
+
 // chapterStoryboardThumbnails maps chapter starts to individual frames in a
 // YouTube storyboard sheet. A missing or malformed spec preserves thumbnails.
 func chapterStoryboardThumbnails(chapters []Chapter, spec string, duration float64) []Chapter {
-	if len(chapters) == 0 || len(spec) == 0 || len(spec) > 65536 || duration <= 0 || math.IsNaN(duration) || math.IsInf(duration, 0) {
+	return storyboardChapterThumbnails(chapters, parseStoryboard(spec, duration))
+}
+
+func storyboardChapterThumbnails(chapters []Chapter, storyboard *Storyboard) []Chapter {
+	if storyboard == nil {
 		return chapters
+	}
+	for i := range chapters {
+		start := chapters[i].Start
+		if start < 0 || math.IsNaN(start) || math.IsInf(start, 0) {
+			continue
+		}
+		// Clamp as floats before conversion, including unusually large starts.
+		frame := int(math.Min(math.Floor(start/storyboard.Interval), float64(storyboard.Count-1)))
+		capacity := storyboard.Columns * storyboard.Rows
+		cell := frame % capacity
+		chapters[i].Thumbnails = []ChapterThumbnail{{
+			URL: storyboard.Sheets[frame/capacity], Width: storyboard.Width * storyboard.Columns, Height: storyboard.Height * storyboard.Rows,
+			Sprite: &ChapterThumbnailCrop{X: (cell % storyboard.Columns) * storyboard.Width, Y: (cell / storyboard.Columns) * storyboard.Height, Width: storyboard.Width, Height: storyboard.Height},
+		}}
+	}
+	return chapters
+}
+
+func parseStoryboard(spec string, duration float64) *Storyboard {
+	if len(spec) == 0 || len(spec) > 65536 || duration <= 0 || math.IsNaN(duration) || math.IsInf(duration, 0) {
+		return nil
 	}
 	parts := strings.Split(spec, "|")
 	if len(parts) < 2 || len(parts) > 33 {
-		return chapters
+		return nil
 	}
 	base, err := url.Parse(parts[0])
 	if err != nil || !chapterStoryboardURL(base) {
-		return chapters
+		return nil
 	}
 	var selected *chapterStoryboardLevel
 	for i, raw := range parts[1:] {
@@ -41,39 +79,41 @@ func chapterStoryboardThumbnails(chapters []Chapter, spec string, duration float
 		}
 	}
 	if selected == nil {
-		return chapters
+		return nil
 	}
 	level := *selected
 	template := strings.ReplaceAll(strings.ReplaceAll(parts[0], "$L", strconv.Itoa(level.index)), "$N", level.name)
-	if level.count > level.columns*level.rows && !strings.Contains(template, "$M") {
-		return chapters
+	capacity := level.columns * level.rows
+	if level.count > capacity && !strings.Contains(template, "$M") {
+		return nil
 	}
-	for i := range chapters {
-		start := chapters[i].Start
-		if start < 0 || math.IsNaN(start) || math.IsInf(start, 0) {
-			continue
-		}
-		frame := math.Floor(start / level.interval)
-		// Clamp as floats before conversion, including unusually large starts.
-		frame = math.Min(frame, float64(level.count-1))
-		index := int(frame)
-		capacity := level.columns * level.rows
-		sheet := index / capacity
+	sheetCount := (level.count + capacity - 1) / capacity
+	if sheetCount > 4096 {
+		return nil
+	}
+	storyboard := &Storyboard{
+		Duration: duration, Interval: level.interval, Count: level.count,
+		Width: level.width, Height: level.height, Columns: level.columns, Rows: level.rows,
+	}
+	var totalBytes int
+	for sheet := range sheetCount {
 		image, err := url.Parse(strings.ReplaceAll(template, "$M", strconv.Itoa(sheet)))
 		if err != nil || !chapterStoryboardURL(image) {
-			continue
+			return nil
 		}
 		query := image.Query()
 		// The entire signature is required, including YouTube's "rs$" prefix.
 		query.Set("sigh", level.signature)
 		image.RawQuery = query.Encode()
-		cell := index % capacity
-		chapters[i].Thumbnails = []ChapterThumbnail{{
-			URL: image.String(), Width: level.width * level.columns, Height: level.height * level.rows,
-			Sprite: &ChapterThumbnailCrop{X: (cell % level.columns) * level.width, Y: (cell / level.columns) * level.height, Width: level.width, Height: level.height},
-		}}
+		imageURL := image.String()
+		totalBytes += len(imageURL)
+		// Keep cached metadata bounded even for unusually sparse grids.
+		if totalBytes > 1<<20 {
+			return nil
+		}
+		storyboard.Sheets = append(storyboard.Sheets, imageURL)
 	}
-	return chapters
+	return storyboard
 }
 
 func chapterStoryboardURL(parsed *url.URL) bool {

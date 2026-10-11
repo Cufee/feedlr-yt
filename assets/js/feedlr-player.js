@@ -113,6 +113,31 @@
       return [`${cueTime(item.start)} --> ${cueTime(item.end)}\n${origin}/api/videos/${encodeURIComponent(videoID)}/chapters/${sources.get(image.url)}/thumbnail?v=3${rectangle}\n\n`];
     }).join("");
   }
+  function storyboardVTT(storyboard, duration, videoID, origin) {
+    const empty = "WEBVTT\n\n";
+    if (!storyboard || !Number.isFinite(duration) || duration <= 0) return empty;
+    const { interval, count, width, height, columns, rows, sheets } = storyboard;
+    if (!Number.isFinite(storyboard.duration) || storyboard.duration <= 0 || !Number.isFinite(interval) || interval <= 0 ||
+        ![count, width, height, columns, rows].every(Number.isInteger) || count < 1 || count > 100000 ||
+        width < 1 || width > 2048 || height < 1 || height > 2048 || columns < 1 || columns > 100 || rows < 1 || rows > 100 ||
+        width * columns > 16384 || height * rows > 16384 || width * columns * height * rows > 32 * 1024 * 1024 ||
+        !Array.isArray(sheets) || !sheets.length) return empty;
+    const end = Math.min(duration, storyboard.duration);
+    const capacity = columns * rows;
+    const frames = Math.min(count, sheets.length * capacity, Math.ceil(end / interval));
+    const cues = [];
+    for (let frame = 0; frame < frames; frame++) {
+      const start = frame * interval;
+      const stop = frame === frames - 1 ? end : Math.min((frame + 1) * interval, end);
+      if (Math.round(stop * 1000) <= Math.round(start * 1000)) continue;
+      const sheet = Math.floor(frame / capacity), cell = frame % capacity;
+      const x = cell % columns * width, y = Math.floor(cell / columns) * height;
+      // Sheet URLs stay behind the authenticated proxy; cells share a cache
+      // entry while native Shaka previews select the frame at the scrub time.
+      cues.push(`${cueTime(start)} --> ${cueTime(stop)}\n${origin}/api/videos/${encodeURIComponent(videoID)}/storyboards/${sheet}/thumbnail#xywh=${x},${y},${width},${height}\n\n`);
+    }
+    return empty + cues.join("");
+  }
 
   class NativeTimeline {
     constructor(box, video, controls, signal) {
@@ -409,6 +434,7 @@
       this.loading = document.getElementById("player-loading");
       this.abort = new AbortController();
       this.chapters = [];
+      this.storyboard = null;
       this.sponsors = normalizeSponsors(options.segments);
       this.chapterRequest = options.authenticated ? this.loadChapters() : Promise.resolve();
       this.generation = 0;
@@ -481,7 +507,10 @@
         const response = await fetch(`/api/videos/${encodeURIComponent(this.options.video)}/chapters`, { credentials: "same-origin", signal: request.signal });
         if (!response.ok) return;
         const result = await response.json();
-        if (!this.disposed && Array.isArray(result.chapters)) this.chapters = result.chapters;
+        if (!this.disposed) {
+          if (Array.isArray(result.chapters)) this.chapters = result.chapters;
+          this.storyboard = result.storyboard || null;
+        }
       } catch (_) { /* Chapter metadata is optional; playback continues. */ }
       finally { global.clearTimeout(timeout); }
     }
@@ -490,12 +519,15 @@
       if (!current() || this.adapter !== adapter) return;
       adapter.timeline?.setData(this.chapters, this.options.segments);
       const items = blendTimeline(this.chapters, this.options.segments, adapter.video.duration);
-      if (!items.length || !adapter.player.addChaptersTrack) return;
       const uri = (vtt) => `data:text/vtt;charset=utf-8,${encodeURIComponent(vtt)}`;
+      if (items.length && adapter.player.addChaptersTrack) {
+        try { await adapter.player.addChaptersTrack(uri(chapterVTT(items)), "und", "text/vtt"); }
+        catch (_) { /* Chapter labels are optional, independently of previews. */ }
+      }
+      if (!current() || this.adapter !== adapter) return;
       try {
-        await adapter.player.addChaptersTrack(uri(chapterVTT(items)), "und", "text/vtt");
-        if (!current() || this.adapter !== adapter) return;
-        const thumbnails = thumbnailVTT(items, this.chapters, this.options.video, global.location.origin);
+        const storyboard = storyboardVTT(this.storyboard, adapter.video.duration, this.options.video, global.location.origin);
+        const thumbnails = storyboard !== "WEBVTT\n\n" ? storyboard : thumbnailVTT(items, this.chapters, this.options.video, global.location.origin);
         if (thumbnails !== "WEBVTT\n\n" && adapter.player.addThumbnailsTrack) await adapter.player.addThumbnailsTrack(uri(thumbnails), "text/vtt");
       } catch (_) { /* Optional tracks must never interrupt playback. */ }
     }
@@ -1161,7 +1193,7 @@
     global.feedlr_player = controller;
     return controller;
   }
-  const api = { mount, Controller, PlaybackWatchdog, usableResolution, expirationError, applyQuality, restoredState, initialVolume, qualityLabel, qualityPreference, qualityHeight, qualityFromLabel, normalizeSponsors, blendTimeline, chapterVTT, thumbnailVTT, formatTimelineTime, NativeTimeline };
+  const api = { mount, Controller, PlaybackWatchdog, usableResolution, expirationError, applyQuality, restoredState, initialVolume, qualityLabel, qualityPreference, qualityHeight, qualityFromLabel, normalizeSponsors, blendTimeline, chapterVTT, thumbnailVTT, storyboardVTT, formatTimelineTime, NativeTimeline };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else {
     global.FeedlrPlayer = api;

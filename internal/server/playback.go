@@ -63,6 +63,8 @@ func registerPlaybackRoutes(app *fiber.App, service playbackBackend, db playback
 	app.Get("/api/videos/:id/chapters", authenticate, requests, chapters.chapters)
 	app.Get("/api/videos/:id/chapters/:index/thumbnail", authenticate, thumbnailRequests, chapters.thumbnail)
 	app.Head("/api/videos/:id/chapters/:index/thumbnail", authenticate, thumbnailRequests, chapters.thumbnail)
+	app.Get("/api/videos/:id/storyboards/:index/thumbnail", authenticate, thumbnailRequests, chapters.storyboardThumbnail)
+	app.Head("/api/videos/:id/storyboards/:index/thumbnail", authenticate, thumbnailRequests, chapters.storyboardThumbnail)
 	// These routes intentionally precede and bypass the generic API limiter and
 	// auth refresh. The service holds concurrency slots for the stream lifetime.
 	app.Get("/api/playback/:session/manifest.mpd", authenticate, routes.manifest)

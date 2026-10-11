@@ -1,10 +1,52 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeSponsors, blendTimeline, chapterVTT, thumbnailVTT, formatTimelineTime } = require('./feedlr-player.js');
+const { normalizeSponsors, blendTimeline, chapterVTT, thumbnailVTT, storyboardVTT, formatTimelineTime } = require('./feedlr-player.js');
 
 const chapter = (start, end, title) => ({ start, end, title });
 const sponsor = (start, end, category = 'sponsor') => ({ start, end, category });
 const spans = (items) => items.map(({ start, end, title, sponsor }) => ({ start, end, title, sponsor }));
+const storyboard = (overrides = {}) => ({ duration: 20, interval: 2.125, count: 7, width: 160, height: 90, columns: 2, rows: 2, sheets: ['https://i.ytimg.com/sheet0.jpg', 'https://i.ytimg.com/sheet1.jpg'], ...overrides });
+
+test('storyboard VTT advances every frame across cells and sheets without chapters', () => {
+  const result = storyboardVTT(storyboard(), 20, 'video/id', 'https://feedlr.example');
+  const urls = result.split('\n').filter(line => line.startsWith('https://'));
+  assert.equal(urls.length, 7);
+  assert.deepEqual(urls.map(url => new URL(url).hash), [
+    '#xywh=0,0,160,90', '#xywh=160,0,160,90', '#xywh=0,90,160,90', '#xywh=160,90,160,90',
+    '#xywh=0,0,160,90', '#xywh=160,0,160,90', '#xywh=0,90,160,90',
+  ]);
+  assert.equal(new Set(urls.map(url => url.split('#')[0])).size, 2);
+  assert.ok(urls[3].includes('/video%2Fid/storyboards/0/thumbnail'));
+  assert.ok(urls[4].includes('/video%2Fid/storyboards/1/thumbnail'));
+  assert.ok(result.includes('00:00:02.125 --> 00:00:04.250'));
+  assert.ok(result.includes('00:00:12.750 --> 00:00:20.000'), 'last frame holds through duration');
+  assert.ok(!result.includes('i.ytimg.com'), 'tracks only expose authorized proxy URLs');
+});
+
+test('storyboard frames clamp to video duration, metadata duration, and available sheet cells', () => {
+  const shortened = storyboardVTT(storyboard(), 4.5, 'video', 'https://feedlr.example');
+  assert.equal(shortened.split('\n').filter(line => line.startsWith('https://')).length, 3);
+  assert.ok(shortened.includes('00:00:04.250 --> 00:00:04.500'));
+  const boundary = storyboardVTT(storyboard(), 4.25, 'video', 'https://feedlr.example');
+  assert.equal(boundary.split('\n').filter(line => line.startsWith('https://')).length, 2);
+  const limited = storyboardVTT(storyboard({ sheets: ['sheet0'], count: 100 }), 50, 'video', 'https://feedlr.example');
+  assert.equal(limited.split('\n').filter(line => line.startsWith('https://')).length, 4);
+  assert.ok(limited.includes('00:00:06.375 --> 00:00:20.000'));
+  const fractional = storyboardVTT(storyboard({ interval: 0.0001, duration: 0.0005, count: 7 }), 20, 'video', 'https://feedlr.example');
+  assert.ok(!fractional.includes('00:00:00.000 --> 00:00:00.000'), 'rounded empty cues are omitted');
+});
+
+test('absent or malformed storyboards omit the optional preview track', () => {
+  for (const value of [null, {}, storyboard({ interval: 0 }), storyboard({ interval: Infinity }),
+    storyboard({ duration: NaN }), storyboard({ count: 0 }), storyboard({ count: 100001 }), storyboard({ count: 1.5 }),
+    storyboard({ width: -1 }), storyboard({ height: 0 }), storyboard({ columns: 0 }), storyboard({ rows: 0 }),
+    storyboard({ width: 2048, columns: 100 }), storyboard({ sheets: [] }), storyboard({ sheets: null })]) {
+    assert.equal(storyboardVTT(value, 20, 'video', 'https://feedlr.example'), 'WEBVTT\n\n');
+  }
+  for (const duration of [0, -1, NaN, Infinity]) {
+    assert.equal(storyboardVTT(storyboard(), duration, 'video', 'https://feedlr.example'), 'WEBVTT\n\n');
+  }
+});
 
 test('sponsor ranges merge overlap and adjacency with sponsored labels taking priority', () => {
   const input = [sponsor(18, 25, 'unknown'), sponsor(7, 12, 'unknown'), sponsor(12, 20), sponsor(30, 40, 'unknown')];
