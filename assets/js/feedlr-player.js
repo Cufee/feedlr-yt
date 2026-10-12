@@ -4,8 +4,9 @@
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
-  const read = (storage, key) => { try { return storage.getItem(key); } catch (_) { return null; } };
-  const write = (storage, key, value) => { try { storage.setItem(key, String(value)); } catch (_) {} };
+  // Cookie permissions can make the localStorage getter itself throw.
+  const read = (key) => { try { return global.localStorage.getItem(key); } catch (_) { return null; } };
+  const write = (key, value) => { try { global.localStorage.setItem(key, String(value)); } catch (_) {} };
   const qualityKey = "feedlr-player-quality";
   const usesDeviceVolume = () => Boolean(global.navigator?.userAgentData?.mobile ||
     /Android|iPhone|iPad|iPod/i.test(global.navigator?.userAgent || "") ||
@@ -441,7 +442,7 @@
       this.disposed = false;
       this.ready = false;
       this.switching = false;
-      this.quality = qualityPreference(read(global.localStorage, qualityKey));
+      this.quality = qualityPreference(read(qualityKey));
       this.availableQualities = [];
       this.audioOnly = false;
       // Scoped to this video/page; a different video always starts original.
@@ -461,7 +462,7 @@
       this.recoveryProgress = 0;
       this.pendingNativeError = null;
       this.watchdog = new PlaybackWatchdog();
-      const savedVolume = read(global.localStorage, `player-volume-${options.channel}`) ?? read(global.localStorage, "player-volume");
+      const savedVolume = read(`player-volume-${options.channel}`) ?? read("player-volume");
       this.state = { position: finite(options.progress), playing: true, volume: this.deviceVolume ? 100 : initialVolume(savedVolume, options.volume), muted: false, rate: 1 };
       this.listen(document.getElementById("close-button"), "click", () => this.cleanup());
       this.listen(this.tvButton, "click", () => this.sendToTV());
@@ -922,7 +923,7 @@
           const selected = qualityFromLabel(button.querySelector("span")?.textContent);
           if (selected) {
             this.quality = selected;
-            write(global.localStorage, qualityKey, selected);
+            write(qualityKey, selected);
           }
         }
       }, { capture: true, signal });
@@ -975,7 +976,7 @@
     selectQuality(value) {
       const quality = qualityPreference(value);
       this.quality = quality;
-      write(global.localStorage, qualityKey, quality);
+      write(qualityKey, quality);
       if ((quality === "audio") !== this.audioOnly) {
         return this.switchPlayer("native", this.snapshot(), "quality_switch");
       }
@@ -1060,9 +1061,16 @@
       this.handlingError = true;
       const state = this.snapshot();
       const expired = expirationError(error, this.expiresAt);
-      const unsupported = ["unsupported_browser", "unsupported_codec"].includes(error.message);
+      // Shaka wraps unsupported SourceBuffer types in media error 3015.
+      // Resolving the same manifest again cannot supply a missing decoder.
+      const unsupportedCodec = error.message === "unsupported_codec" || (error.code === 3015 && error.data?.[0]?.name === "NotSupportedError");
+      const unsupported = error.message === "unsupported_browser" || unsupportedCodec;
       const known = unsupported || retryableResolutionReasons.includes(error.message) || ["resolution_failed", "startup_timeout", "playback_stall"].includes(error.message);
-      const reason = expired ? "expired_media" : known ? error.message : "native_error";
+      const reason = expired ? "expired_media" : unsupportedCodec ? "unsupported_codec" : known ? error.message : "native_error";
+      // Keep diagnostics useful without logging signed media URLs in Shaka's
+      // error data. The fallback embed can otherwise obscure the first failure.
+      this.lastNativeError = { reason, category: error.category, code: error.code, name: error.data?.[0]?.name };
+      global.console?.warn?.("[Feedlr] Native playback failed", this.lastNativeError);
       this.metric("media_error", reason);
       if (!unsupported && !(expired ? this.expiryRetryUsed : this.nativeRetryUsed)) {
         if (expired) this.expiryRetryUsed = true;
@@ -1129,8 +1137,8 @@
     saveVolume() {
       if (this.deviceVolume || !this.ready || !this.adapter) return;
       const volume = Math.round(this.adapter.snapshot().volume);
-      write(global.localStorage, "player-volume", volume);
-      write(global.localStorage, `player-volume-${this.options.channel}`, volume);
+      write("player-volume", volume);
+      write(`player-volume-${this.options.channel}`, volume);
     }
     saveProgress() {
       if (!this.ready || !this.adapter || this.disposed) return;

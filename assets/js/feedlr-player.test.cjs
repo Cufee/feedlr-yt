@@ -49,7 +49,7 @@ test('only expiry or authentication HTTP failures justify an expiry retry', () =
   assert.equal(expirationError({ category: 3 }, 10000, 10001), true);
 });
 
-function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], chapterResponses = [], segments = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume } = {}) {
+function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], chapterResponses = [], segments = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume, storageBlocked = false } = {}) {
   const timers = new Map();
   let nextTimer = 1;
   const requests = [];
@@ -194,6 +194,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
   const options = { video: 'one', channel: 'channel', progress: 1, volume: 50, authenticated, withProgress: authenticated, returnURL: '/', segments };
   if (legacyIframeChoice) win.sessionStorage.setItem('feedlr-player-mode:one', 'iframe');
   if (savedVolume !== undefined) win.localStorage.setItem('player-volume', savedVolume);
+  if (storageBlocked) Object.defineProperty(win, 'localStorage', { get() { throw new DOMException('Storage access denied', 'SecurityError'); } });
   if (queued) win.feedlrPendingPlayer = { options, root: staleQueue ? new Element('div') : elements.get('player') };
   vm.runInNewContext(fs.readFileSync(require.resolve('./feedlr-player.js'), 'utf8'), { window: win, document: doc, fetch, performance, AbortController, URL, console });
   const controller = queued ? win.feedlr_player : win.FeedlrPlayer.mount(options);
@@ -201,6 +202,38 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
 }
 
 async function settle() { for (let i = 0; i < 6; i++) await new Promise(setImmediate); }
+
+test('blocked storage getters do not prevent native playback or player switches', async () => {
+  const h = harness({ storageBlocked: true });
+  await h.controller.start;
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.controller.ready, true);
+  assert.equal(h.controller.quality, 'auto');
+  assert.equal(h.controller.snapshot().volume, 50);
+  h.controller.setVolume(33);
+  h.controller.saveVolume();
+  await h.controller.selectQuality('720');
+  await h.controller.switchPlayer('iframe', h.controller.snapshot(), 'manual_switch');
+  await h.controller.switchPlayer('native', h.controller.snapshot(), 'manual_switch');
+  assert.equal(h.controller.ready, true);
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.controller.snapshot().volume, 33);
+  assert.equal(h.controller.quality, '720');
+  h.controller.cleanup();
+});
+
+test('unsupported SourceBuffer codecs fall back once and retain the native failure reason', async () => {
+  const error = { category: 3, code: 3015, data: [new DOMException("MediaSource.addSourceBuffer: Can't play type", 'NotSupportedError'), 'media-source details', 'https://media.example/signed-private-url'] };
+  const h = harness({ shakaLoadError: error });
+  await h.controller.start;
+  assert.equal(h.players.length, 1, 'a missing decoder must not trigger a second native load');
+  assert.equal(h.controller.mode, 'iframe');
+  assert.equal(h.controller.ready, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.controller.lastNativeError)), { reason: 'unsupported_codec', category: 3, code: 3015, name: 'NotSupportedError' });
+  assert.ok(!JSON.stringify(h.controller.lastNativeError).includes('signed-private-url'));
+  assert.equal(h.requests.filter(request => request.url.endsWith('/playback/events') && JSON.parse(request.body).event === 'fallback').length, 1);
+  h.controller.cleanup();
+});
 
 function deferred() {
   let resolve, reject;
