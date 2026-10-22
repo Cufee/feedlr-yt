@@ -49,11 +49,12 @@ test('only expiry or authentication HTTP failures justify an expiry retry', () =
   assert.equal(expirationError({ category: 3 }, 10000, 10001), true);
 });
 
-function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], chapterResponses = [], segments = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume, storageBlocked = false } = {}) {
+function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], chapterResponses = [], segments = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume, storageBlocked = false, iframeSeekDelayed = false } = {}) {
   const timers = new Map();
   let nextTimer = 1;
   const requests = [];
   const players = [];
+  const iframes = [];
   const order = [];
   const event = (type, values = {}) => Object.assign(new Event(type), values);
   class Element extends EventTarget {
@@ -145,6 +146,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
   class YouTube {
     constructor(_frame, options) {
       this.options = options; this.position = options.playerVars.start; this.state = -1; this.volume = 100; this.muted = false; this.rate = 1;
+      iframes.push(this);
       queueMicrotask(() => options.events.onReady());
     }
     setVolume(value) { this.volume = value; }
@@ -152,7 +154,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     mute() { this.muted = true; } unMute() { this.muted = false; } isMuted() { return this.muted; }
     getAvailablePlaybackRates() { return [0.5, 1, 1.5, 2]; }
     setPlaybackRate(value) { this.rate = value; } getPlaybackRate() { return this.rate; }
-    seekTo(value) { this.position = value; } getCurrentTime() { return this.position; }
+    seekTo(value) { if (!iframeSeekDelayed) this.position = value; } getCurrentTime() { return this.position; }
     playVideo() { if (blocked === 'iframe') { this.options.events.onAutoplayBlocked(); return; } this.state = 1; this.options.events.onStateChange({ data: 1 }); }
     pauseVideo() { this.state = 2; this.options.events.onStateChange({ data: 2 }); }
     getPlayerState() { return this.state; } unloadModule() {} destroy() { this.position = 0; this.options.events.onStateChange({ data: 0 }); }
@@ -198,10 +200,199 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
   if (queued) win.feedlrPendingPlayer = { options, root: staleQueue ? new Element('div') : elements.get('player') };
   vm.runInNewContext(fs.readFileSync(require.resolve('./feedlr-player.js'), 'utf8'), { window: win, document: doc, fetch, performance, AbortController, URL, console });
   const controller = queued ? win.feedlr_player : win.FeedlrPlayer.mount(options);
-  return { controller, win, doc, timers, requests, players, elements, order, fresh, event, toastText };
+  return { controller, win, doc, timers, requests, players, iframes, elements, order, fresh, event, toastText };
 }
 
 async function settle() { for (let i = 0; i < 6; i++) await new Promise(setImmediate); }
+
+function seekKey(h, key, { target = h.doc, ...values } = {}) {
+  const event = Object.assign(new Event('keydown', { bubbles: true, cancelable: true }), { key, ...values });
+  Object.defineProperty(event, 'target', { value: target });
+  h.doc.dispatchEvent(event);
+  // The harness has no DOM tree; model bubbling to Shaka's window listener.
+  if (!event.cancelBubble) h.win.dispatchEvent(event);
+  return event;
+}
+
+test('seek arrows apply once before competing native keyboard handlers, including the focused seek bar', async () => {
+  const h = harness();
+  await h.controller.start;
+  let competingSeeks = 0;
+  h.win.addEventListener('keydown', () => { competingSeeks++; });
+  assert.equal(seekKey(h, 'ArrowRight').defaultPrevented, true);
+  assert.equal(h.controller.getCurrentTime(), 125);
+  const slider = h.doc.createElement('input');
+  slider.classList.add('shaka-seek-bar');
+  slider.closest = () => slider;
+  seekKey(h, 'ArrowRight', { target: slider, repeat: true });
+  assert.equal(h.controller.getCurrentTime(), 130);
+  assert.equal(competingSeeks, 0);
+  h.controller.cleanup();
+});
+
+test('seek shortcuts preserve editable controls and modifier keys', async () => {
+  const h = harness();
+  await h.controller.start;
+  const input = h.doc.createElement('input');
+  input.closest = () => input;
+  for (const values of [{ target: input }, { altKey: true }, { ctrlKey: true }, { metaKey: true }]) {
+    assert.equal(seekKey(h, 'ArrowRight', values).defaultPrevented, false);
+  }
+  assert.equal(h.controller.getCurrentTime(), 120);
+  h.controller.cleanup();
+});
+
+test('seek arrows stay inside action menus and dialogs', async () => {
+  const h = harness();
+  await h.controller.start;
+  for (const selector of ['summary', '.ui-action-menu', 'dialog']) {
+    const target = h.doc.createElement('div');
+    target.closest = (query) => query.split(',').includes(selector) ? target : null;
+    assert.equal(seekKey(h, 'ArrowRight', { target }).defaultPrevented, false, selector);
+  }
+  assert.equal(h.controller.getCurrentTime(), 120);
+  h.controller.cleanup();
+});
+
+for (const mode of ['native', 'iframe']) {
+  test(`repeated ${mode} seek arrows accumulate while the player still reports a buffering position`, async () => {
+    const h = harness({ authenticated: mode === 'native', iframeSeekDelayed: mode === 'iframe' });
+    await h.controller.start;
+    const requested = [];
+    let acknowledged = h.controller.getCurrentTime();
+    if (mode === 'native') {
+      Object.defineProperty(h.controller.adapter.video, 'currentTime', {
+        get: () => acknowledged, set: (value) => requested.push(value),
+      });
+      h.controller.adapter.video.seeking = true;
+    } else {
+      const original = h.controller.adapter.seek;
+      h.controller.adapter.seek = (value) => { requested.push(value); original(value); };
+    }
+    h.controller.showLoading(true);
+    const start = acknowledged;
+    for (const key of ['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowLeft', 'ArrowRight']) {
+      seekKey(h, key, { repeat: true });
+      h.controller.tick();
+    }
+    assert.deepEqual(requested, [start + 5, start + 10, start + 15, start + 10, start + 15]);
+    assert.equal(h.controller.getCurrentTime(), start + 15);
+    h.controller.cleanup();
+  });
+
+  test(`partial ${mode} seek acknowledgement cannot shorten the next keyboard seek`, async () => {
+    const h = harness({ authenticated: mode === 'native', iframeSeekDelayed: mode === 'iframe' });
+    await h.controller.start;
+    const start = h.controller.getCurrentTime();
+    let acknowledged = start;
+    const requested = [];
+    if (mode === 'native') {
+      Object.defineProperty(h.controller.adapter.video, 'currentTime', {
+        get: () => acknowledged, set: (value) => requested.push(value),
+      });
+      h.controller.adapter.video.seeking = true;
+    } else {
+      const originalSeek = h.controller.adapter.seek;
+      h.controller.adapter.seek = (value) => { requested.push(value); originalSeek(value); };
+      h.iframes[0].state = 3;
+    }
+    seekKey(h, 'ArrowRight');
+    acknowledged = start + 3;
+    if (mode === 'iframe') h.iframes[0].position = acknowledged;
+    h.controller.tick();
+    assert.equal(h.controller.getCurrentTime(), start + 5);
+    seekKey(h, 'ArrowRight', { repeat: true });
+    assert.deepEqual(requested, [start + 5, start + 10]);
+    // A completed seek releases the target so subsequent playback supplies
+    // the base for the next key press.
+    acknowledged = start + 10;
+    if (mode === 'native') h.controller.adapter.video.seeking = false;
+    else { h.iframes[0].position = acknowledged; h.iframes[0].state = 1; }
+    h.controller.snapshot();
+    acknowledged += 3;
+    if (mode === 'iframe') h.iframes[0].position = acknowledged;
+    seekKey(h, 'ArrowRight');
+    assert.equal(requested.at(-1), start + 18);
+    h.controller.cleanup();
+  });
+}
+
+test('seek presses survive initial resolution and media loading and apply together', async () => {
+  const resolution = deferred(), loading = deferred();
+  const h = harness({ resolutions: [resolution.promise], shakaLoads: [loading.promise] });
+  seekKey(h, 'ArrowRight');
+  seekKey(h, 'ArrowRight', { repeat: true });
+  resolution.resolve(h.fresh(120));
+  await settle();
+  assert.equal(h.controller.ready, false);
+  const seeks = [];
+  const originalSeek = h.controller.adapter.seek;
+  h.controller.adapter.seek = (value) => { seeks.push(value); originalSeek(value); };
+  seekKey(h, 'ArrowLeft', { repeat: true });
+  seekKey(h, 'ArrowRight', { repeat: true });
+  loading.resolve();
+  await h.controller.start;
+  assert.equal(h.controller.getCurrentTime(), 130);
+  assert.equal(h.controller.adapter.video.currentTime, 130);
+  assert.deepEqual(seeks, [130], 'loading input should issue one final media seek');
+  h.controller.cleanup();
+});
+
+test('closing during loading discards seek commands before a new video mounts', async () => {
+  const loading = deferred();
+  const h = harness({ shakaLoads: [loading.promise] });
+  await settle();
+  seekKey(h, 'ArrowRight');
+  h.controller.cleanup();
+  h.controller.seekTo(500);
+  const next = h.win.FeedlrPlayer.mount({ ...h.controller.options, video: 'two' });
+  await next.start;
+  loading.resolve();
+  await h.controller.start;
+  assert.equal(h.controller.ready, false);
+  assert.equal(next.getCurrentTime(), 120);
+  assert.equal(next.adapter.video.currentTime, 120);
+  next.cleanup();
+});
+
+test('seek presses survive renewal and a failed native load falling back to iframe', async () => {
+  const loading = deferred();
+  const h = harness({ shakaLoads: [Promise.resolve(), loading.promise] });
+  await h.controller.start;
+  h.controller.seekTo(300);
+  const switching = h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  seekKey(h, 'ArrowRight');
+  await settle();
+  seekKey(h, 'ArrowRight', { repeat: true });
+  seekKey(h, 'ArrowLeft', { repeat: true });
+  loading.reject(new Error('unsupported_codec'));
+  await switching;
+  assert.equal(h.controller.mode, 'iframe');
+  assert.equal(h.controller.getCurrentTime(), 305);
+  h.controller.cleanup();
+});
+
+test('queued seek commands keep their order and clamp each step at media boundaries', async () => {
+  const loading = deferred();
+  const h = harness({ shakaLoads: [loading.promise] });
+  await settle();
+  h.controller.seekTo(0);
+  seekKey(h, 'ArrowLeft');
+  seekKey(h, 'ArrowRight');
+  loading.resolve();
+  await h.controller.start;
+  assert.equal(h.controller.getCurrentTime(), 5);
+  const nextLoad = deferred();
+  h.players[0].video.currentTime = 4998;
+  h.controller.resolve = () => nextLoad.promise;
+  const switching = h.controller.switchPlayer('native', h.controller.snapshot(), 'renewal');
+  seekKey(h, 'ArrowRight');
+  seekKey(h, 'ArrowLeft');
+  nextLoad.resolve(h.fresh());
+  await switching;
+  assert.equal(h.controller.getCurrentTime(), 4995);
+  h.controller.cleanup();
+});
 
 test('blocked storage getters do not prevent native playback or player switches', async () => {
   const h = harness({ storageBlocked: true });

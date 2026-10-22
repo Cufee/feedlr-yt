@@ -242,13 +242,14 @@
   // Iframe commands and Shaka's initial seek are asynchronous. Keep each
   // restored value until the adapter acknowledges it, rather than saving the
   // temporary zero/default state emitted during initialization.
-  function restoredState(actual, pending) {
+  function restoredState(actual, pending, seeking = false) {
     const state = { ...actual };
     for (const key of Object.keys(pending)) {
       const tolerance = key === "position" ? 2 : key === "volume" ? 1 : 0;
-      const acknowledged = typeof pending[key] === "number"
+      // A nearby intermediate position must not consume a seek still in flight.
+      const acknowledged = !(key === "position" && seeking) && (typeof pending[key] === "number"
         ? Number.isFinite(actual[key]) && Math.abs(actual[key] - pending[key]) <= tolerance
-        : actual[key] === pending[key];
+        : actual[key] === pending[key]);
       if (acknowledged) delete pending[key];
       else state[key] = pending[key];
     }
@@ -441,6 +442,7 @@
       this.generation = 0;
       this.disposed = false;
       this.ready = false;
+      this.seekQueue = [];
       this.switching = false;
       this.quality = qualityPreference(read(qualityKey));
       this.availableQualities = [];
@@ -466,6 +468,11 @@
       this.state = { position: finite(options.progress), playing: true, volume: this.deviceVolume ? 100 : initialVolume(savedVolume, options.volume), muted: false, rate: 1 };
       this.listen(document.getElementById("close-button"), "click", () => this.cleanup());
       this.listen(this.tvButton, "click", () => this.sendToTV());
+      // Own arrow seeks before Shaka's container/window shortcuts run. Its
+      // handler does not honor defaultPrevented or our pending seek position.
+      this.listen(document, "keydown", (event) => {
+        if (["ArrowLeft", "ArrowRight"].includes(event.key)) this.hotkey(event);
+      }, true);
       this.listen(document, "keydown", (event) => this.hotkey(event));
       this.listen(document, "htmx:beforeSwap", (event) => {
         if (event.detail?.target?.contains(this.root)) this.cleanup();
@@ -499,7 +506,7 @@
       this.startTVStatus();
     }
 
-    listen(target, event, callback) { target?.addEventListener(event, callback, { signal: this.abort.signal }); }
+    listen(target, event, callback, capture = false) { target?.addEventListener(event, callback, { signal: this.abort.signal, capture }); }
     async loadChapters() {
       const request = new AbortController();
       this.abort.signal.addEventListener("abort", () => request.abort(), { once: true });
@@ -830,7 +837,7 @@
       const pending = { ...this.state };
       this.adapter = {
         video, player, waveform,
-        snapshot: () => restoredState({ position: video.currentTime, playing: !video.paused && !video.ended, volume: video.volume * 100, muted: video.muted, rate: player.getPlaybackRate?.() || this.state.rate }, pending),
+        snapshot: () => restoredState({ position: video.currentTime, playing: !video.paused && !video.ended, volume: video.volume * 100, muted: video.muted, rate: player.getPlaybackRate?.() || this.state.rate }, pending, video.seeking),
         play: () => { pending.playing = true; return this.playNative(video, pending); }, pause: () => { pending.playing = false; video.pause(); },
         seek: (time) => { pending.position = clamp(time, 0, Number.isFinite(video.duration) ? video.duration : Infinity); video.currentTime = pending.position; },
         volume: (value) => { pending.volume = this.deviceVolume ? 100 : clamp(value, 0, 100); video.volume = pending.volume / 100; },
@@ -965,6 +972,7 @@
       video.muted = this.state.muted;
       try { player.trickPlay(this.state.rate, false); } catch (_) { pending.rate = 1; player.trickPlay(1, false); }
       this.ready = true;
+      this.flushSeeks();
       this.adapter.timeline = timeline = new NativeTimeline(box, video, controls, signal);
       this.adapter.timeline.setData(this.chapters, this.options.segments);
       this.installTimeline(this.adapter, current);
@@ -1025,6 +1033,7 @@
               if (this.state.playing) player.playVideo(); else player.pauseVideo();
               try { player.unloadModule("captions"); } catch (_) {}
               this.ready = true;
+              this.flushSeeks();
               this.showLoading(false);
               resolve();
             },
@@ -1039,7 +1048,7 @@
           },
         });
         this.adapter = {
-          snapshot: () => restoredState({ position: player.getCurrentTime(), playing: [1, 3].includes(player.getPlayerState()), volume: player.getVolume(), muted: player.isMuted(), rate: player.getPlaybackRate() }, pending),
+          snapshot: () => restoredState({ position: player.getCurrentTime(), playing: [1, 3].includes(player.getPlayerState()), volume: player.getVolume(), muted: player.isMuted(), rate: player.getPlaybackRate() }, pending, player.getPlayerState() === 3),
           play: () => { pending.playing = true; player.playVideo(); }, pause: () => { pending.playing = false; player.pauseVideo(); },
           seek: (time) => { pending.position = Math.max(0, time); player.seekTo(pending.position, true); }, volume: (value) => { pending.volume = this.deviceVolume ? 100 : clamp(value, 0, 100); player.setVolume(pending.volume); },
           destroy: async () => { destroyed = true; global.clearTimeout(timer); player.destroy(); resolve(); },
@@ -1151,11 +1160,20 @@
       this.progressWrites.add(request);
     }
     hotkey(event) {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.target?.closest?.("input,textarea,select,button,a,[contenteditable=true]")) return;
+      const seek = ["ArrowLeft", "ArrowRight"].includes(event.key);
+      const seekBar = seek && event.target?.classList?.contains("shaka-seek-bar");
+      if (this.disposed || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey ||
+          (!seekBar && event.target?.closest?.("input,textarea,select,button,a,summary,dialog,.ui-action-menu,[contenteditable=true]"))) return;
       if (event.key === "Escape") {
         event.preventDefault();
         this.cleanup();
         global.location.href = this.options.returnURL;
+        return;
+      }
+      if (seek) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.seekBy(event.key === "ArrowLeft" ? -5 : 5);
         return;
       }
       if (!this.ready || !this.adapter) return;
@@ -1163,15 +1181,31 @@
       const state = this.snapshot();
       const actions = {
         " ": () => state.playing ? this.adapter.pause() : this.adapter.play(),
-        ArrowLeft: () => this.adapter.seek(state.position - 5), ArrowRight: () => this.adapter.seek(state.position + 5),
         ArrowUp: () => this.adapter.volume(state.volume + 5), ArrowDown: () => this.adapter.volume(state.volume - 5),
       };
       if (actions[event.key]) { event.preventDefault(); actions[event.key](); }
+    }
+    seekBy(delta) {
+      if (this.disposed || !Number.isFinite(delta)) return;
+      this.seekQueue.push({ delta });
+      this.flushSeeks();
+    }
+    flushSeeks() {
+      if (!this.ready || !this.adapter || !this.seekQueue.length) return;
+      let position = this.snapshot().position;
+      const duration = this.adapter.video?.duration;
+      const end = Number.isFinite(duration) ? duration : Infinity;
+      // Preserve command order and clamp each step, then issue one media seek.
+      // The queue belongs to the controller so replacing an adapter retains it.
+      for (const seek of this.seekQueue) position = clamp(seek.position ?? position + seek.delta, 0, end);
+      this.seekQueue.length = 0;
+      this.adapter.seek(position);
     }
     cleanup() {
       if (this.disposed) return;
       this.saveProgress();
       this.disposed = true;
+      this.seekQueue.length = 0;
       this.generation++;
       this.abort.abort();
       this.resolveAbort?.abort();
@@ -1187,7 +1221,11 @@
     // The existing integration surface remains available for other page scripts.
     playVideo() { this.adapter?.play(); }
     pauseVideo() { this.adapter?.pause(); }
-    seekTo(time) { this.adapter?.seek(time); }
+    seekTo(time) {
+      if (this.disposed || !Number.isFinite(time)) return;
+      this.seekQueue.push({ position: time });
+      this.flushSeeks();
+    }
     getCurrentTime() { return this.snapshot().position; }
     getPlayerState() { return this.snapshot().playing ? 1 : 2; }
     getVolume() { return this.snapshot().volume; }
