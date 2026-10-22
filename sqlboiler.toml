@@ -8,3 +8,41 @@ blacklist = ["atlas_schema_revisions"]
 
 [aliases.tables.user_subscriptions.relationships.user_subscriptions_user_id_fkey]
 foreign = "Subscriptions"
+
+# Keep generated nullable fields on the application's null major version.
+
+[[types]]
+  [types.match]
+    nullable = true
+    type = "null.String"
+  [types.replace]
+    type = "null.String"
+  [types.imports]
+    third_party = ['"github.com/aarondl/null/v9"']
+
+[[types]]
+  [types.match]
+    nullable = true
+    type = "null.Bool"
+  [types.replace]
+    type = "null.Bool"
+  [types.imports]
+    third_party = ['"github.com/aarondl/null/v9"']
+
+[[types]]
+  [types.match]
+    nullable = true
+    type = "null.Int64"
+  [types.replace]
+    type = "null.Int64"
+  [types.imports]
+    third_party = ['"github.com/aarondl/null/v9"']
+
+[[types]]
+  [types.match]
+    nullable = true
+    type = "null.Time"
+  [types.replace]
+    type = "null.Time"
+  [types.imports]
+    third_party = ['"github.com/aarondl/null/v9"']

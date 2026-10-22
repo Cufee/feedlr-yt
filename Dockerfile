@@ -1,4 +1,4 @@
-FROM node:22-bookworm AS styles-builder
+FROM node:26.12.1-bookworm AS styles-builder
 
 WORKDIR /workspace
 
@@ -9,7 +9,7 @@ RUN npm ci
 COPY . ./
 RUN npm run build
 
-FROM golang:1.26-bookworm AS builder
+FROM golang:1.27.3-bookworm AS builder
 
 WORKDIR /workspace
 

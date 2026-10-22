@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/cufee/feedlr-yt/internal/api/openrouter"
 	"github.com/cufee/feedlr-yt/internal/database"

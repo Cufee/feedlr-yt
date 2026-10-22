@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/metrics"

@@ -58,9 +58,11 @@ func (u *User) AddCredential(credential webauthn.Credential) error {
 }
 
 func (u *User) UpdateCredential(credential webauthn.Credential) error {
-	for _, c := range u.credentials {
+	for i := range u.credentials {
+		c := &u.credentials[i]
 		if string(c.Credential.ID) == string(credential.ID) {
 			c.Credential = credential
+			c.updated = true
 			return nil
 		}
 	}
@@ -138,7 +140,8 @@ func (s *userStore) CreateUser(ctx context.Context, user *User) error {
 	}
 	user.User = record
 
-	for _, c := range user.credentials {
+	for i := range user.credentials {
+		c := &user.credentials[i]
 		if !c.updated {
 			continue
 		}
@@ -160,6 +163,7 @@ func (s *userStore) CreateUser(ctx context.Context, user *User) error {
 			metrics.IncUserEvent("user_create", "error")
 			return errors.Wrap(err, "failed to encode credential")
 		}
+		c.updated = false
 	}
 
 	metrics.IncUserEvent("user_create", "success")
@@ -173,7 +177,8 @@ func (s *userStore) SaveUser(ctx context.Context, user *User) error {
 		return err
 	}
 
-	for _, c := range user.credentials {
+	for i := range user.credentials {
+		c := &user.credentials[i]
 		if !c.updated {
 			continue
 		}

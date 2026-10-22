@@ -13,16 +13,16 @@ import (
 
 	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/templates/pages"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/filesystem"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
+	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/google/uuid"
 )
 
 var limiterMiddleware = limiter.New(limiter.Config{
 	Max:        100,
 	Expiration: 30 * time.Second,
-	KeyGenerator: func(c *fiber.Ctx) string {
+	KeyGenerator: func(c fiber.Ctx) string {
 		trace := c.Cookies("trace_id")
 		if trace == "" {
 			trace = uuid.NewString()
@@ -34,31 +34,30 @@ var limiterMiddleware = limiter.New(limiter.Config{
 		}
 		return c.Get("X-Forwarded-For", trace)
 	},
-	LimitReached: func(c *fiber.Ctx) error {
+	LimitReached: func(c fiber.Ctx) error {
 		c.Set("HX-Redirect", "/429")
-		return c.Redirect("/429")
+		return c.Redirect().Status(fiber.StatusFound).To("/429")
 	},
 })
 
-var cacheBusterMiddleware = func(c *fiber.Ctx) error {
+var cacheBusterMiddleware = func(c fiber.Ctx) error {
 	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	return c.Next()
 }
 
-var staticWithCacheMiddleware = func(path string, assets fs.FS) func(*fiber.Ctx) error {
+var staticWithCacheMiddleware = func(path string, assets fs.FS) func(fiber.Ctx) error {
 	hashes := getAssetsHashes(assets)
 	hashedAssets := make(map[string]string, len(hashes))
 	for assetPath, hash := range hashes {
 		hashedAssets[hashedAssetPath(path, assetPath, hash)] = assetPath
 	}
-	handler := filesystem.New(filesystem.Config{
-		Root:       http.FS(assets),
-		Browse:     true,
-		PathPrefix: path,
-		MaxAge:     0,
+	handler := static.New(path, static.Config{
+		FS:     assets,
+		Browse: true,
+		MaxAge: 0,
 	})
 
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		requestedPath := c.Path()
 		assetPath, ok := hashedAssets[requestedPath]
 		if ok {
@@ -74,7 +73,7 @@ var staticWithCacheMiddleware = func(path string, assets fs.FS) func(*fiber.Ctx)
 		}
 
 		c.Set("Cache-Control", "no-store")
-		return c.Redirect(hashedAssetPath(path, requestedPath, hash), http.StatusTemporaryRedirect)
+		return c.Redirect().Status(http.StatusTemporaryRedirect).To(hashedAssetPath(path, requestedPath, hash))
 	}
 }
 
@@ -111,14 +110,14 @@ func getAssetsHashes(assets fs.FS) map[string]string {
 	return assetsHashes
 }
 
-func outageMiddleware(c *fiber.Ctx) error {
+func outageMiddleware(c fiber.Ctx) error {
 	if os.Getenv("MAINTENANCE_MODE") != "true" {
 		return c.Next()
 	}
-	return pages.Outage().Render(c.Context(), c)
+	return pages.Outage().Render(c.RequestCtx(), c)
 }
 
-func requestMetricsMiddleware(c *fiber.Ctx) error {
+func requestMetricsMiddleware(c fiber.Ctx) error {
 	err := c.Next()
 
 	route := "unknown"

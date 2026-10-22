@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/lounge"
 	"github.com/cufee/feedlr-yt/internal/database"

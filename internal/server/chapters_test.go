@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/sessions"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 func TestChapterCacheCoalescesAndExpires(t *testing.T) {
@@ -141,7 +141,7 @@ func TestChapterRouteValidatesVideoAndReturnsEmptyArray(t *testing.T) {
 			return youtube.VideoTimeline{}, nil
 		}
 		routes := chapterRoutes{db: &chapterTestDB{video: tc.video, err: tc.err}, cache: cache}
-		app := fiber.New(fiber.Config{DisableStartupMessage: true})
+		app := fiber.New()
 		app.Get("/api/videos/:id/chapters", routes.chapters)
 		res, err := app.Test(httptest.NewRequest("GET", "/api/videos/"+tc.id+"/chapters", nil))
 		if err != nil {
@@ -163,7 +163,7 @@ func TestChapterRouteValidatesVideoAndReturnsEmptyArray(t *testing.T) {
 }
 
 func TestChapterRouteRequiresAuthenticationIncludingThumbnails(t *testing.T) {
-	app := fiber.New(fiber.Config{DisableStartupMessage: true})
+	app := fiber.New()
 	registerPlaybackRoutes(app, &fakePlayback{}, &fakePlaybackDB{}, nil)
 	for _, method := range []string{"GET", "HEAD"} {
 		for _, path := range []string{"/api/videos/abcdefghijk/chapters", "/api/videos/abcdefghijk/chapters/0/thumbnail", "/api/videos/abcdefghijk/storyboards/0/thumbnail"} {
@@ -235,7 +235,7 @@ func TestChapterRouteReturnsCachedStoryboardWithoutChapters(t *testing.T) {
 		return youtube.VideoTimeline{Storyboard: &youtube.Storyboard{Duration: 60, Interval: 10, Count: 6, Width: 160, Height: 90, Columns: 3, Rows: 2, Sheets: []string{"https://i.ytimg.com/sb/abcdefghijk/storyboard3_L0/M0.jpg"}}}, nil
 	}
 	routes := chapterRoutes{db: &chapterTestDB{video: &models.Video{Type: "video", Duration: 60}}, cache: cache}
-	app := fiber.New(fiber.Config{DisableStartupMessage: true})
+	app := fiber.New()
 	app.Get("/api/videos/:id/chapters", routes.chapters)
 	for range 2 {
 		res, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/videos/abcdefghijk/chapters", nil))
@@ -282,7 +282,7 @@ func TestStoryboardThumbnailAuthenticatedGetAndHead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := fiber.New(fiber.Config{DisableStartupMessage: true})
+	app := fiber.New()
 	app.Get("/api/videos/:id/storyboards/:index/thumbnail", playbackAuthentication(sc), routes.storyboardThumbnail)
 	app.Head("/api/videos/:id/storyboards/:index/thumbnail", playbackAuthentication(sc), routes.storyboardThumbnail)
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
@@ -335,7 +335,7 @@ func TestStoryboardThumbnailRejectsInvalidOrUnavailableSheets(t *testing.T) {
 			cache.entries["abcdefghijk"] = chapterCacheEntry{timeline: youtube.VideoTimeline{Storyboard: tc.storyboard}, expires: expiry}
 			client := &chapterTestThumbnailClient{}
 			routes := chapterRoutes{cache: cache, thumbnailClient: client}
-			app := fiber.New(fiber.Config{DisableStartupMessage: true})
+			app := fiber.New()
 			app.Get("/api/videos/:id/storyboards/:index/thumbnail", routes.storyboardThumbnail)
 			res, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/videos/"+tc.id+"/storyboards/"+tc.index+"/thumbnail", nil))
 			if err != nil {
@@ -353,7 +353,7 @@ func TestStoryboardThumbnailUpstreamFailure(t *testing.T) {
 	cache := newChapterCache()
 	cache.entries["abcdefghijk"] = chapterCacheEntry{timeline: youtube.VideoTimeline{Storyboard: &youtube.Storyboard{Sheets: []string{"https://i.ytimg.com/sheet.jpg"}}}, expires: time.Now().Add(time.Hour)}
 	routes := chapterRoutes{cache: cache, thumbnailClient: &chapterTestThumbnailClient{err: errors.New("image unavailable")}}
-	app := fiber.New(fiber.Config{DisableStartupMessage: true})
+	app := fiber.New()
 	app.Get("/api/videos/:id/storyboards/:index/thumbnail", routes.storyboardThumbnail)
 	res, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/videos/abcdefghijk/storyboards/0/thumbnail", nil))
 	if err != nil {

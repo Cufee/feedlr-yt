@@ -5,10 +5,10 @@ package auth
 import (
 	"context"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/sessions"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 
 // MockMiddleware creates a development middleware that bypasses passkey auth
 // and automatically authenticates as a hardcoded dev user.
-func MockMiddleware(db database.Client) func(c *fiber.Ctx) error {
+func MockMiddleware(db database.Client) func(c fiber.Ctx) error {
 	sc, err := sessions.New(db)
 	if err != nil {
 		panic(err)
@@ -27,15 +27,15 @@ func MockMiddleware(db database.Client) func(c *fiber.Ctx) error {
 	// Ensure mock user exists at startup
 	ensureMockUser(db)
 
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		// Try to get existing session
-		session, err := sc.Get(c.Context(), c.Cookies("session_id"))
+		session, err := sc.Get(c.RequestCtx(), c.Cookies("session_id"))
 
 		// If no session or session invalid, create a new one
 		if err != nil || !session.Valid() {
-			session, err = sc.New(c.Context())
+			session, err = sc.New(c.RequestCtx())
 			if err != nil {
-				return c.Redirect("/error?message=failed+to+create+session")
+				return c.Redirect().Status(fiber.StatusFound).To("/error?message=failed+to+create+session")
 			}
 		}
 
@@ -43,15 +43,15 @@ func MockMiddleware(db database.Client) func(c *fiber.Ctx) error {
 		userID, hasUser := session.UserID()
 		if !hasUser || userID != mockUserID {
 			// Associate session with mock user
-			session, err = session.UpdateUser(c.Context(), null.StringFrom(mockUserID), null.StringFrom("mock-connection"))
+			session, err = session.UpdateUser(c.RequestCtx(), null.StringFrom(mockUserID), null.StringFrom("mock-connection"))
 			if err != nil {
-				return c.Redirect("/error?message=failed+to+update+session")
+				return c.Redirect().Status(fiber.StatusFound).To("/error?message=failed+to+update+session")
 			}
 		}
 
 		// Refresh session and set cookie
 		if err := session.Refresh(c); err != nil {
-			return c.Redirect("/error?message=failed+to+refresh+session")
+			return c.Redirect().Status(fiber.StatusFound).To("/error?message=failed+to+refresh+session")
 		}
 
 		c.Locals("session", session)

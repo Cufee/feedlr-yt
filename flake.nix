@@ -21,10 +21,10 @@
             unset GOROOT
           '';
           packages = with pkgs; [
-            # Go toolchain (matches go.mod / .mise.toml)
-            go_1_26
+            # Go toolchain (matches go.mod)
+            go_1_27
             # Frontend build
-            nodejs
+            nodejs_26
             # Preparing timestamped podcast transcription chunks
             ffmpeg
             # Live reload

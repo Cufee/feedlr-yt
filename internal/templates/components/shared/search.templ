@@ -17,20 +17,12 @@ script fuseSearch(searchInputId, targetId, parentId string, minLength int) {
 		if (window.__feedlrFusePromise) {
 			return window.__feedlrFusePromise;
 		}
-		window.__feedlrFusePromise = new Promise((resolve, reject) => {
-			const script = document.createElement("script");
-			script.src = "https://cdn.jsdelivr.net/npm/fuse.js@6.6.2";
-			script.async = true;
-			script.onload = () => {
-				if (window.Fuse) {
-					resolve(window.Fuse);
-					return;
-				}
-				reject(new Error("Fuse loaded without global export"));
-			};
-			script.onerror = () => reject(new Error("Failed to load Fuse.js"));
-			document.head.appendChild(script);
-		});
+		window.__feedlrFusePromise = import("/assets/vendor/fuse.min.mjs")
+			.then((module) => module.default)
+			.catch((error) => {
+				window.__feedlrFusePromise = null;
+				throw error;
+			});
 		return window.__feedlrFusePromise;
 	}
 

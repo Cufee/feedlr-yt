@@ -10,20 +10,29 @@ import (
 	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/utils"
-	"github.com/go-co-op/gocron"
+	"github.com/go-co-op/gocron/v2"
 )
 
-func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *logic.YouTubeTVSyncService) (*gocron.Scheduler, error) {
+func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *logic.YouTubeTVSyncService) (gocron.Scheduler, error) {
 	logic.StartPodcastProcessingWorkers(db)
-	s := gocron.NewScheduler(time.UTC)
+	s, err := gocron.NewScheduler(gocron.WithLocation(time.UTC))
+	if err != nil {
+		return nil, err
+	}
+	started := false
+	defer func() {
+		if !started {
+			_ = s.Shutdown()
+		}
+	}()
 
-	_, err := s.Cron(utils.MustGetEnv("VIDEO_CACHE_UPDATE_CRON")).Do(func() {
+	_, err = s.NewJob(gocron.CronJob(utils.MustGetEnv("VIDEO_CACHE_UPDATE_CRON"), false), gocron.NewTask(func() {
 		runErr := CacheAllChannelsWithVideos(db)
 		metrics.ObserveBackgroundTask("cache_all_channels_with_videos", runErr)
 		if runErr != nil {
 			log.Printf("CacheAllChannelsWithVideos: %v", runErr)
 		}
-	})
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -33,19 +42,19 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 		podcastCron = "0 */6 * * *"
 	}
 
-	_, err = s.Cron(podcastCron).Do(func() {
+	_, err = s.NewJob(gocron.CronJob(podcastCron, false), gocron.NewTask(func() {
 		runErr := CacheAllPodcastEpisodes(db)
 		metrics.ObserveBackgroundTask("cache_all_podcast_episodes", runErr)
 		if runErr != nil {
 			log.Printf("CacheAllPodcastEpisodes: %v", runErr)
 		}
-	})
+	}))
 	if err != nil {
 		return nil, err
 	}
 
 	// Daily cleanup of expired playlist items (runs at 3 AM UTC)
-	_, err = s.Cron("0 3 * * *").Do(func() {
+	_, err = s.NewJob(gocron.CronJob("0 3 * * *", false), gocron.NewTask(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 		deleted, err := db.CleanupExpiredPlaylistItems(ctx)
@@ -55,7 +64,7 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 		} else if deleted > 0 {
 			log.Printf("CleanupExpiredPlaylistItems: deleted %d expired items", deleted)
 		}
-	})
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +75,7 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 			playlistCron = "*/30 * * * *"
 		}
 
-		_, err = s.Cron(playlistCron).Do(func() {
+		_, err = s.NewJob(gocron.CronJob(playlistCron, false), gocron.NewTask(func() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 			defer cancel()
 
@@ -75,14 +84,14 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 			if runErr != nil {
 				log.Printf("RunSyncTick: %v", runErr)
 			}
-		})
+		}))
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if tvSync != nil {
-		_, err = s.Cron("*/1 * * * *").Do(func() {
+		_, err = s.NewJob(gocron.CronJob("*/1 * * * *", false), gocron.NewTask(func() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 
@@ -91,12 +100,12 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 			if runErr != nil {
 				log.Printf("RunConnectionTick: %v", runErr)
 			}
-		})
+		}))
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = s.Cron("*/15 * * * *").Do(func() {
+		_, err = s.NewJob(gocron.CronJob("*/15 * * * *", false), gocron.NewTask(func() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 
@@ -105,12 +114,13 @@ func StartCronTasks(db database.Client, sync *logic.YouTubeSyncService, tvSync *
 			if runErr != nil {
 				log.Printf("RunLifecycleTick: %v", runErr)
 			}
-		})
+		}))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	s.StartAsync()
+	s.Start()
+	started = true
 	return s, nil
 }

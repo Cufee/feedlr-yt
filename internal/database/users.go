@@ -76,6 +76,16 @@ func (c *sqliteClient) GetUserPasskeys(ctx context.Context, userID string) ([]*m
 }
 
 func (c *sqliteClient) SaveUserPasskey(ctx context.Context, key *models.Passkey) error {
+	if key.ID != "" {
+		updated, err := key.Update(ctx, c.db, boil.Whitelist(models.PasskeyColumns.Data, models.PasskeyColumns.Label, models.PasskeyColumns.UpdatedAt))
+		if err != nil {
+			return err
+		}
+		if updated == 0 {
+			return sql.ErrNoRows
+		}
+		return nil
+	}
 	err := key.Insert(ctx, c.db, boil.Infer())
 	if err != nil {
 		return err

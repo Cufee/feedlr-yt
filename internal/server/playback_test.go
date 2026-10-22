@@ -15,7 +15,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/playback"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type fakePlayback struct {
@@ -56,8 +56,8 @@ func (d *fakePlaybackDB) GetVideoByID(context.Context, string, ...database.Video
 }
 
 func playbackTestApp(r playbackRoutes) *fiber.App {
-	app := fiber.New(fiber.Config{DisableStartupMessage: true})
-	app.Use(func(c *fiber.Ctx) error { c.Locals("playback_user", "owner"); return c.Next() })
+	app := fiber.New()
+	app.Use(func(c fiber.Ctx) error { c.Locals("playback_user", "owner"); return c.Next() })
 	app.Post("/api/videos/:id/playback", r.resolve)
 	app.Get("/api/playback/:session/media/:resource", r.media)
 	return app

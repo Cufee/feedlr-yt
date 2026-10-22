@@ -11,7 +11,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/tpot"
 	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/pkg/errors"
 )
@@ -25,7 +25,7 @@ const (
 var _ tpot.Context = &Context{}
 
 type Context struct {
-	*fiber.Ctx
+	fiber.Ctx
 
 	c   context.Context
 	db  database.Client
@@ -47,7 +47,7 @@ func (ctx *Context) Request() *http.Request {
 	return ctx.r
 }
 func (ctx *Context) Context() context.Context {
-	return ctx.Ctx.Context()
+	return ctx.Ctx.RequestCtx()
 }
 
 func (c *Context) Status(status int) *Context {
@@ -56,8 +56,8 @@ func (c *Context) Status(status int) *Context {
 	return c
 }
 
-func NewBuilder(db database.Client, ses *sessions.SessionClient, policy *bluemonday.Policy, wa *webauthn.WebAuthn) func(*fiber.Ctx) tpot.ContextBuilder[*Context] {
-	return func(c *fiber.Ctx) tpot.ContextBuilder[*Context] {
+func NewBuilder(db database.Client, ses *sessions.SessionClient, policy *bluemonday.Policy, wa *webauthn.WebAuthn) func(fiber.Ctx) tpot.ContextBuilder[*Context] {
+	return func(c fiber.Ctx) tpot.ContextBuilder[*Context] {
 		return func(w http.ResponseWriter, r *http.Request) *Context {
 			return &Context{
 				Ctx:    c,

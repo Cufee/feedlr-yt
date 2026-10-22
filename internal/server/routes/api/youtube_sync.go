@@ -10,7 +10,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/server/handler"
 	"github.com/cufee/tpot/brewed"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"

@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/cufee/feedlr-yt/internal/api/openrouter"
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/database"
@@ -24,8 +24,8 @@ import (
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/cufee/tpot"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
 )
 
 type podcastRouteDatabase struct {
@@ -118,14 +118,14 @@ func newPodcastRouteTestApp(t *testing.T, db database.Client, authenticated bool
 		if err != nil {
 			t.Fatal(err)
 		}
-		app.Use(func(c *fiber.Ctx) error {
+		app.Use(func(c fiber.Ctx) error {
 			c.Locals("session", session)
 			return c.Next()
 		})
 	}
 	newContext := handler.NewBuilder(db, client, nil, nil)
 	toFiber := func(endpoint tpot.Servable[*handler.Context]) fiber.Handler {
-		return func(c *fiber.Ctx) error {
+		return func(c fiber.Ctx) error {
 			return adaptor.HTTPHandler(endpoint.Handler(newContext(c)))(c)
 		}
 	}

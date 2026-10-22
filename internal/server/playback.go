@@ -19,8 +19,8 @@ import (
 	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/playback"
 	"github.com/cufee/feedlr-yt/internal/sessions"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/rs/zerolog/log"
 )
 
@@ -55,11 +55,11 @@ func newPlaybackService() *playback.Service {
 func registerPlaybackRoutes(app *fiber.App, service playbackBackend, db playbackDatabase, sc *sessions.SessionClient) {
 	routes := playbackRoutes{service, db}
 	authenticate := playbackAuthentication(sc)
-	requests := limiter.New(limiter.Config{Max: 30, Expiration: time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.Locals("playback_user").(string) }, LimitReached: func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusTooManyRequests) }})
+	requests := limiter.New(limiter.Config{Max: 30, Expiration: time.Minute, KeyGenerator: func(c fiber.Ctx) string { return c.Locals("playback_user").(string) }, LimitReached: func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusTooManyRequests) }})
 	app.Post("/api/videos/:id/playback", authenticate, playbackSameOrigin, requests, routes.resolve)
 	app.Post("/api/videos/:id/playback/events", authenticate, playbackSameOrigin, requests, routes.event)
 	chapters := chapterRoutes{db: db, cache: newChapterCache()}
-	thumbnailRequests := limiter.New(limiter.Config{Max: 120, Expiration: time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.Locals("playback_user").(string) }, LimitReached: func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusTooManyRequests) }})
+	thumbnailRequests := limiter.New(limiter.Config{Max: 120, Expiration: time.Minute, KeyGenerator: func(c fiber.Ctx) string { return c.Locals("playback_user").(string) }, LimitReached: func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusTooManyRequests) }})
 	app.Get("/api/videos/:id/chapters", authenticate, requests, chapters.chapters)
 	app.Get("/api/videos/:id/chapters/:index/thumbnail", authenticate, thumbnailRequests, chapters.thumbnail)
 	app.Head("/api/videos/:id/chapters/:index/thumbnail", authenticate, thumbnailRequests, chapters.thumbnail)
@@ -73,7 +73,7 @@ func registerPlaybackRoutes(app *fiber.App, service playbackBackend, db playback
 }
 
 func playbackAuthentication(sc *sessions.SessionClient) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		session, ok := c.Locals("session").(sessions.Session)
 		if !ok {
 			if sc == nil {
@@ -97,7 +97,7 @@ func playbackAuthentication(sc *sessions.SessionClient) fiber.Handler {
 	}
 }
 
-func playbackSameOrigin(c *fiber.Ctx) error {
+func playbackSameOrigin(c fiber.Ctx) error {
 	if c.Get("Sec-Fetch-Site") == "cross-site" {
 		return c.SendStatus(fiber.StatusForbidden)
 	}
@@ -112,7 +112,7 @@ func playbackSameOrigin(c *fiber.Ctx) error {
 
 var playbackVideoID = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 
-func (r playbackRoutes) resolve(c *fiber.Ctx) error {
+func (r playbackRoutes) resolve(c fiber.Ctx) error {
 	// Resolution coalesces work in a goroutine that can outlive this Fiber ctx.
 	id := strings.Clone(c.Params("id"))
 	if !playbackVideoID.MatchString(id) {
@@ -125,7 +125,7 @@ func (r playbackRoutes) resolve(c *fiber.Ctx) error {
 	if len(c.Body()) > 1024 {
 		return c.SendStatus(fiber.StatusRequestEntityTooLarge)
 	}
-	if len(c.Body()) != 0 && c.BodyParser(&request) != nil {
+	if len(c.Body()) != 0 && c.Bind().Body(&request) != nil {
 		return c.SendStatus(fiber.StatusBadRequest)
 	}
 	if request.Mode != "" && request.Mode != "native" && request.Mode != "iframe" {
@@ -171,7 +171,7 @@ func (r playbackRoutes) resolve(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"mode": result.Mode, "reason": result.Reason, "progress": progress, "manifestUrl": result.ManifestURL, "expiresAt": result.ExpiresAt, "audioOnly": result.AudioOnly, "qualities": result.Qualities})
 }
 
-func (r playbackRoutes) manifest(c *fiber.Ctx) error {
+func (r playbackRoutes) manifest(c fiber.Ctx) error {
 	manifest, err := r.service.Manifest(c.Locals("playback_user").(string), c.Params("session"))
 	if err != nil {
 		return playbackError(c, err)
@@ -180,7 +180,7 @@ func (r playbackRoutes) manifest(c *fiber.Ctx) error {
 	return c.Send(manifest)
 }
 
-func (r playbackRoutes) media(c *fiber.Ctx) error {
+func (r playbackRoutes) media(c fiber.Ctx) error {
 	// fasthttp's request context is reused after the handler and does not expose
 	// client disconnect cancellation. The body owns this independent deadline;
 	// fasthttp closes it when streaming completes or a downstream write fails.
@@ -232,7 +232,7 @@ func (s *playbackStream) Close() error {
 	return err
 }
 
-func playbackError(c *fiber.Ctx, err error) error {
+func playbackError(c fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, playback.ErrNotFound), errors.Is(err, playback.ErrForbidden):
 		return c.SendStatus(fiber.StatusNotFound)
@@ -247,7 +247,7 @@ func playbackError(c *fiber.Ctx, err error) error {
 	}
 }
 
-func (r playbackRoutes) event(c *fiber.Ctx) error {
+func (r playbackRoutes) event(c fiber.Ctx) error {
 	if len(c.Body()) > 1024 {
 		return c.SendStatus(fiber.StatusRequestEntityTooLarge)
 	}
@@ -256,7 +256,7 @@ func (r playbackRoutes) event(c *fiber.Ctx) error {
 		Reason  string  `json:"reason"`
 		Seconds float64 `json:"seconds"`
 	}
-	if c.BodyParser(&event) != nil {
+	if c.Bind().Body(&event) != nil {
 		return c.SendStatus(fiber.StatusBadRequest)
 	}
 	switch event.Event {

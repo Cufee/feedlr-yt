@@ -19,16 +19,16 @@ import (
 	"github.com/cufee/feedlr-yt/internal/utils"
 	"github.com/cufee/tpot"
 	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
-	"github.com/gofiber/fiber/v2/middleware/favicon"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
+	"github.com/gofiber/fiber/v3/middleware/favicon"
+	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 )
 
-func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, authMw func(c *fiber.Ctx) error, globalMw func(c *fiber.Ctx) error, port ...int) func() error {
+func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, authMw func(c fiber.Ctx) error, globalMw func(c fiber.Ctx) error, port ...int) func() error {
 	var portString string
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
@@ -37,8 +37,8 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 	}
 
 	newCtx := handler.NewBuilder(db, ses, policy, wa)
-	toFiber := func(s tpot.Servable[*handler.Context]) func(*fiber.Ctx) error {
-		return func(c *fiber.Ctx) error {
+	toFiber := func(s tpot.Servable[*handler.Context]) func(fiber.Ctx) error {
+		return func(c fiber.Ctx) error {
 			ctx, ok := c.Locals(handler.ContextKeyCustomCtx).(*handler.Context)
 			if !ok {
 				return adaptor.HTTPHandler(s.Handler(newCtx(c)))(c)
@@ -55,11 +55,11 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		server := fiber.New()
 		server.Use(requestMetricsMiddleware)
 		server.Use(logger.New())
-		server.Get("/healthy", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
+		server.Get("/healthy", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 
 		// Static files
 		server.Use(favicon.New(favicon.Config{
-			FileSystem:   http.FS(assets),
+			FileSystem:   assets,
 			CacheControl: "public, max-age=86400",
 			File:         "assets/favicon.png",
 			URL:          "/favicon.png",
@@ -160,8 +160,8 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		app.Get("/playlist/:id/feed", toFiber(rapp.PlaylistFeed))
 
 		// This last handler is a catch-all for any routes that don't exist
-		server.Use(func(c *fiber.Ctx) error {
-			return c.Redirect("/error?code=404&from=" + c.Path())
+		server.Use(func(c fiber.Ctx) error {
+			return c.Redirect().Status(fiber.StatusFound).To("/error?code=404&from=" + c.Path())
 		})
 
 		return server.Listen(":" + portString)

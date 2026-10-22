@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/cufee/feedlr-yt/internal/api/podcastindex"
 	"github.com/cufee/feedlr-yt/internal/api/rss"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"

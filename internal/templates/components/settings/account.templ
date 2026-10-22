@@ -84,7 +84,7 @@ templ ManageAccount(passkeys []types.PasskeyProps) {
 
 							// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
 							// A new attestation is created. This also means a new public-private-key pair is created.
-							const attestationResponse = await webAuthnBrowser.startRegistration(options.publicKey);
+							const attestationResponse = await webAuthnBrowser.startRegistration({ optionsJSON: options.publicKey });
 
 						// Send attestationResponse back to server for verification and storage.
 						const verificationResponse = await fetch('/api/passkeys/add/finish', {

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/lucsky/cuid"
 )
 

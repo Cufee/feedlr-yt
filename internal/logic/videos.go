@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/cufee/feedlr-yt/internal/api/sponsorblock"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/friendsofgo/errors"
-	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/fiber/v3/log"
 )
 
 const (

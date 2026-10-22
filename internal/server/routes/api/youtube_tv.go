@@ -39,7 +39,7 @@ var SendVideoToTV brewed.Endpoint[*handler.Context] = func(ctx *handler.Context)
 	var request struct {
 		Position *float64 `json:"position"`
 	}
-	if ctx.BodyParser(&request) != nil || request.Position == nil {
+	if ctx.Bind().Body(&request) != nil || request.Position == nil {
 		return tvResponse(ctx, http.StatusBadRequest, map[string]string{"error": "Invalid video position"})
 	}
 	service := logic.DefaultYouTubeTVSync

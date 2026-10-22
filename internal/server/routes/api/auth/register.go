@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/metrics"
@@ -29,7 +29,7 @@ var RegistrationBegin brewed.Endpoint[*handler.Context] = func(ctx *handler.Cont
 	}
 
 	var form authForm
-	err := ctx.BodyParser(&form)
+	err := ctx.Bind().Body(&form)
 	if err != nil {
 		log.Print("ctx#BodyParser error", err)
 		outcome = "invalid_request"

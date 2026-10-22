@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/cufee/feedlr-yt/internal/database/models"

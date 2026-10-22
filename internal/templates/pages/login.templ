@@ -90,7 +90,7 @@ templ Login() {
 
 							// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
 							// A new attestation is created. This also means a new public-private-key pair is created.
-							const attestationResponse = await webAuthnBrowser.startRegistration(options.publicKey);
+							const attestationResponse = await webAuthnBrowser.startRegistration({ optionsJSON: options.publicKey });
 
 						// Send attestationResponse back to server for verification and storage.
 						const verificationResponse = await fetch('/register/finish', {
@@ -141,7 +141,7 @@ templ Login() {
 
 							// This triggers the browser to display the passkey / WebAuthn modal (e.g. Face ID, Touch ID, Windows Hello).
 							// A new assertionResponse is created. This also means that the challenge has been signed.
-							const assertionResponse = await webAuthnBrowser.startAuthentication(options.publicKey);
+							const assertionResponse = await webAuthnBrowser.startAuthentication({ optionsJSON: options.publicKey });
 
 						// Send assertionResponse back to server for verification.
 						const verificationResponse = await fetch('/login/finish', {

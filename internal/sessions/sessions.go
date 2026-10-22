@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarondl/null/v8"
+	"github.com/aarondl/null/v9"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/metrics"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/segmentio/ksuid"
 )
 
@@ -147,12 +147,12 @@ func (c Session) UpdateMeta(ctx context.Context, meta map[string]string) (Sessio
 	return c, nil
 }
 
-func (s Session) Refresh(ctx *fiber.Ctx) error {
+func (s Session) Refresh(ctx fiber.Ctx) error {
 	if !s.Valid() {
 		return errors.New("session does not exist")
 	}
 
-	updated, err := s.db.SetSessionExpiration(ctx.Context(), s.data.ID, time.Now().Add(time.Hour*24*7))
+	updated, err := s.db.SetSessionExpiration(ctx.RequestCtx(), s.data.ID, time.Now().Add(time.Hour*24*7))
 	if err != nil {
 		metrics.IncUserEvent("session_refresh", "error")
 		return err

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type chapterCacheEntry struct {
@@ -120,7 +120,7 @@ type chapterRoutes struct {
 	thumbnailClient chapterThumbnailClient
 }
 
-func (r chapterRoutes) chapters(c *fiber.Ctx) error {
+func (r chapterRoutes) chapters(c fiber.Ctx) error {
 	id := strings.Clone(c.Params("id"))
 	if !playbackVideoID.MatchString(id) {
 		return c.SendStatus(fiber.StatusBadRequest)
@@ -141,7 +141,7 @@ func (r chapterRoutes) chapters(c *fiber.Ctx) error {
 	return c.JSON(timeline)
 }
 
-func (r chapterRoutes) thumbnail(c *fiber.Ctx) error {
+func (r chapterRoutes) thumbnail(c fiber.Ctx) error {
 	id := strings.Clone(c.Params("id"))
 	index, err := strconv.Atoi(c.Params("index"))
 	if !playbackVideoID.MatchString(id) || err != nil || index < 0 {
@@ -163,7 +163,7 @@ func (r chapterRoutes) thumbnail(c *fiber.Ctx) error {
 	return r.sendThumbnail(c, image.URL)
 }
 
-func (r chapterRoutes) storyboardThumbnail(c *fiber.Ctx) error {
+func (r chapterRoutes) storyboardThumbnail(c fiber.Ctx) error {
 	id := strings.Clone(c.Params("id"))
 	index, err := strconv.Atoi(c.Params("index"))
 	if !playbackVideoID.MatchString(id) || err != nil || index < 0 {
@@ -176,7 +176,7 @@ func (r chapterRoutes) storyboardThumbnail(c *fiber.Ctx) error {
 	return r.sendThumbnail(c, storyboard.Sheets[index])
 }
 
-func (r chapterRoutes) sendThumbnail(c *fiber.Ctx, imageURL string) error {
+func (r chapterRoutes) sendThumbnail(c fiber.Ctx, imageURL string) error {
 	client := r.thumbnailClient
 	if client == nil {
 		if youtube.DefaultClient == nil {

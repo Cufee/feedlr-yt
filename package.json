@@ -7,8 +7,16 @@
     "dev": "npm run build:vendor && npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css --watch"
   },
   "dependencies": {
-    "@tailwindcss/cli": "^4.1.4",
-    "shaka-player": "5.2.12",
-    "tailwindcss": "^4.1.4"
+    "@simplewebauthn/browser": "14.0.0",
+    "@tailwindcss/cli": "^4.3.3",
+    "fuse.js": "7.5.0",
+    "htmx-ext-head-support": "2.0.5",
+    "htmx.org": "2.0.11",
+    "hyperscript.org": "0.9.93",
+    "shaka-player": "5.3.1",
+    "tailwindcss": "^4.3.3"
+  },
+  "overrides": {
+    "@parcel/watcher": "2.6.0"
   }
 }
