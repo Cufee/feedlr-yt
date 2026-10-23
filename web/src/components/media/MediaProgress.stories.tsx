@@ -52,6 +52,7 @@ const items: MediaItem[] = [
     progressSeconds: 0,
   },
   { ...base, id: "just-started", title: "The coast road", progressSeconds: 1 },
+  { ...base, id: "hidden", title: "A hidden episode", hidden: true },
 ];
 
 function MediaProgressExamples() {

@@ -92,7 +92,7 @@ export function MediaCardView({
           <Badge tone="danger">Live</Badge>
         )}
         {item.type.includes("upcoming") && <Badge tone="accent">Upcoming</Badge>}
-        {progress > 0 && (
+        {!item.hidden && progress > 0 && (
           <div
             className="media-progress"
             role="progressbar"

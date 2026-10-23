@@ -399,8 +399,8 @@
 
   .media-duration {
     position: absolute;
-    right: 8px;
-    bottom: 8px;
+    right: 0.82rem;
+    bottom: calc(0.62rem + 0.06rem);
     padding: 3px 6px;
     border-radius: 4px;
     background: var(--color-canvas);
@@ -411,33 +411,35 @@
   }
 
   .media-artwork:has(.media-progress) .media-duration {
-    bottom: 24px;
+    bottom: calc(0.62rem + 0.55rem + 0.42rem);
   }
 
   .media-progress {
     position: absolute;
-    right: 10px;
-    bottom: 10px;
-    left: 10px;
-    height: 9px;
+    right: 0.82rem;
+    bottom: 0.62rem;
+    left: 0.82rem;
+    height: 0.55rem;
     overflow: hidden;
-    border-radius: 99px;
-    background: var(--color-progress-track);
-    outline: 1px solid var(--color-progress-border);
-    box-shadow: 0 0 0 2px rgb(0 0 0 / 70%);
+    border: 1px solid rgb(255 255 255 / 20%);
+    border-radius: 9999px;
+    background: rgb(0 0 0 / 36%);
+    box-shadow: inset 0 1px 1px rgb(255 255 255 / 10%);
+    backdrop-filter: blur(4px);
     pointer-events: none;
   }
 
   .media-progress span {
     display: block;
     height: 100%;
-    min-width: 3px;
+    border: 1px solid oklch(74% 0.11 312deg / 32%);
     border-radius: inherit;
-    background: var(--color-accent);
-  }
-
-  :where(.media-card-completed) .media-progress span {
-    background: var(--color-success);
+    background: linear-gradient(
+      to right in oklab,
+      oklch(74% 0.11 312deg / 62%),
+      oklch(68% 0.13 312deg / 68%)
+    );
+    box-shadow: 0 0 6px rgb(177 128 230 / 20%);
   }
 
   .media-card-body {
