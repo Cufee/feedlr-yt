@@ -79,7 +79,9 @@ export function MediaCardView({
           </div>
         )}
         {!item.hidden && (item.completed || item.progressSeconds > 0) && (
-          <div className="media-watched-overlay">Watched</div>
+          <div className="media-watched-overlay">
+            {item.kind === "podcast" ? "Listened" : "Watched"}
+          </div>
         )}
         {duration(item.durationSeconds) && (
           <span className="media-duration">{duration(item.durationSeconds)}</span>
@@ -127,7 +129,14 @@ export function MediaCardView({
                 },
                 {
                   id: "completed",
-                  label: item.completed ? "Mark as unwatched" : "Mark as watched",
+                  label:
+                    item.kind === "podcast"
+                      ? item.completed
+                        ? "Mark as unplayed"
+                        : "Mark as listened"
+                      : item.completed
+                        ? "Mark as unwatched"
+                        : "Mark as watched",
                   icon: item.completed ? <ArrowPathIcon /> : <CheckIcon />,
                   onSelect: () =>
                     onState?.(item.completed ? { completed: false } : { completed: true }),
@@ -143,14 +152,14 @@ export function MediaCardView({
             />
           )}
         </div>
-        <RouterLink
-          to="/channel/$channelId"
-          params={{ channelId: item.channel.id }}
-          className="media-channel"
-        >
-          {item.channel.title}
-        </RouterLink>
         <div className="media-card-foot">
+          <RouterLink
+            to="/channel/$channelId"
+            params={{ channelId: item.channel.id }}
+            className="media-channel"
+          >
+            {item.channel.title}
+          </RouterLink>
           <time
             className="media-detail"
             dateTime={item.publishedAt}

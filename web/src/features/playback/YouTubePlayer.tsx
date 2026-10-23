@@ -14,7 +14,7 @@ function PlaybackStatus({ message, sending }: { message: string; sending: boolea
   const lifetime = useToastTimer(6_000, dismiss);
   if (sending) {
     return (
-      <div className="playback-video-status" role="status" aria-live="polite">
+      <div className="glass playback-video-status" role="status" aria-live="polite">
         Sending to TV…
       </div>
     );

@@ -139,13 +139,13 @@ test("publication time remains visible through partial, completed, and unplayed 
   expect(label?.trim()).not.toBe("");
   const actions = card.getByRole("button", { name: /^Actions for / });
   await actions.click();
-  await page.getByRole("menuitem", { name: "Mark as watched", exact: true }).click();
-  await expect(card.getByText("Watched", { exact: true })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Mark as listened", exact: true }).click();
+  await expect(card.getByText("Listened", { exact: true })).toBeVisible();
   await expect(published).toBeVisible();
   await expect(published).toHaveText(label ?? "");
   await expect(published).toHaveAttribute("datetime", dateTime ?? "");
   await actions.click();
-  await page.getByRole("menuitem", { name: "Mark as unwatched", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Mark as unplayed", exact: true }).click();
   await expect(card.getByRole("progressbar")).toHaveCount(0);
   await expect(published).toBeVisible();
   await expect(published).toHaveText(label ?? "");

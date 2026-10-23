@@ -58,18 +58,6 @@ export function FeedPage() {
               />
             )}
           </Section>
-          {data.watched.length > 0 && (
-            <Section
-              title="Recently played"
-              action={
-                <Link className="ui-link" to="/app/recent" search={{ source: "all" }}>
-                  View history
-                </Link>
-              }
-            >
-              <MediaGrid items={data.watched} returnTo="/app" />
-            </Section>
-          )}
         </>
       )}
     </Page>

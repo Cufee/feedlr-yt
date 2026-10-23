@@ -166,6 +166,7 @@ func mediaDTO(p types.VideoProps) MediaItem {
 	}
 	m := MediaItem{ID: p.ID, Kind: kind, Type: string(p.Type), Title: p.Title, Description: p.Description, Channel: channelDTO(p.Channel, false), ArtworkURL: fmt.Sprintf("/thumb/video/%s/sddefault", p.ID), PublishedAt: stamp(p.PublishedAt), DurationSeconds: duration, ProgressSeconds: p.Progress, Hidden: p.Hidden, InWatchLater: p.InWatchLater, Completed: types.IsCompleted(p.Progress, p.Duration), StreamURL: p.StreamURL}
 	if p.IsPodcast() {
+		m.ArtworkURL = m.Channel.ArtworkURL
 		m.DescriptionHTML = shared.SanitizePodcastHTML(p.Description)
 	}
 	return m

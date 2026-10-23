@@ -318,6 +318,7 @@
 
   .media-play-hint {
     position: absolute;
+    z-index: 1;
     inset: 0;
     display: grid;
     place-items: center;
@@ -383,7 +384,6 @@
     padding: 0;
     background: rgb(16 16 20 / 72%);
     color: var(--color-text);
-    backdrop-filter: blur(12px);
   }
 
   .media-watch-later.ui-button:hover {
@@ -398,6 +398,7 @@
 
   .media-duration {
     position: absolute;
+    z-index: 1;
     right: 0.82rem;
     bottom: calc(0.62rem + 0.06rem);
     padding: 3px 6px;
@@ -415,6 +416,7 @@
 
   .media-progress {
     position: absolute;
+    z-index: 1;
     right: 0.82rem;
     bottom: 0.62rem;
     left: 0.82rem;
@@ -424,7 +426,6 @@
     border-radius: 9999px;
     background: rgb(0 0 0 / 36%);
     box-shadow: inset 0 1px 1px rgb(255 255 255 / 10%);
-    backdrop-filter: blur(4px);
     pointer-events: none;
   }
 
@@ -484,6 +485,7 @@
 
   .media-channel {
     width: fit-content;
+    min-width: 0;
     max-width: 100%;
     overflow: hidden;
     color: var(--color-text-muted);
@@ -505,8 +507,10 @@
   }
 
   .media-detail {
+    flex-shrink: 0;
     color: var(--color-text-muted);
     font-size: 0.75rem;
+    white-space: nowrap;
   }
 
   .media-shelf .media-grid {

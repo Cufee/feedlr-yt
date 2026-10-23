@@ -86,7 +86,7 @@ test("media progress preserves the subdued legacy treatment and duration spacing
       expect(treatment.borderWidth).toBe("1px");
       expect(treatment.outline).toBe("none");
       expect(treatment.shadow).toBe("rgba(255, 255, 255, 0.1) 0px 1px 1px 0px inset");
-      expect(treatment.blur).toBe("blur(4px)");
+      expect(treatment.blur).toBe("none");
       expect(treatment.fill).toBe(
         "linear-gradient(to right, oklch(0.74 0.11 312 / 0.62), oklch(0.68 0.13 312 / 0.68))",
       );
@@ -241,8 +241,8 @@ test("toast glass reveals content while preserving text and severity contrast", 
     icon: getComputedStyle(element.querySelector(".ui-toast-icon") ?? element).color,
   }));
   const rgba = style.background.match(/[\d.]+/g)?.map(Number);
-  expect(rgba?.[3]).toBeGreaterThanOrEqual(0.65);
-  expect(rgba?.[3]).toBeLessThanOrEqual(0.8);
+  expect(rgba?.[3]).toBeGreaterThanOrEqual(0.8);
+  expect(rgba?.[3]).toBeLessThanOrEqual(0.9);
   expect(style.filter).toContain("blur(20px)");
   if (!rgba) {
     throw new Error("Toast background is not translucent");

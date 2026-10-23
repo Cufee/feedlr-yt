@@ -165,7 +165,6 @@
   max-width: min(440px, calc(100% - 2rem));
   padding: 0.625rem 1rem;
   border-radius: var(--radius-control);
-  background: rgb(20 20 24 / 94%);
   color: var(--color-text);
   font-size: 0.8125rem;
   text-align: start;
