@@ -25,7 +25,7 @@ import type {
   RefObject,
 } from "react";
 import { useOverlayPortal } from "@/lib/browser/overlay-portal";
-import { IconButton } from "./actions";
+import { type ButtonSize, type ButtonVariant, buttonClassName, IconButton } from "./actions";
 
 export type DialogProps = Omit<HTMLAttributes<HTMLDivElement>, "title" | "role"> & {
   role?: "dialog" | "alertdialog";
@@ -99,6 +99,8 @@ export type MenuProps = {
   items: MenuAction[];
   className?: string;
   buttonClassName?: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   iconOnly?: boolean;
   portalTarget?: HTMLElement | null;
   ref?: Ref<HTMLButtonElement>;
@@ -135,7 +137,9 @@ export function Menu({
   label,
   items,
   className = "",
-  buttonClassName = "",
+  buttonClassName: triggerClassName = "",
+  variant = "secondary",
+  size = "md",
   iconOnly = false,
   portalTarget,
   ref,
@@ -147,7 +151,7 @@ export function Menu({
           ref={ref}
           onFocus={preserveModalFocus}
           aria-label={iconOnly && typeof label === "string" ? label : undefined}
-          className={`ui-button ui-button-secondary ui-button-md ${iconOnly ? "ui-icon-button" : ""} ${buttonClassName}`}
+          className={`${buttonClassName({ variant, size })} ${iconOnly ? "ui-icon-button" : ""} ${triggerClassName}`}
         >
           {iconOnly ? (
             <EllipsisHorizontalIcon aria-hidden="true" />

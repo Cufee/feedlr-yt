@@ -82,11 +82,11 @@ func (a *API) feed(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	n, err := a.enrich(c.Context(), p.New, viewer(c))
+	n, err := a.enrich(c.Context(), trimFeedSection(p.New), viewer(c))
 	if err != nil {
 		return err
 	}
-	w, err := a.enrich(c.Context(), p.Watched, viewer(c))
+	w, err := a.enrich(c.Context(), trimFeedSection(p.Watched), viewer(c))
 	if err != nil {
 		return err
 	}
@@ -95,6 +95,15 @@ func (a *API) feed(c fiber.Ctx) error {
 		return err
 	}
 	return c.JSON(Feed{New: n, Watched: w, WatchLater: later, Onboarding: len(n)+len(w) == 0})
+}
+
+func trimFeedSection(videos []types.VideoProps) []types.VideoProps {
+	// Twelve cards fill complete rows at every responsive grid width: 1, 2, 3 or 4 columns.
+	const gridBatchSize = 12
+	if len(videos) > gridBatchSize {
+		return videos[:len(videos)-len(videos)%gridBatchSize]
+	}
+	return videos
 }
 
 func (a *API) history(c fiber.Ctx) error {

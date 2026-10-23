@@ -357,13 +357,18 @@
     font-size: 0.5625rem;
   }
 
-  .media-artwork-badges .media-completed {
-    gap: 4px;
-    padding: 4px 6px;
-    border-color: var(--color-success);
-    color: var(--color-success);
-    font-size: 0.6875rem;
+  .media-watched-overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgb(0 0 0 / 65%);
+    color: #fff;
+    font-size: clamp(1.25rem, 2vw, 2rem);
     font-weight: 600;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+    pointer-events: none;
   }
 
   .media-watch-later.ui-button {
@@ -389,12 +394,6 @@
     border-color: var(--color-accent);
     background: rgb(35 25 55 / 85%);
     color: var(--color-accent);
-  }
-
-  .media-completed svg {
-    width: 14px;
-    height: 14px;
-    stroke-width: 2.5;
   }
 
   .media-duration {
@@ -471,8 +470,16 @@
     color: var(--color-accent);
   }
 
-  .media-card-heading .ui-icon-button {
-    margin-top: -6px;
+  .media-actions.ui-button {
+    width: 28px;
+    min-height: 28px;
+    margin-top: -4px;
+    padding: 4px;
+  }
+
+  .media-actions > svg {
+    width: 16px;
+    height: 16px;
   }
 
   .media-channel {
@@ -1123,6 +1130,12 @@
     width: 44px;
     height: 44px;
     min-height: 44px;
+  }
+
+  .media-actions.ui-button {
+    width: 44px;
+    min-height: 44px;
+    margin-top: -12px;
   }
 }
 

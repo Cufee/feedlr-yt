@@ -44,7 +44,7 @@ export function FeedPage() {
               }
             >
               <div className="media-shelf">
-                <MediaGrid items={data.watchLater.slice(0, 6)} returnTo="/app" />
+                <MediaGrid items={data.watchLater} returnTo="/app" />
               </div>
             </Section>
           )}

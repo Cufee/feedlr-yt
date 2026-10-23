@@ -95,21 +95,25 @@ test("media progress preserves the subdued legacy treatment and duration spacing
       expect(treatment.fillMinimum).toBe("0px");
       expect(treatment.fillShadow).toBe("rgba(177, 128, 230, 0.2) 0px 0px 6px 0px");
     }
-    await expect(root.locator('[data-media-id="unplayed"] .media-progress')).toHaveCount(0);
+    const unplayed = root.locator('[data-media-id="unplayed"]');
+    await expect(unplayed.getByRole("progressbar")).toHaveCount(0);
+    await expect(unplayed.getByText("Watched", { exact: true })).toHaveCount(0);
     const hidden = root.locator('[data-media-id="hidden"]');
     await expect(hidden.getByText("Hidden", { exact: true })).toBeVisible();
     await expect(hidden.getByRole("progressbar")).toHaveCount(0);
+    await expect(hidden.getByText("Watched", { exact: true })).toHaveCount(0);
     const completed = root.locator('[data-media-id="completed-without-position"]');
     await expect(completed.getByRole("progressbar", { name: "Completed" })).toHaveAttribute(
       "aria-valuenow",
       "100",
     );
     await expect(completed.getByText("Watched", { exact: true })).toHaveCount(1);
-    await expect(completed.locator(".media-artwork-badges")).toBeVisible();
+    await expect(completed.locator(".media-watched-overlay")).toBeVisible();
     const fullTrack = await completed.locator(".media-progress").boundingBox();
     const fullFill = await completed.locator(".media-progress span").boundingBox();
     expect(Math.abs((fullFill?.width ?? 0) - (fullTrack?.width ?? 0) + 2)).toBeLessThan(0.1);
     const partial = root.locator('[data-media-id="progress-preview"]');
+    await expect(partial.getByText("Watched", { exact: true })).toBeVisible();
     await expect(partial.getByRole("progressbar", { name: "Played" })).toHaveAttribute(
       "aria-valuenow",
       "35",
@@ -122,6 +126,9 @@ test("media progress preserves the subdued legacy treatment and duration spacing
     const tiny = root
       .locator('[data-media-id="just-started"]')
       .getByRole("progressbar", { name: "Played" });
+    await expect(
+      root.locator('[data-media-id="just-started"]').getByText("Watched", { exact: true }),
+    ).toBeVisible();
     await expect(tiny).toHaveAttribute("aria-valuenow", "0");
     const tinyFill = (await tiny.locator("span").boundingBox())?.width ?? 0;
     expect(tinyFill).toBeGreaterThan(0);

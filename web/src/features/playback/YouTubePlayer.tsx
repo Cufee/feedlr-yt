@@ -1,11 +1,30 @@
 import { PlayIcon } from "@heroicons/react/24/solid";
-import type { Ref } from "react";
-import { Button } from "@/components/ui";
+import { type Ref, useState } from "react";
+import { Button, Toast } from "@/components/ui";
 import type { MediaDetail } from "@/lib/api/types";
+import { useToastTimer } from "@/lib/browser/useToastTimer";
 import type { VideoActions, VideoSnapshot } from "./adapters/runtime";
 import { useVideoPlayback } from "./adapters/usePlayback";
 import { PlayerToolbar } from "./PlayerToolbar";
 import "./playback.css";
+
+function PlaybackStatus({ message, sending }: { message: string; sending: boolean }) {
+  const [visible, setVisible] = useState(true);
+  const dismiss = () => setVisible(false);
+  const lifetime = useToastTimer(6_000, dismiss);
+  if (sending) {
+    return (
+      <div className="playback-video-status" role="status" aria-live="polite">
+        Sending to TV…
+      </div>
+    );
+  }
+  return visible && message ? (
+    <Toast {...lifetime} className="playback-video-status" tone="info" onDismiss={dismiss}>
+      {message}
+    </Toast>
+  ) : null;
+}
 
 export function YouTubePlayerView({
   title,
@@ -21,21 +40,17 @@ export function YouTubePlayerView({
   return (
     <div className="playback-video-body">
       <h1 className="sr-only">{title}</h1>
-      <section className="playback-video-stage" aria-label="Video player">
+      <section
+        className="playback-video-stage"
+        aria-label="Video player"
+        aria-busy={snapshot.loading || undefined}
+      >
         <fieldset
           ref={rootRef}
           className="playback-video-engine"
           aria-label="Playback controls"
           tabIndex={-1}
         />
-        {snapshot.loading && !snapshot.error && (
-          <div className="playback-stage-status" role="status">
-            <span className="ui-spinner" aria-hidden="true" />
-            <span>
-              {snapshot.switching && snapshot.ready ? "Updating playback…" : "Loading video…"}
-            </span>
-          </div>
-        )}
         {snapshot.blocked && !snapshot.loading && (
           <div className="playback-stage-prompt">
             <Button
@@ -72,9 +87,11 @@ export function YouTubePlayerView({
         )}
       </section>
       {(snapshot.notice || snapshot.tvSending) && (
-        <div className="playback-video-status" role="status" aria-live="polite">
-          {snapshot.tvSending ? "Sending to TV…" : snapshot.notice}
-        </div>
+        <PlaybackStatus
+          key={snapshot.noticeID}
+          message={snapshot.notice}
+          sending={snapshot.tvSending}
+        />
       )}
     </div>
   );

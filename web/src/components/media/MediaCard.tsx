@@ -73,17 +73,13 @@ export function MediaCardView({
             {item.inWatchLater ? <BookmarkSolidIcon /> : <BookmarkIcon />}
           </IconButton>
         )}
-        {(item.hidden || item.completed) && (
+        {item.hidden && (
           <div className="media-artwork-badges">
-            {item.hidden ? (
-              <Badge>Hidden</Badge>
-            ) : (
-              <Badge tone="success" className="media-completed">
-                <CheckIcon aria-hidden="true" />
-                Watched
-              </Badge>
-            )}
+            <Badge>Hidden</Badge>
           </div>
+        )}
+        {!item.hidden && (item.completed || item.progressSeconds > 0) && (
+          <div className="media-watched-overlay">Watched</div>
         )}
         {duration(item.durationSeconds) && (
           <span className="media-duration">{duration(item.durationSeconds)}</span>
@@ -119,6 +115,9 @@ export function MediaCardView({
             <Menu
               label={`Actions for ${item.title}`}
               iconOnly
+              variant="ghost"
+              size="sm"
+              buttonClassName="media-actions"
               items={[
                 {
                   id: "playlist",

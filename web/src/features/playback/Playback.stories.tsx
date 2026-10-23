@@ -3,6 +3,7 @@ import { createMemoryHistory, RouterContextProvider } from "@tanstack/react-rout
 import { useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { createAppRouter } from "@/app/router";
+import { Button } from "@/components/ui";
 import type {
   PodcastActions,
   PodcastSnapshot,
@@ -129,7 +130,11 @@ export const LoadingWithStableActions: Story = {
       expect(document.queryByRole("menu")).not.toBeInTheDocument();
       expect(menu).toHaveFocus();
     });
-    await waitFor(() => expect(canvas.getByText("Loading video…")).toBeVisible());
+    await expect(canvas.getByRole("region", { name: "Video player" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    await expect(canvas.queryByText("Loading video…")).not.toBeInTheDocument();
   },
 };
 export const AutoplayNeedsUserGesture: Story = {
@@ -229,3 +234,32 @@ export const PodcastKeyboardControls: Story = {
 export const PodcastMediaError: Story = {
   args: { kind: "podcast", podcast: { error: "This episode could not load. Try again." } },
 };
+
+function PlaybackNoticeScenario() {
+  const [snapshot, setSnapshot] = useState({
+    ...initialVideoSnapshot(playbackFixture),
+    loading: false,
+    ready: true,
+  });
+  const notify = (notice: string) =>
+    setSnapshot((current) => ({ ...current, notice, noticeID: current.noticeID + 1 }));
+  const actions: VideoActions = {
+    play: () => setSnapshot((current) => ({ ...current, position: current.position + 1 })),
+    pause: () => undefined,
+    retry: () => undefined,
+    sendToTV: () => setSnapshot((current) => ({ ...current, tvSending: !current.tvSending })),
+  };
+  return (
+    <article className="playback-page playback-video">
+      <nav className="flex flex-wrap gap-2 p-2" aria-label="Preview playback events">
+        <Button onClick={() => notify("SponsorBlock skipped a video segment")}>Skip sponsor</Button>
+        <Button onClick={() => notify("Switched to YouTube player")}>Use YouTube player</Button>
+        <Button onClick={actions.play}>Advance playback</Button>
+        <Button onClick={actions.sendToTV}>Toggle TV progress</Button>
+      </nav>
+      <YouTubePlayerView title={playbackFixture.item.title} snapshot={snapshot} actions={actions} />
+    </article>
+  );
+}
+
+export const PlaybackNotices: Story = { render: () => <PlaybackNoticeScenario /> };
