@@ -16,6 +16,7 @@
     "test": "vitest run --project unit",
     "test:stories": "vitest run --project storybook",
     "test:visual": "playwright test -c .storybook/playwright.config.ts",
+    "test:production": "node scripts/production-browser.mjs",
     "api:generate": "openapi-typescript ../api/frontend.openapi.json -o src/lib/api/schema.d.ts",
     "api:check": "openapi-typescript ../api/frontend.openapi.json -o src/lib/api/schema.d.ts --check",
     "format": "biome check --write .",

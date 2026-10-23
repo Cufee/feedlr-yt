@@ -16,7 +16,7 @@
     "check": "npm run check:scripts && npm run check:api && npm run check:app && npm run test:runtime && npm run check:go && npm run test:auth && npm run check:stories",
     "check:scripts": "npm --prefix web exec -- biome check --config-path=web --error-on-warnings scripts package.json",
     "check:api": "npm --prefix web run api:check",
-    "check:app": "npm --prefix web run lint && npm --prefix web run test && npm run build",
+    "check:app": "npm --prefix web run lint && npm --prefix web run test && npm run build && npm --prefix web run test:production",
     "check:go": "env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go vet . ./internal/... && env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go test -race . ./internal/... && env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go build -trimpath -o tmp/feedlr-check . && env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go build -tags dev -trimpath -o tmp/feedlr-dev-check .",
     "check:stories": "npm --prefix web run build-storybook && npm --prefix web run test:stories && npm --prefix web run test:visual",
     "test:auth": "env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go test -tags browser_e2e ./internal/server/webapi -run TestBrowserPasskey -count=1 -timeout=120s"

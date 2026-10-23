@@ -1,3 +1,6 @@
+// Establish the global layer order before router imports can load feature styles.
+import "@/styles/index.css";
+import "@/app/app.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
@@ -5,8 +8,6 @@ import { createRoot } from "react-dom/client";
 import { NotificationProvider } from "@/app/Notifications";
 import { router } from "@/app/router";
 import { queryClient } from "@/lib/api/queries";
-import "@/styles/index.css";
-import "@/app/app.css";
 
 const root = document.getElementById("root");
 if (!root) {
