@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 
@@ -45,6 +46,20 @@ func (u User) WebAuthnCredentials() []webauthn.Credential {
 		c = append(c, uc.Credential)
 	}
 	return c
+}
+
+// PasskeyRecord returns the credential snapshot used for signature validation.
+// Authentication persists with a compare-and-swap so another ceremony or a
+// deletion cannot be overwritten by this snapshot.
+func (u User) PasskeyRecord(id []byte) (*models.Passkey, bool) {
+	for _, credential := range u.credentials {
+		if bytes.Equal(credential.Credential.ID, id) && credential.Passkey != nil {
+			copy := *credential.Passkey
+			copy.Data = bytes.Clone(credential.Passkey.Data)
+			return &copy, true
+		}
+	}
+	return nil, false
 }
 
 func (u *User) AddCredential(credential webauthn.Credential) error {

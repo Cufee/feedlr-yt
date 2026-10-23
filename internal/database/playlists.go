@@ -206,13 +206,13 @@ func (c *sqliteClient) GetPlaylistItems(ctx context.Context, playlistID string, 
 
 	sb := sqlbuilder.
 		Select("*").
-		From(models.TableNames.PlaylistItems).
-		Where(models.PlaylistItemColumns.PlaylistID + "=?")
+		From(models.TableNames.PlaylistItems)
+	sb = sb.Where(sb.EQ(models.PlaylistItemColumns.PlaylistID, playlistID))
 
 	if opts.orderByPosition {
-		sb = sb.OrderBy(models.PlaylistItemColumns.Position).Asc()
+		sb = sb.OrderByAsc(models.PlaylistItemColumns.Position).OrderByAsc(models.PlaylistItemColumns.ID)
 	} else {
-		sb = sb.OrderBy(models.PlaylistItemColumns.CreatedAt).Desc()
+		sb = sb.OrderByDesc(models.PlaylistItemColumns.CreatedAt).OrderByDesc(models.PlaylistItemColumns.ID)
 	}
 
 	if opts.limit > 0 {
@@ -222,8 +222,8 @@ func (c *sqliteClient) GetPlaylistItems(ctx context.Context, playlistID string, 
 		sb = sb.Offset(opts.offset)
 	}
 
-	q, _ := sb.Build()
-	items, err := models.PlaylistItems(qm.SQL(q, playlistID)).All(ctx, c.db)
+	q, args := sb.Build()
+	items, err := models.PlaylistItems(qm.SQL(q, args...)).All(ctx, c.db)
 	if err != nil {
 		return nil, err
 	}
@@ -298,54 +298,36 @@ func (c *sqliteClient) GetMaxPlaylistItemPosition(ctx context.Context, playlistI
 }
 
 func (c *sqliteClient) SwapPlaylistItemPositions(ctx context.Context, playlistID, videoID, direction string) error {
-	// Find the item being moved
-	item, err := c.GetPlaylistItemByVideoID(ctx, playlistID, videoID)
-	if err != nil {
-		return errors.Wrap(err, "failed to find playlist item")
+	if direction != "up" && direction != "down" {
+		return errors.New("invalid move direction")
 	}
-
-	// Find the neighbor to swap with
-	var neighbor *models.PlaylistItem
-	if direction == "up" {
-		neighbor, err = models.PlaylistItems(
-			qm.Where(models.PlaylistItemColumns.PlaylistID+"=?", playlistID),
-			qm.Where(models.PlaylistItemColumns.Position+"<?", item.Position),
-			qm.OrderBy(models.PlaylistItemColumns.Position+" DESC"),
-			qm.Limit(1),
-		).One(ctx, c.db)
-	} else {
-		neighbor, err = models.PlaylistItems(
-			qm.Where(models.PlaylistItemColumns.PlaylistID+"=?", playlistID),
-			qm.Where(models.PlaylistItemColumns.Position+">?", item.Position),
-			qm.OrderBy(models.PlaylistItemColumns.Position+" ASC"),
-			qm.Limit(1),
-		).One(ctx, c.db)
-	}
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil // Already at the edge, nothing to swap
+	return c.immediate(ctx, func(conn *stateConn) error {
+		var itemID string
+		var position int64
+		if err := conn.QueryRowContext(ctx, "SELECT id,position FROM playlist_items WHERE playlist_id=? AND video_id=?", playlistID, videoID).Scan(&itemID, &position); err != nil {
+			return err
 		}
-		return errors.Wrap(err, "failed to find neighbor item")
-	}
-
-	// Swap positions in a transaction
-	tx, err := c.db.BeginTx(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "failed to begin transaction")
-	}
-	defer tx.Rollback()
-
-	// Use a temporary position to avoid unique constraint issues if any
-	_, err = tx.ExecContext(ctx, "UPDATE playlist_items SET position = ? WHERE id = ?", neighbor.Position, item.ID)
-	if err != nil {
-		return errors.Wrap(err, "failed to update item position")
-	}
-	_, err = tx.ExecContext(ctx, "UPDATE playlist_items SET position = ? WHERE id = ?", item.Position, neighbor.ID)
-	if err != nil {
-		return errors.Wrap(err, "failed to update neighbor position")
-	}
-
-	return tx.Commit()
+		query := "SELECT id,position FROM playlist_items WHERE playlist_id=? AND position<? ORDER BY position DESC,id DESC LIMIT 1"
+		if direction == "down" {
+			query = "SELECT id,position FROM playlist_items WHERE playlist_id=? AND position>? ORDER BY position ASC,id ASC LIMIT 1"
+		}
+		var neighborID string
+		var neighborPosition int64
+		if err := conn.QueryRowContext(ctx, query, playlistID, position).Scan(&neighborID, &neighborPosition); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		if _, err := conn.ExecContext(ctx, "UPDATE playlist_items SET position=?,updated_at=datetime('now') WHERE id=?", neighborPosition, itemID); err != nil {
+			return err
+		}
+		if _, err := conn.ExecContext(ctx, "UPDATE playlist_items SET position=?,updated_at=datetime('now') WHERE id=?", position, neighborID); err != nil {
+			return err
+		}
+		_, err := conn.ExecContext(ctx, "UPDATE playlists SET updated_at=datetime('now') WHERE id=?", playlistID)
+		return err
+	})
 }
 
 func (c *sqliteClient) IsVideoInPlaylist(ctx context.Context, playlistID, videoID string) (bool, error) {

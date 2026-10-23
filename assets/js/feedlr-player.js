@@ -432,8 +432,16 @@
   class Controller {
     constructor(options) {
       this.options = options;
-      this.root = document.getElementById("player");
-      this.loading = document.getElementById("player-loading");
+      this.root = options.root || document.getElementById("player");
+      this.loading = options.externalUI ? null : document.getElementById("player-loading");
+      this.listeners = new Set();
+      this.viewSnapshot = null;
+      this.loadingState = true;
+      this.noticeMessage = "";
+      this.noticeID = 0;
+      this.viewError = "";
+      this.subscribe = (listener) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
+      this.getSnapshot = () => this.viewSnapshot;
       this.abort = new AbortController();
       this.chapters = [];
       this.storyboard = null;
@@ -453,7 +461,8 @@
       this.mode = options.authenticated ? "native" : "iframe";
       this.lastProgress = -1;
       this.progressWrites = new Set();
-      this.tvButton = options.authenticated ? document.getElementById("send-to-tv-btn") : null;
+      this.tvButton = options.authenticated ? (options.tvButton || (options.externalUI ? null : document.getElementById("send-to-tv-btn"))) : null;
+      this.tvEnabled = options.authenticated && (options.externalUI || Boolean(this.tvButton));
       this.tvOnline = false;
       this.tvSending = false;
       this.tvHandedOff = false;
@@ -466,7 +475,7 @@
       this.watchdog = new PlaybackWatchdog();
       const savedVolume = read(`player-volume-${options.channel}`) ?? read("player-volume");
       this.state = { position: finite(options.progress), playing: true, volume: this.deviceVolume ? 100 : initialVolume(savedVolume, options.volume), muted: false, rate: 1 };
-      this.listen(document.getElementById("close-button"), "click", () => this.cleanup());
+      this.listen(options.externalUI ? null : document.getElementById("close-button"), "click", () => this.cleanup());
       this.listen(this.tvButton, "click", () => this.sendToTV());
       // Own arrow seeks before Shaka's container/window shortcuts run. Its
       // handler does not honor defaultPrevented or our pending seek position.
@@ -474,17 +483,14 @@
         if (["ArrowLeft", "ArrowRight"].includes(event.key)) this.hotkey(event);
       }, true);
       this.listen(document, "keydown", (event) => this.hotkey(event));
-      this.listen(document, "htmx:beforeSwap", (event) => {
-        if (event.detail?.target?.contains(this.root)) this.cleanup();
-      });
-      this.listen(document, "htmx:historyRestore", () => {
-        if (document.getElementById("player") !== this.root) this.cleanup();
-      });
       this.listen(global, "pagehide", (event) => {
         this.stopTVStatus();
         if (event.persisted) {
           this.historyState = this.snapshot();
           this.saveProgress();
+          // A load already in flight must not autoplay into a cached document.
+          this.generation++;
+          this.resolveAbort?.abort();
           this.adapter?.pause();
         } else this.cleanup();
       });
@@ -502,6 +508,7 @@
       this.lastTick = performance.now();
       this.timer = global.setInterval(() => this.tick(), 500);
       this.progressTimer = options.withProgress ? global.setInterval(() => this.saveProgress(), 10000) : null;
+      this.publish();
       this.start = this.switchPlayer(this.mode, null, "initial");
       this.startTVStatus();
     }
@@ -540,6 +547,7 @@
       } catch (_) { /* Optional tracks must never interrupt playback. */ }
     }
     updateTVButton() {
+      this.publish();
       if (!this.tvButton) return;
       this.tvButton.hidden = !this.tvOnline || this.disposed;
       this.tvButton.disabled = !this.tvOnline || this.tvSending || !this.ready || this.switching || this.disposed;
@@ -549,7 +557,7 @@
       this.tvButton.setAttribute("aria-busy", String(this.tvSending));
     }
     startTVStatus() {
-      if (!this.tvButton || this.disposed || document.hidden || global.navigator.onLine === false) return;
+      if (!this.tvEnabled || this.disposed || document.hidden || global.navigator.onLine === false) return;
       if (!this.tvTimer) this.tvTimer = global.setInterval(() => this.refreshTVStatus(), 15000);
       this.refreshTVStatus();
     }
@@ -563,11 +571,11 @@
       this.updateTVButton();
     }
     async refreshTVStatus() {
-      if (!this.tvButton || this.disposed || document.hidden || global.navigator.onLine === false || this.tvStatusAbort) return;
+      if (!this.tvEnabled || this.disposed || document.hidden || global.navigator.onLine === false || this.tvStatusAbort) return;
       const request = this.tvStatusAbort = new AbortController();
       const timeout = this.tvStatusTimeout = global.setTimeout(() => request.abort(), 6000);
       try {
-        const response = await fetch("/api/tv/status", { credentials: "same-origin", cache: "no-store", signal: request.signal });
+        const response = await fetch("/api/v1/tv/status", { credentials: "same-origin", cache: "no-store", signal: request.signal });
         if (!response.ok) throw new Error("tv_status_failed");
         const status = await response.json();
         if (this.disposed || request.signal.aborted || this.tvStatusAbort !== request) return;
@@ -584,7 +592,7 @@
       }
     }
     async sendToTV() {
-      if (!this.tvButton || !this.tvOnline || this.tvSending || !this.ready || this.switching || this.disposed) return;
+      if (!this.tvEnabled || !this.tvOnline || this.tvSending || !this.ready || this.switching || this.disposed) return;
       this.tvSending = true;
       this.updateTVButton();
       let complete;
@@ -599,13 +607,13 @@
           new Promise((_, reject) => request.signal.addEventListener("abort", () => reject(new Error("tv_send_cancelled")), { once: true })),
         ]);
         if (this.disposed || request.signal.aborted) return;
-        const response = await fetch(`/api/videos/${encodeURIComponent(this.options.video)}/tv`, {
+        const response = await fetch(`/api/v1/media/${encodeURIComponent(this.options.video)}/tv`, {
           method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ position: this.snapshot().position }), signal: request.signal,
         });
         if (response.status !== 204 || response.redirected) {
           const result = await response.json().catch(() => ({}));
-          throw new Error(typeof result.error === "string" ? result.error : "Could not send video to TV. Try again.");
+          throw new Error(typeof result.error === "string" ? result.error : result.error?.message || "Could not send video to TV. Try again.");
         }
         if (this.disposed || request.signal.aborted) return;
         this.tvHandedOff = true;
@@ -643,8 +651,29 @@
       }
       return { ...this.state };
     }
-    showLoading(loading) { this.loading?.classList.toggle("hidden", !loading); }
+    publish() {
+      const state = this.snapshot();
+      const previous = this.viewSnapshot;
+      const qualities = previous && previous.qualities.length === this.availableQualities.length && previous.qualities.every((value, i) => value === this.availableQualities[i])
+        ? previous.qualities : Object.freeze([...this.availableQualities]);
+      const next = {
+        position: state.position, duration: finite(this.adapter?.video?.duration || this.adapter?.duration?.()),
+        playing: state.playing, volume: state.volume, muted: state.muted, rate: state.rate,
+        mode: this.mode, ready: this.ready, loading: this.loadingState, switching: this.switching,
+        blocked: Boolean(this.blocked), audioOnly: this.audioOnly, quality: this.quality, qualities,
+        tvOnline: this.tvOnline, tvSending: this.tvSending, tvScreenName: this.tvScreenName || "",
+        notice: this.noticeMessage, noticeID: this.noticeID, error: this.viewError,
+      };
+      if (previous && Object.keys(next).every((key) => Object.is(previous[key], next[key]))) return;
+      this.viewSnapshot = Object.freeze(next);
+      for (const listener of this.listeners) listener();
+    }
+    showLoading(loading) { this.loadingState = loading; this.loading?.classList.toggle("hidden", !loading); this.publish(); }
     notice(message) {
+      this.noticeMessage = message;
+      this.noticeID++;
+      this.publish();
+      if (this.options.externalUI) return;
       const toast = document.getElementById("notification-toast");
       const text = toast?.querySelector("span");
       if (text) text.textContent = message;
@@ -698,11 +727,10 @@
       this.resolveAbort = new AbortController();
       const requestAbort = this.resolveAbort;
       this.switching = true;
+      this.viewError = "";
       this.updateTVButton();
       if (reason === "renewal") this.metric("renewal", "scheduled");
       if (reason === "manual_switch") this.metric("switch", requestedMode);
-      if (preservedState) this.state = { ...preservedState };
-      if (this.deviceVolume) this.state.volume = 100;
       this.mode = requestedMode;
       this.blocked = false;
       this.pendingNativeError = null;
@@ -710,6 +738,10 @@
       this.showLoading(true);
       await this.destroyAdapter();
       if (!current()) return;
+      // Publishing the old adapter's loading state may capture its paused state.
+      // Restore intent only after that adapter can no longer overwrite it.
+      if (preservedState) this.state = { ...preservedState };
+      if (this.deviceVolume) this.state.volume = 100;
       this.root.replaceChildren();
       let resolution = { mode: "iframe", reason: "guest", progress: this.state.position };
       if (this.options.authenticated) {
@@ -763,6 +795,7 @@
           return;
         }
         this.notice("YouTube player could not load. Reload to try again.");
+        this.viewError = "YouTube player could not load. Try again.";
         this.showLoading(false);
         this.metric("media_error", "iframe_failed");
       }
@@ -816,6 +849,7 @@
       });
       const ui = new global.shaka.ui.Overlay(player, box, video);
       ui.configure({
+        topControlPanelElements: [],
         overflowMenuButtons: ["chapter", "quality", "language", "playback_rate", "picture_in_picture", "feedlr_youtube"],
         seekBarColors: { chapters: "rgba(0, 0, 0, 0.85)" },
         trackLabelFormat: global.shaka.ui.Overlay.TrackLabelFormat.LABEL_OR_LANGUAGE,
@@ -828,7 +862,10 @@
         enableFullscreenOnRotation: false,
         bigButtons: this.deviceVolume ? ["play_pause_buffering"] : [],
         qualityMarks: { 720: "", 1080: "", 1440: "", 2160: "", 4320: "" },
-        customTrackLabel: (label, track, type) => type === "video" && track.height ? qualityLabel(qualityHeight(track)) : label,
+        customTrackLabel: (...args) => {
+          const [label, track, type] = args;
+          return type === "video" && track.height ? qualityLabel(qualityHeight(track)) : label;
+        },
       });
       ui.setEnabled(true);
       this.playerAbort = new AbortController();
@@ -939,11 +976,11 @@
         player.removeEventListener("adaptation", updateQualityLabels);
         controls.removeEventListener("resolutionselectionupdated", updateQualityLabels);
       };
-      listen("play", () => { pending.playing = true; this.state.playing = true; this.tvHandedOff = false; this.blocked = false; this.checkRenewal(); });
-      listen("pause", () => { if (this.ready) { pending.playing = false; this.state.playing = false; this.saveProgress(); } });
-      listen("ended", () => { pending.playing = false; this.state.playing = false; this.saveProgress(); });
+      listen("play", () => { pending.playing = true; this.state.playing = true; this.tvHandedOff = false; this.blocked = false; this.checkRenewal(); this.publish(); });
+      listen("pause", () => { if (this.ready) { pending.playing = false; this.state.playing = false; this.saveProgress(); this.publish(); } });
+      listen("ended", () => { pending.playing = false; this.state.playing = false; this.saveProgress(); this.publish(); });
       listen("playing", () => { this.showLoading(false); });
-      listen("volumechange", () => this.saveVolume());
+      listen("volumechange", () => { this.saveVolume(); this.publish(); });
       listen("error", () => { if (current() && !destroyed) this.nativeError({ category: 3, code: video.error?.code }); });
       player.configure({ preferredAudio: [...(this.audioPreference ? [this.audioPreference] : []), ...originalAudioPreferences], streaming: { bufferingGoal: 30, rebufferingGoal: 2, retryParameters: { maxAttempts: 2, timeout: 10000, connectionTimeout: 5000, stallTimeout: 5000 } }, manifest: { retryParameters: { maxAttempts: 1, timeout: 8000 } } });
       await player.attach(video);
@@ -989,6 +1026,7 @@
         return this.switchPlayer("native", this.snapshot(), "quality_switch");
       }
       if (!this.audioOnly && this.adapter?.player) applyQuality(this.adapter.player, quality);
+      this.publish();
       return Promise.resolve();
     }
     async playNative(video, pending) {
@@ -1040,14 +1078,16 @@
             onStateChange: (event) => {
               if (!current() || destroyed || !this.ready) return;
               if ([0, 1, 2].includes(event.data)) this.state.playing = event.data === 1;
-              if (event.data === 1) this.tvHandedOff = false;
+              if (event.data === 1) { this.tvHandedOff = false; this.blocked = false; }
               this.saveProgress();
+              this.publish();
             },
             onError: () => { if (current() && !destroyed) { global.clearTimeout(timer); reject(new Error("iframe_failed")); } },
-            onAutoplayBlocked: () => { if (current()) { pending.playing = false; this.state.playing = false; } },
+            onAutoplayBlocked: () => { if (current()) { pending.playing = false; this.state.playing = false; this.blocked = true; this.publish(); } },
           },
         });
         this.adapter = {
+          duration: () => player.getDuration?.() || 0,
           snapshot: () => restoredState({ position: player.getCurrentTime(), playing: [1, 3].includes(player.getPlayerState()), volume: player.getVolume(), muted: player.isMuted(), rate: player.getPlaybackRate() }, pending, player.getPlayerState() === 3),
           play: () => { pending.playing = true; player.playVideo(); }, pause: () => { pending.playing = false; player.pauseVideo(); },
           seek: (time) => { pending.position = Math.max(0, time); player.seekTo(pending.position, true); }, volume: (value) => { pending.volume = this.deviceVolume ? 100 : clamp(value, 0, 100); player.setVolume(pending.volume); },
@@ -1142,6 +1182,7 @@
         const segment = this.sponsors.find((item) => state.position >= item.start && state.position < item.end);
         if (segment) { this.adapter.seek(segment.end); this.notice("SponsorBlock skipped a video segment"); }
       }
+      this.publish();
     }
     saveVolume() {
       if (this.deviceVolume || !this.ready || !this.adapter) return;
@@ -1156,15 +1197,23 @@
       const position = Math.floor(this.snapshot().position);
       if (position <= 0 || position === this.lastProgress) return;
       this.lastProgress = position;
-      const request = fetch(`/api/videos/${encodeURIComponent(this.options.video)}/progress?progress=${position}&volume=${Math.round(this.snapshot().volume)}`, { method: "POST", credentials: "same-origin", keepalive: true }).catch(() => {}).finally(() => this.progressWrites.delete(request));
+      const volume = Math.round(this.snapshot().volume);
+      const writeProgress = this.options.persistProgress
+        ? this.options.persistProgress(position, volume)
+        : fetch(`/api/v1/media/${encodeURIComponent(this.options.video)}/state`, {
+          method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ progressSeconds: position, volume }), keepalive: true,
+        }).then((response) => { if (!response.ok) throw new Error("progress_write_failed"); });
+      const request = Promise.resolve(writeProgress).catch(() => { if (this.lastProgress === position) this.lastProgress = -1; }).finally(() => this.progressWrites.delete(request));
       this.progressWrites.add(request);
     }
     hotkey(event) {
       const seek = ["ArrowLeft", "ArrowRight"].includes(event.key);
       const seekBar = seek && event.target?.classList?.contains("shaka-seek-bar");
       if (this.disposed || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey ||
-          (!seekBar && event.target?.closest?.("input,textarea,select,button,a,summary,dialog,.ui-action-menu,[contenteditable=true]"))) return;
+          (!seekBar && event.target?.closest?.("input,textarea,select,button,a,summary,dialog,[role=dialog],[role=menu],[role=tablist],.ui-action-menu,[contenteditable=true]"))) return;
       if (event.key === "Escape") {
+        if (this.options.externalUI) return;
         event.preventDefault();
         this.cleanup();
         global.location.href = this.options.returnURL;
@@ -1202,7 +1251,7 @@
       this.adapter.seek(position);
     }
     cleanup() {
-      if (this.disposed) return;
+      if (this.disposed) return this.teardown;
       this.saveProgress();
       this.disposed = true;
       this.seekQueue.length = 0;
@@ -1215,12 +1264,15 @@
       global.clearInterval(this.timer);
       global.clearInterval(this.progressTimer);
       global.clearTimeout(this.toastTimer);
-      this.destroyAdapter();
+      const teardown = this.destroyAdapter();
+      this.listeners.clear();
       if (global.feedlr_player === this) delete global.feedlr_player;
+      return teardown;
     }
-    // The existing integration surface remains available for other page scripts.
-    playVideo() { this.adapter?.play(); }
-    pauseVideo() { this.adapter?.pause(); }
+    // Commands consumed by the React playback integration.
+    playVideo() { return this.adapter?.play(); }
+    pauseVideo() { this.adapter?.pause(); this.publish(); }
+    retry() { this.nativeRetryUsed = false; this.expiryRetryUsed = false; return this.switchPlayer(this.options.authenticated ? "native" : "iframe", this.snapshot(), "retry"); }
     seekTo(time) {
       if (this.disposed || !Number.isFinite(time)) return;
       this.seekQueue.push({ position: time });
@@ -1241,11 +1293,5 @@
   }
   const api = { mount, Controller, PlaybackWatchdog, usableResolution, expirationError, applyQuality, restoredState, initialVolume, qualityLabel, qualityPreference, qualityHeight, qualityFromLabel, normalizeSponsors, blendTimeline, chapterVTT, thumbnailVTT, storyboardVTT, formatTimelineTime, NativeTimeline };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
-  else {
-    global.FeedlrPlayer = api;
-    const pending = global.feedlrPendingPlayer;
-    delete global.feedlrPendingPlayer;
-    // Do not revive an obsolete page if navigation completed during the load.
-    if (pending?.root && pending.root === document.getElementById("player")) mount(pending.options);
-  }
+  else global.FeedlrPlayer = api;
 })(typeof window !== "undefined" ? window : globalThis);

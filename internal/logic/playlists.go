@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -26,14 +27,7 @@ const WatchLaterTTLDays = 30
 // - Videos over 15 minutes: 1 minute buffer
 // - Default: 30 seconds buffer
 func getCompletionBuffer(durationSeconds int) int {
-	switch {
-	case durationSeconds > 30*60: // > 30 minutes
-		return 5 * 60 // 5 minutes
-	case durationSeconds > 15*60: // > 15 minutes
-		return 60 // 1 minute
-	default:
-		return 30 // 30 seconds
-	}
+	return types.CompletionBufferSeconds(durationSeconds)
 }
 
 // RemoveFromWatchLaterIfFullyWatched removes a video from Watch Later playlist
@@ -56,8 +50,7 @@ func RemoveFromWatchLaterIfFullyWatched(ctx context.Context, db interface {
 		return nil // Unknown duration, skip
 	}
 
-	buffer := getCompletionBuffer(duration)
-	if progress+buffer < duration {
+	if !types.IsCompleted(progress, duration) {
 		return nil // Not fully watched yet
 	}
 
@@ -379,7 +372,7 @@ func computePlaylistProgress(ctx context.Context, db interface {
 	database.PlaylistsClient
 	database.ViewsClient
 }, playlistID, userID string) int {
-	items, err := db.GetPlaylistItems(ctx, playlistID)
+	items, err := db.GetPlaylistItems(ctx, playlistID, database.PlaylistItem.WithVideo())
 	if err != nil || len(items) == 0 {
 		return 0
 	}
@@ -395,8 +388,8 @@ func computePlaylistProgress(ctx context.Context, db interface {
 	}
 
 	watched := 0
-	for _, id := range videoIDs {
-		if v, ok := views[id]; ok && v.Progress > 0 {
+	for _, item := range items {
+		if v, ok := views[item.VideoID]; ok && item.R != nil && item.R.Video != nil && types.IsCompleted(int(v.Progress), int(item.R.Video.Duration)) {
 			watched++
 		}
 	}
@@ -567,10 +560,12 @@ func ImportYouTubePlaylist(ctx context.Context, db database.Client, userID, yout
 		position := idx
 		group.Go(func() error {
 			// Cache the video in our DB
-			RefreshVideoCache(ctx, db, videoID)
+			if err := EnsureVideoCached(ctx, db, videoID); err != nil {
+				return errors.Wrap(err, "failed to cache imported video")
+			}
 			// Only add if the video exists in the DB (FK constraint)
 			if _, err := db.GetVideoByID(ctx, videoID); err != nil {
-				return nil // skip videos that couldn't be cached
+				return err
 			}
 			return db.AddPlaylistItemAtPosition(ctx, playlist.ID, videoID, position)
 		})
@@ -578,6 +573,7 @@ func ImportYouTubePlaylist(ctx context.Context, db database.Client, userID, yout
 
 	if err := group.Wait(); err != nil {
 		log.Warn().Err(err).Str("playlistID", playlist.ID).Msg("some videos failed to import")
+		return playlist.ID, errors.Wrap(err, "playlist import was incomplete")
 	}
 
 	return playlist.ID, nil
@@ -596,7 +592,10 @@ func SyncYouTubePlaylist(ctx context.Context, db database.Client, userID, playli
 	}
 
 	// Skip cooldown if playlist is empty (e.g., failed initial import)
-	itemCount, _ := db.GetPlaylistItemCount(ctx, playlistID)
+	itemCount, err := db.GetPlaylistItemCount(ctx, playlistID)
+	if err != nil {
+		return 0, err
+	}
 	if itemCount > 0 && time.Since(playlist.UpdatedAt) < time.Hour {
 		return 0, ErrSyncTooSoon
 	}
@@ -623,7 +622,7 @@ func SyncYouTubePlaylist(ctx context.Context, db database.Client, userID, playli
 		return 0, errors.Wrap(err, "failed to get max position")
 	}
 
-	added := 0
+	var added atomic.Int64
 	var group errgroup.Group
 	group.SetLimit(5)
 
@@ -635,27 +634,35 @@ func SyncYouTubePlaylist(ctx context.Context, db database.Client, userID, playli
 
 		maxPos++
 		pos := maxPos
-		added++
 
 		group.Go(func() error {
-			RefreshVideoCache(ctx, db, videoID)
+			if err := EnsureVideoCached(ctx, db, videoID); err != nil {
+				return errors.Wrap(err, "failed to cache synchronized video")
+			}
 			// Only add if the video exists in the DB (FK constraint)
 			if _, err := db.GetVideoByID(ctx, videoID); err != nil {
-				return nil // skip videos that couldn't be cached
+				return err
 			}
-			return db.AddPlaylistItemAtPosition(ctx, playlistID, videoID, pos)
+			if err := db.AddPlaylistItemAtPosition(ctx, playlistID, videoID, pos); err != nil {
+				return err
+			}
+			added.Add(1)
+			return nil
 		})
 	}
 
 	if err := group.Wait(); err != nil {
-		log.Warn().Err(err).Str("playlistID", playlistID).Int("added", added).Msg("some videos failed during sync")
+		log.Warn().Err(err).Str("playlistID", playlistID).Int("added", int(added.Load())).Msg("some videos failed during sync")
+		return int(added.Load()), errors.Wrap(err, "playlist synchronization was incomplete")
 	}
 
 	// Bump updated_at
 	playlist.UpdatedAt = time.Now()
-	_ = db.UpdatePlaylist(ctx, playlist)
+	if err := db.UpdatePlaylist(ctx, playlist); err != nil {
+		return int(added.Load()), err
+	}
 
-	return added, nil
+	return int(added.Load()), nil
 }
 
 func cleanDescription(s string) string {

@@ -1,0 +1,3286 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Feedlr frontend API",
+    "version": "1.0.0",
+    "description": "Same-origin cookie JSON API. WebAuthn is native JSON; browser credential validation and one-use challenges remain server-owned. Mutations validate Origin/Sec-Fetch-Site and JSON bodies. OAuth callbacks alone redirect as document navigation. Native playback, chapters and image/media delivery retain their specialized contracts."
+  },
+  "paths": {
+    "/api/v1/session": {
+      "get": {
+        "operationId": "getSession",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/logout": {
+      "post": {
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/feed": {
+      "get": {
+        "operationId": "getFeed",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feed"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ]
+      }
+    },
+    "/api/v1/history": {
+      "get": {
+        "operationId": "getHistory",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "youtube",
+                "podcasts"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 24
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/watch-later": {
+      "get": {
+        "operationId": "getWatchLater",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 24
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          }
+        ],
+        "description": "Newest saved first, with deterministic ID tie ordering. Reset pagination after membership changes because offsets can shift."
+      }
+    },
+    "/api/v1/watch-later/{id}": {
+      "put": {
+        "operationId": "setWatchLater",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchLaterMembership"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipIntent"
+              }
+            }
+          }
+        },
+        "description": "Atomic desired membership. Repeating the same intent does not evict another item or change insertion order. affectedIds includes capacity evictions.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/media/{id}": {
+      "get": {
+        "operationId": "getMedia",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/media/{id}/state": {
+      "patch": {
+        "operationId": "patchMediaState",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaStatePatch"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/subscriptions": {
+      "get": {
+        "operationId": "getSubscriptions",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "youtube",
+                "podcasts"
+              ]
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "subscribe",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/{id}": {
+      "delete": {
+        "operationId": "unsubscribe",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "setSubscriptionFilter",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionFilter"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "operationId": "searchChannels",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "youtube",
+                "podcasts"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/channels/{id}": {
+      "get": {
+        "operationId": "getChannel",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/channels/{id}/refresh": {
+      "post": {
+        "operationId": "refreshChannel",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/playlists": {
+      "get": {
+        "operationId": "getPlaylists",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createPlaylist",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/playlists/import": {
+      "post": {
+        "operationId": "importPlaylist",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistImport"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/playlists/{id}": {
+      "get": {
+        "operationId": "getPlaylist",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "updatePlaylist",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistPatch"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "deletePlaylist",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/playlists/{id}/sync": {
+      "post": {
+        "operationId": "syncPlaylist",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/playlists/{id}/items": {
+      "post": {
+        "operationId": "addPlaylistItem",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistItemCreate"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/playlists/{id}/items/{mediaId}": {
+      "put": {
+        "operationId": "setPlaylistItem",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipIntent"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/playlists/{id}/items/{mediaId}/move": {
+      "post": {
+        "operationId": "movePlaylistItem",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistMove"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "operationId": "getSettings",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "patchSettings",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/youtube/disconnect": {
+      "post": {
+        "operationId": "disconnectYouTube",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/youtube": {
+      "put": {
+        "operationId": "setYouTubeEnabled",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnabledIntent"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/tv/connect": {
+      "post": {
+        "operationId": "connectTV",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TVConnect"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/tv": {
+      "delete": {
+        "operationId": "disconnectTV",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "setTVEnabled",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnabledIntent"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/passkeys/{id}": {
+      "delete": {
+        "operationId": "deletePasskey",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error. 400 malformed input; 401 session expired; 403 forbidden origin or system playlist; 404 absent or inaccessible resource; 409 domain conflict; 422 field validation; 429 rate limit with Retry-After; 5xx service failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Delete an owned passkey atomically, retaining at least one credential. Returns 409 last_passkey when removing the final credential."
+      }
+    },
+    "/api/v1/legal/{document}": {
+      "get": {
+        "operationId": "getLegalDocument",
+        "security": [],
+        "parameters": [
+          {
+            "name": "document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "privacy-policy",
+                "terms-of-service"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sanitized current legal document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalDocument"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "404 unknown document; 502 document unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login/begin": {
+      "post": {
+        "operationId": "loginBegin",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAuthnRequestOptions"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginBegin"
+              }
+            }
+          }
+        },
+        "description": "Start username-free discoverable authentication with {}. A username explicitly requests legacy named-key fallback. Each begin supersedes the pending session challenge; browser cancellation must begin again. Finish rotates and revokes the anonymous session."
+      }
+    },
+    "/api/v1/auth/login/finish": {
+      "post": {
+        "operationId": "loginFinish",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebAuthnCredential"
+              }
+            }
+          }
+        },
+        "description": "Validate challenge, expiry, RP, bound origin, user handle, owned credential, signature and verification. Discoverable login always requires verification; durable policy prevents named fallback downgrading newly enrolled keys. A well-formed finish consumes the challenge even when verification fails."
+      }
+    },
+    "/api/v1/auth/register/begin": {
+      "post": {
+        "operationId": "registerBegin",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAuthnCreationOptions"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthUsername"
+              }
+            }
+          }
+        },
+        "description": "Create a discoverable credential with user verification required, attestation none, no attachment restriction, existing credential exclusions and credProps. Account naming is separate from passkey authentication."
+      }
+    },
+    "/api/v1/auth/register/finish": {
+      "post": {
+        "operationId": "registerFinish",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebAuthnCredential"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/passkeys/add/begin": {
+      "post": {
+        "operationId": "addPasskeyBegin",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAuthnCreationOptions"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a discoverable credential with user verification required, attestation none, no attachment restriction, existing credential exclusions and credProps. Account naming is separate from passkey authentication."
+      }
+    },
+    "/api/v1/passkeys/add/finish": {
+      "post": {
+        "operationId": "addPasskeyFinish",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebAuthnCredential"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/youtube/connect": {
+      "post": {
+        "operationId": "connectYouTube",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedirectURL"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/podcasts/open": {
+      "post": {
+        "operationId": "openPodcast",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PodcastOpenResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PodcastOpen"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tv/status": {
+      "get": {
+        "operationId": "getTVPlayerStatus",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TVPlayerStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/{id}/tv": {
+      "post": {
+        "operationId": "sendMediaToTV",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TVSend"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/media/{id}/segments": {
+      "get": {
+        "operationId": "getPodcastSegments",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PodcastAnalysis"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "startPodcastSegments",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PodcastAnalysis"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/auth/youtube/callback": {
+      "get": {
+        "operationId": "youtubeOAuthCallback",
+        "description": "Provider document callback. Validates a user/session-bound state cookie, exchanges the code, and navigates to the SPA settings page. The legacy path is retained for configured provider redirect URIs.",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Navigate to /app/settings/youtube"
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/youtube-sync/connect/callback": {
+      "get": {
+        "operationId": "youtubeOAuthCallbackAlias",
+        "description": "Provider document callback. Validates a user/session-bound state cookie, exchanges the code, and navigates to the SPA settings page. The legacy path is retained for configured provider redirect URIs.",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Navigate to /app/settings/youtube"
+          },
+          "default": {
+            "description": "JSON error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cookieSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session_id"
+      }
+    },
+    "schemas": {
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/Problem"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "Capabilities": {
+        "type": "object",
+        "properties": {
+          "podcastSearch": {
+            "type": "boolean"
+          },
+          "youtubeSync": {
+            "type": "boolean"
+          },
+          "tvSync": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "podcastSearch",
+          "youtubeSync",
+          "tvSync"
+        ],
+        "additionalProperties": false
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/Capabilities"
+          }
+        },
+        "required": [
+          "authenticated",
+          "capabilities"
+        ],
+        "additionalProperties": false
+      },
+      "Page": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "offset",
+          "hasMore"
+        ],
+        "additionalProperties": false
+      },
+      "Channel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "artworkUrl": {
+            "type": "string"
+          },
+          "isPodcast": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "youtube",
+              "podcasts"
+            ]
+          },
+          "subscribed": {
+            "type": "boolean"
+          },
+          "videoFilter": {
+            "type": "string",
+            "enum": [
+              "all",
+              "videos",
+              "streams"
+            ]
+          },
+          "feedUrl": {
+            "type": "string"
+          },
+          "feedUpdatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "artworkUrl",
+          "isPodcast",
+          "source",
+          "subscribed",
+          "videoFilter"
+        ],
+        "additionalProperties": false
+      },
+      "YouTubeItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "youtube"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "video",
+              "short",
+              "live_stream",
+              "upcoming_stream",
+              "stream_recording",
+              "private",
+              "failed"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "descriptionHtml": {
+            "type": "string"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/Channel"
+          },
+          "artworkUrl": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "progressSeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "inWatchLater": {
+            "type": "boolean"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "streamUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "type",
+          "title",
+          "description",
+          "channel",
+          "artworkUrl",
+          "publishedAt",
+          "durationSeconds",
+          "progressSeconds",
+          "hidden",
+          "inWatchLater",
+          "completed"
+        ],
+        "additionalProperties": false
+      },
+      "PodcastEpisode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "podcast"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "podcast_episode"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "descriptionHtml": {
+            "type": "string"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/Channel"
+          },
+          "artworkUrl": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "progressSeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "inWatchLater": {
+            "type": "boolean"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "streamUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "type",
+          "title",
+          "description",
+          "channel",
+          "artworkUrl",
+          "publishedAt",
+          "durationSeconds",
+          "progressSeconds",
+          "hidden",
+          "inWatchLater",
+          "completed",
+          "streamUrl"
+        ],
+        "additionalProperties": false
+      },
+      "MediaItem": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/YouTubeItem"
+          },
+          {
+            "$ref": "#/components/schemas/PodcastEpisode"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "youtube": "#/components/schemas/YouTubeItem",
+            "podcast": "#/components/schemas/PodcastEpisode"
+          }
+        }
+      },
+      "Playlist": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "videoCount": {
+            "type": "integer"
+          },
+          "progressPercent": {
+            "type": "integer"
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          },
+          "system": {
+            "type": "boolean"
+          },
+          "youtubePlaylistId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "slug",
+          "videoCount",
+          "progressPercent",
+          "thumbnailUrl",
+          "system"
+        ],
+        "additionalProperties": false
+      },
+      "Segment": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "number"
+          },
+          "end": {
+            "type": "number"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "additionalProperties": false
+      },
+      "PodcastSegment": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "start_ms": {
+            "type": "integer"
+          },
+          "end_ms": {
+            "type": "integer"
+          },
+          "start_text": {
+            "type": "string"
+          },
+          "end_text": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "skippable": {
+            "type": "boolean"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "start_ms",
+          "end_ms",
+          "start_text",
+          "end_text",
+          "reason",
+          "skippable"
+        ],
+        "additionalProperties": false
+      },
+      "PodcastAnalysis": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "disabled",
+              "pending",
+              "running",
+              "ready",
+              "failed",
+              "unavailable"
+            ]
+          },
+          "phase": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "transcript_ready": {
+            "type": "boolean"
+          },
+          "has_segments": {
+            "type": "boolean"
+          },
+          "duration_ms": {
+            "type": "integer"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PodcastSegment"
+            }
+          },
+          "poll_after_ms": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "status",
+          "phase",
+          "error",
+          "source",
+          "transcript_ready",
+          "has_segments",
+          "duration_ms",
+          "segments"
+        ],
+        "additionalProperties": false
+      },
+      "MediaDetail": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/MediaItem"
+          },
+          "authenticated": {
+            "type": "boolean"
+          },
+          "reportProgress": {
+            "type": "boolean"
+          },
+          "volume": {
+            "type": "integer"
+          },
+          "skipSegments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            }
+          },
+          "podcastSegments": {
+            "$ref": "#/components/schemas/PodcastAnalysis"
+          },
+          "playlists": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Playlist"
+            }
+          },
+          "membershipIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "item",
+          "authenticated",
+          "reportProgress",
+          "volume",
+          "skipSegments",
+          "podcastSegments",
+          "playlists",
+          "membershipIds"
+        ],
+        "additionalProperties": false
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "name",
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "SegmentSettings": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "availableCategories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          }
+        },
+        "required": [
+          "enabled",
+          "categories",
+          "availableCategories"
+        ],
+        "additionalProperties": false
+      },
+      "YouTubeStatus": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "lastSyncedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "connected",
+          "enabled",
+          "playlistId",
+          "lastError",
+          "lastSyncedAt"
+        ],
+        "additionalProperties": false
+      },
+      "TVStatus": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "connectionState": {
+            "type": "string"
+          },
+          "stateReason": {
+            "type": "string"
+          },
+          "screenName": {
+            "type": "string"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "lastConnectedAt": {
+            "type": "string"
+          },
+          "lastEventAt": {
+            "type": "string"
+          },
+          "lastDisconnectAt": {
+            "type": "string"
+          },
+          "lastUserActivityAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "connected",
+          "enabled",
+          "connectionState",
+          "stateReason",
+          "screenName",
+          "lastError",
+          "lastConnectedAt",
+          "lastEventAt",
+          "lastDisconnectAt",
+          "lastUserActivityAt"
+        ],
+        "additionalProperties": false
+      },
+      "Passkey": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "Settings": {
+        "type": "object",
+        "properties": {
+          "sponsorBlock": {
+            "$ref": "#/components/schemas/SegmentSettings"
+          },
+          "podcastSegments": {
+            "$ref": "#/components/schemas/SegmentSettings"
+          },
+          "youtubeSync": {
+            "$ref": "#/components/schemas/YouTubeStatus"
+          },
+          "tvSync": {
+            "$ref": "#/components/schemas/TVStatus"
+          },
+          "passkeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Passkey"
+            }
+          },
+          "volume": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sponsorBlock",
+          "podcastSegments",
+          "youtubeSync",
+          "tvSync",
+          "passkeys",
+          "volume"
+        ],
+        "additionalProperties": false
+      },
+      "MediaList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaItem"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "additionalProperties": false
+      },
+      "Feed": {
+        "type": "object",
+        "properties": {
+          "new": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaItem"
+            }
+          },
+          "watched": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaItem"
+            }
+          },
+          "watchLater": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaItem"
+            }
+          },
+          "onboarding": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "new",
+          "watched",
+          "watchLater",
+          "onboarding"
+        ],
+        "additionalProperties": false
+      },
+      "ChannelList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Channel"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ChannelDetail": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/Channel"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaItem"
+            }
+          },
+          "subscribed": {
+            "type": "boolean"
+          },
+          "filter": {
+            "type": "string",
+            "enum": [
+              "all",
+              "videos",
+              "streams"
+            ]
+          }
+        },
+        "required": [
+          "channel",
+          "items",
+          "subscribed",
+          "filter"
+        ],
+        "additionalProperties": false
+      },
+      "PlaylistList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Playlist"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "PlaylistDetail": {
+        "type": "object",
+        "properties": {
+          "playlist": {
+            "$ref": "#/components/schemas/Playlist"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaItem"
+            }
+          }
+        },
+        "required": [
+          "playlist",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "MembershipIntent": {
+        "type": "object",
+        "properties": {
+          "present": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "present"
+        ],
+        "additionalProperties": false
+      },
+      "WatchLaterMembership": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string"
+          },
+          "present": {
+            "type": "boolean"
+          },
+          "affectedIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "mediaId",
+          "present",
+          "affectedIds"
+        ],
+        "additionalProperties": false
+      },
+      "MediaStatePatch": {
+        "type": "object",
+        "properties": {
+          "progressSeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 315360000
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "volume": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1,
+        "description": "Omitted properties preserve current state. completed and progressSeconds cannot be combined. completed=true requires a known duration. Completion uses one shared duration-dependent buffer; untouched items are never completed."
+      },
+      "SubscriptionCreate": {
+        "type": "object",
+        "properties": {
+          "channelId": {
+            "type": "string"
+          },
+          "feedUrl": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "SubscriptionFilter": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "enum": [
+              "all",
+              "videos",
+              "streams"
+            ]
+          }
+        },
+        "required": [
+          "filter"
+        ],
+        "additionalProperties": false
+      },
+      "PlaylistCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "PlaylistPatch": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "PlaylistImport": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "PlaylistItemCreate": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "PlaylistMove": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          }
+        },
+        "required": [
+          "direction"
+        ],
+        "additionalProperties": false
+      },
+      "SegmentSettingsPatch": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "SettingsPatch": {
+        "type": "object",
+        "properties": {
+          "sponsorBlock": {
+            "$ref": "#/components/schemas/SegmentSettingsPatch"
+          },
+          "podcastSegments": {
+            "$ref": "#/components/schemas/SegmentSettingsPatch"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "EnabledIntent": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "TVConnect": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "LegalDocument": {
+        "type": "object",
+        "required": [
+          "html"
+        ],
+        "properties": {
+          "html": {
+            "type": "string",
+            "description": "Sanitized HTML fetched from the existing allowlisted legal document."
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuthUsername": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 18
+          }
+        },
+        "required": [
+          "username"
+        ],
+        "additionalProperties": false
+      },
+      "WebAuthnRequestOptions": {
+        "type": "object",
+        "properties": {
+          "publicKey": {
+            "type": "object",
+            "properties": {
+              "challenge": {
+                "type": "string"
+              },
+              "rpId": {
+                "type": "string"
+              },
+              "timeout": {
+                "type": "integer"
+              },
+              "allowCredentials": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "public-key"
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "transports": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "userVerification": {
+                "type": "string"
+              },
+              "extensions": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "challenge"
+            ],
+            "additionalProperties": true
+          },
+          "mediation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "publicKey"
+        ],
+        "additionalProperties": true
+      },
+      "WebAuthnCreationOptions": {
+        "type": "object",
+        "properties": {
+          "publicKey": {
+            "type": "object",
+            "properties": {
+              "challenge": {
+                "type": "string"
+              },
+              "rp": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "displayName"
+                ],
+                "additionalProperties": false
+              },
+              "pubKeyCredParams": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "alg": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "alg"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "timeout": {
+                "type": "integer"
+              },
+              "excludeCredentials": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "public-key"
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "transports": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "authenticatorSelection": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": true
+              },
+              "attestation": {
+                "type": "string"
+              },
+              "extensions": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "challenge",
+              "rp",
+              "user",
+              "pubKeyCredParams"
+            ],
+            "additionalProperties": true
+          },
+          "mediation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "publicKey"
+        ],
+        "additionalProperties": true
+      },
+      "WebAuthnCredential": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rawId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "public-key"
+            ]
+          },
+          "response": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          },
+          "clientExtensionResults": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          },
+          "authenticatorAttachment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "rawId",
+          "type",
+          "response"
+        ],
+        "additionalProperties": true
+      },
+      "RedirectURL": {
+        "type": "object",
+        "properties": {
+          "redirectUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "redirectUrl"
+        ],
+        "additionalProperties": false
+      },
+      "PodcastOpen": {
+        "type": "object",
+        "properties": {
+          "feedUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feedUrl"
+        ],
+        "additionalProperties": false
+      },
+      "PodcastOpenResult": {
+        "type": "object",
+        "properties": {
+          "channelId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channelId"
+        ],
+        "additionalProperties": false
+      },
+      "TVPlayerStatus": {
+        "type": "object",
+        "properties": {
+          "online": {
+            "type": "boolean"
+          },
+          "screenName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "online",
+          "screenName"
+        ],
+        "additionalProperties": false
+      },
+      "TVSend": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "position"
+        ],
+        "additionalProperties": false
+      },
+      "LoginBegin": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 18,
+            "description": "Explicit compatibility fallback for existing non-discoverable keys. Omit for normal username-free passkey login."
+          }
+        },
+        "additionalProperties": false,
+        "description": "Send {} for discoverable login with user verification required. A supplied username invokes legacy named-key compatibility; newly enrolled keys still require verification."
+      }
+    }
+  }
+}

@@ -1,0 +1,376 @@
+{
+  "version": 2,
+  "stack": [
+    "React 19",
+    "strict TypeScript",
+    "Vite",
+    "React Compiler",
+    "Tailwind 4",
+    "Headless UI",
+    "TanStack Router",
+    "TanStack Query"
+  ],
+  "layers": ["semantic tokens", "owned primitives", "feature compositions", "screens"],
+  "ownership": {
+    "backend": "auth, domain policy, persistence, jobs and media",
+    "router": "URL filters and pagination",
+    "query": "server state and explicit cache invalidation",
+    "player": "imperative engine owns its host descendants",
+    "primitives": "presentation and accessibility; never fetch"
+  },
+  "compiler": {
+    "default": "all authored components and hooks",
+    "appAndStorybookShareTransform": true,
+    "manualMemoization": "requires profiling and documented review",
+    "effects": "only features/playback/adapters and lib/browser for external lifecycle",
+    "snapshots": "useSyncExternalStore requires cached immutable snapshots and stable subscriptions"
+  },
+  "tailkitSources": [
+    "a-c-buttons-01",
+    "a-c-buttons-02",
+    "a-c-modals-01",
+    "a-c-form-switches-03",
+    "a-c-tabs-05",
+    "a-c-form-elements-01",
+    "a-c-dropdowns-01"
+  ],
+  "tailkitAdaptation": "React source composition adapted to Feedlr semantic colors, targets and restrained motion; Headless UI supplies overlay, switch, checkbox, menu and tab behavior",
+  "motionMs": {
+    "control": 120,
+    "menu": 160,
+    "overlay": 200,
+    "exit": 120,
+    "pendingDelay": 240
+  },
+  "motionDistancePx": {
+    "menu": 4,
+    "sheet": 8
+  },
+  "reducedMotion": "remove travel, scale, rotation and shimmer",
+  "interactionTargetsPx": {
+    "desktop": 40,
+    "coarsePointer": 44
+  },
+  "verification": [
+    "typecheck",
+    "compiler and Query lint",
+    "production build",
+    "Storybook build",
+    "real-browser story interactions and accessibility",
+    "responsive visual screenshots"
+  ],
+  "migration": "React SPA owns every document route; same-origin cookies and a pure v1 JSON API replace legacy fragments; Go renders public metadata before boot, React19 owns route metadata after boot; media streams preserve binary/redirect and range semantics",
+  "strictStyle": {
+    "biome": "recommended correctness/style/accessibility, formatting and organized imports",
+    "eslint": "React Compiler, Hooks, Query and architecture restrictions",
+    "stylelint": "standard CSS rules with explicit Tailwind4 directives",
+    "typeScript": "strict and noUncheckedIndexedAccess",
+    "generatedExclusions": ["src/lib/api/schema.d.ts", ".storybook/public/mockServiceWorker.js"]
+  },
+  "inventoryBaseline": {
+    "reviewedAt": "2026-10-22",
+    "commit": "811f26c",
+    "templateSourceFiles": 75,
+    "componentTemplateFiles": 50,
+    "registeredMethodPaths": 75,
+    "uniqueHTTPPaths": 70,
+    "scope": "Public and authenticated documents, controls, feature compositions, authentication, JSON and media transports"
+  },
+  "componentMap": {
+    "foundations": {
+      "files": [
+        "web/src/styles/index.css",
+        "web/src/app/app.css",
+        "web/src/features/playback/playback.css"
+      ],
+      "owns": "Semantic colors, surfaces, type, target sizes, focus, spacing, radii, responsive layouts and reduced motion"
+    },
+    "primitives": {
+      "files": [
+        "web/src/components/ui/actions.tsx",
+        "web/src/components/ui/fields.tsx",
+        "web/src/components/ui/overlays.tsx",
+        "web/src/components/ui/tabs.tsx",
+        "web/src/components/ui/feedback.tsx"
+      ],
+      "owns": "Typed controls, field labels and errors, overlay focus and dismissal, menu and tab keyboard behavior, shared pending and feedback states"
+    },
+    "mediaCompositions": {
+      "files": [
+        "web/src/components/media/MediaCard.tsx",
+        "web/src/components/media/PlaylistPicker.tsx",
+        "web/src/components/media/URLDialog.tsx",
+        "web/src/components/media/OpenMediaDialog.tsx",
+        "web/src/features/playback/PlayerToolbar.tsx"
+      ],
+      "owns": "Media presentation and actions, collection membership, reusable URL entry and stable player actions"
+    },
+    "formsAndSettings": {
+      "files": [
+        "web/src/components/ui-compositions.tsx",
+        "web/src/features/playlists/PlaylistEditor.tsx",
+        "web/src/features/settings/SkipSettings.tsx"
+      ],
+      "owns": "Confirmation dialogs, shared create/edit playlist form and global/category skipping controls with separate provider policy"
+    },
+    "application": {
+      "files": [
+        "web/src/app/router.tsx",
+        "web/src/app/Page.tsx",
+        "web/src/app/Metadata.tsx",
+        "web/src/app/Notifications.tsx"
+      ],
+      "owns": "Navigation and document routes, session gates, URL state, request boundaries, route metadata and announced notifications"
+    },
+    "dataAndBrowserIntegration": {
+      "files": [
+        "web/src/lib/api/client.ts",
+        "web/src/lib/api/queries.ts",
+        "web/src/lib/api/types.ts",
+        "web/src/features/auth/passkeys.ts",
+        "web/src/features/playback/adapters/runtime.ts",
+        "web/src/features/playback/adapters/usePlayback.ts",
+        "web/src/lib/browser/useOpenShortcut.ts",
+        "web/src/lib/browser/removal-focus.ts",
+        "web/src/lib/browser/overlay-portal.ts"
+      ],
+      "owns": "Typed same-origin requests, query keys, shared mutation invalidation, passkey ceremonies and explicit browser lifecycle adapters"
+    }
+  },
+  "screenMap": [
+    {
+      "screen": "Public documents",
+      "routes": ["/", "/legal/$document", "/error", "/429", "unmatched routes"],
+      "files": ["web/src/features/public/PublicPages.tsx"],
+      "apiGroups": ["session", "legal"],
+      "preserves": "Guest entry, legal content, missing/error states and public metadata"
+    },
+    {
+      "screen": "Passkey sign in and account creation",
+      "routes": ["/login"],
+      "files": ["web/src/features/auth/LoginPage.tsx", "web/src/features/auth/passkeys.ts"],
+      "apiGroups": ["session", "passkeys"],
+      "preserves": "Separate sign-in/register ceremonies and validated local return paths"
+    },
+    {
+      "screen": "Subscription feed",
+      "routes": ["/app"],
+      "files": ["web/src/features/feed/FeedPage.tsx"],
+      "apiGroups": ["feeds", "mediaState", "playlists"],
+      "preserves": "Deliberate new/watched views, Watch Later, shared media actions and onboarding"
+    },
+    {
+      "screen": "History",
+      "routes": ["/app/recent?source=all|youtube|podcasts&page=1"],
+      "files": ["web/src/features/feed/HistoryPage.tsx"],
+      "apiGroups": ["feeds", "mediaState"],
+      "preserves": "Source filters, progress and deterministic pagination"
+    },
+    {
+      "screen": "Watch Later",
+      "routes": ["/app/watch-later?page=1"],
+      "files": ["web/src/features/feed/WatchLaterPage.tsx"],
+      "apiGroups": ["feeds", "mediaState"],
+      "preserves": "Paged saved media, explicit membership and shared state with feed/player"
+    },
+    {
+      "screen": "Discovery and subscriptions",
+      "routes": ["/app/onboarding", "/app/subscriptions?source=all|youtube|podcasts"],
+      "files": ["web/src/features/subscriptions/SubscriptionsPage.tsx"],
+      "apiGroups": ["discovery"],
+      "preserves": "YouTube and podcast discovery, deployment capabilities, RSS entry and source filters"
+    },
+    {
+      "screen": "Channel or podcast show",
+      "routes": ["/channel/$channelId"],
+      "files": ["web/src/features/subscriptions/ChannelPage.tsx"],
+      "apiGroups": ["discovery", "mediaState"],
+      "preserves": "Guest reads, subscribe/refresh, media-type filters and shared cards"
+    },
+    {
+      "screen": "Playlists and detail",
+      "routes": ["/app/playlists", "/app/playlist/$playlistId"],
+      "files": [
+        "web/src/features/playlists/PlaylistsPage.tsx",
+        "web/src/features/playlists/PlaylistPage.tsx",
+        "web/src/features/playlists/PlaylistEditor.tsx"
+      ],
+      "apiGroups": ["playlists", "mediaState"],
+      "preserves": "Create/import/edit/add URL, ordered membership, move/remove/sync and owner/system-list policy"
+    },
+    {
+      "screen": "YouTube and podcast playback",
+      "routes": ["/video/$mediaId"],
+      "files": [
+        "web/src/features/playback/PlayerPage.tsx",
+        "web/src/features/playback/YouTubePlayer.tsx",
+        "web/src/features/playback/PodcastPlayer.tsx",
+        "web/src/features/playback/PlayerToolbar.tsx"
+      ],
+      "apiGroups": ["mediaState", "playback"],
+      "preserves": "Guest iframe, native fallback/renewal, progress/volume/quality, chapters/previews, TV handoff, sanitized podcast notes and validated analysis/scan hold"
+    },
+    {
+      "screen": "Settings and account",
+      "routes": ["/app/settings", "/app/settings/$section"],
+      "files": [
+        "web/src/features/settings/SettingsPage.tsx",
+        "web/src/features/settings/SkipSettings.tsx"
+      ],
+      "apiGroups": ["settings", "passkeys"],
+      "preserves": "Passkey management, playlist sync, TV pairing, separate video/podcast global and category policies"
+    }
+  ],
+  "apiMap": {
+    "contract": "api/frontend.openapi.json",
+    "generatedTypes": "web/src/lib/api/schema.d.ts",
+    "backend": "internal/server/webapi",
+    "semantics": "Same-origin cookie sessions; origin validation on writes; JSON status/errors for v1; explicit desired state; omitted progress/visibility fields preserve current state; owner and system-playlist policy stays in Go",
+    "groups": {
+      "session": ["GET /api/v1/session", "POST /api/v1/logout"],
+      "feeds": ["GET /api/v1/feed", "GET /api/v1/history", "GET /api/v1/watch-later"],
+      "mediaState": [
+        "GET /api/v1/media/{id}",
+        "PATCH /api/v1/media/{id}/state",
+        "PUT /api/v1/watch-later/{id}"
+      ],
+      "discovery": [
+        "GET|POST /api/v1/subscriptions",
+        "PATCH|DELETE /api/v1/subscriptions/{id}",
+        "GET /api/v1/search",
+        "GET /api/v1/channels/{id}",
+        "POST /api/v1/channels/{id}/refresh",
+        "POST /api/v1/podcasts/open"
+      ],
+      "playlists": [
+        "GET|POST /api/v1/playlists",
+        "POST /api/v1/playlists/import",
+        "GET|PATCH|DELETE /api/v1/playlists/{id}",
+        "POST /api/v1/playlists/{id}/sync",
+        "POST /api/v1/playlists/{id}/items",
+        "PUT /api/v1/playlists/{id}/items/{mediaId}",
+        "POST /api/v1/playlists/{id}/items/{mediaId}/move"
+      ],
+      "settings": [
+        "GET|PATCH /api/v1/settings",
+        "POST /api/v1/settings/youtube/connect",
+        "POST /api/v1/settings/youtube/disconnect",
+        "PUT /api/v1/settings/youtube",
+        "POST /api/v1/settings/tv/connect",
+        "PUT|DELETE /api/v1/settings/tv"
+      ],
+      "passkeys": [
+        "POST /api/v1/auth/login/begin",
+        "POST /api/v1/auth/login/finish",
+        "POST /api/v1/auth/register/begin",
+        "POST /api/v1/auth/register/finish",
+        "POST /api/v1/passkeys/add/begin",
+        "POST /api/v1/passkeys/add/finish",
+        "DELETE /api/v1/passkeys/{id}"
+      ],
+      "playback": [
+        "GET /api/v1/tv/status",
+        "POST /api/v1/media/{id}/tv",
+        "GET|POST /api/v1/media/{id}/segments"
+      ],
+      "legal": ["GET /api/v1/legal/{document}"]
+    },
+    "transportBoundaries": {
+      "files": [
+        "internal/server/frontend.go",
+        "internal/server/playback.go",
+        "internal/server/chapters.go",
+        "internal/server/media_assets.go"
+      ],
+      "owns": "Go document metadata and SPA assets, existing native playback resolution/timeline transports, binary thumbnails, ranged media and DASH proxying",
+      "oauthCallbacks": ["/auth/youtube/callback", "/api/settings/youtube-sync/connect/callback"],
+      "callbackSemantics": "State-bound browser redirect completion remains separate from v1 JSON commands"
+    }
+  },
+  "resolvedDuplication": [
+    {
+      "area": "Controls",
+      "baseline": "Literal buttons, inputs, dialogs and unused shared template controls",
+      "result": "Owned native-prop primitives provide accessible labels, refs, state and keyboard behavior",
+      "files": [
+        "web/src/components/ui/index.ts",
+        "web/src/components/ui/actions.tsx",
+        "web/src/components/ui/fields.tsx",
+        "web/src/components/ui/overlays.tsx"
+      ]
+    },
+    {
+      "area": "Skipping settings",
+      "baseline": "Repeated global/category switches and provider cards",
+      "result": "Shared SkipSettings view and mutation layer with provider-specific server policy",
+      "files": ["web/src/features/settings/SkipSettings.tsx"]
+    },
+    {
+      "area": "Forms and overlays",
+      "baseline": "Repeated playlist create/edit, URL entry and feature dialog lifecycle",
+      "result": "PlaylistEditor, URLDialog, PlaylistPicker and shared Dialog/ConfirmDialog compositions",
+      "files": [
+        "web/src/features/playlists/PlaylistEditor.tsx",
+        "web/src/components/media/URLDialog.tsx",
+        "web/src/components/media/PlaylistPicker.tsx",
+        "web/src/components/ui-compositions.tsx"
+      ]
+    },
+    {
+      "area": "Membership and media state",
+      "baseline": "Card, carousel, menu and out-of-band HTML updates encode the same membership",
+      "result": "Shared media components call explicit desired-state mutations, patch/invalidate query caches and retain backend atomic membership policy",
+      "files": [
+        "web/src/components/media/MediaCard.tsx",
+        "web/src/components/media/PlaylistPicker.tsx",
+        "web/src/lib/api/queries.ts",
+        "internal/server/webapi/mutations.go",
+        "internal/database/frontend_state.go"
+      ]
+    },
+    {
+      "area": "Surfaces, targets and motion",
+      "baseline": "Independent icon-button sizes, glass surfaces, cards and loading recipes",
+      "result": "Semantic tokens and shared control/surface recipes define focus, targets and reduced motion",
+      "files": ["web/src/styles/index.css", "web/src/app/app.css"]
+    },
+    {
+      "area": "Notifications and passkeys",
+      "baseline": "Repeated notification lifetimes, announcements and registration orchestration",
+      "result": "Shared notification provider and browser passkey service preserve distinct account creation and add-key ceremonies",
+      "files": [
+        "web/src/app/Notifications.tsx",
+        "web/src/features/auth/passkeys.ts",
+        "internal/server/webapi/auth.go"
+      ]
+    }
+  ],
+  "migrationResult": {
+    "documents": "React owns all mounted document routes; Go retains public metadata and serves the SPA host",
+    "retired": [
+      "internal/templates",
+      "internal/server/routes",
+      "internal/server/handler",
+      "root tailwind.css",
+      "HTMX and Hyperscript browser bundles",
+      "templ/tpot frontend generation and dependencies",
+      "pending inline player bootstrap"
+    ],
+    "dormantAdmin": "Unregistered placeholder removed with the retired document handlers; no admin screen is exposed",
+    "podcastSanitization": "internal/content/podcast_html.go retains sanitization outside presentation",
+    "runtime": "React adapters explicitly mount/dispose each engine; cached immutable snapshots bridge media state; per-mount pagehide/pageshow handles document exit and bfcache intent without background autoplay",
+    "preservedGeneration": "OpenAPI TypeScript types and SQLBoiler database models remain supported build/development tools",
+    "storybook": "Shared compiler transform and providers; authored stories stay under web; static Storybook output stays outside Go embedded assets"
+  },
+  "uiPrinciples": {
+    "actions": "One visible action per purpose; Open YouTube lives in the shared header.",
+    "copy": "Use concise labels and useful instructions; omit decorative narration and repeated medium labels.",
+    "metadata": "Metadata descriptions are separate from displayed copy; display a description once.",
+    "hierarchy": "Prioritize content and actions; channel artwork is a compact heading avatar.",
+    "mobileNavigation": "Segmented choices and tabs fill the available width with equal flex growth; primary phone navigation uses equal columns.",
+    "settings": "Connection and enabled statuses sit inline beside section headings; passkey removal stays aligned with its credential row.",
+    "notifications": "Notifications are centered in the viewport, dismiss after six seconds (ten for errors), and pause for hover, keyboard focus, or hidden documents.",
+    "scroll": "In-place source and settings filters preserve scroll; route navigation and browser history retain router scroll restoration.",
+    "playback": "Playback uses a flush black viewport with compact black controls."
+  }
+}

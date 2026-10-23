@@ -11,10 +11,10 @@ vars:
 
 tasks:
   dev:
-    desc: Run Companion and the application with hot reload (Go + Tailwind)
-    deps: [tailwind:build, dev:companion]
+    desc: Run Companion, Go hot reload, and React hot updates; open the Go URL
+    deps: [dev:companion]
     cmds:
-      - task --parallel dev:go dev:tailwind
+      - npm run dev
 
   dev:companion:
     desc: Start local Companion at COMPANION_URL and wait until ready
@@ -27,38 +27,52 @@ tasks:
       - node scripts/dev-companion.mjs stop
 
   dev:go:
-    desc: Run Go hot reload with air
+    desc: Run Go hot reload with React served by a separate Vite process
+    env:
+      FEEDLR_VITE_URL: '{{.FEEDLR_VITE_URL | default "http://127.0.0.1:5173"}}'
     cmds:
       - air
 
-  dev:tailwind:
-    desc: Run Tailwind in watch mode
+  dev:web:
+    desc: Run Vite separately (normally managed by task dev)
     cmds:
-      - npm run dev
+      - npm run dev:web
 
-  tailwind:build:
-    desc: Build Tailwind CSS once
+  test:
+    desc: Run player runtime, frontend unit, and isolated Go tests
+    cmds:
+      - npm test
+      - env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go test . ./internal/...
+
+  check:
+    desc: Check schema drift, strict frontend style, build, Go races, and browser stories
+    cmds:
+      - npm run check
+
+  frontend:build:
+    desc: Build the React app and local browser assets for Go embedding
     cmds:
       - npm run build
 
-  tailwind:watch:
-    desc: Run Tailwind in watch mode (alias for dev:tailwind)
+  storybook:
+    desc: Preview components and screens at mobile and desktop sizes
     cmds:
-      - npm run dev
-  test:
-    desc: Run tests
+      - npm --prefix web run storybook
+
+  storybook:build:
+    desc: Build the component preview outside embedded application assets
     cmds:
-      - go test ./... -v
+      - npm run build:storybook
+
   upgrade:
     desc: Upgrade dependencies
     cmds:
       - go get -u ./...
   generate:
-    desc: Run go generate
+    desc: Generate database models from the migrated SQLite schema
     env:
       SQLITE3_DBNAME: "{{.DATABASE_PATH}}"
     cmds:
-      - go generate ./...
       - go build -o tmp/bin/sqlboiler-sqlite3 github.com/aarondl/sqlboiler-sqlite3
       - go tool sqlboiler tmp/bin/sqlboiler-sqlite3
 
@@ -74,24 +88,21 @@ tasks:
       - task: generate
 
   build:fast:
-    desc: Build the application without go generate
+    desc: Build the application from existing generated Go and frontend assets
     env:
       BUILD_MODE: true
-      CGO_ENABLED: 0
-      GOOS: linux
     cmds:
-      - go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o {{ .CLI_ARGS | default "app" }} .
+      - go build -trimpath -ldflags '-s -w' -o {{ .CLI_ARGS | default "app" }} .
   build:full:
-    desc: Build the application with go generate
+    desc: Build React and its local player runtime, then compile the Go application
     aliases: [build]
-    deps: [generate, tailwind:build]
+    deps: [frontend:build]
     cmds:
       - task: build:fast
   build:docker:
     desc: Build the application for Docker
-    deps: [generate, tailwind:build]
     cmds:
-      - task: build:fast
+      - task: build:image
   build:image:
     desc: Build the Docker image
     cmds:

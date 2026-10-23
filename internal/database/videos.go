@@ -187,7 +187,7 @@ func (c *sqliteClient) GetUserViews(ctx context.Context, userID string, videoID 
 		sql = sql.Where(sql.In(models.ViewColumns.VideoID, toAny(videoID)...))
 	}
 	sql = sql.Where(sql.And(where...))
-	sql = sql.Desc().OrderBy(models.ViewColumns.UpdatedAt)
+	sql = sql.OrderByDesc(models.ViewColumns.UpdatedAt).OrderByDesc(models.ViewColumns.ID)
 
 	q, a := sql.Build()
 	views, err := models.Views(qm.SQL(q, a...)).All(ctx, c.db)
@@ -204,7 +204,7 @@ func (c *sqliteClient) GetRecentUserViews(ctx context.Context, userID string, li
 		From(models.TableNames.Views)
 
 	sql = sql.Where(sql.EQ(models.ViewColumns.UserID, userID))
-	sql = sql.Desc().OrderBy(models.ViewColumns.UpdatedAt)
+	sql = sql.OrderByDesc(models.ViewColumns.UpdatedAt).OrderByDesc(models.ViewColumns.ID)
 	if limit > 0 {
 		sql = sql.Limit(limit)
 	}
@@ -236,7 +236,7 @@ func (c *sqliteClient) GetRecentUserViewsForVideoType(ctx context.Context, userI
 			viewsTable.Col(models.ViewColumns.UserID).Eq(userID),
 			videoTypeCondition,
 		).
-		Order(viewsTable.Col(models.ViewColumns.UpdatedAt).Desc())
+		Order(viewsTable.Col(models.ViewColumns.UpdatedAt).Desc(), viewsTable.Col(models.ViewColumns.ID).Desc())
 	if limit > 0 {
 		query = query.Limit(uint(limit))
 	}

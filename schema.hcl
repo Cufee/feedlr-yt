@@ -595,6 +595,29 @@ table "settings" {
   }
 }
 
+table "podcast_feed_aliases" {
+  schema = schema.main
+  column "feed_url" {
+    null = false
+    type = text
+  }
+  column "channel_id" {
+    null = false
+    type = text
+  }
+  primary_key {
+    columns = [column.feed_url]
+  }
+  foreign_key "podcast_feed_aliases_channel_id_fkey" {
+    columns = [column.channel_id]
+    ref_columns = [table.podcast_shows.column.channel_id]
+    on_update = NO_ACTION
+    on_delete = CASCADE
+  }
+  index "idx_podcast_feed_aliases_channel_id" {
+    columns = [column.channel_id]
+  }
+}
 table "podcast_shows" {
   schema = schema.main
 

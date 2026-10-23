@@ -17,8 +17,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/server"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/rs/zerolog/log"
-
-	"github.com/microcosm-cc/bluemonday"
 )
 
 func main() {
@@ -99,8 +97,8 @@ func main() {
 	// Start server with:
 	// - os.DirFS(".") for live asset reloading
 	// - nil for webauthn (not needed in dev mode)
-	// - mockAuth as both auth middleware AND global middleware
-	start := server.New(db, ses, os.DirFS("."), bluemonday.StrictPolicy(), nil, mockAuth, mockAuth)
+	// - mockAuth as global middleware
+	start := server.New(db, ses, os.DirFS("."), nil, mockAuth)
 	if err := start(); err != nil {
 		panic(err)
 	}

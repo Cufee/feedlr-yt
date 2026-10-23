@@ -14,7 +14,6 @@ import (
 	"github.com/cufee/feedlr-yt/internal/api/podcastindex"
 	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/api/youtube/auth"
-	mw "github.com/cufee/feedlr-yt/internal/auth"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/logic"
 	"github.com/cufee/feedlr-yt/internal/logic/background"
@@ -22,11 +21,7 @@ import (
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/rs/zerolog/log"
-
-	"github.com/microcosm-cc/bluemonday"
 )
-
-//go:generate go tool templ generate
 
 // Embed assets
 //
@@ -133,8 +128,8 @@ func main() {
 		panic(err)
 	}
 
-	authMiddleware := mw.Middleware(ses)
-
-	start := server.New(db, ses, assetsFs, bluemonday.StrictPolicy(), wa, authMiddleware, nil)
-	start()
+	start := server.New(db, ses, assetsFs, wa, nil)
+	if err := start(); err != nil {
+		log.Fatal().Err(err).Msg("server stopped")
+	}
 }

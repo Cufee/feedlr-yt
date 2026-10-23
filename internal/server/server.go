@@ -10,25 +10,18 @@ import (
 	"strings"
 
 	"github.com/cufee/feedlr-yt/internal/database"
-	"github.com/cufee/feedlr-yt/internal/server/handler"
-	root "github.com/cufee/feedlr-yt/internal/server/routes"
-	rapi "github.com/cufee/feedlr-yt/internal/server/routes/api"
-	login "github.com/cufee/feedlr-yt/internal/server/routes/api/auth"
-	rapp "github.com/cufee/feedlr-yt/internal/server/routes/app"
+	"github.com/cufee/feedlr-yt/internal/server/webapi"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/feedlr-yt/internal/utils"
-	"github.com/cufee/tpot"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gofiber/fiber/v3/middleware/favicon"
 	"github.com/gofiber/fiber/v3/middleware/logger"
-	"github.com/microcosm-cc/bluemonday"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 )
 
-func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *bluemonday.Policy, wa *webauthn.WebAuthn, authMw func(c fiber.Ctx) error, globalMw func(c fiber.Ctx) error, port ...int) func() error {
+func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, wa *webauthn.WebAuthn, globalMw func(c fiber.Ctx) error, port ...int) func() error {
 	var portString string
 	if len(port) > 0 {
 		portString = strconv.Itoa(port[0])
@@ -36,136 +29,94 @@ func New(db database.Client, ses *sessions.SessionClient, assets fs.FS, policy *
 		portString = utils.MustGetEnv("PORT")
 	}
 
-	newCtx := handler.NewBuilder(db, ses, policy, wa)
-	toFiber := func(s tpot.Servable[*handler.Context]) func(fiber.Ctx) error {
-		return func(c fiber.Ctx) error {
-			ctx, ok := c.Locals(handler.ContextKeyCustomCtx).(*handler.Context)
-			if !ok {
-				return adaptor.HTTPHandler(s.Handler(newCtx(c)))(c)
-			}
-			return adaptor.HTTPHandler(s.Handler(func(w http.ResponseWriter, r *http.Request) *handler.Context { return ctx }))(c)
-		}
-	}
-
 	return func() error {
+		app, closePlayback, err := newApp(db, ses, assets, wa, globalMw)
+		if err != nil {
+			return err
+		}
+		defer closePlayback()
 		if err := startMetricsServer(); err != nil {
 			return err
 		}
-
-		server := fiber.New()
-		server.Use(requestMetricsMiddleware)
-		server.Use(logger.New())
-		server.Get("/healthy", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
-
-		// Static files
-		server.Use(favicon.New(favicon.Config{
-			FileSystem:   assets,
-			CacheControl: "public, max-age=86400",
-			File:         "assets/favicon.png",
-			URL:          "/favicon.png",
-		}))
-		server.Use("/assets", staticWithCacheMiddleware("assets", assets))
-
-		// Maintenance mode
-		server.Use(outageMiddleware)
-
-		// Disable caching for all routes
-		server.Use(cacheBusterMiddleware)
-
-		// Global middleware (used in dev mode to set up mock auth for all routes)
-		if globalMw != nil {
-			server.Use(globalMw)
-		}
-
-		playbackService := newPlaybackService()
-		defer playbackService.Close()
-		registerPlaybackRoutes(server, playbackService, db, ses)
-
-		// Root/Error and etc
-		server.All("/", toFiber(root.Landing))
-		server.All("/error", toFiber(root.Error))
-		server.All("/429", toFiber(root.RateLimited))
-		server.Get("/legal/privacy-policy", toFiber(root.PrivacyPolicy))
-		server.Get("/legal/terms-of-service", toFiber(root.TermsOfService))
-		// Auth/Login
-		server.Get("/login", toFiber(root.Login))
-		server.Post("/login/begin", toFiber(login.LoginBegin))
-		server.Post("/login/finish", toFiber(login.LoginFinish))
-		server.Post("/register/begin", toFiber(login.RegistrationBegin))
-		server.Post("/register/finish", toFiber(login.RegistrationFinish))
-
-		// Routes with unique auth handlers
-		server.Get("/video/:id", toFiber(root.Video))
-		server.Get("/channel/:id", toFiber(root.Channel))
-		server.Get("/thumb/video/:id/:variant", toFiber(root.VideoThumbnail))
-		server.Get("/thumb/channel/:id", toFiber(root.ChannelThumbnail))
-		server.Get("/media/stream/:id", toFiber(root.MediaStream))
-
-		api := server.Group("/api").Use(limiterMiddleware).Use(authMw)
-		api.Post("/passkeys/add/begin", toFiber(login.AdditionalPasskeyBegin))
-		api.Post("/passkeys/add/finish", toFiber(login.AdditionalPasskeyFinish))
-		api.Delete("/passkeys/:passkeyId", toFiber(login.DeletePasskey))
-
-		api.Post("/videos/:id/progress", toFiber(rapi.SaveVideoProgress))
-		api.Get("/videos/:id/sponsor-segments", toFiber(rapi.PodcastSponsorSegments))
-		api.Post("/videos/:id/sponsor-segments", toFiber(rapi.StartPodcastSponsorSegments))
-		api.Post("/videos/:id/watch-later", toFiber(rapi.ToggleWatchLater))
-		api.Post("/videos/:id/tv", playbackSameOrigin, toFiber(rapi.SendVideoToTV))
-		api.Get("/tv/status", toFiber(rapi.TVPlayerStatus))
-		api.Post("/videos/open", toFiber(rapi.OpenVideo))
-
-		api.Post("/playlists", toFiber(rapi.CreatePlaylist))
-		api.Post("/playlists/import", toFiber(rapi.ImportPlaylist))
-		api.Post("/playlists/add-video", toFiber(rapi.AddVideoToPlaylist))
-		api.Post("/playlists/:id", toFiber(rapi.UpdatePlaylist))
-		api.Delete("/playlists/:id", toFiber(rapi.DeletePlaylist))
-		api.Post("/playlists/:id/sync", toFiber(rapi.SyncPlaylist))
-		api.Post("/playlists/:id/videos", toFiber(rapi.AddVideoToPlaylistFromURL))
-		api.Post("/playlists/:id/videos/:videoID/progress", toFiber(rapi.UpdatePlaylistVideoProgress))
-		api.Post("/playlists/:id/videos/:videoID/remove", toFiber(rapi.RemoveVideoFromPlaylist))
-		api.Post("/playlists/:id/videos/:videoID/move", toFiber(rapi.MovePlaylistItem))
-
-		api.Get("/channels/search", toFiber(rapi.SearchChannels))
-		api.Get("/podcasts/search", toFiber(rapi.SearchPodcasts))
-		api.Get("/podcasts/open", toFiber(rapi.OpenPodcast))
-		api.Post("/podcasts/subscribe", toFiber(rapi.CreatePodcastSubscription))
-		api.Post("/channels/:id/subscribe", toFiber(rapi.CreateSubscription))
-		api.Post("/channels/:id/unsubscribe", toFiber(rapi.RemoveSubscription))
-		api.Post("/channels/:id/filter", toFiber(rapi.UpdateVideoFilter))
-		api.Post("/channels/:id/refresh", toFiber(rapi.RefreshChannel))
-
-		api.Post("/settings/sponsorblock", toFiber(rapi.ToggleSponsorBlock))
-		api.Post("/settings/sponsorblock/category", toFiber(rapi.ToggleSponsorBlockCategory))
-		api.Post("/settings/podcast-segments", toFiber(rapi.TogglePodcastSegments))
-		api.Post("/settings/podcast-segments/category", toFiber(rapi.TogglePodcastSegmentCategory))
-		api.Post("/settings/youtube-sync/connect/begin", toFiber(rapi.BeginYouTubeSyncConnect))
-		api.Get("/settings/youtube-sync/connect/callback", toFiber(rapi.FinishYouTubeSyncConnect))
-		api.Post("/settings/youtube-sync/disconnect", toFiber(rapi.DisconnectYouTubeSync))
-		api.Post("/settings/youtube-sync/toggle", toFiber(rapi.ToggleYouTubeSync))
-		api.Post("/settings/youtube-sync/tv/connect", toFiber(rapi.ConnectYouTubeTVSync))
-		api.Post("/settings/youtube-sync/tv/disconnect", toFiber(rapi.DisconnectYouTubeTVSync))
-		api.Post("/settings/youtube-sync/tv/toggle", toFiber(rapi.ToggleYouTubeTVSync))
-
-		// All routes used by HTMX should have a POST handler
-		app := server.Group("/app").Use(limiterMiddleware).Use(authMw)
-		app.All("/", toFiber(rapp.Home))
-		app.All("/recent", toFiber(rapp.Recent))
-		app.All("/watch-later", toFiber(rapp.WatchLater))
-		app.All("/settings", toFiber(rapp.Settings))
-		app.All("/settings/:section", toFiber(rapp.Settings))
-		app.All("/onboarding", toFiber(rapp.Onboarding))
-		app.All("/subscriptions", toFiber(rapp.Subscriptions))
-		app.All("/playlists", toFiber(rapp.PlaylistsIndex))
-		app.All("/playlist/:id", toFiber(rapp.PlaylistDetail))
-		app.Get("/playlist/:id/feed", toFiber(rapp.PlaylistFeed))
-
-		// This last handler is a catch-all for any routes that don't exist
-		server.Use(func(c fiber.Ctx) error {
-			return c.Redirect().Status(fiber.StatusFound).To("/error?code=404&from=" + c.Path())
-		})
-
-		return server.Listen(":" + portString)
+		return app.Listen(":" + portString)
 	}
+}
+
+func newApp(db database.Client, ses *sessions.SessionClient, assets fs.FS, wa *webauthn.WebAuthn, globalMw func(c fiber.Ctx) error) (*fiber.App, func(), error) {
+	server := fiber.New()
+	server.Use(requestMetricsMiddleware)
+	server.Use(logger.New())
+	server.Get("/healthy", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
+	frontend, err := newFrontendUI(assets, db, ses)
+	if err != nil {
+		return nil, nil, err
+	}
+	server.Get("/ui-assets/*", frontend.asset)
+	server.Head("/ui-assets/*", frontend.asset)
+
+	// Static files
+	server.Use(favicon.New(favicon.Config{
+		FileSystem:   assets,
+		CacheControl: "public, max-age=86400",
+		File:         "assets/favicon.png",
+		URL:          "/favicon.png",
+	}))
+	server.Use("/assets", staticWithCacheMiddleware("assets", assets))
+
+	// Maintenance mode
+	server.Use(frontend.maintenance)
+
+	// Disable caching for all routes
+	server.Use(cacheBusterMiddleware)
+
+	// Global middleware (used in dev mode to set up mock auth for all routes)
+	if globalMw != nil {
+		server.Use(globalMw)
+	}
+
+	playbackService := newPlaybackService()
+	registerPlaybackRoutes(server, playbackService, db, ses)
+	registerMediaAssets(server, db)
+	webapi.Register(server, db, ses, wa)
+
+	// Root/Error and etc
+	server.Get("/", frontend.page)
+	server.Get("/error", frontend.page)
+	server.Get("/429", frontend.page)
+	server.Get("/legal/privacy-policy", frontend.page)
+	server.Get("/legal/terms-of-service", frontend.page)
+	// Auth/Login
+	server.Get("/login", frontend.page)
+
+	// Routes with unique auth handlers
+	server.Get("/video/:id", frontend.page)
+	server.Get("/channel/:id", frontend.page)
+
+	// Document navigation always loads the SPA. Authorization belongs to JSON APIs.
+	app := server.Group("/app")
+	app.Get("/", frontend.page)
+	app.Get("/recent", frontend.page)
+	app.Get("/watch-later", frontend.page)
+	app.Get("/settings", frontend.page)
+	app.Get("/settings/:section", frontend.page)
+	app.Get("/onboarding", frontend.page)
+	app.Get("/subscriptions", frontend.page)
+	app.Get("/playlists", frontend.page)
+	app.Get("/playlist/:id", frontend.page)
+
+	// This last handler is a catch-all for any routes that don't exist
+	server.Use(func(c fiber.Ctx) error {
+		if strings.HasPrefix(c.Path(), "/api/") {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "not_found", "message": "This API endpoint does not exist"}})
+		}
+		if c.Method() != fiber.MethodGet && c.Method() != fiber.MethodHead {
+			return c.Status(fiber.StatusMethodNotAllowed).JSON(fiber.Map{"error": fiber.Map{"code": "method_not_allowed", "message": "This document supports GET and HEAD"}})
+		}
+		c.Status(fiber.StatusNotFound)
+		return frontend.page(c)
+	})
+
+	return server, playbackService.Close, nil
 }
 
 func metricsPath() string {

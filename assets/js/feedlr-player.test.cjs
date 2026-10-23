@@ -49,7 +49,7 @@ test('only expiry or authentication HTTP failures justify an expiry retry', () =
   assert.equal(expirationError({ category: 3 }, 10000, 10001), true);
 });
 
-function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], chapterResponses = [], segments = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, queued = false, staleQueue = false, legacyIframeChoice = false, mobile = false, savedVolume, storageBlocked = false, iframeSeekDelayed = false } = {}) {
+function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], chapterResponses = [], segments = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, autoMount = true, legacyIframeChoice = false, mobile = false, savedVolume, storageBlocked = false, iframeSeekDelayed = false, externalUI = false, persistProgress } = {}) {
   const timers = new Map();
   let nextTimer = 1;
   const requests = [];
@@ -170,7 +170,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
   const fresh = (progress = 120, audioOnly = false) => ({ mode: 'native', reason: 'available', progress, audioOnly, qualities: [{width:1280,height:720},{width:1920,height:1080}], manifestUrl: audioOnly ? '/api/playback/session/audio.mpd' : '/api/playback/session/manifest.mpd', expiresAt: new Date(Date.now() + 3600000).toISOString() });
   const fetch = async (url, options) => {
     requests.push({ url, ...options });
-    if (url === '/api/tv/status') {
+    if (url === '/api/v1/tv/status') {
       const next = tvStatuses.length ? await tvStatuses.shift() : { online: false, screenName: '' };
       if (next instanceof Error) throw next;
       return next.ok === undefined ? { ok: true, json: async () => next } : next;
@@ -185,7 +185,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
       if (next instanceof Error) throw next;
       return next;
     }
-    if (url.includes('/progress?') && progressResponses.length) return progressResponses.shift();
+    if (url.endsWith('/state') && progressResponses.length) return progressResponses.shift();
     if (url.endsWith('/playback')) {
       const next = resolutions.length ? resolutions.shift() : (JSON.parse(options.body).mode === 'iframe' ? { mode: 'iframe', progress: 120 } : fresh(120, JSON.parse(options.body).audioOnly));
       if (next instanceof Error) throw next;
@@ -193,15 +193,71 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     }
     return { ok: true };
   };
-  const options = { video: 'one', channel: 'channel', progress: 1, volume: 50, authenticated, withProgress: authenticated, returnURL: '/', segments };
+  const options = { video: 'one', channel: 'channel', progress: 1, volume: 50, authenticated, withProgress: authenticated, returnURL: '/', segments,
+    externalUI, root: externalUI ? Object.assign(new Element('div'), { isConnected: true }) : undefined, persistProgress };
   if (legacyIframeChoice) win.sessionStorage.setItem('feedlr-player-mode:one', 'iframe');
   if (savedVolume !== undefined) win.localStorage.setItem('player-volume', savedVolume);
   if (storageBlocked) Object.defineProperty(win, 'localStorage', { get() { throw new DOMException('Storage access denied', 'SecurityError'); } });
-  if (queued) win.feedlrPendingPlayer = { options, root: staleQueue ? new Element('div') : elements.get('player') };
   vm.runInNewContext(fs.readFileSync(require.resolve('./feedlr-player.js'), 'utf8'), { window: win, document: doc, fetch, performance, AbortController, URL, console });
-  const controller = queued ? win.feedlr_player : win.FeedlrPlayer.mount(options);
-  return { controller, win, doc, timers, requests, players, iframes, elements, order, fresh, event, toastText };
+  const controller = autoMount ? win.FeedlrPlayer.mount(options) : undefined;
+  return { controller, options, win, doc, timers, requests, players, iframes, elements, order, fresh, event, toastText };
 }
+
+test('external video views receive cached immutable snapshots and release subscriptions', async () => {
+  const h = harness({ externalUI: true });
+  await h.controller.start;
+  const initial = h.controller.getSnapshot();
+  assert.equal(h.controller.getSnapshot(), initial);
+  assert.equal(Object.isFrozen(initial), true);
+  assert.equal(Object.isFrozen(initial.qualities), true);
+  let updates = 0;
+  const unsubscribe = h.controller.subscribe(() => updates++);
+  h.controller.publish();
+  assert.equal(updates, 0);
+  h.controller.pauseVideo();
+  assert.equal(h.controller.getSnapshot().playing, false);
+  assert.ok(updates > 0);
+  const paused = h.controller.getSnapshot();
+  h.controller.publish();
+  assert.equal(h.controller.getSnapshot(), paused);
+  unsubscribe();
+  const count = updates;
+  await h.controller.playVideo();
+  assert.equal(updates, count);
+  await h.controller.cleanup();
+});
+
+test('external video root and TV handoff need no legacy toolbar and use provided progress writer', async () => {
+  const writes = [];
+  const h = harness({ externalUI: true, tvStatuses: [{ online: true, screenName: 'Living room' }], persistProgress: async (...values) => { writes.push(values); } });
+  await h.controller.start;
+  await settle();
+  assert.notEqual(h.controller.root, h.elements.get('player'));
+  assert.equal(h.elements.get('player').children.length, 0);
+  assert.equal(h.elements.get('send-to-tv-btn').hidden, true);
+  assert.equal(h.controller.getSnapshot().tvOnline, true);
+  h.controller.adapter.video.currentTime = 225;
+  h.controller.saveProgress();
+  await settle();
+  assert.deepEqual(writes.at(-1), [225, 50]);
+  assert.equal(h.requests.some(request => request.url.endsWith('/state')), false);
+  await h.controller.sendToTV();
+  assert.equal(h.requests.find(request => request.url.endsWith('/tv')).url, '/api/v1/media/one/tv');
+  assert.equal(h.controller.getSnapshot().notice, 'Sent to TV');
+  assert.equal(h.controller.getSnapshot().playing, false);
+  await h.controller.cleanup();
+});
+
+test('iframe user playback clears a prior autoplay block for an external view', async () => {
+  const h = harness({ externalUI: true, authenticated: false, blocked: 'iframe' });
+  await h.controller.start;
+  assert.equal(h.controller.getSnapshot().blocked, true);
+  h.iframes[0].state = 1;
+  h.iframes[0].options.events.onStateChange({ data: 1 });
+  assert.equal(h.controller.getSnapshot().blocked, false);
+  assert.equal(h.controller.getSnapshot().playing, true);
+  await h.controller.cleanup();
+});
 
 async function settle() { for (let i = 0; i < 6; i++) await new Promise(setImmediate); }
 
@@ -457,7 +513,7 @@ test('TV action appears for an online paired screen and waits for a ready player
 test('TV polling pauses when hidden or offline and refreshes on visibility, pageshow and reconnect', async () => {
   const h = harness();
   await h.controller.start;
-  const statusCount = () => h.requests.filter((request) => request.url === '/api/tv/status').length;
+  const statusCount = () => h.requests.filter((request) => request.url === '/api/v1/tv/status').length;
   assert.equal(statusCount(), 1);
   h.doc.hidden = true;
   h.doc.dispatchEvent(h.event('visibilitychange'));
@@ -507,7 +563,7 @@ for (const mode of ['native', 'iframe']) {
     await h.controller.start;
     const button = h.elements.get('send-to-tv-btn');
     h.controller.seekTo(321.75);
-    const progressCount = () => h.requests.filter((request) => request.url.includes('/progress?')).length;
+    const progressCount = () => h.requests.filter((request) => request.url.endsWith('/state')).length;
     const savedBefore = progressCount();
     const sending = h.controller.sendToTV();
     assert.equal(button.disabled, true);
@@ -546,7 +602,7 @@ for (const mode of ['native', 'iframe']) {
     h.controller.seekTo(450);
     h.controller.playVideo();
     h.controller.saveProgress();
-    assert.equal(h.requests.some((request) => request.url.includes('/progress?progress=450&')), true);
+    assert.equal(h.requests.some((request) => request.url.endsWith('/state') && JSON.parse(request.body).progressSeconds === 450), true);
     h.controller.cleanup();
   });
 }
@@ -570,7 +626,7 @@ test('TV handoff waits for older progress writes and captures position when it s
 });
 
 test('TV handoff failure keeps local playback and progress active with a retryable error', async () => {
-  const h = harness({ tvStatuses: [{ online: true }, { online: true }], tvSends: [{ ok: false, json: async () => ({ error: 'The connected TV is offline' }) }] });
+  const h = harness({ tvStatuses: [{ online: true }, { online: true }], tvSends: [{ ok: false, status: 409, json: async () => ({ error: { code: 'tv_offline', message: 'The connected TV is offline' } }) }] });
   await h.controller.start;
   await h.controller.sendToTV();
   await settle();
@@ -579,7 +635,7 @@ test('TV handoff failure keeps local playback and progress active with a retryab
   assert.equal(h.elements.get('send-to-tv-btn').disabled, false);
   h.controller.seekTo(500);
   h.controller.saveProgress();
-  assert.equal(h.requests.some((request) => request.url.includes('/progress?progress=500&')), true);
+  assert.equal(h.requests.some((request) => request.url.endsWith('/state') && JSON.parse(request.body).progressSeconds === 500), true);
   await h.controller.sendToTV();
   assert.equal(h.controller.snapshot().playing, false);
   assert.equal(h.toastText.textContent, 'Sent to TV');
@@ -600,7 +656,7 @@ test('navigation aborts TV status and ignores a late response after remount', as
   const status = deferred();
   const h = harness({ tvStatuses: [status.promise, { online: true, screenName: 'New TV' }] });
   await h.controller.start;
-  const oldRequest = h.requests.find((request) => request.url === '/api/tv/status');
+  const oldRequest = h.requests.find((request) => request.url === '/api/v1/tv/status');
   const again = h.win.FeedlrPlayer.mount(h.controller.options);
   await again.start;
   assert.equal(oldRequest.signal.aborted, true);
@@ -667,7 +723,7 @@ test('successful TV handoff survives a concurrent native renewal with delayed au
   assert.equal(h.controller.adapter.video.autoplay, false);
   h.controller.saveProgress();
   h.controller.cleanup();
-  assert.equal(h.requests.some((request) => request.url.includes('/progress?')), false);
+  assert.equal(h.requests.some((request) => request.url.endsWith('/state')), false);
 });
 
 test('a pending iframe switch preserves the successful TV handoff', async () => {
@@ -685,7 +741,7 @@ test('a pending iframe switch preserves the successful TV handoff', async () => 
   assert.equal(h.controller.tvHandedOff, true);
   h.controller.seekTo(600);
   h.controller.saveProgress();
-  assert.equal(h.requests.some((request) => request.url.includes('/progress?')), false);
+  assert.equal(h.requests.some((request) => request.url.endsWith('/state')), false);
   h.controller.playVideo();
   assert.equal(h.controller.tvHandedOff, false);
   assert.equal(h.controller.snapshot().playing, true);
@@ -744,7 +800,7 @@ test('initial resolution uses fresh database progress; switch preserves full sta
   assert.equal(h.controller.adapter.video.paused, true);
   assert.equal(h.controller.adapter.player.selected.height, 720);
   assert.deepEqual(h.order, ['create', 'destroy', 'create']);
-  assert.equal(h.requests.some((request) => request.url.includes('progress=0')), false);
+  assert.equal(h.requests.some((request) => request.url.endsWith('/state') && JSON.parse(request.body).progressSeconds === 0), false);
   h.controller.cleanup();
   await settle();
   assert.equal(h.timers.size, 0);
@@ -1186,7 +1242,7 @@ test('an explicit player switch clears deferred recovery and visibility cannot o
 });
 
 test('history restoration resolves again while retaining the current paused position', async () => {
-  const h = harness();
+  const h = harness({ externalUI: true });
   await h.controller.start;
   h.controller.adapter.video.currentTime = 892;
   h.controller.adapter.video.pause();
@@ -1197,6 +1253,65 @@ test('history restoration resolves again while retaining the current paused posi
   assert.equal(h.controller.snapshot().playing, false);
   assert.equal(h.requests.filter((request) => request.url.endsWith('/playback')).length, 2);
   h.controller.cleanup();
+});
+
+test('cached document restoration resumes an external video view without reviving a disposed mount', async () => {
+  const h = harness({ externalUI: true });
+  await h.controller.start;
+  h.controller.seekTo(325.5);
+  const previous = h.controller.adapter.video;
+  h.win.dispatchEvent(h.event('pagehide', { persisted: true }));
+  assert.equal(previous.paused, true);
+  assert.equal(h.controller.disposed, false);
+  h.win.dispatchEvent(h.event('pageshow', { persisted: true }));
+  await settle();
+  assert.equal(h.controller.snapshot().playing, true);
+  assert.equal(h.controller.getCurrentTime(), 325.5);
+  assert.equal(h.players.length, 2);
+  await h.controller.cleanup();
+  h.win.dispatchEvent(h.event('pageshow', { persisted: true }));
+  await settle();
+  assert.equal(h.players.length, 2);
+  assert.equal(h.timers.size, 0);
+});
+
+test('a video load completing after pagehide cannot autoplay into a cached document', async () => {
+  const loading = deferred();
+  const h = harness({ externalUI: true, shakaLoads: [loading.promise] });
+  await settle();
+  const video = h.controller.adapter.video;
+  assert.equal(h.controller.ready, false);
+  h.win.dispatchEvent(h.event('pagehide', { persisted: true }));
+  loading.resolve();
+  await h.controller.start;
+  assert.equal(video.paused, true);
+  assert.equal(video.autoplay, false);
+  assert.equal(h.controller.ready, false);
+  h.win.dispatchEvent(h.event('pageshow', { persisted: true }));
+  await settle();
+  assert.equal(h.controller.ready, true);
+  assert.equal(h.controller.snapshot().playing, true);
+  assert.equal(h.players.length, 2);
+  await h.controller.cleanup();
+});
+
+test('failed JSON progress writes remain retryable and preserve omitted visibility', async () => {
+  const h = harness({ externalUI: true, progressResponses: [{ ok: false, status: 503 }] });
+  await h.controller.start;
+  h.controller.seekTo(234.9);
+  h.controller.saveProgress();
+  await settle();
+  h.controller.saveProgress();
+  await settle();
+  const writes = h.requests.filter((request) => request.url === '/api/v1/media/one/state');
+  assert.equal(writes.length, 2);
+  for (const request of writes) {
+    assert.equal(request.method, 'PATCH');
+    assert.equal(request.credentials, 'same-origin');
+    assert.equal(request.headers['Content-Type'], 'application/json');
+    assert.deepEqual(JSON.parse(request.body), { progressSeconds: 234, volume: 50 });
+  }
+  await h.controller.cleanup();
 });
 
 test('unsupported codecs and fatal load failures settle on iframe without retry loops', async () => {
@@ -1225,10 +1340,10 @@ test('progress reports volume and suppresses teardown zeroes even during fallbac
   h.controller.setVolume(25);
   h.controller.seekTo(300);
   h.controller.saveProgress();
-  assert.equal(h.requests.some((request) => request.url.endsWith('progress=300&volume=25')), true);
+  assert.equal(h.requests.some((request) => request.url.endsWith('/state') && JSON.parse(request.body).progressSeconds === 300 && JSON.parse(request.body).volume === 25), true);
   await h.controller.fallback('playback_stall');
   h.controller.cleanup();
-  assert.equal(h.requests.some((request) => /progress=0(?:&|$)/.test(request.url)), false);
+  assert.equal(h.requests.some((request) => request.url.endsWith('/state') && JSON.parse(request.body).progressSeconds === 0), false);
 });
 
 test('hidden, offline, and paused native players do not proactively renew', async () => {
@@ -1335,31 +1450,40 @@ test('persist the clicked quality label even while the old track remains active'
 });
 
 
-test('HTMX inline initialization can arrive before the external bundle', async () => {
-  const h = harness({queued: true});
-  await h.controller.start;
-  assert.equal(h.controller.ready, true);
-  assert.equal(h.controller.mode, 'native');
-  assert.equal(h.players.length, 1);
-  assert.equal(h.win.feedlrPendingPlayer, undefined);
-  h.controller.cleanup();
-});
-
-test('a delayed player bundle does not mount a page that was already replaced', () => {
-  const h = harness({queued: true, staleQueue: true});
-  assert.equal(h.controller, undefined);
+test('loading the video runtime waits for an explicit mount', async () => {
+  const h = harness({ autoMount: false, externalUI: true });
+  assert.equal(h.win.feedlr_player, undefined);
   assert.equal(h.requests.length, 0);
-  assert.equal(h.win.feedlrPendingPlayer, undefined);
+  assert.equal(h.timers.size, 0);
+  const controller = h.win.FeedlrPlayer.mount(h.options);
+  await controller.start;
+  assert.equal(controller.root, h.options.root);
+  assert.equal(controller.ready, true);
+  assert.equal(h.players.length, 1);
+  await controller.cleanup();
 });
 
-test('HTMX back navigation cleans up a player whose page was removed', async () => {
-  const h = harness();
+test('leaving the document flushes progress and releases an external video view', async () => {
+  const h = harness({ externalUI: true });
   await h.controller.start;
-  h.elements.delete('player');
-  h.doc.dispatchEvent(h.event('htmx:historyRestore'));
+  h.controller.seekTo(195.75);
+  const video = h.controller.adapter.video;
+  h.win.dispatchEvent(h.event('pagehide', { persisted: false }));
   await settle();
   assert.equal(h.controller.disposed, true);
   assert.equal(h.win.feedlr_player, undefined);
+  assert.equal(h.timers.size, 0);
+  assert.equal(video.paused, true);
+  const progress = h.requests.find((request) => request.url.endsWith('/state'));
+  assert.equal(progress.url, '/api/v1/media/one/state');
+  assert.equal(progress.method, 'PATCH');
+  assert.equal(progress.keepalive, true);
+  assert.deepEqual(JSON.parse(progress.body), { progressSeconds: 195, volume: 50 });
+  const remounted = h.win.FeedlrPlayer.mount(h.options);
+  await remounted.start;
+  assert.equal(remounted.ready, true);
+  assert.equal(h.players.length, 2);
+  await remounted.cleanup();
   assert.equal(h.timers.size, 0);
 });
 

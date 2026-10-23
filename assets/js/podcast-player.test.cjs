@@ -4,9 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const template = fs.readFileSync(path.join(__dirname, '../../internal/templates/pages/podcast.templ'), 'utf8');
-const script = template.match(/script podcastPlayerInit\([^)]*\)\s*\{([\s\S]*)\n\}\s*$/);
-assert.ok(script, 'podcastPlayerInit script exists in the template');
+const script = fs.readFileSync(path.join(__dirname, 'feedlr-podcast-player.js'), 'utf8');
 
 const sponsor = { category: 'sponsor', start_ms: 10000, end_ms: 20000, start_text: 'Sponsor start', end_text: 'Sponsor end', skippable: true };
 const ready = (overrides = {}) => {
@@ -14,7 +12,7 @@ const ready = (overrides = {}) => {
   return { has_segments: state.segments.length > 0, ...state };
 };
 
-function harness({ initialSegments = { enabled: true, status: 'idle', segments: [] }, responses = [], duration = 600, currentTime = 0, readyState = 0, paused = true } = {}) {
+function harness({ initialSegments = { enabled: true, status: 'idle', segments: [] }, responses = [], duration = 600, currentTime = 0, readyState = 0, paused = true, externalUI = false, storageBlocked = false, withProgress = false, persistProgress } = {}) {
   const requests = [];
   const timers = new Map();
   let nextTimer = 1;
@@ -58,13 +56,13 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
   ];
   const elements = new Map(selectors.map((selector) => [selector, new Element()]));
   elements.get('#podcast-scan-wait').classList.add('hidden');
-  root.querySelector = (selector) => elements.get(selector) || null;
+  root.querySelector = (selector) => externalUI ? null : elements.get(selector) || null;
   const skipButtons = [-15, 15].map((seconds) => {
     const button = new Element('button');
     button.dataset.podcastSkip = String(seconds);
     return button;
   });
-  root.querySelectorAll = (selector) => selector === '[data-podcast-skip]' ? skipButtons : [];
+  root.querySelectorAll = (selector) => !externalUI && selector === '[data-podcast-skip]' ? skipButtons : [];
   root.append(audio, ...elements.values());
   const close = new Element('button');
   const doc = Object.assign(new EventTarget(), {
@@ -83,23 +81,25 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
   });
   const fetch = async (url, options = {}) => {
     requests.push({ url, method: options.method || 'GET', ...options });
-    if (!url.endsWith('/sponsor-segments')) return { ok: true };
+    if (!url.endsWith('/segments')) return { ok: true };
     const next = responses.length ? await responses.shift() : { status: 'running', phase: 'preparing', segments: [] };
     if (next instanceof Error) throw next;
     if (next.ok !== undefined) return next;
     return { ok: true, json: async () => next };
   };
-  const initialize = vm.runInNewContext(`(function(episode, title, channel, progress, withProgress, initialSegments) {${script[1]}\n})`, {
+  if (storageBlocked) Object.defineProperty(win, 'localStorage', { get() { throw new Error('Storage unavailable'); } });
+  vm.runInNewContext(script, {
     window: win, document: doc, navigator: {}, HTMLMediaElement: { HAVE_METADATA: 1, HAVE_FUTURE_DATA: 3 }, Element, AbortController, URL, Date: ClockDate, fetch,
   });
-  initialize('episode-one', 'Episode', 'Podcast', 0, false, initialSegments);
+  const initialize = (episode, title, channel, progress, withProgress, initialSegments) => win.FeedlrPodcastPlayer.mount({ episode, title, channel, progress, withProgress, initialSegments, externalUI, root, audio, persistProgress });
+  initialize('episode-one', 'Episode', 'Podcast', 0, withProgress, initialSegments);
   const text = (node) => [node.textContent, ...node.children.map(text)].filter(Boolean).join(' ');
   return {
     audio, win, doc, elements, timers, requests, skipButtons,
     reopen: () => {
-      win.feedlrPodcastPlayer.cleanup();
+      win.feedlrPodcastPlayer?.cleanup();
       audio.currentTime = 0;
-      initialize('episode-one', 'Episode', 'Podcast', 0, false, initialSegments);
+      initialize('episode-one', 'Episode', 'Podcast', 0, withProgress, initialSegments);
     },
     text: () => text(elements.get('#podcast-segments-panel')),
     emit: (type) => audio.dispatchEvent(new Event(type)),
@@ -129,6 +129,128 @@ function harness({ initialSegments = { enabled: true, status: 'idle', segments: 
     },
   };
 }
+
+test('headless podcast controls retain cached snapshots with denied storage and no legacy control DOM', async () => {
+  const h = harness({ externalUI: true, storageBlocked: true, initialSegments: { enabled: false, status: 'disabled', segments: [] } });
+  const runtime = h.win.feedlrPodcastPlayer;
+  const initial = runtime.getSnapshot();
+  assert.equal(Object.isFrozen(initial), true);
+  assert.equal(Object.isFrozen(initial.segments), true);
+  assert.equal(runtime.getSnapshot(), initial);
+  let updates = 0;
+  const unsubscribe = runtime.subscribe(() => updates++);
+  runtime.setRate(1.5);
+  runtime.setVolume(35);
+  runtime.seekTo(42);
+  assert.equal(runtime.getSnapshot().rate, 1.5);
+  assert.equal(runtime.getSnapshot().volume, 35);
+  assert.equal(runtime.getSnapshot().position, 42);
+  assert.ok(updates >= 3);
+  const stable = runtime.getSnapshot();
+  h.emit('timeupdate');
+  assert.equal(runtime.getSnapshot(), stable);
+  unsubscribe();
+  h.cleanup();
+  assert.equal(h.timers.size, 0);
+});
+
+test('headless podcast preserves scan hold, explicit skip and backward sponsor override', async () => {
+  const h = harness({ externalUI: true, initialSegments: { enabled: true, status: 'idle', transcript_ready: false, segments: [] }, responses: [ready({ status: 'running', phase: 'scanning' }), ready()], currentTime: 12 });
+  const runtime = h.win.feedlrPodcastPlayer;
+  runtime.play();
+  assert.equal(h.requests[0].url, '/api/v1/media/episode-one/segments');
+  assert.equal(runtime.getSnapshot().scanHold, true);
+  await settle();
+  assert.equal(runtime.getSnapshot().scanHold, false);
+  assert.equal(runtime.getSnapshot().validated, true);
+  assert.equal(h.audio.currentTime, 20);
+  runtime.seekTo(12);
+  h.emit('timeupdate');
+  assert.equal(h.audio.currentTime, 12);
+  assert.equal(runtime.getSnapshot().segments.length, 1);
+  h.cleanup();
+});
+
+test('podcast pause and teardown preserve progress through the supplied writer', async () => {
+  const writes = [];
+  const h = harness({ externalUI: true, withProgress: true, initialSegments: { enabled: false, status: 'disabled', segments: [] },
+    persistProgress: async (...values) => { writes.push(values); } });
+  h.win.feedlrPodcastPlayer.play();
+  h.audio.currentTime = 90;
+  h.win.feedlrPodcastPlayer.pause();
+  assert.deepEqual(writes.at(-1), [90, 100]);
+  h.audio.currentTime = 95;
+  h.cleanup();
+  assert.deepEqual(writes.at(-1), [95, 100]);
+  assert.equal(h.requests.some(request => request.url.endsWith('/state')), false);
+  assert.equal(h.timers.size, 0);
+});
+
+for (const playing of [false, true]) {
+  test(`cached document restoration preserves ${playing ? 'playing' : 'paused'} podcast intent`, async () => {
+    const writes = [];
+    const h = harness({ externalUI: true, withProgress: true, initialSegments: { enabled: false, status: 'disabled', segments: [] },
+      persistProgress: async (...values) => { writes.push(values); } });
+    const runtime = h.win.feedlrPodcastPlayer;
+    if (playing) runtime.play();
+    h.audio.currentTime = 120;
+    h.win.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: true }));
+    assert.equal(h.audio.paused, true);
+    assert.equal(h.win.feedlrPodcastPlayer, runtime);
+    assert.deepEqual(writes.at(-1), [120, 100]);
+    h.win.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+    assert.equal(h.audio.paused, !playing);
+    assert.equal(h.audio.currentTime, 120);
+    h.cleanup();
+    const playCalls = h.audio.playCalls || 0;
+    h.win.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+    assert.equal(h.audio.playCalls || 0, playCalls);
+    assert.equal(h.timers.size, 0);
+  });
+}
+
+test('a podcast scan hold cannot autoplay while its document is cached', async () => {
+  const h = harness({ externalUI: true, initialSegments: { enabled: true, status: 'idle', transcript_ready: false, segments: [] } });
+  const runtime = h.win.feedlrPodcastPlayer;
+  runtime.play();
+  await settle();
+  assert.equal(runtime.getSnapshot().scanHold, true);
+  h.win.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: true }));
+  const playCalls = h.audio.playCalls;
+  await h.advance(31000);
+  assert.equal(runtime.getSnapshot().scanHold, false);
+  assert.equal(h.audio.paused, true);
+  assert.equal(h.audio.playCalls, playCalls);
+  h.win.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+  assert.equal(h.audio.paused, false);
+  assert.equal(h.audio.playCalls, playCalls + 1);
+  h.cleanup();
+});
+
+test('podcast document exit persists JSON progress, aborts analysis and permits an explicit remount', async () => {
+  const pending = deferred();
+  const h = harness({ externalUI: true, withProgress: true, initialSegments: { enabled: true, status: 'running', segments: [] }, responses: [pending.promise] });
+  const runtime = h.win.feedlrPodcastPlayer;
+  h.audio.currentTime = 175.5;
+  h.win.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: false }));
+  assert.equal(h.win.feedlrPodcastPlayer, undefined);
+  assert.equal(h.timers.size, 0);
+  assert.equal(h.requests[0].signal.aborted, true);
+  assert.equal(h.audio.paused, true);
+  const progress = h.requests.find((request) => request.url.endsWith('/state'));
+  assert.equal(progress.url, '/api/v1/media/episode-one/state');
+  assert.equal(progress.method, 'PATCH');
+  assert.equal(progress.credentials, 'same-origin');
+  assert.equal(progress.keepalive, true);
+  assert.deepEqual(JSON.parse(progress.body), { progressSeconds: 175, volume: 100 });
+  pending.resolve(ready());
+  await settle();
+  assert.equal(runtime.getSnapshot().segments.length, 0);
+  h.reopen();
+  assert.notEqual(h.win.feedlrPodcastPlayer, runtime);
+  h.cleanup();
+  assert.equal(h.timers.size, 0);
+});
 
 async function settle() { for (let i = 0; i < 4; i++) await new Promise(setImmediate); }
 

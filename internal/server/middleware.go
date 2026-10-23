@@ -7,38 +7,12 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
-	"os"
 	"strings"
-	"time"
 
 	"github.com/cufee/feedlr-yt/internal/metrics"
-	"github.com/cufee/feedlr-yt/internal/templates/pages"
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/static"
-	"github.com/google/uuid"
 )
-
-var limiterMiddleware = limiter.New(limiter.Config{
-	Max:        100,
-	Expiration: 30 * time.Second,
-	KeyGenerator: func(c fiber.Ctx) string {
-		trace := c.Cookies("trace_id")
-		if trace == "" {
-			trace = uuid.NewString()
-			cookie := fiber.Cookie{
-				Name:  "trace_id",
-				Value: trace,
-			}
-			c.Cookie(&cookie)
-		}
-		return c.Get("X-Forwarded-For", trace)
-	},
-	LimitReached: func(c fiber.Ctx) error {
-		c.Set("HX-Redirect", "/429")
-		return c.Redirect().Status(fiber.StatusFound).To("/429")
-	},
-})
 
 var cacheBusterMiddleware = func(c fiber.Ctx) error {
 	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -46,14 +20,24 @@ var cacheBusterMiddleware = func(c fiber.Ctx) error {
 }
 
 var staticWithCacheMiddleware = func(path string, assets fs.FS) func(fiber.Ctx) error {
-	hashes := getAssetsHashes(assets)
+	// Development passes os.DirFS("."). Restrict both startup hashing and file
+	// serving to the asset directory before walking the filesystem.
+	scopedAssets, err := fs.Sub(assets, path)
+	if err != nil {
+		panic(fmt.Errorf("scope static assets: %w", err))
+	}
+	relativeHashes := getAssetsHashes(scopedAssets)
+	hashes := make(map[string]string, len(relativeHashes))
+	for assetPath, hash := range relativeHashes {
+		hashes["/"+path+assetPath] = hash
+	}
 	hashedAssets := make(map[string]string, len(hashes))
 	for assetPath, hash := range hashes {
 		hashedAssets[hashedAssetPath(path, assetPath, hash)] = assetPath
 	}
-	handler := static.New(path, static.Config{
-		FS:     assets,
-		Browse: true,
+	handler := static.New(".", static.Config{
+		FS:     scopedAssets,
+		Browse: false,
 		MaxAge: 0,
 	})
 
@@ -108,13 +92,6 @@ func getAssetsHashes(assets fs.FS) map[string]string {
 		log.Fatal(err)
 	}
 	return assetsHashes
-}
-
-func outageMiddleware(c fiber.Ctx) error {
-	if os.Getenv("MAINTENANCE_MODE") != "true" {
-		return c.Next()
-	}
-	return pages.Outage().Render(c.RequestCtx(), c)
 }
 
 func requestMetricsMiddleware(c fiber.Ctx) error {

@@ -1,0 +1,46 @@
+name: Checks
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: npm ci
+      - run: npm --prefix web ci
+      - run: npm --prefix web exec -- playwright install --with-deps chromium
+      - run: npm run check
+        env:
+          FEEDLR_VISUAL_OUTPUT: ${{ runner.temp }}/feedlr-visual
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --progress=plain --tag feedlr:check .

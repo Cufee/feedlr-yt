@@ -2,21 +2,56 @@ package server
 
 import (
 	"io"
+	"io/fs"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 
 	"github.com/gofiber/fiber/v3"
 )
 
+type assetAccessFS struct {
+	fs.FS
+	opened []string
+}
+
+func (f *assetAccessFS) Open(name string) (fs.File, error) {
+	f.opened = append(f.opened, name)
+	return f.FS.Open(name)
+}
+
+func TestStaticWithCacheMiddlewareOnlyReadsConfiguredSubtree(t *testing.T) {
+	assets := &assetAccessFS{FS: fstest.MapFS{
+		"assets/css/fixture.css":      {Data: []byte("body { color: white; }")},
+		"web/node_modules/fixture.js": {Data: []byte("unrelated dependency")},
+		"private-fixture.txt":         {Data: []byte("unrelated document")},
+	}}
+	app := fiber.New()
+	app.Use("/assets", staticWithCacheMiddleware("assets", assets))
+	for _, name := range assets.opened {
+		if name != "assets" && !strings.HasPrefix(name, "assets/") {
+			t.Errorf("asset initialization opened unrelated path %q", name)
+		}
+	}
+	response, err := app.Test(httptest.NewRequest("GET", "/assets/private-fixture.txt", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != fiber.StatusNotFound {
+		t.Fatalf("unrelated file status = %d, want 404", response.StatusCode)
+	}
+}
+
 func TestStaticWithCacheMiddlewareServesHashedAssetURL(t *testing.T) {
 	assets := fstest.MapFS{
-		"assets/css/style.css": &fstest.MapFile{Data: []byte("body { color: white; }")},
+		"assets/css/fixture.css": &fstest.MapFile{Data: []byte("body { color: white; }")},
 	}
 	app := fiber.New()
 	app.Use("/assets", staticWithCacheMiddleware("assets", assets))
 
-	initialResponse, err := app.Test(httptest.NewRequest("GET", "/assets/css/style.css", nil))
+	initialResponse, err := app.Test(httptest.NewRequest("GET", "/assets/css/fixture.css", nil))
 	if err != nil {
 		t.Fatalf("requesting stable asset URL: %v", err)
 	}

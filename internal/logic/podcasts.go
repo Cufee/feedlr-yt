@@ -62,12 +62,18 @@ func NewPodcastSubscription(ctx context.Context, db database.Client, userID, fee
 	}
 
 	if sub, err := db.FindSubscription(ctx, userID, channelID); err == nil && sub != nil {
+		if err := rememberPodcastFeeds(ctx, db, channelID, feedURL, result.CanonicalURL); err != nil {
+			return nil, err
+		}
 		return podcastChannelProps(channelID, result, true), nil
 	} else if err != nil && !database.IsErrNotFound(err) {
 		return nil, errors.Wrap(err, "failed to check subscription")
 	}
 
 	if err := persistPodcastShow(ctx, db, channelID, result); err != nil {
+		return nil, err
+	}
+	if err := rememberPodcastFeeds(ctx, db, channelID, feedURL, result.CanonicalURL); err != nil {
 		return nil, err
 	}
 	if _, err := db.NewSubscription(ctx, userID, channelID); err != nil {
@@ -87,7 +93,21 @@ func OpenPodcast(ctx context.Context, db database.Client, feedURL string) (strin
 	if err := persistPodcastShow(ctx, db, channelID, result); err != nil {
 		return "", err
 	}
+	if err := rememberPodcastFeeds(ctx, db, channelID, feedURL, result.CanonicalURL); err != nil {
+		return "", err
+	}
 	return channelID, nil
+}
+
+func rememberPodcastFeeds(ctx context.Context, db database.Client, id string, urls ...string) error {
+	if aliases, ok := db.(database.PodcastFeedAliasesClient); ok {
+		for _, feedURL := range urls {
+			if err := aliases.SavePodcastFeedAlias(ctx, feedURL, id); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func fetchPodcastShow(ctx context.Context, feedURL string) (string, *rss.FetchResult, error) {

@@ -84,7 +84,11 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 				continue
 			}
 			video.Progress = int(v.Progress)
-			feed.Watched = append(feed.Watched, video)
+			if types.IsCompleted(video.Progress, video.Duration) {
+				feed.Watched = append(feed.Watched, video)
+			} else {
+				feed.New = append(feed.New, video)
+			}
 		} else {
 			feed.New = append(feed.New, video)
 		}
@@ -332,8 +336,17 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 	}
 
 	playerProps := types.VideoPlayerProps{
-		Authenticated: userId != "",
-		Video:         video,
+		Authenticated:     userId != "",
+		Video:             video,
+		PlayerVolumeLevel: 100,
+	}
+	settings := defaultSettings
+	if userId != "" {
+		settings, err = GetUserSettings(ctx, db, userId)
+		if err != nil {
+			return playerProps, err
+		}
+		playerProps.PlayerVolumeLevel = settings.PlayerVolume
 	}
 
 	if options.WithProgress {
@@ -351,11 +364,20 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 		}
 	}
 
-	if options.WithSegments && !playerProps.Video.IsPodcast() {
+	if options.WithSegments && !playerProps.Video.IsPodcast() && settings.SponsorBlock.SponsorBlockEnabled {
 		if sponsorblock.C == nil {
 			return playerProps, nil
 		}
-		segments, err := sponsorblock.C.GetVideoSegments(videoId)
+		categories := []sponsorblock.Category{}
+		for _, category := range sponsorblock.AvailableCategories {
+			if slices.Contains(settings.SponsorBlock.SelectedSponsorBlockCategories, category.Value) {
+				categories = append(categories, category)
+			}
+		}
+		if len(categories) == 0 {
+			return playerProps, nil
+		}
+		segments, err := sponsorblock.C.GetVideoSegments(videoId, categories...)
 		if err == nil {
 			err := playerProps.AddSegments(segments...)
 			if err != nil {
@@ -399,6 +421,12 @@ func GetPlayerPropsWithOpts(ctx context.Context, db database.Client, userId, vid
 }
 
 func UpdateView(ctx context.Context, db database.ViewsClient, userId, videoId string, progress int, hidden bool) (int, error) {
+	if atomic, ok := db.(interface {
+		PatchViewState(context.Context, string, string, database.ViewStatePatch) (database.ViewState, error)
+	}); ok {
+		state, err := atomic.PatchViewState(ctx, userId, videoId, database.ViewStatePatch{Progress: &progress, Hidden: &hidden})
+		return state.Progress, err
+	}
 	currentProgress, currentHidden, err := getCurrentViewState(ctx, db, userId, videoId)
 	if err != nil {
 		return 0, err
@@ -408,6 +436,12 @@ func UpdateView(ctx context.Context, db database.ViewsClient, userId, videoId st
 }
 
 func UpdateViewProgress(ctx context.Context, db database.ViewsClient, userId, videoId string, progress int) (int, error) {
+	if atomic, ok := db.(interface {
+		PatchViewState(context.Context, string, string, database.ViewStatePatch) (database.ViewState, error)
+	}); ok {
+		state, err := atomic.PatchViewState(ctx, userId, videoId, database.ViewStatePatch{Progress: &progress})
+		return state.Progress, err
+	}
 	currentProgress, currentHidden, err := getCurrentViewState(ctx, db, userId, videoId)
 	if err != nil {
 		return 0, err
@@ -484,6 +518,9 @@ func GetUserVideoProgress(ctx context.Context, db database.ViewsClient, userId s
 func VideoIDFromURL(link string) (string, bool) {
 	var id string
 	parsed, _ := url.Parse(link)
+	if parsed == nil {
+		return "", false
+	}
 
 	switch {
 	case parsed.Query().Get("v") != "":

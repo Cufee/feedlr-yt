@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"time"
@@ -92,18 +93,26 @@ func (c *sqliteClient) UpdateSessionMeta(ctx context.Context, id string, meta ma
 }
 
 func (c *sqliteClient) SetSessionExpiration(ctx context.Context, id string, expiresAt time.Time) (*models.Session, error) {
-	session, err := c.GetSession(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	session.ExpiresAt = expiresAt
-	_, err = session.Update(ctx, c.db, boil.Infer())
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
+	var session *models.Session
+	err := c.immediate(ctx, func(conn *stateConn) error {
+		now := time.Now()
+		result, err := conn.ExecContext(ctx, "UPDATE sessions SET expires_at=?, last_used=? WHERE id=? AND deleted=0 AND expires_at>?", expiresAt, now, id, now)
+		if err != nil {
+			return err
+		}
+		count, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if count != 1 {
+			return sql.ErrNoRows
+		}
+		// Read in the same transaction. Never write a stale user, revocation flag,
+		// or WebAuthn challenge back while extending a live session.
+		session, err = models.FindSession(ctx, conn, id)
+		return err
+	})
+	return session, err
 }
 
 func (c *sqliteClient) DeleteSession(ctx context.Context, id string) error {

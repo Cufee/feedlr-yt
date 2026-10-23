@@ -10,6 +10,7 @@ import (
 )
 
 type Client interface {
+	FrontendStateClient
 	SessionsClient
 
 	ChannelsClient

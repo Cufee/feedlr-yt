@@ -1,10 +1,12 @@
-FROM node:26.12.1-bookworm AS styles-builder
+FROM node:26.12.1-bookworm AS frontend-builder
 
 WORKDIR /workspace
 
 # cache frontend deps
-COPY package.json package-lock.json tailwind.css ./
+COPY package.json package-lock.json ./
 RUN npm ci
+COPY web/package.json web/package-lock.json ./web/
+RUN npm --prefix web ci
 
 COPY . ./
 RUN npm run build
@@ -18,11 +20,7 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=$GOPATH/pkg/mod go mod download
 
 COPY . ./
-COPY --from=styles-builder /workspace/assets/css/style.css /workspace/assets/css/style.css
-COPY --from=styles-builder /workspace/assets/vendor /workspace/assets/vendor
-
-# generate code
-RUN --mount=type=cache,target=$GOPATH/pkg/mod go generate ./...
+COPY --from=frontend-builder /workspace/assets /workspace/assets
 
 # build the final binary
 RUN --mount=type=cache,target=$GOPATH/pkg/mod CGO_ENABLED=1 GOOS=linux go build -ldflags='-s -w' -trimpath -o app .

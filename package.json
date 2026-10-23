@@ -1,22 +1,27 @@
 {
   "name": "feedlr",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
-    "build": "npm run build:vendor && npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css",
+    "build": "npm run build:vendor && npm run build:web",
     "build:vendor": "node scripts/build-vendor.mjs",
-    "test": "node --test assets/js/feedlr-player.test.cjs assets/js/player-timeline.test.cjs assets/js/podcast-player.test.cjs",
-    "dev": "npm run build:vendor && npx @tailwindcss/cli -i tailwind.css -o assets/css/style.css --watch"
+    "build:web": "npm --prefix web run build",
+    "build:storybook": "npm --prefix web run build-storybook",
+    "dev": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "dev:web": "npm --prefix web run dev",
+    "test": "npm run test:runtime && npm --prefix web run test",
+    "test:runtime": "node --test assets/js/feedlr-player.test.cjs assets/js/player-timeline.test.cjs assets/js/podcast-player.test.cjs",
+    "check": "npm run check:scripts && npm run check:api && npm run check:app && npm run test:runtime && npm run check:go && npm run test:auth && npm run check:stories",
+    "check:scripts": "npm --prefix web exec -- biome check --config-path=web --error-on-warnings scripts package.json",
+    "check:api": "npm --prefix web run api:check",
+    "check:app": "npm --prefix web run lint && npm --prefix web run test && npm run build",
+    "check:go": "env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go vet . ./internal/... && env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go test -race . ./internal/... && env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go build -trimpath -o tmp/feedlr-check . && env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go build -tags dev -trimpath -o tmp/feedlr-dev-check .",
+    "check:stories": "npm --prefix web run build-storybook && npm --prefix web run test:stories && npm --prefix web run test:visual",
+    "test:auth": "env -u DATABASE_PATH -u FEEDLR_INTEGRATION_TESTS go test -tags browser_e2e ./internal/server/webapi -run TestBrowserPasskey -count=1 -timeout=120s"
   },
   "dependencies": {
-    "@simplewebauthn/browser": "14.0.0",
-    "@tailwindcss/cli": "^4.3.3",
-    "fuse.js": "7.5.0",
-    "htmx-ext-head-support": "2.0.5",
-    "htmx.org": "2.0.11",
-    "hyperscript.org": "0.9.93",
-    "shaka-player": "5.3.1",
-    "tailwindcss": "^4.3.3"
-  },
-  "overrides": {
-    "@parcel/watcher": "2.6.0"
+    "shaka-player": "5.3.1"
   }
 }
