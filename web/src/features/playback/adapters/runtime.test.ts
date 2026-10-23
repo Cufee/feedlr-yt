@@ -6,6 +6,13 @@ import type { VideoSnapshot } from "./runtime";
 import { initialVideoSnapshot, VideoSession } from "./runtime";
 
 vi.mock("@/lib/api/client", () => ({ request: vi.fn() }));
+// Vitest's Node environment replaces CSS imports, including ?url, with an empty module.
+vi.mock("../../../../../assets/css/player.css?url", () => ({
+  default: "/ui-assets/assets/player-fixture.css",
+}));
+vi.mock("../../../../../assets/vendor/controls.css?url", () => ({
+  default: "/ui-assets/assets/controls-fixture.css",
+}));
 vi.mock("@/lib/api/queries", () => ({
   keys: { all: ["feedlr"] },
   patchMedia: vi.fn((value) => value),
@@ -38,10 +45,18 @@ function runtime(cleanup: () => Promise<void> = async () => undefined) {
 const root = () => ({ isConnected: true }) as HTMLElement;
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubGlobal("window", {});
-  vi.stubGlobal("document", { querySelector: () => ({}), head: { append: vi.fn() } });
+  vi.stubGlobal("window", { setTimeout });
+  vi.stubGlobal("document", {
+    createElement: () => ({ dataset: {}, remove: vi.fn() }),
+    head: {
+      append: vi.fn((link: HTMLLinkElement) => {
+        queueMicrotask(() => link.onload?.call(link, new Event("load")));
+      }),
+    },
+  });
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -71,15 +86,21 @@ describe("browser player lifecycle", () => {
 
   it("cancels an obsolete mount while its external script is loading", async () => {
     const script: Partial<HTMLScriptElement> = { remove: vi.fn() };
+    const style: Partial<HTMLLinkElement> = { dataset: {}, remove: vi.fn() };
     vi.stubGlobal("window", { setTimeout: vi.fn(() => 1) });
     vi.stubGlobal("document", {
-      querySelector: () => ({}),
-      createElement: () => script,
-      head: { append: vi.fn() },
+      createElement: (tag: string) => (tag === "link" ? style : script),
+      head: {
+        append: vi.fn((element: HTMLLinkElement | HTMLScriptElement) => {
+          if (element === style) {
+            queueMicrotask(() => style.onload?.call(style as HTMLLinkElement, new Event("load")));
+          }
+        }),
+      },
     });
     const session = new VideoSession(playbackFixture);
     const stop = session.connect(root());
-    await vi.waitFor(() => expect(document.head.append).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(document.head.append).toHaveBeenLastCalledWith(script));
     stop();
     const mount = vi.fn(() => runtime());
     window.FeedlrPlayer = { mount };
@@ -148,4 +169,48 @@ describe("browser player lifecycle", () => {
     stopNext();
     await vi.waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalled());
   });
+});
+
+describe("player stylesheet recovery", () => {
+  for (const failure of ["error", "timeout"] as const) {
+    it(`retries the same pinned stylesheet after a ${failure}`, async () => {
+      vi.resetModules();
+      const { VideoSession: Session } = await import("./runtime");
+      const links: HTMLLinkElement[] = [];
+      vi.stubGlobal("document", {
+        createElement: () => ({ dataset: {}, remove: vi.fn() }),
+        head: { append: vi.fn((link: HTMLLinkElement) => links.push(link)) },
+      });
+      vi.useFakeTimers();
+      const mount = vi.fn<NonNullable<Window["FeedlrPlayer"]>["mount"]>(() => runtime());
+      vi.stubGlobal("window", { setTimeout, FeedlrPlayer: { mount } });
+      const session = new Session(playbackFixture);
+      const stop = session.connect(root());
+      const first = links[0];
+      expect(first).toBeDefined();
+      if (failure === "timeout") {
+        await vi.advanceTimersByTimeAsync(15_000);
+      } else {
+        first?.onerror?.call(first, new Event("error"));
+      }
+      await vi.waitFor(() => expect(session.getSnapshot().error).toMatch(/player styles/));
+      expect(first?.remove).toHaveBeenCalledOnce();
+      expect(mount).not.toHaveBeenCalled();
+      session.retry();
+      const next = links[1];
+      expect(next).toBeDefined();
+      expect(next?.href).toBe(first?.href);
+      next?.onload?.call(next, new Event("load"));
+      await vi.waitFor(() => expect(mount).toHaveBeenCalledOnce());
+      expect(session.getSnapshot().ready).toBe(true);
+      const options = mount.mock.calls[0]?.[0] as
+        | Parameters<NonNullable<Window["FeedlrPlayer"]>["mount"]>[0]
+        | undefined;
+      expect(options?.assetURLs.playerStyle).toBe(next?.href);
+      expect(options?.assetURLs.shakaScript).toContain("shaka-player.ui");
+      expect(options?.assetURLs.shakaStyle).toContain("controls");
+      stop();
+      await vi.waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalled());
+    });
+  }
 });

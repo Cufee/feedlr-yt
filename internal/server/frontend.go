@@ -113,6 +113,14 @@ func newFrontendUI(assets fs.FS, db database.Client, sc *sessions.SessionClient)
 // Vite supplies content-hashed paths. Do not apply the legacy per-file redirect:
 // changing a chunk's directory breaks relative imports of its sibling chunks.
 func (u *frontendUI) asset(c fiber.Ctx) error {
+	// A request for a new build can reach a replica running the previous build.
+	// Never let that temporary miss become a cached CDN error for the new hash.
+	setFrontendAssetCacheControl(c, "no-store")
+	c.Set("X-Content-Type-Options", "nosniff")
+	if c.Method() != fiber.MethodGet && c.Method() != fiber.MethodHead {
+		c.Set("Allow", "GET, HEAD")
+		return c.SendStatus(fiber.StatusMethodNotAllowed)
+	}
 	name := c.Params("*")
 	if !fs.ValidPath(name) || strings.HasPrefix(name, ".") {
 		return c.SendStatus(fiber.StatusNotFound)
@@ -124,13 +132,18 @@ func (u *frontendUI) asset(c fiber.Ctx) error {
 	if contentType := mime.TypeByExtension(path.Ext(name)); contentType != "" {
 		c.Set("Content-Type", contentType)
 	}
-	c.Set("X-Content-Type-Options", "nosniff")
 	if strings.HasPrefix(name, "assets/") {
-		c.Set("Cache-Control", "public, max-age=31536000, immutable")
+		setFrontendAssetCacheControl(c, "public, max-age=31536000, immutable")
 	} else {
-		c.Set("Cache-Control", "no-cache")
+		setFrontendAssetCacheControl(c, "no-cache")
 	}
 	return c.Send(data)
+}
+
+func setFrontendAssetCacheControl(c fiber.Ctx, value string) {
+	c.Set("Cache-Control", value)
+	c.Set("CDN-Cache-Control", value)
+	c.Set("Cloudflare-CDN-Cache-Control", value)
 }
 
 type frontendDocument struct {

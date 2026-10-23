@@ -3,14 +3,15 @@ package server
 import (
 	"context"
 	"database/sql"
-	"github.com/cufee/feedlr-yt/internal/database"
-	"github.com/cufee/feedlr-yt/internal/database/models"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/cufee/feedlr-yt/internal/database"
+	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -158,9 +159,7 @@ func TestFrontendAssetsPreserveVitePathsAndHeaders(t *testing.T) {
 		if response.StatusCode != 200 || len(body) == 0 || response.Header.Get("Location") != "" {
 			t.Fatalf("asset %s: status=%d location=%q body=%q", name, response.StatusCode, response.Header.Get("Location"), body)
 		}
-		if response.Header.Get("Cache-Control") != "public, max-age=31536000, immutable" {
-			t.Fatalf("asset %s missing immutable cache header", name)
-		}
+		assertFrontendAssetCachePolicy(t, response, "public, max-age=31536000, immutable")
 	}
 	response, err := app.Test(httptest.NewRequest("HEAD", "/ui-assets/assets/app-123.js", nil))
 	if err != nil {
@@ -170,13 +169,80 @@ func TestFrontendAssetsPreserveVitePathsAndHeaders(t *testing.T) {
 	if response.StatusCode != 200 || !strings.Contains(response.Header.Get("Content-Type"), "javascript") || response.ContentLength != int64(len(`import "./vendor-456.js";`)) {
 		t.Fatalf("HEAD headers: status=%d type=%q length=%d", response.StatusCode, response.Header.Get("Content-Type"), response.ContentLength)
 	}
-	missing, err := app.Test(httptest.NewRequest("GET", "/ui-assets/assets/missing.js", nil))
+}
+
+func assertFrontendAssetCachePolicy(t *testing.T, response *http.Response, want string) {
+	t.Helper()
+	for _, header := range []string{"Cache-Control", "CDN-Cache-Control", "Cloudflare-CDN-Cache-Control"} {
+		if got := response.Header.Get(header); got != want {
+			t.Errorf("%s = %q, want %q", header, got, want)
+		}
+	}
+}
+
+func TestFrontendAssetFailuresCannotBeCached(t *testing.T) {
+	t.Setenv("FEEDLR_VITE_URL", "")
+	u, err := newFrontendUI(frontendFixture(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	missing.Body.Close()
-	if missing.StatusCode != 404 {
-		t.Fatalf("missing asset status=%d", missing.StatusCode)
+	app := fiber.New()
+	app.All("/ui-assets/*", u.asset)
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		for _, name := range []string{"assets/missing.js", "assets/missing.css", "manifest-missing.json", ".private.js", "assets/../app-123.js", "assets//app-123.js", ""} {
+			t.Run(method+"/"+name, func(t *testing.T) {
+				response, err := app.Test(httptest.NewRequest(method, "/ui-assets/"+name, nil))
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer response.Body.Close()
+				if response.StatusCode != http.StatusNotFound {
+					t.Fatalf("status = %d, want 404", response.StatusCode)
+				}
+				assertFrontendAssetCachePolicy(t, response, "no-store")
+				if response.Header.Get("X-Content-Type-Options") != "nosniff" || response.Header.Get("Location") != "" || strings.Contains(response.Header.Get("Content-Type"), "text/html") {
+					t.Errorf("asset failure headers: %v", response.Header)
+				}
+				body, err := io.ReadAll(response.Body)
+				if err != nil || (method == http.MethodHead && len(body) != 0) {
+					t.Fatalf("error body: %q, err = %v", body, err)
+				}
+			})
+		}
+	}
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions} {
+		t.Run(method, func(t *testing.T) {
+			response, err := app.Test(httptest.NewRequest(method, "/ui-assets/assets/app-123.js", nil))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			if response.StatusCode != http.StatusMethodNotAllowed || response.Header.Get("Allow") != "GET, HEAD" {
+				t.Fatalf("unsupported method: status = %d, headers = %v", response.StatusCode, response.Header)
+			}
+			assertFrontendAssetCachePolicy(t, response, "no-store")
+		})
+	}
+}
+
+func TestFrontendUnversionedAssetsRequireRevalidation(t *testing.T) {
+	t.Setenv("FEEDLR_VITE_URL", "")
+	u, err := newFrontendUI(frontendFixture(), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := fiber.New()
+	app.Get("/ui-assets/*", u.asset)
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		response, err := app.Test(httptest.NewRequest(method, "/ui-assets/manifest.json", nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusOK || !strings.Contains(response.Header.Get("Content-Type"), "application/json") {
+			t.Fatalf("%s manifest: status = %d, headers = %v", method, response.StatusCode, response.Header)
+		}
+		assertFrontendAssetCachePolicy(t, response, "no-cache")
 	}
 }
 

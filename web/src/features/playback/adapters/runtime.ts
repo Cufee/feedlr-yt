@@ -1,6 +1,11 @@
 import { request } from "@/lib/api/client";
 import { keys, patchMedia, queryClient } from "@/lib/api/queries";
 import type { MediaDetail, PodcastSegment } from "@/lib/api/types";
+import playerStyleURL from "../../../../../assets/css/player.css?url";
+import videoRuntimeURL from "../../../../../assets/js/feedlr-player.js?url";
+import podcastRuntimeURL from "../../../../../assets/js/feedlr-podcast-player.js?url";
+import shakaStyleURL from "../../../../../assets/vendor/controls.css?url";
+import shakaRuntimeURL from "../../../../../assets/vendor/shaka-player.ui.js?url";
 
 export interface VideoSnapshot {
   position: number;
@@ -76,6 +81,7 @@ interface PodcastRuntime extends RuntimeStore<PodcastSnapshot>, PodcastActions {
 interface VideoOptions {
   root: HTMLElement;
   externalUI: true;
+  assetURLs: { playerStyle: string; shakaStyle: string; shakaScript: string };
   channel: string;
   video: string;
   progress: number;
@@ -138,15 +144,41 @@ function loadRuntime(src: string): Promise<void> {
   scripts.set(src, promise);
   return promise;
 }
-function loadPlayerStyle() {
-  if (document.querySelector("link[data-feedlr-player]")) {
-    return;
+let playerStyle: Promise<void> | undefined;
+function loadPlayerStyle(): Promise<void> {
+  if (playerStyle) {
+    return playerStyle;
   }
   const link = document.createElement("link");
   link.rel = "stylesheet";
-  link.href = "/assets/css/player.css";
+  link.href = playerStyleURL;
   link.dataset.feedlrPlayer = "true";
-  document.head.append(link);
+  playerStyle = new Promise<void>((resolve, reject) => {
+    const fail = (message: string) => {
+      link.onload = null;
+      link.onerror = null;
+      link.remove();
+      reject(new Error(message));
+    };
+    const timeout = window.setTimeout(
+      () => fail("The player styles took too long to load. Try again."),
+      15_000,
+    );
+    link.onload = () => {
+      clearTimeout(timeout);
+      link.dataset.feedlrLoaded = "true";
+      resolve();
+    };
+    link.onerror = () => {
+      clearTimeout(timeout);
+      fail("The player styles could not load. Try again.");
+    };
+    document.head.append(link);
+  }).catch((error: unknown) => {
+    playerStyle = undefined;
+    throw error;
+  });
+  return playerStyle;
 }
 
 // A replacement never mounts while Shaka is still destroying its predecessor.
@@ -319,9 +351,9 @@ export class VideoSession
     super(detail, initialVideoSnapshot(detail));
   }
   protected async prepareRuntime() {
-    loadPlayerStyle();
+    await loadPlayerStyle();
     if (!window.FeedlrPlayer) {
-      await loadRuntime("/assets/js/feedlr-player.js");
+      await loadRuntime(videoRuntimeURL);
     }
   }
   protected async mountRuntime(root: HTMLElement, current: () => boolean) {
@@ -334,6 +366,11 @@ export class VideoSession
     return window.FeedlrPlayer.mount({
       root,
       externalUI: true,
+      assetURLs: {
+        playerStyle: playerStyleURL,
+        shakaStyle: shakaStyleURL,
+        shakaScript: shakaRuntimeURL,
+      },
       channel: this.detail.item.channel.id,
       video: this.detail.item.id,
       progress: this.detail.item.progressSeconds,
@@ -397,7 +434,7 @@ export class PodcastSession
   }
   protected async prepareRuntime() {
     if (!window.FeedlrPodcastPlayer) {
-      await loadRuntime("/assets/js/feedlr-podcast-player.js");
+      await loadRuntime(podcastRuntimeURL);
     }
   }
   protected async mountRuntime(root: HTMLElement, current: () => boolean) {

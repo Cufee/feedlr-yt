@@ -49,7 +49,7 @@ test('only expiry or authentication HTTP failures justify an expiry retry', () =
   assert.equal(expirationError({ category: 3 }, 10000, 10001), true);
 });
 
-function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], chapterResponses = [], segments = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, autoMount = true, legacyIframeChoice = false, mobile = false, savedVolume, storageBlocked = false, iframeSeekDelayed = false, externalUI = false, persistProgress } = {}) {
+function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResponses = [], shakaLoads = [], styleLoads = [], chapterResponses = [], segments = [], audioTracks = [{ language: 'und', roles: [], active: true }], nativeAutoplay = false, authenticated = true, blocked = false, shakaLoadError, autoMount = true, legacyIframeChoice = false, mobile = false, savedVolume, storageBlocked = false, iframeSeekDelayed = false, externalUI = false, persistProgress, assetURLs } = {}) {
   const timers = new Map();
   let nextTimer = 1;
   const requests = [];
@@ -72,7 +72,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     querySelector() { return null; }
     querySelectorAll() { return []; }
     contains(element) { return this === element || this.children.some((child) => child.contains(element)); }
-    remove() {}
+    remove() { this.removed = true; }
     load() {}
     async play() {
       if (blocked === true || blocked === 'native') { const error = new Error('blocked'); error.name = 'NotAllowedError'; throw error; }
@@ -91,6 +91,21 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     getElementById: (id) => elements.get(id), createElement: (tag) => new Element(tag),
     querySelector: () => null, head: new Element('head'), hidden: false,
   });
+  const appendAsset = doc.head.append.bind(doc.head);
+  doc.head.append = (element) => {
+    appendAsset(element);
+    if (element.tagName !== 'link') return;
+    const result = styleLoads.shift();
+    if (result === 'pending') return;
+    queueMicrotask(() => {
+      if (result === 'error') element.onerror?.();
+      else { element.sheet = {}; element.onload?.(); }
+    });
+  };
+  doc.querySelector = (selector) => {
+    const marker = /^link\[data-(feedlr-player|feedlr-shaka)\]$/.exec(selector)?.[1];
+    return marker ? doc.head.children.find((element) => !element.removed && element[`data-${marker}`]) ?? null : null;
+  };
   class Shaka extends EventTarget {
     static isBrowserSupported() { return true; }
     constructor() { super(); this.configs = []; this.audioTracks = structuredClone(audioTracks); players.push(this); order.push('create'); }
@@ -194,7 +209,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     return { ok: true };
   };
   const options = { video: 'one', channel: 'channel', progress: 1, volume: 50, authenticated, withProgress: authenticated, returnURL: '/', segments,
-    externalUI, root: externalUI ? Object.assign(new Element('div'), { isConnected: true }) : undefined, persistProgress };
+    externalUI, root: externalUI ? Object.assign(new Element('div'), { isConnected: true }) : undefined, persistProgress, assetURLs };
   if (legacyIframeChoice) win.sessionStorage.setItem('feedlr-player-mode:one', 'iframe');
   if (savedVolume !== undefined) win.localStorage.setItem('player-volume', savedVolume);
   if (storageBlocked) Object.defineProperty(win, 'localStorage', { get() { throw new DOMException('Storage access denied', 'SecurityError'); } });
@@ -1825,4 +1840,70 @@ test('native chapter label opens the hidden menu and rebuilds markers on duratio
   video.dispatchEvent(h.event('durationchange'));
   assert.equal(timeline.items.at(-1).end, 30);
   signal.abort(); timeline.destroy(); h.controller.cleanup();
+});
+
+test('native initialization awaits both pinned styles and loads the pinned Shaka script', async () => {
+  const assetURLs = { playerStyle: 'https://feedlr.test/ui-assets/assets/player-style-pinned.css', shakaStyle: 'https://feedlr.test/ui-assets/assets/shaka-style-pinned.css', shakaScript: 'https://feedlr.test/ui-assets/assets/shaka-pinned.js' };
+  const h = harness({ autoMount: false, styleLoads: ['pending', 'pending'], assetURLs });
+  const ui = h.win.shaka.ui;
+  delete h.win.shaka.ui;
+  const append = h.doc.head.append.bind(h.doc.head);
+  h.doc.head.append = (element) => {
+    append(element);
+    if (element.tagName === 'script') queueMicrotask(() => { h.win.shaka.ui = ui; element.onload(); });
+  };
+  const controller = h.win.FeedlrPlayer.mount(h.options);
+  await settle();
+  const styles = h.doc.head.children.filter(element => element.tagName === 'link');
+  assert.deepEqual(styles.map(element => element.href), [assetURLs.playerStyle, assetURLs.shakaStyle]);
+  assert.equal(h.doc.head.children.find(element => element.tagName === 'script').src, assetURLs.shakaScript);
+  assert.equal(h.players.length, 0);
+  styles[0].onload();
+  await settle();
+  assert.equal(h.players.length, 0);
+  styles[1].onload();
+  await controller.start;
+  assert.equal(controller.ready, true);
+  assert.equal(h.players.length, 1);
+  controller.cleanup();
+});
+
+test('failed native styles are removed and requested again before native retry succeeds', async () => {
+  const h = harness({ styleLoads: ['error'] });
+  await h.controller.start;
+  const styles = h.doc.head.children.filter(element => element.tagName === 'link');
+  const playerStyles = styles.filter(element => element.href === '/assets/css/player.css');
+  assert.equal(playerStyles.length, 2);
+  assert.equal(playerStyles[0].removed, true);
+  assert.equal(playerStyles[0].onload, null);
+  assert.equal(h.controller.ready, true);
+  assert.equal(h.controller.mode, 'native');
+  assert.equal(h.players.length, 1);
+  h.controller.cleanup();
+});
+
+test('timed-out native styles discard their cached promise and recover on retry', async () => {
+  const h = harness({ styleLoads: ['pending'] });
+  await settle();
+  const first = h.doc.head.children.find(element => element.tagName === 'link');
+  assert.equal(h.players.length, 0);
+  const timeout = [...h.timers].find(([id, timer]) => id !== h.controller.progressTimer && timer.ms === 10000)?.[1];
+  assert.ok(timeout);
+  timeout.callback();
+  await h.controller.start;
+  assert.equal(first.removed, true);
+  assert.equal(first.onerror, null);
+  assert.equal(h.doc.head.children.filter(element => element.href === first.href).length, 2);
+  assert.equal(h.controller.ready, true);
+  h.controller.cleanup();
+});
+
+test('cleanup while native styles are loading prevents a late player mount', async () => {
+  const h = harness({ styleLoads: ['pending', 'pending'] });
+  await settle();
+  await h.controller.cleanup();
+  for (const style of h.doc.head.children.filter(element => element.tagName === 'link')) style.onload();
+  await h.controller.start;
+  assert.equal(h.players.length, 0);
+  assert.equal(h.controller.disposed, true);
 });

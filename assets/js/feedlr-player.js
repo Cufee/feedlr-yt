@@ -353,24 +353,32 @@
     scripts.set(src, promise);
     return promise;
   }
-  async function loadShaka() {
-    if (!document.querySelector('link[data-feedlr-player]')) {
+  const styles = new Map();
+  function loadStyle(src, marker) {
+    if (styles.has(src)) return styles.get(src);
+    const existing = document.querySelector(`link[data-${marker}]`);
+    if (existing?.href === new URL(src, global.location.origin).href && (existing.sheet || existing.dataset.feedlrLoaded === "true")) return Promise.resolve();
+    const promise = new Promise((resolve, reject) => {
+      if (existing?.href === new URL(src, global.location.origin).href) existing.remove();
       const css = document.createElement("link");
+      const fail = (reason) => { css.onload = null; css.onerror = null; css.remove(); reject(new Error(reason)); };
+      const timeout = global.setTimeout(() => fail("style_timeout"), 10000);
       css.rel = "stylesheet";
-      css.href = "/assets/css/player.css";
-      css.dataset.feedlrPlayer = "true";
+      css.href = src;
+      css.setAttribute(`data-${marker}`, "true");
+      css.onload = () => { global.clearTimeout(timeout); css.dataset.feedlrLoaded = "true"; resolve(); };
+      css.onerror = () => { global.clearTimeout(timeout); fail("style_failed"); };
       document.head.append(css);
-    }
-    if (!global.shaka?.ui) {
-      if (!document.querySelector('link[data-feedlr-shaka]')) {
-        const css = document.createElement("link");
-        css.rel = "stylesheet";
-        css.href = "/assets/vendor/controls.css";
-        css.dataset.feedlrShaka = "true";
-        document.head.append(css);
-      }
-      await loadScript("/assets/vendor/shaka-player.ui.js");
-    }
+    }).catch((error) => { styles.delete(src); throw error; });
+    styles.set(src, promise);
+    return promise;
+  }
+  async function loadShaka(assetURLs = {}) {
+    await Promise.all([
+      loadStyle(assetURLs.playerStyle || "/assets/css/player.css", "feedlr-player"),
+      loadStyle(assetURLs.shakaStyle || "/assets/vendor/controls.css", "feedlr-shaka"),
+      ...(global.shaka?.ui ? [] : [loadScript(assetURLs.shakaScript || "/assets/vendor/shaka-player.ui.js")]),
+    ]);
     global.shaka.polyfill.installAll();
     if (!global.shaka.Player.isBrowserSupported()) throw new Error("unsupported_browser");
   }
@@ -805,7 +813,7 @@
     }
 
     async createNative(resolution, current) {
-      await loadShaka();
+      await loadShaka(this.options.assetURLs);
       if (!current()) return;
       const box = document.createElement("div");
       box.style.cssText = "position:absolute;inset:0;background:#000";

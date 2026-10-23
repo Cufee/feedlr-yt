@@ -135,6 +135,9 @@ export default defineConfig(({ command }) => ({
     manifest: "manifest.json",
     rolldownOptions: {
       output: {
+        entryFileNames: "assets/[name]-[hash:16].js",
+        chunkFileNames: "assets/[name]-[hash:16].js",
+        assetFileNames: "assets/[name]-[hash:16][extname]",
         codeSplitting: {
           groups: [
             {

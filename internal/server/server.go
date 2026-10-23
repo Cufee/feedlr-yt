@@ -51,8 +51,7 @@ func newApp(db database.Client, ses *sessions.SessionClient, assets fs.FS, wa *w
 	if err != nil {
 		return nil, nil, err
 	}
-	server.Get("/ui-assets/*", frontend.asset)
-	server.Head("/ui-assets/*", frontend.asset)
+	server.All("/ui-assets/*", frontend.asset)
 
 	// Static files
 	server.Use(favicon.New(favicon.Config{

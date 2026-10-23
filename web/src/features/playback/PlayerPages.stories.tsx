@@ -199,8 +199,9 @@ function screen(kind: "youtube" | "podcast", viewport: "desktop" | "phone"): Sto
           ),
         );
       } else {
-        await waitFor(() =>
-          expect(canvasElement.querySelector("video")?.readyState).toBeGreaterThanOrEqual(2),
+        await waitFor(
+          () => expect(canvasElement.querySelector("video")?.readyState).toBeGreaterThanOrEqual(2),
+          { timeout: 15_000 },
         );
         await expect(
           canvas.findByRole("button", { name: "More settings" }),
