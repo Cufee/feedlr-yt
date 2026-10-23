@@ -29,12 +29,10 @@ export function ChannelPage({ channelId }: { channelId: string }) {
   const { data, isPending, error, refetch } = useChannel(channelId);
   const session = useSession();
   const authenticated = !!session.data?.authenticated;
-  const subscription = useAction(
-    () =>
-      data?.subscribed
-        ? api.delete(`/subscriptions/${mediaPath(channelId)}`)
-        : api.post("/subscriptions", { channelId }),
-    { success: data?.subscribed ? "Subscription removed" : "Subscription added" },
+  const subscription = useAction(() =>
+    data?.subscribed
+      ? api.delete(`/subscriptions/${mediaPath(channelId)}`)
+      : api.post("/subscriptions", { channelId }),
   );
   const refresh = useAction(() => api.post(`/channels/${mediaPath(channelId)}/refresh`), {
     success: "Channel refreshed",

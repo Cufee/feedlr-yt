@@ -21,7 +21,7 @@ export function PlaylistEditor({
         ? api.patch<Playlist>(`/playlists/${mediaPath(playlist.id)}`, { name, description })
         : api.post<Playlist>("/playlists", { name, description }),
     {
-      success: playlist ? "Playlist updated" : "Playlist created",
+      success: playlist ? undefined : "Playlist created",
       onSuccess: (result) => {
         onClose();
         if (!playlist) {

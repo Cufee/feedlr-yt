@@ -307,6 +307,9 @@
 
 .playback-range-wrap {
   position: relative;
+
+  --playback-track-size: 0.5rem;
+  --playback-thumb-size: 1rem;
 }
 
 .playback-range {
@@ -331,10 +334,11 @@
 
 .playback-range-track {
   position: absolute;
-  inset: calc(50% - 2px) calc(1rem / 2) auto;
-  height: 4px;
+  inset: calc(50% - var(--playback-track-size) / 2) calc(var(--playback-thumb-size) / 2) auto;
+  height: var(--playback-track-size);
   border-radius: 999px;
-  background: #42424c;
+  background: var(--color-progress-track);
+  outline: 1px solid var(--color-progress-border);
   pointer-events: none;
 }
 
@@ -359,15 +363,15 @@
 }
 
 .playback-timeline .playback-range::-webkit-slider-runnable-track {
-  height: 4px;
+  height: var(--playback-track-size);
   border: 0;
   background: transparent;
 }
 
 .playback-timeline .playback-range::-webkit-slider-thumb {
-  width: 1rem;
-  height: 1rem;
-  margin-top: -6px;
+  width: var(--playback-thumb-size);
+  height: var(--playback-thumb-size);
+  margin-top: calc((var(--playback-track-size) - var(--playback-thumb-size)) / 2);
   border: 0;
   border-radius: 50%;
   appearance: none;
@@ -375,14 +379,14 @@
 }
 
 .playback-timeline .playback-range::-moz-range-track {
-  height: 4px;
+  height: var(--playback-track-size);
   border: 0;
   background: transparent;
 }
 
 .playback-timeline .playback-range::-moz-range-thumb {
-  width: 1rem;
-  height: 1rem;
+  width: var(--playback-thumb-size);
+  height: var(--playback-thumb-size);
   border: 0;
   border-radius: 50%;
   background: var(--color-accent);
@@ -392,6 +396,7 @@
   position: absolute;
   top: 0;
   height: 100%;
+  border-inline: 1px solid var(--color-canvas);
   border-radius: 999px;
   background: var(--color-warning, #d6ae68);
 }
@@ -400,8 +405,13 @@
   display: flex;
   justify-content: space-between;
   color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
+}
+
+.playback-time > :first-child {
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 .playback-transport {

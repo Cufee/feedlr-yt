@@ -1,11 +1,18 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Metadata } from "@/app/Metadata";
 import { Button, EmptyState, Skeleton } from "@/components/ui";
+import { safeReturn } from "@/features/auth/passkeys";
 import { useMediaDetail } from "@/lib/api/queries";
+import { usePlayerEscape } from "@/lib/browser/usePlayerEscape";
 import { PodcastPlayer } from "./PodcastPlayer";
 import { YouTubePlayer } from "./YouTubePlayer";
 
 export function PlayerPage({ mediaId, returnTo = "/app" }: { mediaId: string; returnTo?: string }) {
   const detail = useMediaDetail(mediaId);
+  const navigate = useNavigate();
+  usePlayerEscape(() => {
+    void navigate({ to: safeReturn(returnTo) });
+  });
   if (detail.isPending) {
     return (
       <div className="playback-page" role="status" aria-label="Loading player">

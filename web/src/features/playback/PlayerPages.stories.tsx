@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
+import { createMemoryHistory, RouterProvider, useRouterState } from "@tanstack/react-router";
 import { HttpResponse, http } from "msw";
 import { StrictMode, useState } from "react";
 import { expect, waitFor, within } from "storybook/test";
 import { NotificationProvider } from "@/app/Notifications";
 import { createPreviewAPI } from "@/app/preview-fixtures";
 import { createAppRouter } from "@/app/router";
+import { Button } from "@/components/ui";
 import type { MediaDetail } from "@/lib/api/types";
 import { playbackFixture, podcastFixture } from "./fixtures";
 import audioURL from "./preview/audio.m4a";
@@ -60,7 +61,15 @@ async function localMedia(request: Request, sourceURL: string, contentType = "vi
   });
 }
 
-function PlaybackPagePreview({ kind }: { kind: "youtube" | "podcast" }) {
+function PlaybackPagePreview({
+  kind,
+  returnTo = "/app",
+  historyTools = false,
+}: {
+  kind: "youtube" | "podcast";
+  returnTo?: string;
+  historyTools?: boolean;
+}) {
   const detail = kind === "youtube" ? videoDetail : podcastDetail;
   const [preview] = useState(() => ({
     client: new QueryClient({
@@ -70,13 +79,31 @@ function PlaybackPagePreview({ kind }: { kind: "youtube" | "podcast" }) {
       },
     }),
     router: createAppRouter(
-      createMemoryHistory({ initialEntries: [`/video/${detail.item.id}?return=%2Fapp`] }),
+      createMemoryHistory({
+        initialEntries: [`/video/${detail.item.id}?return=${encodeURIComponent(returnTo)}`],
+      }),
     ),
   }));
+  const location = useRouterState({
+    router: preview.router,
+    select: (state) => state.location.href,
+  });
   return (
     <StrictMode>
       <QueryClientProvider client={preview.client}>
         <NotificationProvider>
+          {historyTools && (
+            <nav
+              aria-label="Preview history"
+              className="relative z-50 flex flex-wrap items-center gap-3 p-4"
+            >
+              <Button onClick={() => preview.router.history.back()}>Back in preview</Button>
+              <Button onClick={() => preview.router.history.forward()}>Forward in preview</Button>
+              <output aria-label="Preview route" className="w-full break-all">
+                {location}
+              </output>
+            </nav>
+          )}
           <RouterProvider router={preview.router} />
         </NotificationProvider>
       </QueryClientProvider>
@@ -187,3 +214,12 @@ export const VideoDesktop = screen("youtube", "desktop");
 export const VideoMobile = screen("youtube", "phone");
 export const PodcastDesktop = screen("podcast", "desktop");
 export const PodcastMobile = screen("podcast", "phone");
+
+export const PodcastReturnToHistory: Story = {
+  ...screen("podcast", "desktop"),
+  args: { kind: "podcast", returnTo: "/app/recent?source=podcasts&page=2", historyTools: true },
+};
+export const UnsafeReturn: Story = {
+  ...screen("youtube", "desktop"),
+  args: { kind: "youtube", returnTo: "https://untrusted.example/app", historyTools: true },
+};

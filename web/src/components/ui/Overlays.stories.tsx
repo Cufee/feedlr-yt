@@ -131,6 +131,30 @@ export const MenuKeyboard: Story = {
     await waitFor(() => expect(trigger).toHaveFocus());
   },
 };
+
+function PersistentMenuDialog() {
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState<HTMLDivElement | null>(null);
+  return (
+    <>
+      <Menu
+        label="Playlist options"
+        items={[{ id: "edit", label: "Edit playlist", onSelect: () => setOpen(true) }]}
+      />
+      <Dialog ref={setTarget} open={open} onClose={() => setOpen(false)} title="Playlist settings">
+        <Menu
+          portalTarget={target}
+          label="View options"
+          items={[{ id: "keep", label: "Keep editing" }]}
+        />
+        <Button onClick={() => setOpen(false)}>Done</Button>
+      </Dialog>
+    </>
+  );
+}
+
+export const PersistentDialogMenu: Story = { render: () => <PersistentMenuDialog /> };
+
 export const TabsKeyboard: Story = {
   render: () => (
     <Tabs

@@ -199,8 +199,6 @@ export function useWatchLater(id: string) {
       }
       notify(failure.message, "danger");
     },
-    onSuccess: (_result, present) =>
-      notify(present ? "Saved to Watch Later" : "Removed from Watch Later"),
     onSettled: () => client.invalidateQueries({ queryKey: keys.all }),
   });
   function setPresent(present: boolean) {

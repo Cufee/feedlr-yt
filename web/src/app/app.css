@@ -357,32 +357,87 @@
     font-size: 0.5625rem;
   }
 
+  .media-artwork-badges .media-completed {
+    gap: 4px;
+    padding: 4px 6px;
+    border-color: var(--color-success);
+    color: var(--color-success);
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+
+  .media-watch-later.ui-button {
+    position: absolute;
+    z-index: 2;
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    border: 1px solid rgb(255 255 255 / 24%);
+    padding: 0;
+    background: rgb(16 16 20 / 72%);
+    color: var(--color-text);
+    backdrop-filter: blur(12px);
+  }
+
+  .media-watch-later.ui-button:hover {
+    background: rgb(16 16 20 / 88%);
+  }
+
+  .media-watch-later.ui-button[aria-pressed="true"] {
+    border-color: var(--color-accent);
+    background: rgb(35 25 55 / 85%);
+    color: var(--color-accent);
+  }
+
+  .media-completed svg {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2.5;
+  }
+
   .media-duration {
     position: absolute;
     right: 8px;
     bottom: 8px;
-    padding: 2px 5px;
+    padding: 3px 6px;
     border-radius: 4px;
     background: var(--color-canvas);
     color: var(--color-text);
-    font-size: 0.625rem;
+    font-size: 0.875rem;
     font-variant-numeric: tabular-nums;
     pointer-events: none;
   }
 
+  .media-artwork:has(.media-progress) .media-duration {
+    bottom: 24px;
+  }
+
   .media-progress {
     position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: 3px;
-    background: var(--color-surface-raised);
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    height: 9px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: var(--color-progress-track);
+    outline: 1px solid var(--color-progress-border);
+    box-shadow: 0 0 0 2px rgb(0 0 0 / 70%);
+    pointer-events: none;
   }
 
   .media-progress span {
     display: block;
     height: 100%;
+    min-width: 3px;
+    border-radius: inherit;
     background: var(--color-accent);
+  }
+
+  :where(.media-card-completed) .media-progress span {
+    background: var(--color-success);
   }
 
   .media-card-body {
@@ -434,7 +489,7 @@
 
   .media-card-foot {
     display: flex;
-    min-height: 36px;
+    min-height: 16px;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
@@ -442,11 +497,7 @@
 
   .media-detail {
     color: var(--color-text-muted);
-    font-size: 0.625rem;
-  }
-
-  .media-card-foot .ui-icon-button {
-    margin-right: -7px;
+    font-size: 0.75rem;
   }
 
   .media-shelf .media-grid {
@@ -654,6 +705,9 @@
   }
 
   .playlist-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     overflow: hidden;
     transition: border-color var(--motion-control);
   }
@@ -665,7 +719,9 @@
   .playlist-artwork {
     position: relative;
     display: grid;
+    flex: none;
     aspect-ratio: 16 / 9;
+    overflow: hidden;
     place-items: center;
     background: var(--color-surface-raised);
   }
@@ -677,6 +733,9 @@
   }
 
   .playlist-artwork img {
+    position: absolute;
+    inset: 0;
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -692,9 +751,18 @@
 
   .playlist-card-copy {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: 12px;
     padding: 20px;
+  }
+
+  .playlist-card-copy .ui-badge {
+    align-self: flex-start;
+  }
+
+  .playlist-card-copy .ui-progress {
+    margin-top: auto;
   }
 
   .playlist-card-copy h2 {
@@ -718,19 +786,6 @@
   .playlist-summary .ui-progress {
     max-width: 320px;
     flex: 1;
-  }
-
-  .playlist-entry-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 4px;
-    padding-top: 4px;
-    border-top: 1px solid var(--color-border);
-  }
-
-  .playlist-entry-actions > div {
-    display: flex;
   }
 
   .settings-section {
@@ -1024,7 +1079,7 @@
     top: 0;
     right: 0;
     left: 0;
-    height: 2px;
+    height: 4px;
     background: var(--color-accent);
     animation: navigation-pulse 1s ease-in-out infinite alternate;
   }
@@ -1046,7 +1101,7 @@
 
   @keyframes navigation-pulse {
     from {
-      opacity: 0.35;
+      opacity: 0.8;
     }
 
     to {
@@ -1058,6 +1113,14 @@
 @media (width >= 1700px) {
   .media-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (pointer: coarse) {
+  .media-watch-later.ui-button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 }
 

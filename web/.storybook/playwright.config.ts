@@ -11,7 +11,7 @@ const storybookURL = `http://127.0.0.1:${storybookPort}`;
 
 export default defineConfig({
   testDir: ".",
-  testMatch: ["visual.spec.ts", "app.spec.ts", "navigation-feedback.spec.ts", "playback.spec.ts"],
+  testMatch: "**/*.spec.ts",
   outputDir: process.env.FEEDLR_VISUAL_OUTPUT ?? join(tmpdir(), "feedlr-visual"),
   fullyParallel: true,
   expect: { timeout: 15_000 },

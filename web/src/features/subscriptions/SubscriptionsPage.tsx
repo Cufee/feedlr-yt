@@ -25,17 +25,15 @@ export function ChannelTile({
       },
     },
   );
-  const subscribe = useAction(
-    () =>
-      channel.subscribed
-        ? api.delete(`/subscriptions/${mediaPath(channel.id)}`)
-        : api.post(
-            "/subscriptions",
-            channel.isPodcast && channel.feedUrl
-              ? { feedUrl: channel.feedUrl }
-              : { channelId: channel.id },
-          ),
-    { success: channel.subscribed ? "Subscription removed" : "Subscription added" },
+  const subscribe = useAction(() =>
+    channel.subscribed
+      ? api.delete(`/subscriptions/${mediaPath(channel.id)}`)
+      : api.post(
+          "/subscriptions",
+          channel.isPodcast && channel.feedUrl
+            ? { feedUrl: channel.feedUrl }
+            : { channelId: channel.id },
+        ),
   );
   return (
     <article className="channel-tile panel">
@@ -149,7 +147,6 @@ function DiscoverySearch({ source }: { source: "youtube" | "podcasts" }) {
 function RSSSubscription() {
   const [feedUrl, setFeedUrl] = useState("");
   const subscribe = useAction(() => api.post("/subscriptions", { feedUrl }), {
-    success: "Podcast added",
     onSuccess: () => setFeedUrl(""),
   });
   return (

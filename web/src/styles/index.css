@@ -12,6 +12,8 @@
   --color-danger: #ffb1b7;
   --color-success: #91dfb3;
   --color-warning: #efcb8e;
+  --color-progress-track: #332d3d;
+  --color-progress-border: #92839f;
   --font-sans:
     inter, ui-sans-serif, system-ui, -apple-system, blinkmacsystemfont, "Segoe UI", sans-serif;
   --radius-control: 0.625rem;
@@ -611,12 +613,12 @@
     max-width: 440px;
     border: 1px solid color-mix(in srgb, currentcolor 25%, transparent);
     border-radius: 12px;
-    background: #25242ff5;
+    background: rgb(24 24 32 / 75%);
     padding: 14px 16px;
     font-size: 0.875rem;
     line-height: 1.6;
-    box-shadow: var(--shadow-panel);
-    backdrop-filter: blur(16px);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+    backdrop-filter: blur(20px) saturate(140%);
   }
 
   .ui-toast-icon {
@@ -628,6 +630,7 @@
   .ui-toast-copy {
     min-width: 0;
     flex: 1;
+    color: var(--color-text);
     overflow-wrap: anywhere;
   }
 
@@ -644,10 +647,11 @@
   }
 
   .ui-progress {
-    height: 4px;
+    height: 8px;
     overflow: hidden;
     border-radius: 99px;
-    background: #ffffff16;
+    background: var(--color-progress-track);
+    outline: 1px solid var(--color-progress-border);
   }
 
   .ui-progress-fill {
@@ -818,7 +822,7 @@
 
   .ui-progress-indeterminate {
     width: 100%;
-    opacity: 0.6;
+    opacity: 1;
   }
 
   .ui-switch-thumb {

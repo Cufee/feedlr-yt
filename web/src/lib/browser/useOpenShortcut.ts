@@ -1,6 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { openShortcutForPlatform } from "./open-shortcut";
 
 export function useOpenShortcut(onOpen: () => void) {
+  const [shortcut] = useState(() => {
+    if (typeof navigator === "undefined") {
+      return openShortcutForPlatform("");
+    }
+    const hints = navigator as Navigator & { userAgentData?: { platform?: string } };
+    return openShortcutForPlatform(hints.userAgentData?.platform ?? "", navigator.userAgent);
+  });
   useEffect(() => {
     const abort = new AbortController();
     document.addEventListener(
@@ -25,4 +33,5 @@ export function useOpenShortcut(onOpen: () => void) {
     );
     return () => abort.abort();
   }, [onOpen]);
+  return shortcut;
 }

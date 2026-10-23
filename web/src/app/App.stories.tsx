@@ -122,6 +122,30 @@ export const PlaylistDesktop = screen(
   "desktop",
 );
 export const PlaylistMobile = screen("/app/playlist/a-slower-sunday", "A slower Sunday", "phone");
+export const ImportedPlaylistDesktop = screen(
+  "/app/playlist/long-way-home",
+  "The long way home",
+  "desktop",
+);
+export const ImportedPlaylistMobile = screen(
+  "/app/playlist/long-way-home",
+  "The long way home",
+  "phone",
+);
+export const ImportedPlaylistPending = screen(
+  "/app/playlist/long-way-home",
+  "The long way home",
+  "desktop",
+  { playlistWriteDelayMs: 1000 },
+);
+export const SystemPlaylistDesktop = screen("/app/playlist/system-queue", "Watch Later", "desktop");
+export const SystemPlaylistMobile = screen("/app/playlist/system-queue", "Watch Later", "phone");
+export const PlaylistActionFailure = screen(
+  "/app/playlist/a-slower-sunday",
+  "A slower Sunday",
+  "desktop",
+  { failFirstPlaylistWrite: true, playlistWriteDelayMs: 1000 },
+);
 export const SettingsDesktop = screen("/app/settings", "Settings", "desktop");
 export const SettingsMobile = screen("/app/settings", "Settings", "phone");
 export const ChannelFilterFailure = screen("/channel/field-notes", "Field Notes", "desktop", {
@@ -275,7 +299,9 @@ export const WatchLaterRemovalFocus: Story = {
     await userEvent.click(within(first).getByRole("button", { name: "Remove from Watch Later" }));
     await waitFor(() => expect(first).not.toBeInTheDocument());
     await waitFor(() => expect(next).toHaveFocus());
-    await expect(canvas.getByText("Removed from Watch Later", { exact: true })).toBeVisible();
+    await expect(
+      canvasElement.ownerDocument.querySelector(".notification-stack .ui-toast"),
+    ).toBeNull();
   },
 };
 
@@ -308,11 +334,20 @@ export const PlaylistRemovalFocus: Story = {
     const next = await canvas.findByRole("link", {
       name: "Listen to Making room for a more thoughtful day",
     });
-    const remove = canvas.getByRole("button", {
-      name: "Remove A small cabin, a long weekend, and no plans from playlist",
-    });
-    await userEvent.click(remove);
-    await waitFor(() => expect(remove).not.toBeInTheDocument());
+    const first = canvas
+      .getByRole("link", { name: "Watch A small cabin, a long weekend, and no plans" })
+      .closest("article");
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Actions for A small cabin, a long weekend, and no plans",
+      }),
+    );
+    await userEvent.click(
+      within(canvasElement.ownerDocument.body).getByRole("menuitem", {
+        name: "Remove from playlist",
+      }),
+    );
+    await waitFor(() => expect(first).not.toBeInTheDocument());
     await waitFor(() => expect(next).toHaveFocus());
   },
 };
@@ -326,7 +361,9 @@ export const SubscriptionRemovalFocus: Story = {
     await userEvent.click(remove);
     await waitFor(() => expect(remove).not.toBeInTheDocument());
     await waitFor(() => expect(next).toHaveFocus());
-    await expect(canvas.getByText("Subscription removed", { exact: true })).toBeVisible();
+    await expect(
+      canvasElement.ownerDocument.querySelector(".notification-stack .ui-toast"),
+    ).toBeNull();
   },
 };
 
@@ -502,7 +539,12 @@ export const ImportPlaylistDialog: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("heading", { name: "Playlists", level: 1 });
-    await userEvent.click(canvas.getByRole("button", { name: "Import" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Playlist actions" }));
+    await userEvent.click(
+      within(canvasElement.ownerDocument.body).getByRole("menuitem", {
+        name: "Import playlist",
+      }),
+    );
     await expect(
       within(canvasElement.ownerDocument.body).findByRole("dialog", {
         name: "Import a YouTube playlist",
@@ -515,7 +557,12 @@ export const EditPlaylistDialog: Story = {
   ...screen("/app/playlist/a-slower-sunday", "A slower Sunday", "desktop"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: "Edit" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Playlist actions" }));
+    await userEvent.click(
+      within(canvasElement.ownerDocument.body).getByRole("menuitem", {
+        name: "Edit playlist",
+      }),
+    );
     const dialog = within(
       await within(canvasElement.ownerDocument.body).findByRole("dialog", {
         name: "Edit playlist",
@@ -540,7 +587,12 @@ export const DeletePlaylistDialog: Story = {
   ...screen("/app/playlist/a-slower-sunday", "A slower Sunday", "desktop"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: "Delete playlist" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Playlist actions" }));
+    await userEvent.click(
+      within(canvasElement.ownerDocument.body).getByRole("menuitem", {
+        name: "Delete playlist",
+      }),
+    );
     await expect(
       within(canvasElement.ownerDocument.body).findByRole("dialog", {
         name: "Delete “A slower Sunday”?",

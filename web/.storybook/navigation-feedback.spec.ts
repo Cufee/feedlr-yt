@@ -2,15 +2,12 @@ import { expect, type Page, test } from "@playwright/test";
 
 async function toastFixture(page: Page, viewport: string) {
   await page.clock.install({ time: new Date("2026-10-22T11:00:00Z") });
-  await page.goto(`/iframe.html?id=app-screens--watch-later-${viewport}&viewMode=story`);
+  await page.goto(`/iframe.html?id=app-screens--imported-playlist-${viewport}&viewMode=story`);
   const root = page.locator("#storybook-root");
-  await expect(root.getByRole("heading", { name: "Watch Later", level: 1 })).toBeVisible();
+  await expect(root.getByRole("heading", { name: "The long way home", level: 1 })).toBeVisible();
   await page.clock.pauseAt(new Date("2026-10-22T12:00:00Z"));
-  await root
-    .locator("article")
-    .first()
-    .getByRole("button", { name: "Remove from Watch Later" })
-    .click();
+  await root.getByRole("button", { name: "Playlist actions" }).click();
+  await page.getByRole("menuitem", { name: "Refresh import" }).click();
   const toast = page.locator(".notification-stack .ui-toast");
   await expect
     .poll(async () => {
@@ -19,7 +16,7 @@ async function toastFixture(page: Page, viewport: string) {
       await page.clock.runFor(100);
       return toast.allTextContents();
     })
-    .toEqual([expect.stringContaining("Removed from Watch Later")]);
+    .toEqual([expect.stringContaining("Playlist refreshed")]);
   await page.mouse.move(0, 0);
   return { root, toast };
 }
@@ -56,7 +53,7 @@ test("notification lifetime pauses for hover and keyboard focus", async ({ page 
   await page.mouse.move(0, 0);
   await page.clock.fastForward(12_000);
   await expect(toast).toBeVisible();
-  await root.getByRole("heading", { name: "Watch Later", level: 1 }).focus();
+  await root.getByRole("heading", { name: "The long way home", level: 1 }).focus();
   await page.clock.fastForward(6_100);
   await expect(toast).toHaveCount(0);
 });
@@ -67,6 +64,31 @@ test("notifications can be dismissed from their right-side close control", async
   const viewport = info.project.name === "phone" ? "mobile" : "desktop";
   const { toast } = await toastFixture(page, viewport);
   await toast.getByRole("button", { name: "Dismiss notification" }).click();
+  await expect(toast).toHaveCount(0);
+});
+
+test("failed actions still notify and keep errors visible for ten seconds", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-10-22T11:00:00Z") });
+  await page.goto("/iframe.html?id=app-screens--channel-filter-failure&viewMode=story");
+  const root = page.locator("#storybook-root");
+  const streams = root.getByRole("group", { name: "Channel media filter" }).getByRole("button", {
+    name: "Streams",
+    exact: true,
+  });
+  await expect(streams).toBeVisible();
+  await page.clock.pauseAt(new Date("2026-10-22T12:00:00Z"));
+  await streams.click();
+  const toast = page.locator(".notification-stack .ui-toast");
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(100);
+      return toast.allTextContents();
+    })
+    .toEqual([expect.stringContaining("The channel filter could not be saved")]);
+  await page.mouse.move(0, 0);
+  await page.clock.fastForward(9_000);
+  await expect(toast).toBeVisible();
+  await page.clock.fastForward(2_000);
   await expect(toast).toHaveCount(0);
 });
 

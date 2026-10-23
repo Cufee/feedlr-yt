@@ -54,7 +54,7 @@ function RootLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigating = useRouterState({ select: (state) => state.isLoading });
   const [open, setOpen] = useState(false);
-  useOpenShortcut(() => setOpen(true));
+  const shortcut = useOpenShortcut(() => setOpen(true));
   const player = pathname.startsWith("/video/");
   const authenticated = !!session.data?.authenticated;
   const active = (to: string) =>
@@ -87,11 +87,15 @@ function RootLayout() {
             <div className="app-header-actions">
               {authenticated ? (
                 <>
-                  <Button variant="ghost" onClick={() => setOpen(true)}>
+                  <Button
+                    variant="ghost"
+                    aria-keyshortcuts={shortcut.ariaKeyShortcuts}
+                    onClick={() => setOpen(true)}
+                  >
                     <ArrowTopRightOnSquareIcon />
                     <span className="open-video-label">Open YouTube</span>
                     <span className="header-shortcut" aria-hidden="true">
-                      ⌘ K
+                      {shortcut.label}
                     </span>
                   </Button>
                   <Link

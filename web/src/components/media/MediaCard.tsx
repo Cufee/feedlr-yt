@@ -10,11 +10,11 @@ import {
 import { BookmarkIcon as BookmarkSolidIcon } from "@heroicons/react/24/solid";
 import { Link as RouterLink } from "@tanstack/react-router";
 import { type MouseEvent, useState } from "react";
-import { Badge, IconButton, Menu } from "@/components/ui";
+import { Badge, IconButton, Menu, type MenuAction } from "@/components/ui";
 import { useMediaState, useWatchLater } from "@/lib/api/queries";
 import type { MediaItem } from "@/lib/api/types";
 import { preserveRemovalFocus } from "@/lib/browser/removal-focus";
-import { duration, relativeDate } from "./format";
+import { dateLabel, duration, relativeDate } from "./format";
 import { PlaylistPicker } from "./PlaylistPicker";
 
 export interface MediaCardViewProps {
@@ -25,6 +25,7 @@ export interface MediaCardViewProps {
   onWatchLater?: (event: MouseEvent<HTMLButtonElement>) => void;
   onState?: (state: { hidden?: boolean; completed?: boolean; progressSeconds?: number }) => void;
   onPlaylist?: () => void;
+  contextActions?: MenuAction[];
 }
 export function MediaCardView({
   item,
@@ -34,14 +35,17 @@ export function MediaCardView({
   onWatchLater,
   onState,
   onPlaylist,
+  contextActions = [],
 }: MediaCardViewProps) {
-  const progress = item.durationSeconds
-    ? Math.min(100, (item.progressSeconds / item.durationSeconds) * 100)
-    : 0;
+  const progress = item.completed
+    ? 100
+    : item.durationSeconds && item.durationSeconds > 0
+      ? Math.max(0, Math.min(100, (item.progressSeconds / item.durationSeconds) * 100))
+      : 0;
   const playingLabel = item.kind === "podcast" ? "Listen to" : "Watch";
   return (
     <article
-      className={`media-card ${item.hidden ? "media-card-hidden" : ""}`}
+      className={`media-card ${item.hidden ? "media-card-hidden" : ""} ${item.completed ? "media-card-completed" : ""}`}
       data-media-id={item.id}
     >
       <div className="media-artwork">
@@ -57,9 +61,28 @@ export function MediaCardView({
             {item.kind === "podcast" ? <MusicalNoteIcon /> : <PlayIcon />}
           </span>
         </RouterLink>
-        {item.hidden && (
+        {authenticated && (
+          <IconButton
+            className="media-watch-later"
+            label={item.inWatchLater ? "Remove from Watch Later" : "Save to Watch Later"}
+            aria-pressed={item.inWatchLater}
+            variant="ghost"
+            pending={pending}
+            onClick={onWatchLater}
+          >
+            {item.inWatchLater ? <BookmarkSolidIcon /> : <BookmarkIcon />}
+          </IconButton>
+        )}
+        {(item.hidden || item.completed) && (
           <div className="media-artwork-badges">
-            <Badge>Hidden</Badge>
+            {item.hidden ? (
+              <Badge>Hidden</Badge>
+            ) : (
+              <Badge tone="success" className="media-completed">
+                <CheckIcon aria-hidden="true" />
+                Watched
+              </Badge>
+            )}
           </div>
         )}
         {duration(item.durationSeconds) && (
@@ -73,7 +96,7 @@ export function MediaCardView({
           <div
             className="media-progress"
             role="progressbar"
-            aria-label="Played"
+            aria-label={item.completed ? "Completed" : "Played"}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(progress)}
@@ -116,6 +139,7 @@ export function MediaCardView({
                   icon: <EyeSlashIcon />,
                   onSelect: () => onState?.({ hidden: !item.hidden }),
                 },
+                ...contextActions,
               ]}
             />
           )}
@@ -128,24 +152,13 @@ export function MediaCardView({
           {item.channel.title}
         </RouterLink>
         <div className="media-card-foot">
-          <span className="media-detail">
-            {item.completed
-              ? "Watched"
-              : item.progressSeconds > 0
-                ? `${duration(item.progressSeconds)} played`
-                : relativeDate(item.publishedAt)}
-          </span>
-          {authenticated && (
-            <IconButton
-              label={item.inWatchLater ? "Remove from Watch Later" : "Save to Watch Later"}
-              aria-pressed={item.inWatchLater}
-              variant="ghost"
-              pending={pending}
-              onClick={onWatchLater}
-            >
-              {item.inWatchLater ? <BookmarkSolidIcon /> : <BookmarkIcon />}
-            </IconButton>
-          )}
+          <time
+            className="media-detail"
+            dateTime={item.publishedAt}
+            title={dateLabel(item.publishedAt)}
+          >
+            {relativeDate(item.publishedAt)}
+          </time>
         </div>
       </div>
     </article>
@@ -156,10 +169,12 @@ export function MediaCard({
   item,
   returnTo,
   authenticated = true,
+  contextActions,
 }: {
   item: MediaItem;
   returnTo?: string;
   authenticated?: boolean;
+  contextActions?: MenuAction[];
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { setPresent, pending } = useWatchLater(item.id);
@@ -176,6 +191,7 @@ export function MediaCard({
         item={item}
         returnTo={returnTo}
         authenticated={authenticated}
+        contextActions={contextActions}
         pending={pending || state.isPending}
         onWatchLater={toggleWatchLater}
         onState={(value) => state.mutate(value)}

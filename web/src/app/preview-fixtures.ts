@@ -31,6 +31,14 @@ const covers = [
   illustration("#455e64", "#8fb9ba", "waves"),
 ];
 
+function playlistCover(source: string, width: number, height: number) {
+  const svg = decodeURIComponent(source.slice("data:image/svg+xml,".length)).replace(
+    'width="900" height="520"',
+    `width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"`,
+  );
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
 export const previewChannels: Channel[] = [
   {
     id: "field-notes",
@@ -183,7 +191,7 @@ const initialPlaylists: Playlist[] = [
     slug: "a-slower-sunday",
     videoCount: 3,
     progressPercent: 24,
-    thumbnailUrl: covers[0] ?? "",
+    thumbnailUrl: playlistCover(covers[0] ?? "", 600, 600),
     system: false,
   },
   {
@@ -193,7 +201,7 @@ const initialPlaylists: Playlist[] = [
     slug: "people-who-make",
     videoCount: 2,
     progressPercent: 50,
-    thumbnailUrl: covers[1] ?? "",
+    thumbnailUrl: playlistCover(covers[1] ?? "", 600, 900),
     system: false,
   },
   {
@@ -203,9 +211,19 @@ const initialPlaylists: Playlist[] = [
     slug: "long-way-home",
     videoCount: 2,
     progressPercent: 0,
-    thumbnailUrl: covers[5] ?? "",
+    thumbnailUrl: playlistCover(covers[5] ?? "", 1200, 400),
     system: false,
     youtubePlaylistId: "preview-import",
+  },
+  {
+    id: "system-queue",
+    name: "Watch Later",
+    description: "",
+    slug: "watch-later",
+    videoCount: 3,
+    progressPercent: 24,
+    thumbnailUrl: covers[0] ?? "",
+    system: true,
   },
 ];
 
@@ -217,6 +235,8 @@ export interface PreviewOptions {
   failFirstRead?: boolean;
   sourceDelayMs?: number;
   holdSourceResponses?: boolean;
+  failFirstPlaylistWrite?: boolean;
+  playlistWriteDelayMs?: number;
 }
 export interface PreviewRequest {
   method: string;
@@ -236,6 +256,7 @@ export function createPreviewAPI(options: PreviewOptions = {}) {
   let settings = structuredClone(initialSettings);
   let entries: Record<string, string[]> = {};
   let readFailures = 0;
+  let playlistWriteFailures = 0;
   let sourceResponse: Promise<void> | undefined;
   let releaseSourceResponse: (() => void) | undefined;
   function reset() {
@@ -259,8 +280,10 @@ export function createPreviewAPI(options: PreviewOptions = {}) {
       "a-slower-sunday": ["preview-1", "preview-3", "preview-5"],
       "people-who-make": ["preview-2", "preview-8"],
       "long-way-home": ["preview-3", "preview-6"],
+      "system-queue": ["preview-1", "preview-3", "preview-5"],
     };
     readFailures = options.failFirstRead ? 1 : 0;
+    playlistWriteFailures = options.failFirstPlaylistWrite ? 1 : 0;
     requests.length = 0;
   }
   reset();
@@ -516,6 +539,16 @@ export function createPreviewAPI(options: PreviewOptions = {}) {
             : error("This podcast is unavailable.", 404);
         }
         if (parts[0] === "playlists") {
+          if (playlists.some((playlist) => playlist.id === parts[1] && playlist.system)) {
+            return error("This playlist cannot be edited.", 403);
+          }
+          if (options.playlistWriteDelayMs) {
+            await delay(options.playlistWriteDelayMs);
+          }
+          if (playlistWriteFailures > 0) {
+            playlistWriteFailures -= 1;
+            return error("The playlist could not be updated. Please try again.", 503);
+          }
           if (parts.length === 1 || parts[1] === "import") {
             const playlist: Playlist = {
               id: "new-collection",

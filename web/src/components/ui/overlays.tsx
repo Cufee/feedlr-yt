@@ -16,7 +16,14 @@ import {
   EllipsisHorizontalIcon,
   XMarkIcon,
 } from "@heroicons/react/20/solid";
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, Ref, RefObject } from "react";
+import type {
+  ButtonHTMLAttributes,
+  FocusEvent,
+  HTMLAttributes,
+  ReactNode,
+  Ref,
+  RefObject,
+} from "react";
 import { useOverlayPortal } from "@/lib/browser/overlay-portal";
 import { IconButton } from "./actions";
 
@@ -108,6 +115,22 @@ function MenuCommand({
   }
   return <button {...props} role="menuitemcheckbox" aria-checked={checked} />;
 }
+
+function preserveModalFocus(event: FocusEvent<HTMLButtonElement>) {
+  const previous = event.relatedTarget;
+  if (!(previous instanceof HTMLElement) || !previous.isConnected) {
+    return;
+  }
+  const modal = previous.closest(
+    '[aria-modal="true"][role="dialog"], [aria-modal="true"][role="alertdialog"]',
+  );
+  // Touch dialogs can intentionally focus their tabindex=-1 root. A menu's
+  // delayed restore must not pull that valid focus back outside the modal.
+  if (modal && !modal.contains(event.currentTarget)) {
+    previous.focus({ preventScroll: true });
+  }
+}
+
 export function Menu({
   label,
   items,
@@ -122,6 +145,7 @@ export function Menu({
       <HeadlessMenu as="div" className={`relative inline-block ${className}`}>
         <MenuButton
           ref={ref}
+          onFocus={preserveModalFocus}
           aria-label={iconOnly && typeof label === "string" ? label : undefined}
           className={`ui-button ui-button-secondary ui-button-md ${iconOnly ? "ui-icon-button" : ""} ${buttonClassName}`}
         >
@@ -137,9 +161,9 @@ export function Menu({
         <MenuItems
           transition
           modal={false}
-          portal={portalTarget !== undefined}
-          anchor={portalTarget !== undefined ? { to: "bottom end", gap: 8 } : undefined}
-          className={`ui-menu${portalTarget !== undefined ? " ui-menu-floating" : ""}`}
+          portal
+          anchor={{ to: "bottom end", gap: 8, padding: 16 }}
+          className="ui-menu ui-menu-floating"
         >
           {items.map((item) => (
             <MenuItem key={item.id} disabled={item.disabled || item.pending}>
