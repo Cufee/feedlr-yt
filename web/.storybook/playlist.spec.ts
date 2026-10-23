@@ -165,22 +165,38 @@ test("playlist entries share one menu for media and ordered membership actions",
   await expect(root.locator(".playlist-entry-actions")).toHaveCount(0);
   await expect(entries.first().getByRole("button", { name: /^Actions for / })).toHaveCount(1);
   const firstActions = root.getByRole("button", { name: `Actions for ${firstTitle}` });
+  const firstMenu = page.getByRole("menu", {
+    name: `Actions for ${firstTitle}`,
+    exact: true,
+    includeHidden: true,
+  });
   await firstActions.click();
-  await expect(page.getByRole("menuitem", { name: "Move up", exact: true })).toBeDisabled();
-  await expect(page.getByRole("menuitem", { name: "Add to playlist", exact: true })).toBeVisible();
-  await page.getByRole("menuitem", { name: "Move down", exact: true }).click();
+  await expect(firstMenu.getByRole("menuitem", { name: "Move up", exact: true })).toBeDisabled();
+  await expect(
+    firstMenu.getByRole("menuitem", { name: "Add to playlist", exact: true }),
+  ).toBeVisible();
+  await firstMenu.getByRole("menuitem", { name: "Move down", exact: true }).click();
   await expect(entries.first().locator("article")).toHaveAttribute("data-media-id", "preview-3");
   await expect(entries.nth(1).locator("article")).toHaveAttribute("data-media-id", "preview-1");
   await expect(firstActions).toBeFocused();
-  await entries
-    .last()
-    .getByRole("button", { name: /^Actions for / })
-    .click();
-  await expect(page.getByRole("menuitem", { name: "Move down", exact: true })).toBeDisabled();
+  await expect(firstMenu).toHaveCount(0);
+  const lastActions = entries.last().getByRole("button", { name: /^Actions for / });
+  const lastLabel = await lastActions.getAttribute("aria-label");
+  if (!lastLabel) {
+    throw new Error("The final playlist entry has no actions label");
+  }
+  const lastMenu = page.getByRole("menu", { name: lastLabel, exact: true, includeHidden: true });
+  await lastActions.click();
+  await expect(lastMenu.getByRole("menuitem", { name: "Move down", exact: true })).toBeDisabled();
   await page.keyboard.press("Escape");
+  await expect(lastMenu).toHaveCount(0);
+  await expect(lastActions).toBeFocused();
   const next = root.getByRole("link", { name: `Watch ${firstTitle}`, exact: true });
   await root.getByRole("button", { name: `Actions for ${secondTitle}` }).click();
-  await page.getByRole("menuitem", { name: "Remove from playlist", exact: true }).click();
+  await page
+    .getByRole("menu", { name: `Actions for ${secondTitle}`, exact: true })
+    .getByRole("menuitem", { name: "Remove from playlist", exact: true })
+    .click();
   await expect(entries).toHaveCount(2);
   await expect(next).toBeFocused();
   await expect(entries.first().locator("article")).toHaveAttribute("data-media-id", "preview-1");
