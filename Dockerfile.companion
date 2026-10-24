@@ -1,0 +1,3 @@
+FROM quay.io/invidious/invidious-companion:latest
+
+COPY scripts/companion-fetch-client.mjs /app/feedlr-fetch-client.mjs

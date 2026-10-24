@@ -32,7 +32,9 @@ services:
       - playback
 
   companion:
-    image: quay.io/invidious/invidious-companion:latest
+    build:
+      dockerfile: Dockerfile.companion
+      pull: true
     environment:
       HOST: 0.0.0.0
       PORT: 8282
@@ -47,11 +49,10 @@ services:
       - no-new-privileges:true
     volumes:
       - companion-cache:/var/tmp/youtubei.js:rw
-      - ./scripts/companion-fetch-client.mjs:/app/feedlr-fetch-client.mjs:ro
     networks:
       - playback
     labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
 
 networks:
   dokploy-network:
