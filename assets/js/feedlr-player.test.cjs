@@ -82,11 +82,9 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
     pause() { if (!this.paused) { this.paused = true; this.dispatchEvent(event('pause')); } }
     requestVideoFrameCallback(callback) { this.frameCallback = callback; return 1; }
   }
-  const elements = new Map(['player', 'player-loading', 'close-button', 'notification-toast', 'send-to-tv-btn'].map((id) => [id, new Element('div')]));
+  const elements = new Map(['player', 'player-loading', 'close-button', 'send-to-tv-btn'].map((id) => [id, new Element('div')]));
   elements.get('send-to-tv-btn').hidden = true;
   elements.get('send-to-tv-btn').disabled = true;
-  const toastText = new Element('span');
-  elements.get('notification-toast').querySelector = () => toastText;
   const doc = Object.assign(new EventTarget(), {
     getElementById: (id) => elements.get(id), createElement: (tag) => new Element(tag),
     querySelector: () => null, head: new Element('head'), hidden: false,
@@ -215,7 +213,7 @@ function harness({ resolutions = [], tvStatuses = [], tvSends = [], progressResp
   if (storageBlocked) Object.defineProperty(win, 'localStorage', { get() { throw new DOMException('Storage access denied', 'SecurityError'); } });
   vm.runInNewContext(fs.readFileSync(require.resolve('./feedlr-player.js'), 'utf8'), { window: win, document: doc, fetch, performance, AbortController, URL, console });
   const controller = autoMount ? win.FeedlrPlayer.mount(options) : undefined;
-  return { controller, options, win, doc, timers, requests, players, iframes, elements, order, fresh, event, toastText };
+  return { controller, options, win, doc, timers, requests, players, iframes, elements, order, fresh, event };
 }
 
 test('external video views receive cached immutable snapshots and release subscriptions', async () => {
@@ -259,6 +257,7 @@ test('external video root and TV handoff need no legacy toolbar and use provided
   await h.controller.sendToTV();
   assert.equal(h.requests.find(request => request.url.endsWith('/tv')).url, '/api/v1/media/one/tv');
   assert.equal(h.controller.getSnapshot().notice, 'Sent to TV');
+  assert.equal(h.controller.getSnapshot().noticeTone, 'success');
   assert.equal(h.controller.getSnapshot().playing, false);
   await h.controller.cleanup();
 });
@@ -596,7 +595,7 @@ for (const mode of ['native', 'iframe']) {
     send.resolve({ ok: true, status: 204 });
     await sending;
     assert.equal(h.controller.snapshot().playing, false);
-    assert.equal(h.toastText.textContent, 'Sent to TV');
+    assert.equal(h.controller.getSnapshot().notice, 'Sent to TV');
     assert.equal(button.disabled, false);
     assert.equal(button['aria-busy'], 'false');
     h.controller.saveProgress();
@@ -646,14 +645,16 @@ test('TV handoff failure keeps local playback and progress active with a retryab
   await h.controller.sendToTV();
   await settle();
   assert.equal(h.controller.snapshot().playing, true);
-  assert.equal(h.toastText.textContent, 'The connected TV is offline');
+  assert.equal(h.controller.getSnapshot().notice, 'The connected TV is offline');
+  assert.equal(h.controller.getSnapshot().noticeTone, 'error');
   assert.equal(h.elements.get('send-to-tv-btn').disabled, false);
   h.controller.seekTo(500);
   h.controller.saveProgress();
   assert.equal(h.requests.some((request) => request.url.endsWith('/state') && JSON.parse(request.body).progressSeconds === 500), true);
   await h.controller.sendToTV();
   assert.equal(h.controller.snapshot().playing, false);
-  assert.equal(h.toastText.textContent, 'Sent to TV');
+  assert.equal(h.controller.getSnapshot().notice, 'Sent to TV');
+  assert.equal(h.controller.getSnapshot().noticeTone, 'success');
   h.controller.cleanup();
 });
 
@@ -663,7 +664,7 @@ test('TV handoff rejects a successful HTTP response from an expired-session logi
   await h.controller.sendToTV();
   assert.equal(h.controller.snapshot().playing, true);
   assert.equal(h.controller.tvHandedOff, false);
-  assert.equal(h.toastText.textContent, 'Could not send video to TV. Try again.');
+  assert.equal(h.controller.getSnapshot().notice, 'Could not send video to TV. Try again.');
   h.controller.cleanup();
 });
 
@@ -697,7 +698,7 @@ test('navigation aborts an in-flight handoff without pausing a newly mounted pla
   send.resolve({ ok: true, status: 204 });
   await sending;
   assert.equal(again.snapshot().playing, true);
-  assert.notEqual(h.toastText.textContent, 'Sent to TV');
+  assert.notEqual(h.controller.getSnapshot().notice, 'Sent to TV');
   assert.equal(h.elements.get('send-to-tv-btn').hidden, false);
   again.cleanup();
   await settle();
@@ -714,7 +715,7 @@ test('handoff timeout while waiting for progress preserves local playback', asyn
   await sending;
   assert.equal(h.controller.snapshot().playing, true);
   assert.equal(h.requests.some((request) => request.url.endsWith('/tv')), false);
-  assert.equal(h.toastText.textContent, 'Could not send video to TV. Try again.');
+  assert.equal(h.controller.getSnapshot().notice, 'Could not send video to TV. Try again.');
   progress.resolve({ ok: true });
   h.controller.cleanup();
 });

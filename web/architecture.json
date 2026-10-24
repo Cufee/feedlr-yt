@@ -7,6 +7,7 @@
     "React Compiler",
     "Tailwind 4",
     "Headless UI",
+    "Sonner",
     "TanStack Router",
     "TanStack Query"
   ],
@@ -337,7 +338,7 @@
     {
       "area": "Notifications and passkeys",
       "baseline": "Repeated notification lifetimes, announcements and registration orchestration",
-      "result": "Shared notification provider and browser passkey service preserve distinct account creation and add-key ceremonies",
+      "result": "Sonner owns toast rendering, state, dismissal, motion and announcements; the browser passkey service preserves distinct account creation and add-key ceremonies",
       "files": [
         "web/src/app/Notifications.tsx",
         "web/src/features/auth/passkeys.ts",
@@ -369,7 +370,7 @@
     "hierarchy": "Prioritize content and actions; channel artwork is a compact heading avatar.",
     "mobileNavigation": "Segmented choices and tabs fill the available width with equal flex growth; primary phone navigation uses equal columns.",
     "settings": "Connection and enabled statuses sit inline beside section headings; passkey removal stays aligned with its credential row.",
-    "notifications": "Notifications are centered in the viewport, dismiss after six seconds (ten for errors), and pause for hover, keyboard focus, or hidden documents.",
+    "notifications": "Sonner renders dark, typed notifications at the bottom right, above phone navigation, with six-second lifetimes (ten for errors), built-in hover and hidden-document pausing, swipe dismissal and keyboard access. Playback notices use the same toaster, including in fullscreen.",
     "scroll": "In-place source and settings filters preserve scroll; route navigation and browser history retain router scroll restoration.",
     "playback": "Playback uses a flush black viewport with compact black controls."
   }

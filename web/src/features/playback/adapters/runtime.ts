@@ -27,6 +27,7 @@ export interface VideoSnapshot {
   tvScreenName: string;
   notice: string;
   noticeID: number;
+  noticeTone: "success" | "error" | "info";
   error: string;
 }
 export interface PodcastSnapshot {
@@ -340,6 +341,7 @@ export function initialVideoSnapshot(detail: MediaDetail): VideoSnapshot {
     tvScreenName: "",
     notice: "",
     noticeID: 0,
+    noticeTone: "info",
     error: "",
   };
 }

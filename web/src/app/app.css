@@ -1223,11 +1223,6 @@
     padding: 32px 24px 48px;
   }
 
-  .notification-stack {
-    bottom: 96px;
-    width: min(420px, calc(100vw - 32px));
-  }
-
   .settings-category-grid {
     grid-template-columns: minmax(0, 1fr);
   }

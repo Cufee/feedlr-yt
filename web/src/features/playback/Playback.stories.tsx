@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createMemoryHistory, RouterContextProvider } from "@tanstack/react-router";
 import { useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
+import { Notifications } from "@/app/Notifications";
 import { createAppRouter } from "@/app/router";
 import { Button } from "@/components/ui";
 import type {
@@ -51,6 +52,7 @@ function PlaybackScenario({
           tvSending: false,
           playing: attempts > 0 ? false : current.playing,
           notice: attempts > 0 ? "Sent to TV" : "Could not send video to TV. Try again.",
+          noticeTone: attempts > 0 ? "success" : "error",
           noticeID: current.noticeID + 1,
         }));
         setAttempts(attempts + 1);
@@ -102,6 +104,14 @@ const meta = {
   component: PlaybackScenario,
   tags: ["autodocs"],
   parameters: { layout: "fullscreen" },
+  decorators: [
+    (Story) => (
+      <>
+        <Story />
+        <Notifications />
+      </>
+    ),
+  ],
   args: { kind: "youtube" },
 } satisfies Meta<typeof PlaybackScenario>;
 export default meta;
@@ -162,7 +172,7 @@ export const TVFailureAndRetry: Story = {
     await userEvent.click(menu);
     await userEvent.click(document.getByRole("menuitem", { name: "Send to TV (Living room)" }));
     await waitFor(() =>
-      expect(canvas.getByText("Could not send video to TV. Try again.")).toBeVisible(),
+      expect(document.getByText("Could not send video to TV. Try again.")).toBeVisible(),
     );
     await waitFor(() => {
       expect(menu).toHaveAttribute("aria-expanded", "false");
@@ -171,7 +181,7 @@ export const TVFailureAndRetry: Story = {
     });
     await userEvent.click(menu);
     await userEvent.click(document.getByRole("menuitem", { name: "Send to TV (Living room)" }));
-    await waitFor(() => expect(canvas.getByText("Sent to TV")).toBeVisible());
+    await waitFor(() => expect(document.getByText("Sent to TV")).toBeVisible());
     await waitFor(() => {
       expect(menu).toHaveAttribute("aria-expanded", "false");
       expect(document.queryByRole("menu")).not.toBeInTheDocument();

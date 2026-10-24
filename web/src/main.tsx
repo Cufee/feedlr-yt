@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { NotificationProvider } from "@/app/Notifications";
+import { Notifications } from "@/app/Notifications";
 import { router } from "@/app/router";
 import { queryClient } from "@/lib/api/queries";
 
@@ -21,9 +21,8 @@ for (const tag of document.head.querySelectorAll("[data-feedlr-head]")) {
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <NotificationProvider>
-        <RouterProvider router={router} />
-      </NotificationProvider>
+      <Notifications />
+      <RouterProvider router={router} />
     </QueryClientProvider>
   </StrictMode>,
 );

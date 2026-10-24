@@ -1,8 +1,15 @@
 import type { Preview } from "@storybook/react-vite";
 import { mswLoader } from "msw-storybook-addon/csf3";
+import { toast } from "sonner";
 import "../src/styles/index.css";
 
 const preview: Preview = {
+  beforeEach: () => {
+    toast.dismiss();
+    return () => {
+      toast.dismiss();
+    };
+  },
   loaders: [
     mswLoader(async () => {
       const { setupWorker } = await import("msw/browser");

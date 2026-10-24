@@ -90,8 +90,7 @@
 
 @layer components {
   .glass,
-  .glass-panel,
-  .ui-toast {
+  .glass-panel {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     backdrop-filter: blur(20px);
@@ -607,36 +606,6 @@
     border-radius: 8px;
   }
 
-  .ui-toast {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    max-width: 440px;
-    border: 1px solid color-mix(in srgb, currentcolor 25%, transparent);
-    border-radius: 12px;
-    padding: 14px 16px;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
-  }
-
-  .ui-toast-icon {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-
-  .ui-toast-copy {
-    min-width: 0;
-    flex: 1;
-    color: var(--color-text);
-    overflow-wrap: anywhere;
-  }
-
-  .ui-toast .ui-icon-button {
-    margin-left: auto;
-  }
-
   .ui-skeleton {
     min-height: 20px;
     border-radius: 8px;
@@ -705,24 +674,6 @@
     animation:
       ui-spin 0.7s linear infinite,
       ui-pending-reveal 0s var(--motion-pending-delay) both;
-  }
-
-  .notification-stack {
-    position: fixed;
-    left: 50%;
-    bottom: 24px;
-    z-index: 150;
-    display: flex;
-    width: min(440px, calc(100vw - 40px));
-    flex-direction: column;
-    gap: 12px;
-    transform: translateX(-50%);
-    pointer-events: none;
-  }
-
-  .notification-stack .ui-toast {
-    width: 100%;
-    pointer-events: auto;
   }
 }
 

@@ -7,7 +7,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useNotify } from "@/app/Notifications";
+import { toast } from "sonner";
 import { ApiError, api, mediaPath } from "./client";
 import type {
   Channel,
@@ -106,19 +106,18 @@ export function useAction<TVariables = void, TResult = void>(
   options: { success?: string; onSuccess?: (result: TResult, variables: TVariables) => void } = {},
 ) {
   const client = useQueryClient();
-  const notify = useNotify();
   return useMutation({
     mutationFn,
     onSuccess: async (result, variables) => {
       if (options.success) {
-        notify(options.success);
+        toast.success(options.success);
       }
       options.onSuccess?.(result, variables);
       await client.invalidateQueries({ queryKey: keys.all });
     },
     onError: (error) => {
       if (error.name !== "AbortError") {
-        notify(error.message, "danger");
+        toast.error(error.message, { duration: 10_000 });
       }
     },
   });
@@ -171,7 +170,6 @@ function findMembership(value: unknown, id: string): boolean | undefined {
 
 export function useWatchLater(id: string) {
   const client = useQueryClient();
-  const notify = useNotify();
   const mutationKey = ["watch-later-membership", id];
   const active = useIsMutating({ mutationKey });
   const { mutateAsync, error } = useMutation({
@@ -197,7 +195,7 @@ export function useWatchLater(id: string) {
           );
         }
       }
-      notify(failure.message, "danger");
+      toast.error(failure.message, { duration: 10_000 });
     },
     onSettled: () => client.invalidateQueries({ queryKey: keys.all }),
   });

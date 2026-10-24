@@ -8,7 +8,7 @@ async function toastFixture(page: Page, viewport: string) {
   await page.clock.pauseAt(new Date("2026-10-22T12:00:00Z"));
   await root.getByRole("button", { name: "Playlist actions" }).click();
   await page.getByRole("menuitem", { name: "Refresh import" }).click();
-  const toast = page.locator(".notification-stack .ui-toast");
+  const toast = page.locator('[data-sonner-toast][data-type="success"]');
   await expect
     .poll(async () => {
       // Let the fixture mutation and Query notifications finish without allowing
@@ -21,49 +21,79 @@ async function toastFixture(page: Page, viewport: string) {
   return { root, toast };
 }
 
-test("notifications center content and dismiss after six visible seconds", async ({
+test("notifications use the library layout and dismiss after six visible seconds", async ({
   page,
 }, info) => {
   const viewport = info.project.name === "phone" ? "mobile" : "desktop";
   const { toast } = await toastFixture(page, viewport);
   const bounds = await toast.boundingBox();
-  const close = await toast.getByRole("button", { name: "Dismiss notification" }).boundingBox();
+  const toaster = page.locator("[data-sonner-toaster]");
+  await expect(toaster).toHaveAttribute("data-x-position", "right");
+  await expect(toaster).toHaveAttribute("data-y-position", "bottom");
   expect(bounds).not.toBeNull();
-  expect(close).not.toBeNull();
-  if (bounds && close) {
-    expect(
-      Math.abs(bounds.x + bounds.width / 2 - (page.viewportSize()?.width ?? 0) / 2),
-    ).toBeLessThan(2);
-    expect(Math.abs(close.y + close.height / 2 - (bounds.y + bounds.height / 2))).toBeLessThan(2);
-    expect(bounds.x + bounds.width - (close.x + close.width)).toBeLessThanOrEqual(18);
+  if (bounds) {
+    const width = page.viewportSize()?.width ?? 0;
+    if (info.project.name === "phone") {
+      expect(bounds.x).toBeCloseTo(16, 0);
+      expect(bounds.width).toBeCloseTo(width - 32, 0);
+    } else {
+      expect(bounds.x).toBeGreaterThan(width / 2);
+      expect(width - bounds.x - bounds.width).toBeGreaterThan(0);
+      expect(width - bounds.x - bounds.width).toBeLessThanOrEqual(32);
+    }
   }
+  await expect(toast.locator("[data-icon] svg")).toBeVisible();
   await page.clock.fastForward(5_000);
   await expect(toast).toBeVisible();
   await page.clock.fastForward(2_000);
+  await page.clock.runFor(250);
   await expect(toast).toHaveCount(0);
 });
 
-test("notification lifetime pauses for hover and keyboard focus", async ({ page }, info) => {
+test("notification lifetime pauses while hovered", async ({ page }, info) => {
   const viewport = info.project.name === "phone" ? "mobile" : "desktop";
-  const { root, toast } = await toastFixture(page, viewport);
+  const { toast } = await toastFixture(page, viewport);
   await toast.hover();
   await page.clock.fastForward(12_000);
   await expect(toast).toBeVisible();
-  await toast.getByRole("button", { name: "Dismiss notification" }).focus();
   await page.mouse.move(0, 0);
-  await page.clock.fastForward(12_000);
-  await expect(toast).toBeVisible();
-  await root.getByRole("heading", { name: "The long way home", level: 1 }).focus();
   await page.clock.fastForward(6_100);
+  await page.clock.runFor(250);
   await expect(toast).toHaveCount(0);
 });
 
-test("notifications can be dismissed from their right-side close control", async ({
+test("notification lifetime pauses while the page is hidden", async ({ page }, info) => {
+  const viewport = info.project.name === "phone" ? "mobile" : "desktop";
+  const { toast } = await toastFixture(page, viewport);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await page.clock.fastForward(12_000);
+  await expect(toast).toBeVisible();
+  await page.evaluate(() => {
+    Reflect.deleteProperty(document, "hidden");
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await page.clock.fastForward(6_100);
+  await page.clock.runFor(250);
+  await expect(toast).toHaveCount(0);
+});
+
+test("notifications can be focused with Alt+T and dismissed using the keyboard", async ({
   page,
 }, info) => {
   const viewport = info.project.name === "phone" ? "mobile" : "desktop";
   const { toast } = await toastFixture(page, viewport);
-  await toast.getByRole("button", { name: "Dismiss notification" }).click();
+  await page.keyboard.press("Alt+t");
+  await expect(page.locator("[data-sonner-toaster]")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(toast).toBeFocused();
+  await page.keyboard.press("Tab");
+  const close = toast.getByRole("button", { name: "Dismiss notification" });
+  await expect(close).toBeFocused();
+  await close.press("Enter");
+  await page.clock.runFor(250);
   await expect(toast).toHaveCount(0);
 });
 
@@ -78,7 +108,7 @@ test("failed actions still notify and keep errors visible for ten seconds", asyn
   await expect(streams).toBeVisible();
   await page.clock.pauseAt(new Date("2026-10-22T12:00:00Z"));
   await streams.click();
-  const toast = page.locator(".notification-stack .ui-toast");
+  const toast = page.locator('[data-sonner-toast][data-type="error"]');
   await expect
     .poll(async () => {
       await page.clock.runFor(100);
@@ -89,6 +119,7 @@ test("failed actions still notify and keep errors visible for ten seconds", asyn
   await page.clock.fastForward(9_000);
   await expect(toast).toBeVisible();
   await page.clock.fastForward(2_000);
+  await page.clock.runFor(250);
   await expect(toast).toHaveCount(0);
 });
 

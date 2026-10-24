@@ -4,7 +4,7 @@ import { createMemoryHistory, RouterProvider, useRouterState } from "@tanstack/r
 import { StrictMode, useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Button } from "@/components/ui";
-import { NotificationProvider } from "./Notifications";
+import { Notifications } from "./Notifications";
 import { createPreviewAPI, type PreviewOptions } from "./preview-fixtures";
 import { createAppRouter } from "./router";
 import "./app.css";
@@ -30,20 +30,19 @@ function AppPreview({ entry, historyTools = false }: PreviewProps) {
   return (
     <StrictMode>
       <QueryClientProvider client={runtime.client}>
-        <NotificationProvider>
-          <div data-preview-location={location}>
-            {historyTools && (
-              <nav aria-label="Preview history" className="flex items-center gap-3 p-4">
-                <Button onClick={() => runtime.router.history.back()}>Back in preview</Button>
-                <Button onClick={() => runtime.router.history.forward()}>Forward in preview</Button>
-                <output aria-label="Preview route" className="ui-help">
-                  {location}
-                </output>
-              </nav>
-            )}
-            <RouterProvider router={runtime.router} />
-          </div>
-        </NotificationProvider>
+        <Notifications />
+        <div data-preview-location={location}>
+          {historyTools && (
+            <nav aria-label="Preview history" className="flex items-center gap-3 p-4">
+              <Button onClick={() => runtime.router.history.back()}>Back in preview</Button>
+              <Button onClick={() => runtime.router.history.forward()}>Forward in preview</Button>
+              <output aria-label="Preview route" className="ui-help">
+                {location}
+              </output>
+            </nav>
+          )}
+          <RouterProvider router={runtime.router} />
+        </div>
       </QueryClientProvider>
     </StrictMode>
   );
@@ -299,9 +298,7 @@ export const WatchLaterRemovalFocus: Story = {
     await userEvent.click(within(first).getByRole("button", { name: "Remove from Watch Later" }));
     await waitFor(() => expect(first).not.toBeInTheDocument());
     await waitFor(() => expect(next).toHaveFocus());
-    await expect(
-      canvasElement.ownerDocument.querySelector(".notification-stack .ui-toast"),
-    ).toBeNull();
+    await expect(canvasElement.ownerDocument.querySelector("[data-sonner-toast]")).toBeNull();
   },
 };
 
@@ -320,8 +317,10 @@ export const WatchLaterRollback: Story = {
     await userEvent.click(save);
     await waitFor(() => expect(save).toHaveAttribute("aria-pressed", "true"));
     await waitFor(() => expect(save).toHaveAttribute("aria-pressed", "false"));
-    await expect(canvas.getByRole("alert")).toHaveTextContent(
-      "Your previous choice has been restored.",
+    await waitFor(() =>
+      expect(
+        canvasElement.ownerDocument.querySelector('[data-sonner-toast][data-type="error"]'),
+      ).toHaveTextContent("Your previous choice has been restored."),
     );
     await expect(save).toHaveFocus();
   },
@@ -361,9 +360,7 @@ export const SubscriptionRemovalFocus: Story = {
     await userEvent.click(remove);
     await waitFor(() => expect(remove).not.toBeInTheDocument());
     await waitFor(() => expect(next).toHaveFocus());
-    await expect(
-      canvasElement.ownerDocument.querySelector(".notification-stack .ui-toast"),
-    ).toBeNull();
+    await expect(canvasElement.ownerDocument.querySelector("[data-sonner-toast]")).toBeNull();
   },
 };
 

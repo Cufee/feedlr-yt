@@ -7,7 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useNotify } from "@/app/Notifications";
+import { toast } from "sonner";
 import { PlaylistPicker } from "@/components/media/PlaylistPicker";
 import { Button, Dialog, Field, Input, Menu, type MenuAction } from "@/components/ui";
 import { useWatchLater } from "@/lib/api/queries";
@@ -116,7 +116,6 @@ export function PlayerToolbar({
   const [shareOpen, setShareOpen] = useState(false);
   const [copyError, setCopyError] = useState("");
   const membership = useWatchLater(detail.item.id);
-  const notify = useNotify();
   const fullscreen = useFullscreenElement();
   const link = new URL(`/video/${encodeURIComponent(detail.item.id)}`, window.location.origin).href;
   async function share() {
@@ -125,7 +124,7 @@ export function PlayerToolbar({
         await navigator.share({ title: detail.item.title, url: link });
       } else {
         await navigator.clipboard.writeText(link);
-        notify("Link copied");
+        toast.success("Link copied");
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
@@ -139,7 +138,7 @@ export function PlayerToolbar({
     try {
       await navigator.clipboard.writeText(link);
       setCopyError("");
-      notify("Link copied");
+      toast.success("Link copied");
       setShareOpen(false);
     } catch {
       setCopyError("Select the link and copy it with your browser.");

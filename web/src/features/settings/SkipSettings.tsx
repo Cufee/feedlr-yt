@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNotify } from "@/app/Notifications";
+import { toast } from "sonner";
 import { Badge, Switch } from "@/components/ui";
 import { api } from "@/lib/api/client";
 import { keys } from "@/lib/api/queries";
@@ -80,7 +80,6 @@ export function SkipSettings({
   settings: SkipSettingsData;
 }) {
   const client = useQueryClient();
-  const notify = useNotify();
   const mutation = useMutation({
     mutationKey: ["skip-settings", provider],
     mutationFn: (patch: { enabled?: boolean; categories?: string[] }) =>
@@ -99,7 +98,7 @@ export function SkipSettings({
           current ? { ...current, [provider]: previous } : current,
         );
       }
-      notify(error.message, "danger");
+      toast.error(error.message, { duration: 10_000 });
     },
     onSettled: () => client.invalidateQueries({ queryKey: keys.all }),
   });

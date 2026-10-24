@@ -447,6 +447,7 @@
       this.loadingState = true;
       this.noticeMessage = "";
       this.noticeID = 0;
+      this.noticeTone = "info";
       this.viewError = "";
       this.subscribe = (listener) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
       this.getSnapshot = () => this.viewSnapshot;
@@ -629,10 +630,10 @@
         this.state.playing = false;
         if (this.historyState) this.historyState.playing = false;
         this.adapter?.pause();
-        this.notice("Sent to TV");
+        this.notice("Sent to TV", "success");
       } catch (error) {
         if (!this.disposed) {
-          this.notice(request.signal.aborted ? "Could not send video to TV. Try again." : error.message || "Could not send video to TV. Try again.");
+          this.notice(request.signal.aborted ? "Could not send video to TV. Try again." : error.message || "Could not send video to TV. Try again.", "error");
           this.refreshTVStatus();
         }
       } finally {
@@ -670,24 +671,18 @@
         mode: this.mode, ready: this.ready, loading: this.loadingState, switching: this.switching,
         blocked: Boolean(this.blocked), audioOnly: this.audioOnly, quality: this.quality, qualities,
         tvOnline: this.tvOnline, tvSending: this.tvSending, tvScreenName: this.tvScreenName || "",
-        notice: this.noticeMessage, noticeID: this.noticeID, error: this.viewError,
+        notice: this.noticeMessage, noticeID: this.noticeID, noticeTone: this.noticeTone, error: this.viewError,
       };
       if (previous && Object.keys(next).every((key) => Object.is(previous[key], next[key]))) return;
       this.viewSnapshot = Object.freeze(next);
       for (const listener of this.listeners) listener();
     }
     showLoading(loading) { this.loadingState = loading; this.loading?.classList.toggle("hidden", !loading); this.publish(); }
-    notice(message) {
+    notice(message, tone = "info") {
       this.noticeMessage = message;
       this.noticeID++;
+      this.noticeTone = tone;
       this.publish();
-      if (this.options.externalUI) return;
-      const toast = document.getElementById("notification-toast");
-      const text = toast?.querySelector("span");
-      if (text) text.textContent = message;
-      toast?.classList.remove("opacity-0");
-      global.clearTimeout(this.toastTimer);
-      this.toastTimer = global.setTimeout(() => toast?.classList.add("opacity-0"), 2500);
     }
     async resolve(mode, signal) {
       const response = await fetch(`/api/videos/${encodeURIComponent(this.options.video)}/playback`, {
@@ -802,7 +797,7 @@
           await this.nativeError(error);
           return;
         }
-        this.notice("YouTube player could not load. Reload to try again.");
+        this.notice("YouTube player could not load. Reload to try again.", "error");
         this.viewError = "YouTube player could not load. Try again.";
         this.showLoading(false);
         this.metric("media_error", "iframe_failed");
@@ -1271,7 +1266,6 @@
       global.clearTimeout(this.tvSendTimeout);
       global.clearInterval(this.timer);
       global.clearInterval(this.progressTimer);
-      global.clearTimeout(this.toastTimer);
       const teardown = this.destroyAdapter();
       this.listeners.clear();
       if (global.feedlr_player === this) delete global.feedlr_player;

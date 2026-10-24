@@ -120,7 +120,7 @@ test("media bookmarks stay inside artwork without played-time clutter", async ({
   await expect(bookmark).toHaveAccessibleName("Save to Watch Later");
   await expect(bookmark).not.toHaveAttribute("aria-disabled", "true");
   await expect(bookmark).toBeFocused();
-  await expect(page.locator(".notification-stack .ui-toast")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
 });
 
 test("publication time remains visible through partial, completed, and unplayed states", async ({
@@ -151,7 +151,7 @@ test("publication time remains visible through partial, completed, and unplayed 
   await expect(published).toHaveText(label ?? "");
   await expect(published).toHaveAttribute("datetime", dateTime ?? "");
   await expect(card).not.toContainText(/\d+:\d+\s+played/);
-  await expect(root.locator(".notification-stack .ui-toast")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
 });
 
 test("playlist entries share one menu for media and ordered membership actions", async ({
@@ -200,7 +200,7 @@ test("playlist entries share one menu for media and ordered membership actions",
   await expect(entries).toHaveCount(2);
   await expect(next).toBeFocused();
   await expect(entries.first().locator("article")).toHaveAttribute("data-media-id", "preview-1");
-  await expect(page.locator(".notification-stack .ui-toast")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: testInfo.outputPath(`playlist-contents-${viewport}.png`),
@@ -222,11 +222,11 @@ test("playlist membership updates visibly without routine success notifications"
   await membership.click();
   await expect(membership).toBeChecked();
   await expect(membership).toBeEnabled();
-  await expect(page.locator(".notification-stack .ui-toast")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
   await membership.click();
   await expect(membership).not.toBeChecked();
   await expect(membership).toBeEnabled();
-  await expect(page.locator(".notification-stack .ui-toast")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
 });
 
 test("routine following, media state, and channel filters stay quiet", async ({ page }) => {
@@ -234,7 +234,7 @@ test("routine following, media state, and channel filters stay quiet", async ({ 
   const root = page.locator("#storybook-root");
   await root.getByRole("button", { name: "Following", exact: true }).click();
   await expect(root.getByRole("button", { name: "Follow", exact: true })).toBeVisible();
-  await expect(page.locator(".notification-stack .ui-toast")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
   await root.getByRole("button", { name: "Follow", exact: true }).click();
   await expect(root.getByRole("button", { name: "Following", exact: true })).toBeVisible();
   const videos = root.getByRole("group", { name: "Channel media filter" }).getByRole("button", {
@@ -248,11 +248,11 @@ test("routine following, media state, and channel filters stay quiet", async ({ 
   await actions.click();
   await page.getByRole("menuitem", { name: "Mark as watched", exact: true }).click();
   await expect(card.getByText("Watched", { exact: true })).toBeVisible();
-  await expect(page.locator(".notification-stack .ui-toast")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
   await actions.click();
   await page.getByRole("menuitem", { name: "Hide from feed", exact: true }).click();
   await expect(card.getByText("Hidden", { exact: true })).toBeVisible();
-  await expect(page.locator(".notification-stack .ui-toast")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
 });
 
 test("playlist deletion stays behind confirmation and restores menu focus on cancel", async ({
@@ -422,7 +422,7 @@ test("imported playlist refresh stays available in the secondary menu", async ({
   );
   await page.getByRole("menuitem", { name: "Refresh import" }).click();
   await request;
-  await expect(root.getByText("Playlist refreshed", { exact: true })).toBeVisible();
+  await expect(page.getByText("Playlist refreshed", { exact: true })).toBeVisible();
   await expect(root.getByRole("button", { name: "Playlist actions" })).toBeFocused();
 });
 
@@ -435,7 +435,7 @@ test("import refresh preserves a deliberate focus change while the request waits
   await root.getByRole("button", { name: "Playlist actions" }).click();
   await page.getByRole("menuitem", { name: "Refresh import" }).click();
   await add.focus();
-  await expect(root.getByText("Playlist refreshed", { exact: true })).toBeVisible();
+  await expect(page.getByText("Playlist refreshed", { exact: true })).toBeVisible();
   await expect(add).toBeFocused();
 });
 
@@ -545,7 +545,9 @@ test("failed playlist writes preserve order, disable pending commands, and allow
   for (const label of ["Move up", "Move down", "Remove from playlist"]) {
     await expect(page.getByRole("menuitem", { name: label, exact: true })).toBeDisabled();
   }
-  await expect(root.getByRole("alert")).toContainText("The playlist could not be updated");
+  await expect(page.locator('[data-sonner-toast][data-type="error"]')).toContainText(
+    "The playlist could not be updated",
+  );
   await expect(entries.first().locator("article")).toHaveAttribute("data-media-id", "preview-1");
   await expect(page.getByRole("menuitem", { name: "Move down", exact: true })).toBeEnabled();
   await page.getByRole("menuitem", { name: "Move down", exact: true }).click();

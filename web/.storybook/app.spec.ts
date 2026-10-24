@@ -170,7 +170,7 @@ test("app committed removal restores focus to the next saved card", async ({ pag
   await page.keyboard.press("Enter");
   await expect(root.locator("article")).toHaveCount(2);
   await expect(next).toBeFocused();
-  await expect(root.locator(".notification-stack .ui-toast")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
 });
 
 test("app editor submits a collection and navigates to it", async ({ page }) => {

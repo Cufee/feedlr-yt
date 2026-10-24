@@ -4,7 +4,7 @@ import { createMemoryHistory, RouterProvider, useRouterState } from "@tanstack/r
 import { HttpResponse, http } from "msw";
 import { StrictMode, useState } from "react";
 import { expect, waitFor, within } from "storybook/test";
-import { NotificationProvider } from "@/app/Notifications";
+import { Notifications } from "@/app/Notifications";
 import { createPreviewAPI } from "@/app/preview-fixtures";
 import { createAppRouter } from "@/app/router";
 import { Button } from "@/components/ui";
@@ -91,21 +91,20 @@ function PlaybackPagePreview({
   return (
     <StrictMode>
       <QueryClientProvider client={preview.client}>
-        <NotificationProvider>
-          {historyTools && (
-            <nav
-              aria-label="Preview history"
-              className="relative z-50 flex flex-wrap items-center gap-3 p-4"
-            >
-              <Button onClick={() => preview.router.history.back()}>Back in preview</Button>
-              <Button onClick={() => preview.router.history.forward()}>Forward in preview</Button>
-              <output aria-label="Preview route" className="w-full break-all">
-                {location}
-              </output>
-            </nav>
-          )}
-          <RouterProvider router={preview.router} />
-        </NotificationProvider>
+        <Notifications />
+        {historyTools && (
+          <nav
+            aria-label="Preview history"
+            className="relative z-50 flex flex-wrap items-center gap-3 p-4"
+          >
+            <Button onClick={() => preview.router.history.back()}>Back in preview</Button>
+            <Button onClick={() => preview.router.history.forward()}>Forward in preview</Button>
+            <output aria-label="Preview route" className="w-full break-all">
+              {location}
+            </output>
+          </nav>
+        )}
+        <RouterProvider router={preview.router} />
       </QueryClientProvider>
     </StrictMode>
   );

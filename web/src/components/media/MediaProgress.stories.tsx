@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createMemoryHistory, RouterContextProvider } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
+import { Notifications } from "@/app/Notifications";
 import { createAppRouter } from "@/app/router";
-import { Progress, Toast } from "@/components/ui";
+import { Button, Progress } from "@/components/ui";
 import type { MediaItem } from "@/lib/api/types";
 import { MediaCardView } from "./MediaCard";
 import "@/app/app.css";
@@ -74,8 +76,7 @@ function MediaProgressExamples() {
     </RouterContextProvider>
   );
 }
-function GlassToastExamples() {
-  const [visible, setVisible] = useState(true);
+function ToastExamples() {
   return (
     <div
       className="grid min-h-dvh place-items-center p-5"
@@ -85,16 +86,19 @@ function GlassToastExamples() {
         backgroundPosition: "center",
       }}
     >
-      {visible && (
-        <div className="flex w-full max-w-110 flex-col gap-4">
-          <Toast tone="info" onDismiss={() => setVisible(false)}>
-            Link copied
-          </Toast>
-          <Toast tone="danger" onDismiss={() => setVisible(false)}>
-            The playlist could not be updated. Try again.
-          </Toast>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => toast.info("Link copied", { duration: Infinity })}>
+          Show info notification
+        </Button>
+        <Button
+          onClick={() =>
+            toast.error("The playlist could not be updated. Try again.", { duration: Infinity })
+          }
+        >
+          Show error notification
+        </Button>
+      </div>
+      <Notifications />
     </div>
   );
 }
@@ -107,11 +111,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Desktop: Story = { globals: { viewport: { value: "desktop" } } };
 export const Mobile: Story = { globals: { viewport: { value: "phone" } } };
-export const GlassToastsDesktop: Story = {
+export const ToastsDesktop: Story = {
   globals: { viewport: { value: "desktop" } },
-  render: () => <GlassToastExamples />,
+  render: () => <ToastExamples />,
 };
-export const GlassToastsMobile: Story = {
+export const ToastsMobile: Story = {
   globals: { viewport: { value: "phone" } },
-  render: () => <GlassToastExamples />,
+  render: () => <ToastExamples />,
 };

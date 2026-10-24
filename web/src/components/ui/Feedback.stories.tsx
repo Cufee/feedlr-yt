@@ -1,11 +1,11 @@
 import { BookmarkIcon } from "@heroicons/react/24/outline";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
-import { expect, userEvent, within } from "storybook/test";
-import { Badge, Button, EmptyState, Progress, Skeleton, Toast } from "./index";
+import { toast } from "sonner";
+import { expect, userEvent, waitFor, within } from "storybook/test";
+import { Notifications } from "@/app/Notifications";
+import { Badge, Button, EmptyState, Progress, Skeleton } from "./index";
 
 function Feedback() {
-  const [visible, setVisible] = useState(true);
   return (
     <main className="mx-auto max-w-5xl space-y-8 p-2">
       <h1 className="text-2xl font-semibold">Useful feedback, without the noise.</h1>
@@ -17,14 +17,33 @@ function Feedback() {
         ))}
       </div>
       <div className="grid gap-6 md:grid-cols-2">
-        <section className="space-y-4" aria-label="Notifications">
-          {visible && (
-            <Toast title="Playlist updated" tone="success" onDismiss={() => setVisible(false)}>
-              Your episode is ready for later.
-            </Toast>
-          )}
-          <Toast tone="danger">Could not save this change. Try again.</Toast>
-          <Toast tone="info">Podcast catalog search is unavailable. Add an RSS URL instead.</Toast>
+        <section className="flex flex-wrap items-start gap-3" aria-label="Notification examples">
+          <Button
+            onClick={() =>
+              toast.success("Playlist updated", {
+                description: "Your episode is ready for later.",
+                duration: Infinity,
+              })
+            }
+          >
+            Show success notification
+          </Button>
+          <Button
+            onClick={() =>
+              toast.error("Could not save this change. Try again.", { duration: Infinity })
+            }
+          >
+            Show error notification
+          </Button>
+          <Button
+            onClick={() =>
+              toast.info("Podcast catalog search is unavailable. Add an RSS URL instead.", {
+                duration: Infinity,
+              })
+            }
+          >
+            Show info notification
+          </Button>
         </section>
         <section className="panel space-y-6 p-5" aria-label="Loading feedback">
           <Skeleton className="aspect-video" />
@@ -38,6 +57,7 @@ function Feedback() {
           </div>
         </section>
       </div>
+      <Notifications />
       <div className="panel">
         <EmptyState
           title="A little room for later"
@@ -61,10 +81,20 @@ export const Mobile: Story = { globals: { viewport: { value: "phone" } } };
 export const DismissNotice: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Dismiss notification" }));
-    await expect(canvas.queryByText("Your episode is ready for later.")).not.toBeInTheDocument();
-    await expect(canvas.getByRole("alert")).toHaveTextContent(
-      "Could not save this change. Try again.",
+    const document = within(canvasElement.ownerDocument.body);
+    await userEvent.click(canvas.getByRole("button", { name: "Show success notification" }));
+    await waitFor(() =>
+      expect(document.getByText("Your episode is ready for later.")).toBeVisible(),
+    );
+    await userEvent.click(document.getByRole("button", { name: "Dismiss notification" }));
+    await waitFor(() =>
+      expect(document.queryByText("Your episode is ready for later.")).not.toBeInTheDocument(),
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Show error notification" }));
+    await waitFor(() =>
+      expect(
+        canvasElement.ownerDocument.querySelector('[data-sonner-toast][data-type="error"]'),
+      ).toHaveTextContent("Could not save this change. Try again."),
     );
   },
 };

@@ -227,35 +227,47 @@ test("podcast progress remains aligned after increasing its visible track", asyn
   }
 });
 
-test("toast glass reveals content while preserving text and severity contrast", async ({
+test("library toasts show severity, readable text and responsive dismiss controls", async ({
   page,
 }, info) => {
   const viewport = info.project.name === "phone" ? "mobile" : "desktop";
-  await page.goto(`/iframe.html?id=media-progress--glass-toasts-${viewport}&viewMode=story`);
-  const toast = page.getByRole("alert");
+  await page.goto(`/iframe.html?id=media-progress--toasts-${viewport}&viewMode=story`);
+  await page.getByRole("button", { name: "Show info notification" }).click();
+  const infoToast = page.locator('[data-sonner-toast][data-type="info"]');
+  await expect(infoToast).toHaveText("Link copied");
+  await expect(infoToast.locator("[data-icon] svg")).toBeVisible();
+  await infoToast.getByRole("button", { name: "Dismiss notification" }).click();
+  await expect(infoToast).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Show error notification" }).click();
+  const toast = page.locator('[data-sonner-toast][data-type="error"]');
   await expect(toast).toBeVisible();
+  await expect(toast).toHaveAttribute("data-styled", "true");
+  await expect(toast).toHaveAttribute("data-rich-colors", "true");
+  await expect(toast.locator("[data-icon] svg")).toBeVisible();
+  await expect(page.locator("[data-sonner-toaster]")).toHaveAttribute("data-sonner-theme", "dark");
   const style = await toast.evaluate((element) => ({
     background: getComputedStyle(element).backgroundColor,
-    filter: getComputedStyle(element).backdropFilter,
-    text: getComputedStyle(element.querySelector(".ui-toast-copy") ?? element).color,
-    icon: getComputedStyle(element.querySelector(".ui-toast-icon") ?? element).color,
+    text: getComputedStyle(element.querySelector("[data-title]") ?? element).color,
+    icon: getComputedStyle(element.querySelector("[data-icon]") ?? element).color,
   }));
-  const rgba = style.background.match(/[\d.]+/g)?.map(Number);
-  expect(rgba?.[3]).toBeGreaterThanOrEqual(0.8);
-  expect(rgba?.[3]).toBeLessThanOrEqual(0.9);
-  expect(style.filter).toContain("blur(20px)");
-  if (!rgba) {
-    throw new Error("Toast background is not translucent");
+  expect(contrast(style.text, style.background)).toBeGreaterThanOrEqual(4.5);
+  expect(contrast(style.icon, style.background)).toBeGreaterThanOrEqual(3);
+  const bounds = await toast.boundingBox();
+  expect(bounds).not.toBeNull();
+  if (bounds) {
+    const width = page.viewportSize()?.width ?? 0;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    if (info.project.name === "phone") {
+      expect(bounds.width).toBeCloseTo(width - 32, 0);
+    } else {
+      expect(bounds.x).toBeGreaterThan(width / 2);
+    }
   }
-  const whiteComposite = `rgb(${rgba
-    .slice(0, 3)
-    .map((channel) => Math.round(channel * (rgba[3] ?? 1) + 255 * (1 - (rgba[3] ?? 1))))
-    .join(", ")})`;
-  expect(contrast(style.text, whiteComposite)).toBeGreaterThanOrEqual(4.5);
-  expect(contrast(style.icon, whiteComposite)).toBeGreaterThanOrEqual(3);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({
-    path: info.outputPath(`glass-toasts-${viewport}.png`),
+    path: info.outputPath(`notifications-${viewport}.png`),
     fullPage: true,
     animations: "disabled",
   });

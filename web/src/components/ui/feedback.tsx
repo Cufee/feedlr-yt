@@ -1,11 +1,4 @@
-import {
-  CheckCircleIcon,
-  ExclamationCircleIcon,
-  InformationCircleIcon,
-  XMarkIcon,
-} from "@heroicons/react/20/solid";
 import type { HTMLAttributes, ReactNode, Ref } from "react";
-import { IconButton } from "./actions";
 
 export type Tone = "neutral" | "info" | "accent" | "success" | "warning" | "danger";
 export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
@@ -14,45 +7,6 @@ export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 };
 export function Badge({ tone = "neutral", className = "", ...props }: BadgeProps) {
   return <span {...props} className={`ui-badge ui-tone-${tone} ${className}`} />;
-}
-export type ToastProps = HTMLAttributes<HTMLDivElement> & {
-  tone?: Tone;
-  title?: string;
-  onDismiss?: () => void;
-  ref?: Ref<HTMLDivElement>;
-};
-export function Toast({
-  tone = "neutral",
-  title,
-  children,
-  onDismiss,
-  className = "",
-  ...props
-}: ToastProps) {
-  const Icon =
-    tone === "success"
-      ? CheckCircleIcon
-      : tone === "danger" || tone === "warning"
-        ? ExclamationCircleIcon
-        : InformationCircleIcon;
-  return (
-    <div
-      {...props}
-      role={props.role ?? (tone === "danger" ? "alert" : "status")}
-      className={`ui-toast ui-tone-${tone} ${className}`}
-    >
-      <Icon className="ui-toast-icon" aria-hidden="true" />
-      <div className="ui-toast-copy">
-        {title && <p className="font-semibold">{title}</p>}
-        <div>{children}</div>
-      </div>
-      {onDismiss && (
-        <IconButton label="Dismiss notification" variant="ghost" size="sm" onClick={onDismiss}>
-          <XMarkIcon className="size-4" />
-        </IconButton>
-      )}
-    </div>
-  );
 }
 export function Skeleton({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div {...props} aria-hidden="true" className={`ui-skeleton ${className}`} />;

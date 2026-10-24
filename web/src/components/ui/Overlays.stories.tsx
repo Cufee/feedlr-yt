@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { StrictMode, useState } from "react";
+import { toast } from "sonner";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { Button, Dialog, Field, Input, Menu, Tabs, Toast } from "./index";
+import { Notifications } from "@/app/Notifications";
+import { Button, Dialog, Field, Input, Menu, Tabs } from "./index";
 
 function OverlayScenario({ nested = false }: { nested?: boolean }) {
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<HTMLDivElement | null>(null);
-  const [saved, setSaved] = useState(false);
   return (
     <div ref={setTarget} className="panel mx-auto max-w-2xl space-y-5 p-6" data-fullscreen-host>
       <h1 className="text-xl font-semibold">A focused player action</h1>
@@ -23,7 +24,7 @@ function OverlayScenario({ nested = false }: { nested?: boolean }) {
           <Button
             variant="primary"
             onClick={() => {
-              setSaved(true);
+              toast.success("Episode saved.");
               setOpen(false);
             }}
           >
@@ -35,7 +36,6 @@ function OverlayScenario({ nested = false }: { nested?: boolean }) {
           <Input defaultValue="Long walks" />
         </Field>
       </Dialog>
-      {saved && <Toast tone="success">Episode saved.</Toast>}
     </div>
   );
 }
@@ -48,6 +48,7 @@ const meta = {
     (Story) => (
       <StrictMode>
         <Story />
+        <Notifications />
       </StrictMode>
     ),
   ],
@@ -85,7 +86,7 @@ export const FullscreenIsolationRegression: Story = {
     });
     await userEvent.type(within(dialog).getByRole("textbox", { name: "Playlist" }), " and trails");
     await userEvent.click(within(dialog).getByRole("button", { name: "Save episode" }));
-    await waitFor(() => expect(canvas.getByText("Episode saved.")).toBeVisible());
+    await waitFor(() => expect(within(document.body).getByText("Episode saved.")).toBeVisible());
     await waitFor(() => expect(trigger).toHaveFocus());
     await expect(canvasElement.querySelector("[data-background-controls]")).not.toHaveAttribute(
       "inert",
