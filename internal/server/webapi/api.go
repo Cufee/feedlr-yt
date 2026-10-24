@@ -3,6 +3,7 @@ package webapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -11,18 +12,23 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/cufee/feedlr-yt/internal/api/youtube"
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/singleflight"
 )
 
 type API struct {
 	db       database.Client
 	sessions *sessions.SessionClient
 	wa       *webauthn.WebAuthn
+
+	fetchVideoMetadata func(context.Context, string) (*youtube.VideoDetails, error)
+	mediaRefresh       singleflight.Group
 }
 type apiError struct {
 	status        int

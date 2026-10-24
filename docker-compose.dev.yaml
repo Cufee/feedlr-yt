@@ -8,6 +8,7 @@ services:
       PORT: 8282
       SERVER_SECRET_KEY: ${COMPANION_SECRET:-}
       SERVER_VERIFY_REQUESTS: "true"
+      GET_FETCH_CLIENT_LOCATION: file:///app/feedlr-fetch-client.mjs
     ports:
       - target: 8282
         published: "${FEEDLR_COMPANION_PORT:-18282}"
@@ -23,6 +24,7 @@ services:
     security_opt: ["no-new-privileges:true"]
     volumes:
       - companion-cache:/var/tmp/youtubei.js:rw
+      - ./scripts/companion-fetch-client.mjs:/app/feedlr-fetch-client.mjs:ro
 
 volumes:
   companion-cache:

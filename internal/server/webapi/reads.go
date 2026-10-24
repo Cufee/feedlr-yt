@@ -2,8 +2,10 @@ package webapi
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/cufee/feedlr-yt/internal/api/podcastindex"
 	"github.com/cufee/feedlr-yt/internal/api/rss"
@@ -11,10 +13,14 @@ import (
 	"github.com/cufee/feedlr-yt/internal/database"
 	"github.com/cufee/feedlr-yt/internal/database/models"
 	"github.com/cufee/feedlr-yt/internal/logic"
+	"github.com/cufee/feedlr-yt/internal/metrics"
 	"github.com/cufee/feedlr-yt/internal/sessions"
 	"github.com/cufee/feedlr-yt/internal/types"
 	"github.com/gofiber/fiber/v3"
+	"github.com/rs/zerolog/log"
 )
+
+var mediaMetadataRefreshSlots = make(chan struct{}, 4)
 
 func (a *API) session(c fiber.Ctx) error {
 	r := Session{Capabilities: Capabilities{PodcastSearch: podcastindex.DefaultClient != nil, YouTubeSync: logic.DefaultYouTubeSync != nil, TVSync: logic.DefaultYouTubeTVSync != nil}}
@@ -169,7 +175,8 @@ func (a *API) watchLater(c fiber.Ctx) error {
 
 func (a *API) media(c fiber.Ctx) error {
 	id := c.Params("id")
-	if _, err := a.db.GetVideoByID(c.Context(), id); err != nil {
+	current, err := a.db.GetVideoByID(c.Context(), id)
+	if err != nil {
 		if !database.IsErrNotFound(err) {
 			return err
 		}
@@ -179,6 +186,10 @@ func (a *API) media(c fiber.Ctx) error {
 		if err = logic.EnsureVideoCached(c.Context(), a.db, id); err != nil {
 			return fail(502, "media_unavailable", "This video could not be loaded")
 		}
+	} else {
+		// Refresh before building the response so an ended stream's type and
+		// duration are also available to the following playback request.
+		a.refreshMediaMetadata(c.Context(), current)
 	}
 	p, err := logic.GetPlayerPropsWithOpts(c.Context(), a.db, viewer(c), id, logic.GetPlayerOptions{WithProgress: viewer(c) != "", WithSegments: true})
 	if err != nil {
@@ -221,6 +232,66 @@ func (a *API) media(c fiber.Ctx) error {
 		sort.Strings(r.MembershipIDs)
 	}
 	return c.JSON(r)
+}
+
+func mediaMetadataStale(video *models.Video, now time.Time) bool {
+	if video == nil || video.Type == string(youtube.VideoTypePodcastEpisode) || !youtubeID.MatchString(video.ID) {
+		return false
+	}
+	threshold := 6 * time.Hour
+	switch youtube.VideoType(video.Type) {
+	case youtube.VideoTypeLiveStream, youtube.VideoTypeUpcomingStream, youtube.VideoTypeStreamRecording:
+		threshold = time.Hour
+	}
+	return !video.UpdatedAt.Add(threshold).After(now)
+}
+
+func (a *API) refreshMediaMetadata(ctx context.Context, current *models.Video) {
+	if !mediaMetadataStale(current, time.Now()) {
+		return
+	}
+	fetch := a.fetchVideoMetadata
+	if fetch == nil {
+		if youtube.DefaultClient == nil {
+			return
+		}
+		fetch = youtube.DefaultClient.GetVideoPlayerDetailsContext
+	}
+	_, err, _ := a.mediaRefresh.Do(current.ID, func() (any, error) {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		// Another request may have refreshed this row since it was first read.
+		video, err := a.db.GetVideoByID(ctx, current.ID)
+		if err != nil || !mediaMetadataStale(video, time.Now()) {
+			return nil, err
+		}
+		select {
+		case mediaMetadataRefreshSlots <- struct{}{}:
+			defer func() { <-mediaMetadataRefreshSlots }()
+		default:
+			return nil, nil
+		}
+		details, err := fetch(ctx, video.ID)
+		if err != nil {
+			return nil, err
+		}
+		if details == nil || details.ID != video.ID || details.Type == "" {
+			return nil, errors.New("video metadata is incomplete")
+		}
+		if details.Type == youtube.VideoTypeFailed {
+			return nil, errors.New("video metadata is unavailable")
+		}
+		updated := *details
+		updated.ChannelID = video.ChannelID
+		if updated.PublishedAt.IsZero() {
+			updated.PublishedAt = video.PublishedAt
+		}
+		return nil, logic.UpdateVideoCache(ctx, a.db, &updated)
+	})
+	metrics.ObserveVideoRefresh("refresh_video_cache", err)
+	if err != nil {
+		log.Warn().Err(err).Str("videoID", current.ID).Msg("using cached video after metadata refresh failed")
+	}
 }
 
 func (a *API) subscriptions(c fiber.Ctx) error {
