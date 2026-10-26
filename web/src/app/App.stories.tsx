@@ -77,8 +77,18 @@ function screen(
       const canvas = within(canvasElement);
       if (options.mode === "loading") {
         await expect(canvas.findByRole("status", { name: "Loading page" })).resolves.toBeVisible();
-      } else {
+      } else if (
+        options.mode === "error" ||
+        options.failFirstRead ||
+        (options.guest && entry.startsWith("/app")) ||
+        entry === "/" ||
+        entry.startsWith("/login")
+      ) {
         await expect(canvas.findByRole("heading", { name: heading })).resolves.toBeVisible();
+      } else {
+        await waitFor(() => expect(canvasElement.ownerDocument.title).toBe(`${heading} · Feedlr`));
+      }
+      if (options.mode !== "loading") {
         await waitFor(() =>
           expect(canvas.queryByRole("status", { name: "Loading page" })).not.toBeInTheDocument(),
         );
@@ -231,12 +241,8 @@ export const NavigationAndHistory: Story = {
   args: { entry: "/app/recent?source=all&page=1", historyTools: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("link", { name: "Next" });
-    await userEvent.click(canvas.getByRole("link", { name: "Next" }));
-    await waitFor(() =>
-      expect(canvas.getByRole("status", { name: "Preview route" })).toHaveTextContent("page=2"),
-    );
-    await expect(canvas.getByText("Page 2", { exact: true })).toBeVisible();
+    await canvas.findByRole("navigation", { name: "Media sources" });
+    await expect(canvas.queryByRole("navigation", { name: "Pages" })).not.toBeInTheDocument();
     await userEvent.click(canvas.getByRole("link", { name: "Podcasts" }));
     await waitFor(() => {
       const location = new URL(
@@ -244,7 +250,7 @@ export const NavigationAndHistory: Story = {
         "https://preview.test",
       );
       expect(location.searchParams.get("source")).toBe("podcasts");
-      expect(location.searchParams.get("page")).toBe("1");
+      expect(location.searchParams.has("page")).toBe(false);
     });
     await expect(canvas.getByRole("link", { name: "Podcasts" })).toHaveAttribute(
       "aria-current",
@@ -257,7 +263,6 @@ export const NavigationAndHistory: Story = {
         "https://preview.test",
       );
       expect(location.searchParams.get("source")).toBe("all");
-      expect(location.searchParams.get("page")).toBe("2");
     });
     await userEvent.click(canvas.getByRole("button", { name: "Forward in preview" }));
     await waitFor(() => {
@@ -266,16 +271,14 @@ export const NavigationAndHistory: Story = {
         "https://preview.test",
       );
       expect(location.searchParams.get("source")).toBe("podcasts");
-      expect(location.searchParams.get("page")).toBe("1");
+      expect(location.searchParams.has("page")).toBe(false);
     });
     await userEvent.click(
       within(canvas.getByRole("navigation", { name: "Primary" })).getByRole("link", {
         name: "Watch Later",
       }),
     );
-    await expect(
-      canvas.findByRole("heading", { name: "Watch Later", level: 1 }),
-    ).resolves.toBeVisible();
+    await waitFor(() => expect(canvasElement.ownerDocument.title).toBe("Watch Later · Feedlr"));
     await expect(canvas.getByRole("status", { name: "Preview route" })).toHaveTextContent(
       "/app/watch-later?page=1",
     );
@@ -368,7 +371,7 @@ export const CreatePlaylist: Story = {
   ...screen("/app/playlists", "Playlists", "desktop"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("heading", { name: "Playlists", level: 1 });
+    await canvas.findByRole("button", { name: "Create playlist" });
     await userEvent.click(canvas.getByRole("button", { name: "Create playlist" }));
     const document = within(canvasElement.ownerDocument.body);
     const dialog = within(await document.findByRole("dialog", { name: "Create a playlist" }));
@@ -378,9 +381,9 @@ export const CreatePlaylist: Story = {
       "A few good ideas for another day.",
     );
     await userEvent.click(dialog.getByRole("button", { name: "Create playlist" }));
-    await expect(
-      canvas.findByRole("heading", { name: "Things to come back to", level: 1 }),
-    ).resolves.toBeVisible();
+    await waitFor(() =>
+      expect(canvasElement.ownerDocument.title).toBe("Things to come back to · Feedlr"),
+    );
     await expect(document.queryByRole("dialog")).not.toBeInTheDocument();
   },
 };
@@ -432,9 +435,7 @@ export const PodcastDiscovery: Story = {
       canvas.getAllByRole("button", { name: "Following Off the Clock. Unfollow" }),
     ).toHaveLength(1);
     await userEvent.click(canvas.getByRole("link", { name: "Off the Clock" }));
-    await expect(
-      canvas.findByRole("heading", { name: "Off the Clock", level: 1 }),
-    ).resolves.toBeVisible();
+    await waitFor(() => expect(canvasElement.ownerDocument.title).toBe("Off the Clock · Feedlr"));
     await expect(canvas.getByRole("button", { name: "Following" })).toBeVisible();
   },
 };
@@ -489,7 +490,7 @@ export const RetryRead: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole("button", { name: "Try again" }));
     await expect(
-      canvas.findByRole("heading", { name: "Your feed", level: 1 }),
+      canvas.findByRole("heading", { name: "New releases", level: 2 }),
     ).resolves.toBeVisible();
   },
 };
@@ -498,7 +499,7 @@ export const OpenVideoDialog: Story = {
   ...screen("/app", "Your feed", "phone"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("heading", { name: "Your feed", level: 1 });
+    await canvas.findByRole("heading", { name: "New releases", level: 2 });
     const open = canvas.getByRole("button", { name: "Open YouTube" });
     await expect(open.closest(".app-header")).not.toBeNull();
     await expect(canvas.getAllByRole("button", { name: "Open YouTube" })).toHaveLength(1);
@@ -523,7 +524,7 @@ export const CreatePlaylistDialog: Story = {
   ...screen("/app/playlists", "Playlists", "phone"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("heading", { name: "Playlists", level: 1 });
+    await canvas.findByRole("button", { name: "Create playlist" });
     await userEvent.click(canvas.getByRole("button", { name: "Create playlist" }));
     await expect(
       within(canvasElement.ownerDocument.body).findByRole("dialog", { name: "Create a playlist" }),
@@ -535,7 +536,7 @@ export const ImportPlaylistDialog: Story = {
   ...screen("/app/playlists", "Playlists", "desktop"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("heading", { name: "Playlists", level: 1 });
+    await canvas.findByRole("button", { name: "Create playlist" });
     await userEvent.click(canvas.getByRole("button", { name: "Playlist actions" }));
     await userEvent.click(
       within(canvasElement.ownerDocument.body).getByRole("menuitem", {
@@ -665,8 +666,6 @@ export const RemovePasskey: Story = {
     );
     await expect(canvas.getByText("Personal phone", { exact: true })).toBeVisible();
     await expect(canvas.getByRole("button", { name: "Remove" })).toBeDisabled();
-    await waitFor(() =>
-      expect(canvas.getByRole("heading", { name: "Settings", level: 1 })).toHaveFocus(),
-    );
+    await waitFor(() => expect(canvas.getByRole("main")).toHaveFocus());
   },
 };

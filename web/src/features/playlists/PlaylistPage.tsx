@@ -181,7 +181,7 @@ export function PlaylistPage({ playlistId }: { playlistId: string }) {
       >
         <div className="playlist-summary">
           <Badge>{data.items.length} items</Badge>
-          <Progress value={data.playlist.progressPercent} label="Watched" />
+          <Progress value={data.playlist.progressPercent} label="Watch time" />
         </div>
         {data.items.length ? (
           <ol className="media-grid playlist-items" aria-label="Playlist items">

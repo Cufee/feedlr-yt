@@ -387,14 +387,26 @@ func computePlaylistProgress(ctx context.Context, db interface {
 		return 0
 	}
 
-	watched := 0
+	return playlistWatchTimeProgress(items, views)
+}
+
+func playlistWatchTimeProgress(items []*models.PlaylistItem, views map[string]*models.View) int {
+	var watchedSeconds, totalSeconds int64
 	for _, item := range items {
-		if v, ok := views[item.VideoID]; ok && item.R != nil && item.R.Video != nil && types.IsCompleted(int(v.Progress), int(item.R.Video.Duration)) {
-			watched++
+		if item.R == nil || item.R.Video == nil || item.R.Video.Duration <= 0 {
+			continue // Unknown durations cannot contribute a meaningful time weight.
+		}
+		duration := item.R.Video.Duration
+		totalSeconds += duration
+		if view := views[item.VideoID]; view != nil {
+			watchedSeconds += min(max(view.Progress, 0), duration)
 		}
 	}
 
-	return (watched * 100) / len(items)
+	if totalSeconds == 0 {
+		return 0
+	}
+	return int(watchedSeconds * 100 / totalSeconds)
 }
 
 type PlaylistPageProps struct {
@@ -437,10 +449,7 @@ func GetPlaylistPageProps(ctx context.Context, db interface {
 
 	count, _ := db.GetPlaylistItemCount(ctx, playlistID)
 	thumbVideoID, _ := db.GetPlaylistFirstVideoID(ctx, playlistID)
-	progress := 0
-	if count > 0 {
-		progress = computePlaylistProgress(ctx, db, playlistID, userID)
-	}
+	progress := playlistWatchTimeProgress(items, views)
 
 	props := &PlaylistPageProps{
 		Playlist: types.PlaylistModelToProps(playlist, int(count), progress, thumbVideoID),

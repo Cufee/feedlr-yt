@@ -4,7 +4,8 @@ async function toastFixture(page: Page, viewport: string) {
   await page.clock.install({ time: new Date("2026-10-22T11:00:00Z") });
   await page.goto(`/iframe.html?id=app-screens--imported-playlist-${viewport}&viewMode=story`);
   const root = page.locator("#storybook-root");
-  await expect(root.getByRole("heading", { name: "The long way home", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("The long way home · Feedlr");
+  await expect(root.getByRole("list", { name: "Playlist items" })).toBeVisible();
   await page.clock.pauseAt(new Date("2026-10-22T12:00:00Z"));
   await root.getByRole("button", { name: "Playlist actions" }).click();
   await page.getByRole("menuitem", { name: "Refresh import" }).click();
@@ -192,7 +193,8 @@ test("settings statuses and passkey removal stay aligned", async ({ page }, info
 test("navigation stays anchored and phone navigation remains icon-only", async ({ page }, info) => {
   await page.goto("/iframe.html?id=app-screens--history-scroll-preservation&viewMode=story");
   const root = page.locator("#storybook-root");
-  await expect(root.getByRole("heading", { name: "Recently played", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("Recently played · Feedlr");
+  await expect(root.locator("article").first()).toBeVisible();
   const header = root.getByRole("banner");
   const start = await header.boundingBox();
   await page.evaluate(() => window.scrollTo(0, 500));
@@ -262,7 +264,8 @@ test("channel media filters use compact All Videos Streams pills", async ({ page
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1);
   }
   await page.goto(`/iframe.html?id=app-screens--podcast-channel-${viewport}&viewMode=story`);
-  await expect(root.getByRole("heading", { name: "The Quiet Hours", exact: true })).toBeVisible();
+  await expect(page).toHaveTitle("The Quiet Hours · Feedlr");
+  await expect(root.getByRole("button", { name: "Following", exact: true })).toBeVisible();
   await expect(root.getByRole("group", { name: "Channel media filter" })).toHaveCount(0);
   await page.goto("/iframe.html?id=app-screens--channel-filter-failure&viewMode=story");
   const failedFilters = root.getByRole("group", { name: "Channel media filter" });

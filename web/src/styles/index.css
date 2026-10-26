@@ -164,8 +164,10 @@
     color: #211832;
   }
 
-  .ui-button-primary:hover:not(:disabled, [aria-disabled="true"]) {
-    background: var(--color-accent-strong);
+  @media (hover: hover) and (pointer: fine) {
+    .ui-button-primary:hover:not(:disabled, [aria-disabled="true"]) {
+      background: var(--color-accent-strong);
+    }
   }
 
   .ui-button-secondary {
@@ -174,10 +176,12 @@
     color: var(--color-text);
   }
 
-  .ui-button-secondary:hover:not(:disabled, [aria-disabled="true"]),
-  .ui-button-ghost:where(:hover:not(:disabled, [aria-disabled="true"])) {
-    background: #ffffff0d;
-    border-color: #ffffff25;
+  @media (hover: hover) and (pointer: fine) {
+    .ui-button-secondary:hover:not(:disabled, [aria-disabled="true"]),
+    .ui-button-ghost:where(:hover:not(:disabled, [aria-disabled="true"])) {
+      background: #ffffff0d;
+      border-color: #ffffff25;
+    }
   }
 
   .ui-button-ghost {
@@ -191,8 +195,10 @@
     border-color: #8b4754;
   }
 
-  .ui-button-danger:hover:not(:disabled, [aria-disabled="true"]) {
-    background: #703442;
+  @media (hover: hover) and (pointer: fine) {
+    .ui-button-danger:hover:not(:disabled, [aria-disabled="true"]) {
+      background: #703442;
+    }
   }
 
   .ui-button-sm {
@@ -222,9 +228,11 @@
     transition: color var(--motion-control);
   }
 
-  .ui-link:hover {
-    color: var(--color-accent-strong);
-    text-decoration: underline;
+  @media (hover: hover) and (pointer: fine) {
+    .ui-link:hover {
+      color: var(--color-accent-strong);
+      text-decoration: underline;
+    }
   }
 
   .ui-field {
@@ -272,8 +280,10 @@
     color: #8e8b9b;
   }
 
-  .ui-input:where(:hover:not(:disabled)) {
-    border-color: #615b6c;
+  @media (hover: hover) and (pointer: fine) {
+    .ui-input:where(:hover:not(:disabled)) {
+      border-color: #615b6c;
+    }
   }
 
   .ui-input:focus {
@@ -594,8 +604,10 @@
     color: #e0d3ff;
   }
 
-  .ui-tab:where(:hover:not(:disabled)) {
-    color: var(--color-text);
+  @media (hover: hover) and (pointer: fine) {
+    .ui-tab:where(:hover:not(:disabled)) {
+      color: var(--color-text);
+    }
   }
 
   .ui-tab:disabled {

@@ -101,11 +101,11 @@ try {
 
       try {
         await page.goto(`${origin}/app`);
-        const heading = page.getByRole("heading", {
-          name: authenticated ? "Your feed" : "Sign in to see your feed",
+        const contentHeading = page.getByRole("heading", {
+          name: authenticated ? "New releases" : "Sign in to see your feed",
           exact: true,
         });
-        await expect(heading).toBeVisible();
+        await expect(contentHeading).toBeVisible();
         if (authenticated) {
           await expect(page.locator(".media-card").first()).toBeVisible();
         }
@@ -116,7 +116,6 @@ try {
             ".app-main",
             ".app-header .ui-button",
             ".app-sidebar",
-            ".page-heading h1",
             ".media-card-body",
           ];
           return {
@@ -163,26 +162,24 @@ try {
         assert.equal(elements[".app-header .ui-button"].fontSize, "14px", name);
         assert.equal(
           elements[".app-header .ui-button"].padding,
-          phone ? "8px 10px" : "8px 16px",
+          phone ? "8px 10px" : authenticated ? "8px" : "8px 16px",
           name,
         );
         assert.ok(measurements.scrollWidth <= width, `${name}: horizontal overflow`);
         const header = elements[".app-header"].rect;
-        const content = await heading.boundingBox();
+        const content = await contentHeading.boundingBox();
         assert.ok(content.y >= header.bottom + 16, `${name}: content overlaps the fixed header`);
         assert.ok(loadedAssets.some((asset) => /^\/ui-assets\/assets\/index-.+\.js$/.test(asset)));
         assert.ok(loadedAssets.some((asset) => /^\/ui-assets\/assets\/index-.+\.css$/.test(asset)));
         if (authenticated) {
           assert.equal(elements[".app-sidebar"].padding, phone ? "6px 8px" : "16px 10px", name);
-          assert.equal(elements[".page-heading h1"].fontSize, phone ? "28px" : "36px", name);
+          await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
           assert.equal(elements[".media-card-body"].paddingTop, phone ? "14px" : "13px", name);
           await page.getByRole("link", { name: "Watch Later", exact: true }).click();
-          await expect(
-            page.getByRole("heading", { name: "Watch Later", exact: true }),
-          ).toBeVisible();
+          await expect(page).toHaveTitle("Watch Later · Feedlr");
           await expect(page.locator(".media-card")).toHaveCount(saved.length);
           await page.goBack();
-          await expect(heading).toBeVisible();
+          await expect(contentHeading).toBeVisible();
         }
         assert.deepEqual(unexpectedRequests, [], `${name}: unexpected network requests`);
         assert.deepEqual(errors, [], `${name}: browser errors`);

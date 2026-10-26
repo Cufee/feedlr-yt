@@ -40,6 +40,16 @@ test("media progress preserves the subdued legacy treatment and duration spacing
   await page.goto(`/iframe.html?id=media-progress--${viewport}&viewMode=story`);
   const root = page.locator("#storybook-root");
   await expect(root.locator(".media-card")).toHaveCount(5);
+  const watchLater = root.locator(".media-watch-later").first();
+  await expect(watchLater).toHaveCSS("backdrop-filter", "blur(12px)");
+  const artwork = root.locator(".media-artwork-link").first();
+  await artwork.hover();
+  await expect(artwork.locator(".media-play-hint")).toHaveCSS(
+    "opacity",
+    info.project.name === "phone" ? "0" : "1",
+  );
+  const actions = await root.locator(".media-actions").first().boundingBox();
+  expect(actions?.width).toBe(info.project.name === "phone" ? 32 : 28);
   for (const width of info.project.name === "phone" ? [390, 320] : [1440]) {
     await page.setViewportSize({ width, height: info.project.name === "phone" ? 844 : 1000 });
     for (const card of await root.locator(".media-card:has(.media-progress)").all()) {
@@ -86,7 +96,7 @@ test("media progress preserves the subdued legacy treatment and duration spacing
       expect(treatment.borderWidth).toBe("1px");
       expect(treatment.outline).toBe("none");
       expect(treatment.shadow).toBe("rgba(255, 255, 255, 0.1) 0px 1px 1px 0px inset");
-      expect(treatment.blur).toBe("none");
+      expect(treatment.blur).toBe("blur(12px)");
       expect(treatment.fill).toBe(
         "linear-gradient(to right, oklch(0.74 0.11 312 / 0.62), oklch(0.68 0.13 312 / 0.68))",
       );
@@ -142,6 +152,26 @@ test("media progress preserves the subdued legacy treatment and duration spacing
   }
 });
 
+test("subscription artwork opens its channel and Following remains independent", async ({
+  page,
+}, info) => {
+  const viewport = info.project.name === "phone" ? "mobile" : "desktop";
+  await page.goto(`/iframe.html?id=app-screens--subscriptions-${viewport}&viewMode=story`);
+  const root = page.locator("#storybook-root");
+  const channel = root.locator(".channel-tile").filter({ hasText: "Field Notes" });
+  const bounds = await channel.locator(".channel-avatar").boundingBox();
+  if (!bounds) {
+    throw new Error("The subscription artwork is missing");
+  }
+  await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await expect(page).toHaveTitle("Field Notes · Feedlr");
+  await expect(root.locator("[data-preview-location]")).toHaveAttribute(
+    "data-preview-location",
+    "/channel/field-notes",
+  );
+  await expect(root.getByRole("button", { name: "Following", exact: true })).toBeVisible();
+});
+
 test("Open YouTube advertises and opens the desktop platform keyboard shortcut", async ({
   page,
 }, info) => {
@@ -167,6 +197,9 @@ test("Open YouTube advertises and opens the desktop platform keyboard shortcut",
     await page.goto("/iframe.html?id=app-screens--feed-desktop&viewMode=story");
     const button = page.getByRole("button", { name: "Open YouTube", exact: true });
     await expect(button).toHaveAttribute("aria-keyshortcuts", platform.aria);
+    await expect(button.locator(".header-shortcut")).toBeHidden();
+    await button.hover();
+    await expect(button.locator(".header-shortcut")).toBeVisible();
     await expect(button.locator(".header-shortcut")).toHaveText(platform.hint);
     await expect(button.locator(".header-shortcut")).toHaveAttribute("aria-hidden", "true");
     await page.keyboard.press(platform.keys);
@@ -174,6 +207,42 @@ test("Open YouTube advertises and opens the desktop platform keyboard shortcut",
     await expect(dialog.locator(".ui-dialog-panel")).toBeVisible();
     await expect(dialog.getByRole("textbox", { name: "YouTube link" })).toBeFocused();
   }
+});
+
+test("long podcast discovery names stay within two lines and retain the card action", async ({
+  page,
+}, info) => {
+  if (info.project.name === "phone") {
+    await page.setViewportSize({ width: 320, height: 844 });
+  }
+  const viewport = info.project.name === "phone" ? "mobile" : "desktop";
+  await page.goto(`/iframe.html?id=app-screens--subscriptions-${viewport}&viewMode=story`);
+  await page.getByRole("button", { name: "Add subscription", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Add subscription" });
+  await dialog.getByRole("tab", { name: "Podcasts", exact: true }).click();
+  await dialog.getByRole("searchbox", { name: "Podcast title or creator" }).fill("Off the Clock");
+  await dialog.getByRole("button", { name: "Search", exact: true }).click();
+  const title = dialog.locator(".channel-title-action");
+  await expect(title).toBeVisible();
+  const dimensions = await title.evaluate((element) => {
+    element.textContent =
+      "A podcast with a very long name that needs several lines of text ".repeat(8);
+    return {
+      height: element.getBoundingClientRect().height,
+      lineHeight: Number.parseFloat(getComputedStyle(element).lineHeight),
+      fullHeight: element.scrollHeight,
+    };
+  });
+  expect(dimensions.height).toBeLessThanOrEqual(dimensions.lineHeight * 2 + 1);
+  expect(dimensions.fullHeight).toBeGreaterThan(dimensions.height);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const artwork = await dialog.locator(".channel-avatar").boundingBox();
+  if (!artwork) {
+    throw new Error("The podcast artwork is missing");
+  }
+  await page.mouse.click(artwork.x + artwork.width / 2, artwork.y + artwork.height / 2);
+  await expect(page).toHaveTitle("Off the Clock · Feedlr");
+  await expect(page.getByRole("button", { name: "Follow", exact: true })).toBeVisible();
 });
 
 test("playlist completion has a contrasting persistent track", async ({ page }, info) => {

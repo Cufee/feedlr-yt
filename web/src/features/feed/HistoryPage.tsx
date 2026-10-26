@@ -1,11 +1,11 @@
-import { Page, PageLoading, Pagination, RequestError, SourceNavigation } from "@/app/Page";
+import { Page, PageLoading, RequestError, SourceNavigation } from "@/app/Page";
 import { MediaGrid } from "@/components/media/MediaCard";
 import { EmptyState } from "@/components/ui";
 import { useHistory } from "@/lib/api/queries";
 import type { MediaSource } from "@/lib/api/types";
 
-export function HistoryPage({ source, page }: { source: MediaSource; page: number }) {
-  const { data, isPending, isPlaceholderData, error, refetch } = useHistory(source, page);
+export function HistoryPage({ source }: { source: MediaSource }) {
+  const { data, isPending, isPlaceholderData, error, refetch } = useHistory(source);
   return (
     <Page
       title="Recently played"
@@ -20,7 +20,7 @@ export function HistoryPage({ source, page }: { source: MediaSource; page: numbe
       ) : data.items.length ? (
         <MediaGrid
           items={data.items}
-          returnTo={`/app/recent?source=${source}&page=${page}`}
+          returnTo={`/app/recent?source=${source}`}
           busy={isPlaceholderData}
         />
       ) : (
@@ -29,7 +29,6 @@ export function HistoryPage({ source, page }: { source: MediaSource; page: numbe
           description="Videos and episodes you play will appear here."
         />
       )}
-      <Pagination page={page} hasMore={!!data?.page.hasMore} to="/app/recent" source={source} />
     </Page>
   );
 }

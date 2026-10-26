@@ -28,7 +28,7 @@ export const keys = {
   all: ["feedlr"] as const,
   session: ["feedlr", "session"] as const,
   feed: ["feedlr", "feed"] as const,
-  history: (source: MediaSource, page: number) => ["feedlr", "history", source, page] as const,
+  history: (source: MediaSource) => ["feedlr", "history", source] as const,
   watchLater: (page: number) => ["feedlr", "watch-later", page] as const,
   media: (id: string) => ["feedlr", "media", id] as const,
   subscriptions: (source: MediaSource) => ["feedlr", "subscriptions", source] as const,
@@ -55,12 +55,12 @@ export const sessionOptions = () =>
 export const useSession = () => useQuery(sessionOptions());
 export const useFeed = () =>
   useQuery({ queryKey: keys.feed, queryFn: ({ signal }) => api.get<Feed>("/feed", signal) });
-export const useHistory = (source: MediaSource, page: number) =>
+export const useHistory = (source: MediaSource) =>
   useQuery({
-    queryKey: keys.history(source, page),
+    queryKey: keys.history(source),
     placeholderData: keepPreviousData,
     queryFn: ({ signal }) =>
-      api.get<PageResult>(`/history?source=${source}&limit=24&offset=${(page - 1) * 24}`, signal),
+      api.get<PageResult>(`/history?source=${source}&limit=24&offset=0`, signal),
   });
 export const useWatchLaterPage = (page: number) =>
   useQuery({

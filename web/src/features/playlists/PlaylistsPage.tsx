@@ -71,7 +71,7 @@ export function PlaylistsPage() {
                   <h2>{playlist.name}</h2>
                   {playlist.description && <p>{playlist.description}</p>}
                   {playlist.youtubePlaylistId && <Badge tone="accent">YouTube import</Badge>}
-                  <Progress value={playlist.progressPercent} label="Watched" />
+                  <Progress value={playlist.progressPercent} label="Watch time" />
                 </div>
               </Link>
             ))}

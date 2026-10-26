@@ -18,7 +18,7 @@ import {
 } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
 import { OpenMediaDialog } from "@/components/media/OpenMediaDialog";
-import { Button, EmptyState } from "@/components/ui";
+import { EmptyState, IconButton } from "@/components/ui";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { safeReturn } from "@/features/auth/passkeys";
 import { FeedPage } from "@/features/feed/FeedPage";
@@ -87,17 +87,19 @@ function RootLayout() {
             <div className="app-header-actions">
               {authenticated ? (
                 <>
-                  <Button
+                  <IconButton
                     variant="ghost"
+                    className="open-video-button"
+                    label="Open YouTube"
+                    title=""
                     aria-keyshortcuts={shortcut.ariaKeyShortcuts}
                     onClick={() => setOpen(true)}
                   >
                     <ArrowTopRightOnSquareIcon />
-                    <span className="open-video-label">Open YouTube</span>
                     <span className="header-shortcut" aria-hidden="true">
                       {shortcut.label}
                     </span>
-                  </Button>
+                  </IconButton>
                   <Link
                     to="/app/settings/$section"
                     params={{ section: "account" }}
@@ -154,7 +156,7 @@ function RootLayout() {
           )}
         </>
       )}
-      <main id="main-content" className="app-main">
+      <main id="main-content" className="app-main" tabIndex={-1}>
         <Outlet />
       </main>
       {!player && (
@@ -249,14 +251,11 @@ const watchLater = createRoute({
 const history = createRoute({
   getParentRoute: () => root,
   path: "/app/recent",
-  validateSearch: (search: Record<string, unknown>) => ({
-    ...sourceSearch(search),
-    page: pageSearch(search.page),
-  }),
+  validateSearch: sourceSearch,
   component: function HistoryRoute() {
     return (
       <RequireSession>
-        <HistoryPage source={history.useSearch().source} page={history.useSearch().page} />
+        <HistoryPage source={history.useSearch().source} />
       </RequireSession>
     );
   },

@@ -19,7 +19,7 @@ export function preserveRemovalFocus(element: Element | null) {
       neighbors
         .filter((neighbor) => neighbor?.isConnected)
         .map((neighbor) => neighbor?.querySelector<HTMLElement>(selector))
-        .find(Boolean) ?? document.querySelector<HTMLElement>("#page-title");
+        .find(Boolean) ?? document.querySelector<HTMLElement>("#main-content");
     target?.focus({ preventScroll: true });
   });
   const timeout = window.setTimeout(stop, 30_000);

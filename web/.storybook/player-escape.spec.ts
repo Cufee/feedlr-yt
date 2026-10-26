@@ -21,7 +21,7 @@ for (const kind of ["video", "podcast"] as const) {
     const media = await ready(page, kind, `playback-screens--${kind}-${viewport}`);
     const retained = await media.elementHandle();
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("heading", { level: 1, name: "Your feed" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "New releases" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("data-escape-document", "original");
     await expect(page.locator("audio,video")).toHaveCount(0);
     await expect
@@ -37,7 +37,8 @@ test("Escape retains history return search and supports Back and Forward", async
   await ready(page, "podcast", "playback-screens--podcast-return-to-history");
   await page.keyboard.press("Escape");
   const route = page.getByRole("status", { name: "Preview route" });
-  await expect(page.getByRole("heading", { level: 1, name: "Recently played" })).toBeVisible();
+  await expect(page).toHaveTitle("Recently played · Feedlr");
+  await expect(page.locator(".media-grid")).toBeVisible();
   await expect(route).toContainText("source=podcasts");
   await expect(route).toContainText("page=2");
   await page.getByRole("button", { name: "Back in preview" }).click();
@@ -46,9 +47,9 @@ test("Escape retains history return search and supports Back and Forward", async
   ).toBeVisible();
   await expect(page).toHaveTitle("How we build better habits · Feedlr");
   await page.getByRole("button", { name: "Forward in preview" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Recently played" })).toBeVisible();
-  await expect(page.locator("audio")).toHaveCount(0);
   await expect(page).toHaveTitle("Recently played · Feedlr");
+  await expect(page.locator(".media-grid")).toBeVisible();
+  await expect(page.locator("audio")).toHaveCount(0);
 });
 
 test("Escape rejects an external return destination", async ({ page }) => {
@@ -56,7 +57,7 @@ test("Escape rejects an external return destination", async ({ page }) => {
   page.on("request", (request) => requests.push(request.url()));
   await ready(page, "video", "playback-screens--unsafe-return");
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { level: 1, name: "Your feed" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "New releases" })).toBeVisible();
   await expect(page.getByRole("status", { name: "Preview route" })).toHaveText("/app");
   expect(requests.some((url) => url.includes("untrusted.example"))).toBe(false);
 });
@@ -82,7 +83,7 @@ test("menus and playlist dialogs consume Escape before the podcast route", async
   await expect(dialog).toHaveCount(0);
   await expect(page.locator(".playback-podcast")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { level: 1, name: "Your feed" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "New releases" })).toBeVisible();
 });
 
 test("native Shaka menus consume Escape before closing video", async ({ page }, info) => {
@@ -129,7 +130,7 @@ test("a native menu closing before the route key handler still owns its Escape",
   await expect(overflow).toBeHidden();
   await expect(page.locator(".playback-video")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { level: 1, name: "Your feed" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "New releases" })).toBeVisible();
 });
 
 test("fullscreen keeps the player on the first Escape", async ({ page }, info) => {
@@ -148,7 +149,7 @@ test("fullscreen keeps the player on the first Escape", async ({ page }, info) =
   });
   await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(false);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { level: 1, name: "Your feed" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "New releases" })).toBeVisible();
 });
 
 test("prevented, composing, repeated and editing Escape events do not leave the player", async ({
@@ -177,5 +178,5 @@ test("prevented, composing, repeated and editing Escape events do not leave the 
   await expect(page.locator(".playback-podcast")).toBeVisible();
   await page.locator("#escape-editing-fixture").evaluate((element) => element.remove());
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { level: 1, name: "Your feed" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "New releases" })).toBeVisible();
 });

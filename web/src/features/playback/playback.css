@@ -59,8 +59,10 @@
   border-radius: var(--radius-control);
 }
 
-.playback-back:hover {
-  background: rgb(255 255 255 / 8%);
+@media (hover: hover) and (pointer: fine) {
+  .playback-back:hover {
+    background: rgb(255 255 255 / 8%);
+  }
 }
 
 .playback-back svg {

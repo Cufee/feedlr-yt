@@ -28,19 +28,22 @@ export function Page({
   return (
     <div className="page-stack">
       <Metadata title={title} description={description} image={image} />
-      <header className="page-heading">
-        <div className="page-heading-copy">
-          {avatar && <img className="page-avatar" src={avatar} alt="" />}
-          <div className="page-heading-text">
-            {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-            <h1 id="page-title" tabIndex={-1}>
-              {title}
-            </h1>
-            {description && showDescription && <p className="page-description">{description}</p>}
-          </div>
-        </div>
-        {action && <div className="page-actions">{action}</div>}
-      </header>
+      {(eyebrow || avatar || (description && showDescription) || action) && (
+        <header className="page-heading">
+          {(eyebrow || avatar || (description && showDescription)) && (
+            <div className="page-heading-copy">
+              {avatar && <img className="page-avatar" src={avatar} alt="" />}
+              <div className="page-heading-text">
+                {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+                {description && showDescription && (
+                  <p className="page-description">{description}</p>
+                )}
+              </div>
+            </div>
+          )}
+          {action && <div className="page-actions">{action}</div>}
+        </header>
+      )}
       {children}
     </div>
   );
@@ -128,12 +131,10 @@ export function Pagination({
   page,
   hasMore,
   to,
-  source,
 }: {
   page: number;
   hasMore: boolean;
-  to: "/app/watch-later" | "/app/recent";
-  source?: MediaSource;
+  to: "/app/watch-later";
 }) {
   if (page <= 1 && !hasMore) {
     return null;
@@ -141,7 +142,7 @@ export function Pagination({
   return (
     <nav className="pagination" aria-label="Pages">
       {page > 1 ? (
-        <Link className="ui-button" to={to} search={{ page: page - 1, ...(source && { source }) }}>
+        <Link className="ui-button" to={to} search={{ page: page - 1 }}>
           <ChevronLeftIcon />
           Previous
         </Link>
@@ -150,7 +151,7 @@ export function Pagination({
       )}
       <span className="muted">Page {page}</span>
       {hasMore ? (
-        <Link className="ui-button" to={to} search={{ page: page + 1, ...(source && { source }) }}>
+        <Link className="ui-button" to={to} search={{ page: page + 1 }}>
           Next
           <ChevronRightIcon />
         </Link>

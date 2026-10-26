@@ -276,11 +276,13 @@ test("playlist deletion stays behind confirmation and restores menu focus on can
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(actions).toBeFocused();
-  await expect(root.getByRole("heading", { name: "A slower Sunday", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("A slower Sunday · Feedlr");
+  await expect(root.getByRole("list", { name: "Playlist items" })).toBeVisible();
   await actions.click();
   await page.getByRole("menuitem", { name: "Delete playlist" }).click();
   await dialog.getByRole("button", { name: "Delete", exact: true }).click();
-  await expect(root.getByRole("heading", { name: "Playlists", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("Playlists · Feedlr");
+  await expect(root.getByRole("status", { name: "Loading page" })).toHaveCount(0);
   await expect(root.getByRole("link", { name: /A slower Sunday/ })).toHaveCount(0);
 });
 
@@ -412,7 +414,8 @@ test("imported playlist refresh stays available in the secondary menu", async ({
   await page.goto(`/iframe.html?id=app-screens--playlists-${viewport}&viewMode=story`);
   const root = page.locator("#storybook-root");
   await root.getByRole("link", { name: /The long way home/ }).click();
-  await expect(root.getByRole("heading", { name: "The long way home", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("The long way home · Feedlr");
+  await expect(root.getByRole("list", { name: "Playlist items" })).toBeVisible();
   await expect(root.getByRole("button", { name: "Refresh import", exact: true })).toHaveCount(0);
   await root.getByRole("button", { name: "Playlist actions" }).click();
   const request = page.waitForRequest(
@@ -523,7 +526,8 @@ test("system playlists expose no forbidden editing commands", async ({ page }, t
   const viewport = testInfo.project.name === "phone" ? "mobile" : "desktop";
   await page.goto(`/iframe.html?id=app-screens--system-playlist-${viewport}&viewMode=story`);
   const root = page.locator("#storybook-root");
-  await expect(root.getByRole("heading", { name: "Watch Later", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("Watch Later · Feedlr");
+  await expect(root.getByRole("list", { name: "Playlist items" })).toBeVisible();
   await expect(root.getByRole("button", { name: "Add a video", exact: true })).toHaveCount(0);
   await expect(root.getByRole("button", { name: "Playlist actions" })).toHaveCount(0);
   await root.getByRole("button", { name: `Actions for ${firstTitle}` }).click();

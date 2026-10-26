@@ -91,7 +91,7 @@ test("a failed player stylesheet can be retried before the real native player mo
     expect(new URL(asset).pathname).not.toMatch(/^\/assets\/(?:js|css|vendor)\//);
   }
   await page.getByRole("link", { name: "Close player" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Your feed" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "New releases" })).toBeVisible();
   await expect(page.locator("video")).toHaveCount(0);
 });
 
@@ -116,7 +116,7 @@ test("native controls wait for their stylesheet and preserve cleanup while it lo
   await expect.poll(() => requested).toBe(true);
   await expect(page.locator("video")).toHaveCount(0);
   await page.getByRole("link", { name: "Close player" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Your feed" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "New releases" })).toBeVisible();
   release();
   await expect(page.locator("link[data-feedlr-shaka]")).toHaveAttribute(
     "data-feedlr-loaded",
@@ -141,6 +141,6 @@ test("the podcast route loads its pinned runtime and genuine media adapter", asy
     "/assets/js/feedlr-podcast-player.js",
   );
   await page.getByRole("link", { name: "Close player" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Your feed" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "New releases" })).toBeVisible();
   await expect(audio).toHaveCount(0);
 });

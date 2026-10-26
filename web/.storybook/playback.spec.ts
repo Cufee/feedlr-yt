@@ -175,7 +175,7 @@ test("playback actions remain in a keyboard menu and close returns through the S
     document.documentElement.dataset.playbackNavigation = "same-document";
   });
   await page.getByRole("link", { name: "Close player" }).click();
-  await expect(page.getByRole("heading", { name: "Your feed", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "New releases", level: 2 })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-playback-navigation", "same-document");
   await expect(page.locator("audio")).toHaveCount(0);
 });

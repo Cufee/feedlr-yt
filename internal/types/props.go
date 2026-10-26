@@ -218,7 +218,7 @@ type PlaylistProps struct {
 	Description       string
 	Slug              string
 	VideoCount        int
-	Progress          int // 0-100 percentage of videos watched
+	Progress          int // 0-100 percentage of known playlist duration watched
 	ThumbnailVideoID  string
 	YouTubePlaylistID string
 	UpdatedAt         time.Time

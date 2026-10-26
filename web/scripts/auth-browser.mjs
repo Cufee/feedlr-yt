@@ -149,9 +149,7 @@ try {
     page.getByRole("button", { name: "Create a passkey", exact: true }).click(),
   );
   await expect(page).toHaveURL(`${origin}/app`);
-  await expect(
-    page.getByRole("heading", { name: "Your feed", exact: true, level: 1 }),
-  ).toBeVisible();
+  await expect(page).toHaveTitle("Your feed · Feedlr");
   await expect(
     page.getByRole("heading", { name: "No subscriptions", exact: true, level: 2 }),
   ).toBeVisible();
@@ -166,10 +164,10 @@ try {
 
   // Exercise SPA navigation, browser history and server-served direct links.
   await page.getByRole("link", { name: "Watch Later", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Watch Later", exact: true })).toBeVisible();
+  await expect(page).toHaveTitle("Watch Later · Feedlr");
   await metadata("Watch Later", "Your saved videos and podcast episodes.", "/app/watch-later");
   await page.getByRole("link", { name: "Recently played", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Recently played", exact: true })).toBeVisible();
+  await expect(page).toHaveTitle("Recently played · Feedlr");
   await expect(
     page.getByRole("heading", { name: "No history", exact: true, level: 2 }),
   ).toBeVisible();
@@ -179,7 +177,7 @@ try {
     "/app/recent",
   );
   await page.goBack();
-  await expect(page.getByRole("heading", { name: "Watch Later", exact: true })).toBeVisible();
+  await expect(page).toHaveTitle("Watch Later · Feedlr");
   await metadata("Watch Later", "Your saved videos and podcast episodes.", "/app/watch-later");
   await page.reload();
   await expect(
@@ -216,7 +214,7 @@ try {
   await dialog.getByRole("button", { name: "Delete", exact: true }).click();
   assert.equal((await deletion).status(), 204);
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeFocused();
+  await expect(page.getByRole("main")).toBeFocused();
   await expect(remove).toHaveCount(1);
   await expect(remove).toBeDisabled();
   await cdp.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId });
@@ -355,9 +353,7 @@ try {
     page.getByRole("button", { name: "Sign in with a passkey", exact: true }).click(),
   );
   await expect(page).toHaveURL(`${origin}/app`);
-  await expect(
-    page.getByRole("heading", { name: "Your feed", exact: true, level: 1 }),
-  ).toBeVisible();
+  await expect(page).toHaveTitle("Your feed · Feedlr");
   await expect(
     page.getByRole("heading", { name: "No subscriptions", exact: true, level: 2 }),
   ).toBeVisible();

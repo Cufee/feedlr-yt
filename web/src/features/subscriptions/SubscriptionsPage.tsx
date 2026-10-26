@@ -42,7 +42,7 @@ export function ChannelTile({
         <h2>
           {discovery && channel.isPodcast && !channel.subscribed ? (
             <button
-              className="channel-title-action"
+              className="channel-title-action channel-tile-target"
               type="button"
               aria-busy={open.isPending}
               disabled={open.isPending}
@@ -51,7 +51,11 @@ export function ChannelTile({
               {channel.title}
             </button>
           ) : (
-            <Link to="/channel/$channelId" params={{ channelId: channel.id }}>
+            <Link
+              className="channel-tile-target"
+              to="/channel/$channelId"
+              params={{ channelId: channel.id }}
+            >
               {channel.title}
             </Link>
           )}
@@ -72,9 +76,10 @@ export function ChannelTile({
         aria-label={
           channel.subscribed ? `Following ${channel.title}. Unfollow` : `Follow ${channel.title}`
         }
+        aria-pressed={channel.subscribed}
       >
         {channel.subscribed ? <CheckIcon /> : <PlusIcon />}
-        {channel.subscribed ? "Following" : "Follow"}
+        <span className="channel-follow-label">{channel.subscribed ? "Following" : "Follow"}</span>
       </Button>
     </article>
   );

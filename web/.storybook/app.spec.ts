@@ -1,27 +1,42 @@
 import { expect, test } from "@playwright/test";
 
-const screens = [
-  { story: "feed", heading: "Your feed" },
-  { story: "history", heading: "Recently played" },
-  { story: "watch-later", heading: "Watch Later" },
-  { story: "subscriptions", heading: "Subscriptions" },
-  { story: "channel", heading: "Field Notes" },
-  { story: "podcast-channel", heading: "The Quiet Hours" },
-  { story: "playlists", heading: "Playlists" },
-  { story: "playlist", heading: "A slower Sunday" },
-  { story: "settings", heading: "Settings" },
-  { story: "account", heading: "Settings" },
-  { story: "you-tube-settings", heading: "Settings" },
-  { story: "podcast-settings", heading: "Settings" },
-  { story: "login", heading: "Welcome to Feedlr" },
-  { story: "landing", heading: "YouTube and podcasts" },
-  { story: "legal", heading: "Privacy Policy" },
-  { story: "empty-feed", heading: "Your feed" },
-  { story: "empty-watch-later", heading: "Watch Later" },
-  { story: "empty-playlists", heading: "Playlists" },
-  { story: "empty-subscriptions", heading: "Subscriptions" },
-  { story: "error", heading: "Couldn’t load this page" },
-  { story: "session-required", heading: "Sign in to see your feed" },
+const screens: { story: string; path: string; title?: string; heading?: string }[] = [
+  { story: "feed", path: "/app", title: "Your feed", heading: "New releases" },
+  { story: "history", path: "/app/recent", title: "Recently played" },
+  { story: "watch-later", path: "/app/watch-later", title: "Watch Later" },
+  { story: "subscriptions", path: "/app/subscriptions", title: "Subscriptions" },
+  { story: "channel", path: "/channel/field-notes", title: "Field Notes" },
+  { story: "podcast-channel", path: "/channel/quiet-hours", title: "The Quiet Hours" },
+  { story: "playlists", path: "/app/playlists", title: "Playlists" },
+  { story: "playlist", path: "/app/playlist/a-slower-sunday", title: "A slower Sunday" },
+  { story: "settings", path: "/app/settings", title: "Settings" },
+  { story: "account", path: "/app/settings/account", title: "Settings" },
+  { story: "you-tube-settings", path: "/app/settings/youtube", title: "Settings" },
+  { story: "podcast-settings", path: "/app/settings/podcasts", title: "Settings" },
+  { story: "login", path: "/login", title: "Welcome", heading: "Welcome to Feedlr" },
+  { story: "landing", path: "/", title: "YouTube and podcasts", heading: "YouTube and podcasts" },
+  {
+    story: "legal",
+    path: "/legal/privacy-policy",
+    title: "Privacy Policy",
+    heading: "Your time, your choices",
+  },
+  { story: "empty-feed", path: "/app", title: "Your feed", heading: "No subscriptions" },
+  {
+    story: "empty-watch-later",
+    path: "/app/watch-later",
+    title: "Watch Later",
+    heading: "No saved items",
+  },
+  { story: "empty-playlists", path: "/app/playlists", title: "Playlists", heading: "No playlists" },
+  {
+    story: "empty-subscriptions",
+    path: "/app/subscriptions",
+    title: "Subscriptions",
+    heading: "No subscriptions",
+  },
+  { story: "error", path: "/app", heading: "Couldn’t load this page" },
+  { story: "session-required", path: "/app/watch-later", heading: "Sign in to see your feed" },
 ];
 
 for (const screen of screens) {
@@ -32,9 +47,38 @@ for (const screen of screens) {
     const story = `app-screens--${screen.story}-${viewport}`;
     await page.goto(`/iframe.html?id=${story}&viewMode=story`);
     const root = page.locator("#storybook-root");
-    await expect(root.getByRole("heading", { name: screen.heading, exact: true })).toBeVisible();
+    await expect(root.locator("[data-preview-location]")).toHaveAttribute(
+      "data-preview-location",
+      new RegExp(`^${screen.path}(?:\\?|$)`),
+    );
+    if (screen.title) {
+      await expect(page).toHaveTitle(`${screen.title} · Feedlr`);
+    }
+    if (screen.heading) {
+      await expect(root.getByRole("heading", { name: screen.heading, exact: true })).toBeVisible();
+    }
     await expect(root.getByRole("status", { name: "Loading page" })).toHaveCount(0);
     await expect(root.locator(".ui-skeleton")).toHaveCount(0);
+    if (screen.title && screen.story !== "login" && screen.story !== "landing") {
+      await expect(root.getByRole("heading", { level: 1 })).toHaveCount(0);
+    }
+    if (screen.story === "legal") {
+      const width = await root.locator(".legal-prose").evaluate((article) => {
+        const main = article.closest("main");
+        if (!main) {
+          throw new Error("The legal article is missing its main content container");
+        }
+        const style = getComputedStyle(main);
+        return {
+          article: article.getBoundingClientRect().width,
+          available:
+            main.clientWidth -
+            Number.parseFloat(style.paddingLeft) -
+            Number.parseFloat(style.paddingRight),
+        };
+      });
+      expect(Math.abs(width.article - width.available)).toBeLessThan(1);
+    }
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
@@ -74,7 +118,7 @@ test("app exposes one YouTube action in the banner", async ({ page }, testInfo) 
   const viewport = testInfo.project.name === "phone" ? "mobile" : "desktop";
   await page.goto(`/iframe.html?id=app-screens--feed-${viewport}&viewMode=story`);
   const root = page.locator("#storybook-root");
-  await expect(root.getByRole("heading", { name: "Your feed", level: 1 })).toBeVisible();
+  await expect(root.getByRole("heading", { name: "New releases", level: 2 })).toBeVisible();
   const open = root.getByRole("banner").getByRole("button", { name: "Open YouTube" });
   await expect(root.getByRole("button", { name: /Open (YouTube|a video)/ })).toHaveCount(1);
   await expect(
@@ -94,7 +138,7 @@ test("app adds subscriptions from the selected source and keeps the list first",
   const viewport = testInfo.project.name === "phone" ? "mobile" : "desktop";
   await page.goto(`/iframe.html?id=app-screens--subscriptions-${viewport}&viewMode=story`);
   const root = page.locator("#storybook-root");
-  await expect(root.getByRole("heading", { name: "Subscriptions", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("Subscriptions · Feedlr");
   await expect(root.locator(".channel-tile")).toHaveCount(3);
   await expect(root.getByRole("searchbox", { name: "Channel name or handle" })).toHaveCount(0);
   await root.getByRole("link", { name: "Podcasts", exact: true }).click();
@@ -135,7 +179,8 @@ test("app adds subscriptions from the selected source and keeps the list first",
 test("app navigation retains source, page, and memory history", async ({ page }) => {
   await page.goto("/iframe.html?id=app-screens--history-desktop&viewMode=story");
   const root = page.locator("#storybook-root");
-  await expect(root.getByRole("heading", { name: "Recently played", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("Recently played · Feedlr");
+  await expect(root.locator(".media-grid")).toBeVisible();
   await root.getByRole("link", { name: "Podcasts", exact: true }).click();
   await expect(root.locator("[data-preview-location]")).toHaveAttribute(
     "data-preview-location",
@@ -148,12 +193,13 @@ test("app navigation retains source, page, and memory history", async ({ page })
   await expect(root.locator("article")).toHaveCount(2);
   await expect(
     root.getByRole("link", { name: "Listen to Making room for a more thoughtful day" }),
-  ).toHaveAttribute("href", /return=.*source%3Dpodcasts.*page%3D1/);
+  ).toHaveAttribute("href", /return=%2Fapp%2Frecent%3Fsource%3Dpodcasts$/);
   await root
     .getByRole("navigation", { name: "Primary" })
     .getByRole("link", { name: /Saved|Watch Later/ })
     .click();
-  await expect(root.getByRole("heading", { name: "Watch Later", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("Watch Later · Feedlr");
+  await expect(root.getByRole("status", { name: "Loading page" })).toHaveCount(0);
   await expect(root.locator("[data-preview-location]")).toHaveAttribute(
     "data-preview-location",
     "/app/watch-later?page=1",
@@ -176,7 +222,8 @@ test("app committed removal restores focus to the next saved card", async ({ pag
 test("app editor submits a collection and navigates to it", async ({ page }) => {
   await page.goto("/iframe.html?id=app-screens--playlists-desktop&viewMode=story");
   const root = page.locator("#storybook-root");
-  await expect(root.getByRole("heading", { name: "Playlists", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("Playlists · Feedlr");
+  await expect(root.getByRole("status", { name: "Loading page" })).toHaveCount(0);
   await root.getByRole("button", { name: "Create playlist", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Create a playlist" });
   await dialog.getByRole("textbox", { name: "Name" }).fill("A little perspective");
@@ -184,7 +231,8 @@ test("app editor submits a collection and navigates to it", async ({ page }) => 
     .getByRole("textbox", { name: "Description (optional)" })
     .fill("Things for another day.");
   await dialog.getByRole("button", { name: "Create playlist", exact: true }).click();
-  await expect(root.getByRole("heading", { name: "A little perspective", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("A little perspective · Feedlr");
+  await expect(root.getByRole("heading", { name: "No items", exact: true })).toBeVisible();
   await expect(dialog).toHaveCount(0);
   await expect(root.locator("[data-preview-location]")).toHaveAttribute(
     "data-preview-location",
