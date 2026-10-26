@@ -13,6 +13,7 @@ export function Page({
   action,
   image,
   avatar,
+  showTitle = false,
   showDescription = true,
   children,
 }: {
@@ -22,22 +23,23 @@ export function Page({
   action?: ReactNode;
   image?: string;
   avatar?: string;
+  showTitle?: boolean;
   showDescription?: boolean;
   children: ReactNode;
 }) {
+  const visibleDescription = showDescription ? description?.trim() : undefined;
   return (
     <div className="page-stack">
       <Metadata title={title} description={description} image={image} />
-      {(eyebrow || avatar || (description && showDescription) || action) && (
+      {(showTitle || eyebrow || avatar || visibleDescription || action) && (
         <header className="page-heading">
-          {(eyebrow || avatar || (description && showDescription)) && (
+          {(showTitle || eyebrow || avatar || visibleDescription) && (
             <div className="page-heading-copy">
               {avatar && <img className="page-avatar" src={avatar} alt="" />}
               <div className="page-heading-text">
                 {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-                {description && showDescription && (
-                  <p className="page-description">{description}</p>
-                )}
+                {showTitle && <h1 className="page-title">{title}</h1>}
+                {visibleDescription && <p className="page-description">{visibleDescription}</p>}
               </div>
             </div>
           )}

@@ -5,8 +5,13 @@ const screens: { story: string; path: string; title?: string; heading?: string }
   { story: "history", path: "/app/recent", title: "Recently played" },
   { story: "watch-later", path: "/app/watch-later", title: "Watch Later" },
   { story: "subscriptions", path: "/app/subscriptions", title: "Subscriptions" },
-  { story: "channel", path: "/channel/field-notes", title: "Field Notes" },
-  { story: "podcast-channel", path: "/channel/quiet-hours", title: "The Quiet Hours" },
+  { story: "channel", path: "/channel/field-notes", title: "Field Notes", heading: "Field Notes" },
+  {
+    story: "podcast-channel",
+    path: "/channel/quiet-hours",
+    title: "The Quiet Hours",
+    heading: "The Quiet Hours",
+  },
   { story: "playlists", path: "/app/playlists", title: "Playlists" },
   { story: "playlist", path: "/app/playlist/a-slower-sunday", title: "A slower Sunday" },
   { story: "settings", path: "/app/settings", title: "Settings" },
@@ -59,7 +64,11 @@ for (const screen of screens) {
     }
     await expect(root.getByRole("status", { name: "Loading page" })).toHaveCount(0);
     await expect(root.locator(".ui-skeleton")).toHaveCount(0);
-    if (screen.title && screen.story !== "login" && screen.story !== "landing") {
+    if (screen.path.startsWith("/channel/")) {
+      await expect(
+        root.getByRole("heading", { level: 1, name: screen.title, exact: true }),
+      ).toBeVisible();
+    } else if (screen.title && screen.story !== "login" && screen.story !== "landing") {
       await expect(root.getByRole("heading", { level: 1 })).toHaveCount(0);
     }
     if (screen.story === "legal") {

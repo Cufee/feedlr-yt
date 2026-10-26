@@ -49,6 +49,7 @@ export function ChannelPage({ channelId }: { channelId: string }) {
   return (
     <Page
       title={data.channel.title}
+      showTitle
       description={data.channel.description}
       image={data.channel.artworkUrl}
       avatar={data.channel.artworkUrl}

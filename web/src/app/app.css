@@ -230,6 +230,13 @@
     overflow-wrap: anywhere;
   }
 
+  .page-title {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
   .page-avatar {
     width: 48px;
     height: 48px;
@@ -263,6 +270,10 @@
     line-height: 1.7;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+  }
+
+  :where(.page-title) + .page-description {
+    margin-top: 6px;
   }
 
   .page-actions {
