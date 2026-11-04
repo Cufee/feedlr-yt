@@ -874,7 +874,7 @@ export interface components {
             present: boolean;
             affectedIds: string[];
         };
-        /** @description Omitted properties preserve current state. completed and progressSeconds cannot be combined. completed=true requires a known duration. Completion uses one shared duration-dependent buffer; untouched items are never completed. */
+        /** @description Omitted properties preserve current state. completed and progressSeconds cannot be combined. completed=true marks the item as watched even when its duration is unknown; completed=false resets progress. Automatic completion requires a known duration and uses one shared duration-dependent buffer; untouched items are never completed. */
         MediaStatePatch: {
             progressSeconds?: number;
             hidden?: boolean;

@@ -58,6 +58,11 @@ export function FeedPage() {
               />
             )}
           </Section>
+          {data.watched.length > 0 && (
+            <Section title="Watched">
+              <MediaGrid items={data.watched} returnTo="/app" />
+            </Section>
+          )}
         </>
       )}
     </Page>

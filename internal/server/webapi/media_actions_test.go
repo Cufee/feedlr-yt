@@ -16,6 +16,115 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+func TestAPIMarkWatchedSupportsUnknownDurationAndReset(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		duration int64
+	}{
+		{name: "unknown", duration: 0},
+		{name: "negative_unknown", duration: -1},
+		{name: "known", duration: 120},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			ctx := context.Background()
+			video, err := f.db.GetVideoByID(ctx, "pe_first")
+			if err != nil {
+				t.Fatal(err)
+			}
+			video.Duration = tc.duration
+			if err := f.db.UpsertVideos(ctx, video); err != nil {
+				t.Fatal(err)
+			}
+			res, value := f.request(t, http.MethodPut, "/watch-later/pe_first", `{"present":true}`, f.session, "")
+			if res.StatusCode != http.StatusOK {
+				t.Fatalf("save for later: %d %#v", res.StatusCode, value)
+			}
+			patch := func(body string) {
+				t.Helper()
+				res, value := f.request(t, http.MethodPatch, "/media/pe_first/state", body, f.session, "")
+				if res.StatusCode != http.StatusNoContent {
+					t.Fatalf("state %s: %d %#v", body, res.StatusCode, value)
+				}
+			}
+			assertState := func(progress int64, hidden, completed bool) {
+				t.Helper()
+				views, err := f.db.GetUserViews(ctx, "viewer", "pe_first")
+				if err != nil || len(views) != 1 {
+					t.Fatalf("stored state: %#v %v", views, err)
+				}
+				if views[0].Progress != progress || views[0].Hidden.Bool != hidden {
+					t.Fatalf("stored progress/visibility: %#v", views[0])
+				}
+				res, value := f.request(t, http.MethodGet, "/media/pe_first", "", f.session, "")
+				if res.StatusCode != http.StatusOK {
+					t.Fatalf("detail: %d %#v", res.StatusCode, value)
+				}
+				f.check(t, value, "MediaDetail")
+				item := value.(map[string]any)["item"].(map[string]any)
+				if item["progressSeconds"] != float64(progress) || item["hidden"] != hidden || item["completed"] != completed {
+					t.Fatalf("detail progress/visibility/completion: %#v", item)
+				}
+				// Unknown duration must remain unknown, and must not count as
+				// full playback or automatically remove the saved item.
+				if video.Duration <= 0 && (item["durationSeconds"] != nil || item["inWatchLater"] != true) {
+					t.Fatalf("unknown-duration metadata or membership changed: %#v", item)
+				}
+			}
+			assertWatchedFeed := func(progress int64) {
+				t.Helper()
+				for _, path := range []string{"/history", "/feed"} {
+					res, value := f.request(t, http.MethodGet, path, "", f.session, "")
+					if res.StatusCode != http.StatusOK {
+						t.Fatalf("%s: %d %#v", path, res.StatusCode, value)
+					}
+					key, schema := "items", "MediaList"
+					if path == "/feed" {
+						key, schema = "watched", "Feed"
+					}
+					f.check(t, value, schema)
+					found := false
+					for _, raw := range value.(map[string]any)[key].([]any) {
+						item := raw.(map[string]any)
+						if item["id"] == video.ID {
+							found = true
+							if item["progressSeconds"] != float64(progress) {
+								t.Fatalf("%s lost watched progress: %#v", path, item)
+							}
+						}
+					}
+					if !found {
+						t.Fatalf("%s omitted watched item: %#v", path, value)
+					}
+				}
+			}
+
+			patch(`{"completed":true}`)
+			wantProgress := max(tc.duration+1, 1)
+			assertState(wantProgress, false, tc.duration > 0)
+			assertWatchedFeed(wantProgress)
+			patch(`{"hidden":true}`)
+			assertState(wantProgress, true, tc.duration > 0)
+			patch(`{"hidden":false}`)
+			assertState(wantProgress, false, tc.duration > 0)
+			if tc.duration <= 0 {
+				// Learning the duration must not move a manually watched item
+				// back into the unwatched feed, or replace its saved position.
+				video.Duration = 120
+				if err := f.db.UpsertVideos(ctx, video); err != nil {
+					t.Fatal(err)
+				}
+				assertState(wantProgress, false, false)
+				assertWatchedFeed(wantProgress)
+			}
+			patch(`{"progressSeconds":45}`)
+			assertState(45, false, false)
+			patch(`{"completed":false}`)
+			assertState(0, false, false)
+		})
+	}
+}
+
 func TestTVJSONRoutesAuthenticateValidateAndReportOffline(t *testing.T) {
 	f := newFixture(t)
 	previous := logic.DefaultYouTubeTVSync

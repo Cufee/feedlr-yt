@@ -230,6 +230,7 @@ const initialPlaylists: Playlist[] = [
 export type PreviewMode = "ready" | "loading" | "error" | "empty" | "save-error";
 export interface PreviewOptions {
   mode?: PreviewMode;
+  initialMedia?: MediaItem[];
   guest?: boolean;
   longHistory?: boolean;
   failFirstRead?: boolean;
@@ -268,7 +269,7 @@ export function createPreviewAPI(options: PreviewOptions = {}) {
         })
       : undefined;
     channelFilters = new Map();
-    items = options.mode === "empty" ? [] : structuredClone(previewMedia);
+    items = options.mode === "empty" ? [] : structuredClone(options.initialMedia ?? previewMedia);
     subscriptions = new Set(
       options.mode === "empty"
         ? []
@@ -349,8 +350,12 @@ export function createPreviewAPI(options: PreviewOptions = {}) {
         }
         if (path === "/feed") {
           return HttpResponse.json<Feed>({
-            new: items.filter((item) => !item.completed && !item.hidden).map(currentItem),
-            watched: items.filter((item) => item.completed && !item.hidden).map(currentItem),
+            new: items
+              .filter((item) => !item.completed && item.progressSeconds === 0 && !item.hidden)
+              .map(currentItem),
+            watched: items
+              .filter((item) => (item.completed || item.progressSeconds > 0) && !item.hidden)
+              .map(currentItem),
             watchLater: items.filter((item) => item.inWatchLater).map(currentItem),
             onboarding: items.length === 0,
           });
@@ -500,8 +505,10 @@ export function createPreviewAPI(options: PreviewOptions = {}) {
                   ...(typeof body.hidden === "boolean" ? { hidden: body.hidden } : {}),
                   ...(typeof body.completed === "boolean"
                     ? {
-                        completed: body.completed,
-                        progressSeconds: body.completed ? (item.durationSeconds ?? 0) : 0,
+                        completed: body.completed && (item.durationSeconds ?? 0) > 0,
+                        progressSeconds: body.completed
+                          ? Math.max(1, (item.durationSeconds ?? 0) + 1)
+                          : 0,
                       }
                     : {}),
                 }

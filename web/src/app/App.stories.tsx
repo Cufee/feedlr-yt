@@ -5,7 +5,7 @@ import { StrictMode, useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Button } from "@/components/ui";
 import { Notifications } from "./Notifications";
-import { createPreviewAPI, type PreviewOptions } from "./preview-fixtures";
+import { createPreviewAPI, type PreviewOptions, previewMedia } from "./preview-fixtures";
 import { createAppRouter } from "./router";
 import "./app.css";
 
@@ -99,6 +99,92 @@ function screen(
 
 export const FeedDesktop = screen("/app", "Your feed", "desktop");
 export const FeedMobile = screen("/app", "Your feed", "phone");
+export const FeedWatchedOrdering: Story = {
+  ...screen("/app", "Your feed", "desktop", {
+    initialMedia: previewMedia.map((item) => ({ ...item, inWatchLater: false })),
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("heading", { name: "Watched", level: 2 });
+    const mediaIds = () =>
+      Array.from(canvasElement.querySelectorAll("main article"), (card) =>
+        card.getAttribute("data-media-id"),
+      );
+    await expect(mediaIds()).toEqual([
+      "preview-1",
+      "preview-2",
+      "preview-4",
+      "preview-5",
+      "preview-6",
+      "preview-3",
+      "preview-7",
+      "preview-8",
+    ]);
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Actions for Making room for a more thoughtful day",
+      }),
+    );
+    await userEvent.click(
+      within(canvasElement.ownerDocument.body).getByRole("menuitem", { name: "Mark as unplayed" }),
+    );
+    await waitFor(() => expect(mediaIds()).toEqual(previewMedia.map((item) => item.id)));
+  },
+};
+export const WatchedOnlyFeed: Story = {
+  ...screen("/app", "Your feed", "desktop", {
+    initialMedia: previewMedia
+      .filter((item) => item.progressSeconds > 0)
+      .map((item) => ({ ...item, inWatchLater: false })),
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("heading", { name: "Watched", level: 2 });
+    await expect(
+      Array.from(canvasElement.querySelectorAll("main article"), (card) =>
+        card.getAttribute("data-media-id"),
+      ),
+    ).toEqual(["preview-3", "preview-7", "preview-8"]);
+  },
+};
+export const FeedUnknownDurationWatchState: Story = {
+  ...screen("/app", "Your feed", "desktop", {
+    initialMedia: previewMedia.slice(0, 2).map((item, index) => ({
+      ...item,
+      durationSeconds: index === 0 ? null : item.durationSeconds,
+      inWatchLater: false,
+    })),
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const document = within(canvasElement.ownerDocument.body);
+    const mediaIds = () =>
+      Array.from(canvasElement.querySelectorAll("main article"), (card) =>
+        card.getAttribute("data-media-id"),
+      );
+    await userEvent.click(
+      await canvas.findByRole("button", {
+        name: "Actions for A small cabin, a long weekend, and no plans",
+      }),
+    );
+    await userEvent.click(document.getByRole("menuitem", { name: "Mark as watched" }));
+    await waitFor(() => expect(mediaIds()).toEqual(["preview-2", "preview-1"]));
+    const actions = canvas.getByRole("button", {
+      name: "Actions for A small cabin, a long weekend, and no plans",
+    });
+    const card = actions.closest("article");
+    if (!card) {
+      throw new Error("The marked video disappeared from the feed");
+    }
+    await expect(within(card).getByText("Watched", { exact: true })).toBeVisible();
+    await userEvent.click(actions);
+    await userEvent.click(document.getByRole("menuitem", { name: "Mark as unwatched" }));
+    await waitFor(() => expect(mediaIds()).toEqual(["preview-1", "preview-2"]));
+    await expect(
+      canvas.queryByRole("heading", { name: "Watched", level: 2 }),
+    ).not.toBeInTheDocument();
+  },
+};
 export const HistoryDesktop = screen("/app/recent?source=all&page=1", "Recently played", "desktop");
 export const HistoryMobile = screen("/app/recent?source=all&page=1", "Recently played", "phone");
 export const HistoryScrollPreservation = screen(

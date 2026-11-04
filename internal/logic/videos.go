@@ -84,7 +84,8 @@ func GetUserVideosProps(ctx context.Context, db database.Client, userId string) 
 				continue
 			}
 			video.Progress = int(v.Progress)
-			if types.IsCompleted(video.Progress, video.Duration) {
+			// Any playback belongs after untouched items, including unknown durations.
+			if video.Progress > 0 {
 				feed.Watched = append(feed.Watched, video)
 			} else {
 				feed.New = append(feed.New, video)
@@ -206,7 +207,10 @@ func GetChannelVideos(ctx context.Context, db database.ChannelsClient, limit int
 		}
 	})
 
-	return trimVideoList(limit, 3, props), nil
+	if limit > 0 && len(props) > limit {
+		props = props[:limit]
+	}
+	return props, nil
 }
 
 func GetVideoByID(ctx context.Context, db interface {

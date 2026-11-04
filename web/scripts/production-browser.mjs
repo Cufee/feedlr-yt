@@ -18,8 +18,8 @@ const document = await readFile(new URL("index.html", buildDirectory));
 const origin = "http://127.0.0.1:4173";
 const saved = previewMedia.filter((item) => item.inWatchLater);
 const feed = {
-  new: previewMedia.filter((item) => !item.completed && !item.hidden),
-  watched: previewMedia.filter((item) => item.completed && !item.hidden),
+  new: previewMedia.filter((item) => item.progressSeconds === 0 && !item.hidden),
+  watched: previewMedia.filter((item) => item.progressSeconds > 0 && !item.hidden),
   watchLater: saved,
   onboarding: false,
 };

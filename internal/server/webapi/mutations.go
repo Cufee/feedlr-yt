@@ -105,10 +105,9 @@ func (a *API) patchMedia(c fiber.Ctx) error {
 			if err != nil {
 				return err
 			}
-			if v.Duration <= 0 {
-				return fail(409, "duration_unknown", "This item's duration is not available yet")
-			}
-			progress = int(v.Duration)
+			// A positive position also records manually watched items whose
+			// duration is not yet known, as the original card action did.
+			progress = max(int(v.Duration)+1, 1)
 		}
 		req.Progress = &progress
 	}

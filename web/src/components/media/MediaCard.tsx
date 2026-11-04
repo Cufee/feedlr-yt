@@ -37,6 +37,7 @@ export function MediaCardView({
   onPlaylist,
   contextActions = [],
 }: MediaCardViewProps) {
+  const watched = item.completed || item.progressSeconds > 0;
   const progress = item.completed
     ? 100
     : item.durationSeconds && item.durationSeconds > 0
@@ -78,7 +79,7 @@ export function MediaCardView({
             <Badge>Hidden</Badge>
           </div>
         )}
-        {!item.hidden && (item.completed || item.progressSeconds > 0) && (
+        {!item.hidden && watched && (
           <div className="media-watched-overlay">
             {item.kind === "podcast" ? "Listened" : "Watched"}
           </div>
@@ -131,15 +132,14 @@ export function MediaCardView({
                   id: "completed",
                   label:
                     item.kind === "podcast"
-                      ? item.completed
+                      ? watched
                         ? "Mark as unplayed"
                         : "Mark as listened"
-                      : item.completed
+                      : watched
                         ? "Mark as unwatched"
                         : "Mark as watched",
-                  icon: item.completed ? <ArrowPathIcon /> : <CheckIcon />,
-                  onSelect: () =>
-                    onState?.(item.completed ? { completed: false } : { completed: true }),
+                  icon: watched ? <ArrowPathIcon /> : <CheckIcon />,
+                  onSelect: () => onState?.(watched ? { completed: false } : { completed: true }),
                 },
                 {
                   id: "hidden",

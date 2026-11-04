@@ -84,15 +84,20 @@ func (a *API) feed(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	// Fill the home grid with untouched items first, then watched items.
+	// Trim only the combined tail so section boundaries never leave unused slots.
+	const homeFeedLimit = 24
+	p.New = p.New[:min(len(p.New), homeFeedLimit)]
+	p.Watched = p.Watched[:min(len(p.Watched), homeFeedLimit-len(p.New))]
 	watch, _, err := logic.GetWatchLaterVideos(c.Context(), a.db, viewer(c), 12, 0)
 	if err != nil {
 		return err
 	}
-	n, err := a.enrich(c.Context(), trimFeedSection(p.New), viewer(c))
+	n, err := a.enrich(c.Context(), p.New, viewer(c))
 	if err != nil {
 		return err
 	}
-	w, err := a.enrich(c.Context(), trimFeedSection(p.Watched), viewer(c))
+	w, err := a.enrich(c.Context(), p.Watched, viewer(c))
 	if err != nil {
 		return err
 	}
@@ -101,15 +106,6 @@ func (a *API) feed(c fiber.Ctx) error {
 		return err
 	}
 	return c.JSON(Feed{New: n, Watched: w, WatchLater: later, Onboarding: len(n)+len(w) == 0})
-}
-
-func trimFeedSection(videos []types.VideoProps) []types.VideoProps {
-	// Twelve cards fill complete rows at every responsive grid width: 1, 2, 3 or 4 columns.
-	const gridBatchSize = 12
-	if len(videos) > gridBatchSize {
-		return videos[:len(videos)-len(videos)%gridBatchSize]
-	}
-	return videos
 }
 
 func (a *API) history(c fiber.Ctx) error {
