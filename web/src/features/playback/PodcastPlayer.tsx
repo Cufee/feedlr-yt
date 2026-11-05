@@ -88,10 +88,6 @@ export function PodcastSegments({ snapshot }: { snapshot: PodcastSnapshot }) {
               {formatPlaybackTime(segment.end_ms / 1000)}
             </span>
           </div>
-          <p>
-            {segment.start_text}
-            {segment.end_text !== segment.start_text ? ` … ${segment.end_text}` : ""}
-          </p>
         </section>
       ))}
     </div>

@@ -222,9 +222,8 @@ export const PodcastKeyboardControls: Story = {
       "aria-selected",
       "true",
     );
-    await expect(
-      canvas.getByText("A word from our sponsor … Back to the conversation"),
-    ).toBeVisible();
+    await expect(canvas.getByText("sponsor", { exact: true })).toBeVisible();
+    await expect(canvas.getByText("0:10–0:20")).toBeVisible();
     const progress = canvas.getByRole("slider", { name: "Episode progress" });
     progress.focus();
     // Native range defaults require a trusted browser key, which the preview's
