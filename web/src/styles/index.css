@@ -43,7 +43,6 @@
     color: var(--color-text);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    overscroll-behavior-y: none;
   }
 
   body {
